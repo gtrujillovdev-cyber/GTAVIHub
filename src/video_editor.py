@@ -64,7 +64,8 @@ def clean_text_no_emoji(text: str) -> str:
 
 def split_cue_into_micro_bursts(text: str, start: float, end: float, max_words: int = 3) -> List[Dict[str, Any]]:
     """
-    Divide frases largas en ráfagas dinámicas de 2-3 palabras (ritmo Opus Clip / TikTok / MrBeast).
+    Divide frases en ráfagas dinámicas de 2-3 palabras (ritmo viral TikTok / Shorts).
+    Garantiza que nunca se solapen en el tiempo.
     """
     words = text.split()
     if len(words) <= max_words:
@@ -91,18 +92,19 @@ def split_cue_into_micro_bursts(text: str, start: float, end: float, max_words: 
     cur_t = start
     for c in chunks:
         c_dur = total_dur * (len(c) / total_words)
+        next_t = cur_t + c_dur
         res.append({
             "start": round(cur_t, 2),
-            "end": round(cur_t + c_dur - 0.03, 2),
+            "end": round(next_t - 0.02, 2),
             "text": " ".join(c)
         })
-        cur_t += c_dur
+        cur_t = next_t
     return res
 
 def calculate_word_timing(words: List[str], start_t: float, end_t: float) -> List[Dict[str, Any]]:
     """
-    Calcula los intervalos de tiempo palabra por palabra ponderados por su longitud fonética.
-    Permite el efecto Karaoke en tiempo real de alta precisión.
+    Calcula los intervalos de tiempo palabra por palabra ponderados fonéticamente.
+    Garantiza una separación estricta de 0.02s para que NUNCA se pisen.
     """
     total_dur = max(0.3, end_t - start_t)
     weights = [len(w) + 1 for w in words]
@@ -119,13 +121,19 @@ def calculate_word_timing(words: List[str], start_t: float, end_t: float) -> Lis
             "word_idx": idx,
             "word": w,
             "start": round(cur_t, 2),
-            "end": round(next_t, 2)
+            "end": round(next_t - 0.02, 2)
         })
         cur_t = next_t
     return timings
 
 def parse_srt_file(srt_path: Path) -> List[Dict[str, Any]]:
-    """Parsea el archivo SRT y devuelve micro-cues dinámicas de 2-3 palabras."""
+    """
+    Parsea y desduplica subtítulos SRT eliminando el 'rolling buffer' de YouTube:
+    1. Filtra micro-bloques de transición (< 0.25s).
+    2. Elimina líneas repetidas del bloque anterior.
+    3. Asegura estricta monotonicidad temporal (cero solapamientos entre frases).
+    4. Devuelve micro-ráfagas limpias de 2-3 palabras.
+    """
     if not srt_path.exists():
         return []
     
@@ -133,21 +141,62 @@ def parse_srt_file(srt_path: Path) -> List[Dict[str, Any]]:
         content = f.read().replace("\r\n", "\n")
 
     blocks = content.strip().split("\n\n")
-    cues = []
+    raw_cues = []
+    last_text = ""
+
     for b in blocks:
         lines = [line.strip() for line in b.split("\n") if line.strip()]
         if len(lines) >= 3 and "-->" in lines[1]:
             start_str, end_str = lines[1].split("-->")
             start_sec = parse_time(start_str)
             end_sec = parse_time(end_str)
-            raw_text = " ".join(lines[2:]).strip()
-            text = clean_text_no_emoji(raw_text)
-            if not text or end_sec <= start_sec:
+            
+            # Descartar micro-glitches de 10-100ms
+            if (end_sec - start_sec) < 0.25:
                 continue
 
-            bursts = split_cue_into_micro_bursts(text, start_sec, end_sec, max_words=3)
-            cues.extend(bursts)
-    return cues
+            text_lines = [clean_text_no_emoji(l) for l in lines[2:] if clean_text_no_emoji(l)]
+            if not text_lines:
+                continue
+
+            # Desduplicar el buffer rodante de YouTube (teleprompter acumulativo)
+            new_lines = [tl for tl in text_lines if tl not in last_text]
+            if not new_lines:
+                full_t = " ".join(text_lines)
+                if full_t.startswith(last_text) and len(full_t) > len(last_text):
+                    added = full_t[len(last_text):].strip()
+                    if added:
+                        new_lines = [added]
+                else:
+                    continue
+
+            final_text = " ".join(new_lines).strip()
+            if not final_text:
+                continue
+
+            last_text = " ".join(text_lines).strip()
+            raw_cues.append({
+                "start": start_sec,
+                "end": end_sec,
+                "text": final_text
+            })
+
+    # Asegurar orden estrictamente secuencial y sin solapamiento
+    all_bursts = []
+    last_end = 0.0
+    for c in raw_cues:
+        start = max(c["start"], last_end + 0.03)
+        end = max(c["end"], start + 0.6)
+        bursts = split_cue_into_micro_bursts(c["text"], start, end, max_words=3)
+        for b in bursts:
+            if b["start"] < last_end:
+                b["start"] = round(last_end + 0.02, 2)
+            if b["end"] <= b["start"]:
+                b["end"] = round(b["start"] + 0.45, 2)
+            all_bursts.append(b)
+            last_end = b["end"]
+
+    return all_bursts
 
 def render_karaoke_subtitle_state(words: List[str], active_idx: int, is_vertical: bool, output_path: Path) -> bool:
     """
@@ -194,13 +243,12 @@ def render_karaoke_subtitle_state(words: List[str], active_idx: int, is_vertical
     for idx, w in enumerate(words):
         ww = word_widths[idx]
         is_active = (idx == active_idx)
-        # Palabra activa: Amarillo Eléctrico Neón; inactivas: Blanco Puro
         text_color = (255, 229, 0, 255) if is_active else (240, 240, 245, 255)
         stroke_w = 4 if is_active else 3
 
-        # Sombra de profundidad 3D suave
+        # Sombra de profundidad 3D
         d.text((cur_x + 3, cur_y + 4), w, font=font, fill=(0, 0, 0, 220))
-        # Trazo nítido negro
+        # Trazo negro nítido
         d.text((cur_x, cur_y), w, font=font, fill=text_color, stroke_width=stroke_w, stroke_fill=(0, 0, 0, 255))
         
         cur_x += ww + space_w
@@ -218,24 +266,20 @@ def create_subtle_vignette(output_png: Path, fg_top: int = 160, fg_bottom: int =
     img = Image.new("RGBA", (w, h), (0, 0, 0, 0))
     d = ImageDraw.Draw(img)
 
-    # 1. Viñeta superior extrema
     for y in range(fg_top):
         alpha = int(110 * (1 - (y / fg_top)))
         d.line([(0, y), (w, y)], fill=(0, 0, 0, alpha))
 
-    # 2. Sombra de unión superior (alrededor de fg_top)
     for i in range(25):
         alpha = int(75 * (1 - (i / 25)))
         d.line([(0, fg_top - i), (w, fg_top - i)], fill=(0, 0, 0, alpha))
         d.line([(0, fg_top + i), (w, fg_top + i)], fill=(0, 0, 0, alpha // 2))
 
-    # 3. Sombra de unión inferior (alrededor de fg_bottom)
     for i in range(25):
         alpha = int(75 * (1 - (i / 25)))
         d.line([(0, fg_bottom - i), (w, fg_bottom - i)], fill=(0, 0, 0, alpha // 2))
         d.line([(0, fg_bottom + i), (w, fg_bottom + i)], fill=(0, 0, 0, alpha))
 
-    # 4. Viñeta inferior extrema
     for y in range(h - fg_bottom):
         alpha = int(110 * (y / (h - fg_bottom)))
         y_pos = fg_bottom + y
@@ -253,15 +297,15 @@ def render_final_video(
     hook_text: str = ""
 ) -> bool:
     """
-    Ensamblaje viral definitivo con KARAOKE DINÁMICO palabra por palabra:
+    Ensamblaje viral definitivo con KARAOKE DINÁMICO palabra por palabra y ANTI-COLISIÓN:
     1. Zoom & Crop Maximizado (83.3% de pantalla):
        - Primer plano ampliado a 1080x1600 (y=160 a y=1760), cortando laterales para centrar acción.
        - Fondo velvet blur (boxblur 25:5) reducido a 160px superior e inferior.
        - Filtro unsharp para nitidez 4K en caras y texturas.
-    2. Subtítulos Karaoke Dinámicos:
-       - Resaltado activo palabra por palabra en Amarillo Neón mientras se pronuncian.
-       - La línea permanece fija y estable (sin saltos).
-       - Centrados a y=1280 (zona segura).
+    2. Subtítulos Karaoke Dinámicos Anti-Solapamiento:
+       - Resaltado activo palabra por palabra en Amarillo Neón sin repetición ni pisado.
+       - Sincronización temporal estrictamente secuencial y no solapada.
+       - Centrados a y=1280 (zona segura sobre los botones de Shorts/TikTok/Reels).
     3. Normalización de audio YouTube Shorts (-14 LUFS).
     4. CERO retraso: El contenido arranca DIRECTAMENTE a 0.0s.
     5. Aceleración nativa VideoToolbox en Apple Silicon M4.
@@ -276,19 +320,19 @@ def render_final_video(
     fg_y = 160
     fg_bottom = fg_y + fg_h
 
-    print(f"[*] Ensamblando vídeo con Karaoke Dinámico y Zoom 83.3% (Vertical: {is_vertical})...")
+    print(f"[*] Ensamblando vídeo con Karaoke Dinámico Anti-Solapamiento y Zoom 83.3% (Vertical: {is_vertical})...")
 
     # 1. Viñeta y sombras de unión
     vignette_png = temp_dir / f"{base_name}_vignette.png"
     create_subtle_vignette(vignette_png, fg_top=fg_y, fg_bottom=fg_bottom)
 
-    # 2. Generación de estados de Karaoke palabra por palabra
+    # 2. Generación de estados de Karaoke palabra por palabra (sin solapamiento)
     cues = parse_srt_file(srt_subtitles) if srt_subtitles else []
-    sub_cues = cues[:35]  # ~35 frases de 2-3 palabras cubren hasta 50-60s
+    sub_cues = cues[:45]
     sub_pngs = []
     global_sub_idx = 0
 
-    for phrase_idx, cue in enumerate(sub_cues):
+    for cue in sub_cues:
         cleaned = clean_text_no_emoji(cue["text"]).upper()
         words = cleaned.split()
         if not words:
@@ -308,7 +352,7 @@ def render_final_video(
                 sub_pngs.append((sub_png, tw["start"], tw["end"]))
                 global_sub_idx += 1
 
-    print(f"[*] {len(sub_pngs)} estados de Karaoke dinámico generados.")
+    print(f"[*] {len(sub_pngs)} estados de Karaoke dinámico desduplicados generados.")
 
     # 3. Construcción del comando FFmpeg
     cmd = ["ffmpeg", "-y", "-i", str(input_video)]
@@ -356,7 +400,7 @@ def render_final_video(
     filter_chains.append(f"[{current_v}][{vignette_idx}:v]overlay=0:0[v_vignetted]")
     current_v = "v_vignetted"
 
-    # C) Superponer Subtítulos Karaoke palabra por palabra (centrados horizontalmente en zona segura y=1280)
+    # C) Superponer Subtítulos Karaoke palabra por palabra (estrictamente secuenciales a y=1280)
     sub_y = "1280" if is_vertical else "H-h-90"
     for s_idx, (_, start_s, end_s) in enumerate(sub_pngs):
         in_id = sub_inputs_start + s_idx
