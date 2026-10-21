@@ -65,7 +65,6 @@ def clean_text_no_emoji(text: str) -> str:
 def split_cue_into_micro_bursts(text: str, start: float, end: float, max_words: int = 3) -> List[Dict[str, Any]]:
     """
     Divide frases largas en ráfagas dinámicas de 2-3 palabras (ritmo Opus Clip / TikTok / MrBeast).
-    Garantiza retención visual y sincronización rápida con la voz.
     """
     words = text.split()
     if len(words) <= max_words:
@@ -100,6 +99,31 @@ def split_cue_into_micro_bursts(text: str, start: float, end: float, max_words: 
         cur_t += c_dur
     return res
 
+def calculate_word_timing(words: List[str], start_t: float, end_t: float) -> List[Dict[str, Any]]:
+    """
+    Calcula los intervalos de tiempo palabra por palabra ponderados por su longitud fonética.
+    Permite el efecto Karaoke en tiempo real de alta precisión.
+    """
+    total_dur = max(0.3, end_t - start_t)
+    weights = [len(w) + 1 for w in words]
+    total_weight = sum(weights)
+    
+    timings = []
+    cur_t = start_t
+    for idx, (w, wt) in enumerate(zip(words, weights)):
+        w_dur = total_dur * (wt / total_weight)
+        next_t = cur_t + w_dur
+        if idx == len(words) - 1:
+            next_t = end_t
+        timings.append({
+            "word_idx": idx,
+            "word": w,
+            "start": round(cur_t, 2),
+            "end": round(next_t, 2)
+        })
+        cur_t = next_t
+    return timings
+
 def parse_srt_file(srt_path: Path) -> List[Dict[str, Any]]:
     """Parsea el archivo SRT y devuelve micro-cues dinámicas de 2-3 palabras."""
     if not srt_path.exists():
@@ -125,17 +149,14 @@ def parse_srt_file(srt_path: Path) -> List[Dict[str, Any]]:
             cues.extend(bursts)
     return cues
 
-def render_modern_floating_subtitle(text: str, is_vertical: bool, output_path: Path) -> bool:
+def render_karaoke_subtitle_state(words: List[str], active_idx: int, is_vertical: bool, output_path: Path) -> bool:
     """
-    Subtítulos Virales Modernos (Estilo Opus Clip / CapCut / MrBeast):
-    - 100% flotantes: CERO cajas oscuras, CERO marcos fucsia/cian, CERO cajas rotas '[]'.
-    - Tipografía moderna Avenir Next Heavy (58px).
-    - Primera palabra en Amarillo Eléctrico (#FFE500), resto en Blanco Puro (#FFFFFF).
-    - Trazo negro fino de 3.5px + sombra 3D suave (offset +3, +4).
-    - Margen seguro: max_w = 720px (al menos 180px libres a cada lado).
+    Renderiza un estado Karaoke palabra por palabra:
+    - La línea permanece 100% fija y estable horizontalmente.
+    - La palabra activa se ilumina en Amarillo Eléctrico (#FFE500) con trazo reforzado.
+    - Las palabras inactivas permanecen en Blanco Puro (#FFFFFF).
+    - CERO cajas oscuras ni marcos.
     """
-    cleaned = clean_text_no_emoji(text).upper()
-    words = cleaned.split()
     if not words:
         return False
 
@@ -146,7 +167,7 @@ def render_modern_floating_subtitle(text: str, is_vertical: bool, output_path: P
     temp_img = Image.new("RGBA", (1, 1))
     d_temp = ImageDraw.Draw(temp_img)
 
-    # Si supera el ancho máximo seguro, reducir ligeramente la fuente
+    # Ajustar si supera ancho máximo seguro
     while font_size > 34:
         test_w = sum(d_temp.textbbox((0, 0), w, font=font)[2] - d_temp.textbbox((0, 0), w, font=font)[0] for w in words)
         test_w += 18 * (len(words) - 1)
@@ -156,14 +177,14 @@ def render_modern_floating_subtitle(text: str, is_vertical: bool, output_path: P
         font = get_best_font(size=font_size)
 
     space_w = 18
-    total_w = sum(d_temp.textbbox((0, 0), w, font=font)[2] - d_temp.textbbox((0, 0), w, font=font)[0] for w in words) + space_w * (len(words) - 1)
+    word_widths = [d_temp.textbbox((0, 0), w, font=font)[2] - d_temp.textbbox((0, 0), w, font=font)[0] for w in words]
+    total_w = sum(word_widths) + space_w * (len(words) - 1)
     sample_bb = font.getbbox("AY")
     line_h = (sample_bb[3] - sample_bb[1]) + 20
 
     box_w = int(total_w + 50)
     box_h = int(line_h + 24)
 
-    # Imagen transparente pura
     img = Image.new("RGBA", (box_w, box_h), (0, 0, 0, 0))
     d = ImageDraw.Draw(img)
 
@@ -171,15 +192,16 @@ def render_modern_floating_subtitle(text: str, is_vertical: bool, output_path: P
     cur_y = 10
 
     for idx, w in enumerate(words):
-        wb = d_temp.textbbox((0, 0), w, font=font)
-        ww = wb[2] - wb[0]
-        # Primera palabra en Amarillo Eléctrico (#FFE500), resto en Blanco Puro
-        text_color = (255, 229, 0, 255) if idx == 0 else (255, 255, 255, 255)
-        
-        # Sombra de profundidad 3D
+        ww = word_widths[idx]
+        is_active = (idx == active_idx)
+        # Palabra activa: Amarillo Eléctrico Neón; inactivas: Blanco Puro
+        text_color = (255, 229, 0, 255) if is_active else (240, 240, 245, 255)
+        stroke_w = 4 if is_active else 3
+
+        # Sombra de profundidad 3D suave
         d.text((cur_x + 3, cur_y + 4), w, font=font, fill=(0, 0, 0, 220))
-        # Trazo negro nítido de 3.5px
-        d.text((cur_x, cur_y), w, font=font, fill=text_color, stroke_width=3, stroke_fill=(0, 0, 0, 255))
+        # Trazo nítido negro
+        d.text((cur_x, cur_y), w, font=font, fill=text_color, stroke_width=stroke_w, stroke_fill=(0, 0, 0, 255))
         
         cur_x += ww + space_w
 
@@ -231,16 +253,18 @@ def render_final_video(
     hook_text: str = ""
 ) -> bool:
     """
-    Ensamblaje viral definitivo y limpio:
+    Ensamblaje viral definitivo con KARAOKE DINÁMICO palabra por palabra:
     1. Zoom & Crop Maximizado (83.3% de pantalla):
-       - Primer plano ampliado a 1080x1600 (y=160 a y=1760), recortando laterales para centrar la acción.
-       - Fondo velvet blur (boxblur 25:5) reducido a una franja elegante superior e inferior de 160px.
-       - Filtro unsharp para nitidez 4K en texturas y caras.
-    2. CERO retraso de intro: El vídeo y el audio arrancan DIRECTAMENTE en 0.0s.
-    3. CERO rótulos invasivos: CERO cajas negras, CERO bordes fucsia/cian, CERO '[]'.
-    4. Subtítulos dinámicos de 2-3 palabras flotantes (blanco + palabra clave en amarillo) centrados a y=1280.
-    5. Normalización de audio YouTube Shorts (-14 LUFS).
-    6. Aceleración nativa VideoToolbox en Apple Silicon M4.
+       - Primer plano ampliado a 1080x1600 (y=160 a y=1760), cortando laterales para centrar acción.
+       - Fondo velvet blur (boxblur 25:5) reducido a 160px superior e inferior.
+       - Filtro unsharp para nitidez 4K en caras y texturas.
+    2. Subtítulos Karaoke Dinámicos:
+       - Resaltado activo palabra por palabra en Amarillo Neón mientras se pronuncian.
+       - La línea permanece fija y estable (sin saltos).
+       - Centrados a y=1280 (zona segura).
+    3. Normalización de audio YouTube Shorts (-14 LUFS).
+    4. CERO retraso: El contenido arranca DIRECTAMENTE a 0.0s.
+    5. Aceleración nativa VideoToolbox en Apple Silicon M4.
     """
     temp_dir = input_video.parent
     base_name = input_video.stem
@@ -252,21 +276,39 @@ def render_final_video(
     fg_y = 160
     fg_bottom = fg_y + fg_h
 
-    print(f"[*] Ensamblando vídeo con Zoom & Crop Maximizado ({fg_h}px / 83.3% alto) (Vertical: {is_vertical})...")
+    print(f"[*] Ensamblando vídeo con Karaoke Dinámico y Zoom 83.3% (Vertical: {is_vertical})...")
 
     # 1. Viñeta y sombras de unión
     vignette_png = temp_dir / f"{base_name}_vignette.png"
     create_subtle_vignette(vignette_png, fg_top=fg_y, fg_bottom=fg_bottom)
 
-    # 2. Subtítulos dinámicos flotantes
+    # 2. Generación de estados de Karaoke palabra por palabra
     cues = parse_srt_file(srt_subtitles) if srt_subtitles else []
-    sub_cues = cues[:80]
+    sub_cues = cues[:35]  # ~35 frases de 2-3 palabras cubren hasta 50-60s
     sub_pngs = []
-    for idx, cue in enumerate(sub_cues):
-        sub_png = temp_dir / f"{base_name}_sub_{idx}.png"
-        rendered = render_modern_floating_subtitle(cue["text"], is_vertical=is_vertical, output_path=sub_png)
-        if rendered:
-            sub_pngs.append((sub_png, cue["start"], cue["end"]))
+    global_sub_idx = 0
+
+    for phrase_idx, cue in enumerate(sub_cues):
+        cleaned = clean_text_no_emoji(cue["text"]).upper()
+        words = cleaned.split()
+        if not words:
+            continue
+
+        timings = calculate_word_timing(words, cue["start"], cue["end"])
+        for tw in timings:
+            active_w_idx = tw["word_idx"]
+            sub_png = temp_dir / f"{base_name}_ksub_{global_sub_idx}.png"
+            rendered = render_karaoke_subtitle_state(
+                words=words,
+                active_idx=active_w_idx,
+                is_vertical=is_vertical,
+                output_path=sub_png
+            )
+            if rendered:
+                sub_pngs.append((sub_png, tw["start"], tw["end"]))
+                global_sub_idx += 1
+
+    print(f"[*] {len(sub_pngs)} estados de Karaoke dinámico generados.")
 
     # 3. Construcción del comando FFmpeg
     cmd = ["ffmpeg", "-y", "-i", str(input_video)]
@@ -286,7 +328,7 @@ def render_final_video(
     vignette_idx = input_idx
     input_idx += 1
 
-    # Subtítulos como inputs
+    # Subtítulos Karaoke como inputs
     sub_inputs_start = input_idx
     for sp, _, _ in sub_pngs:
         cmd.extend(["-i", str(sp)])
@@ -296,8 +338,6 @@ def render_final_video(
 
     # A) Base de vídeo: ZOOM & CROP MAXIMIZADO (83.3% del alto)
     if is_vertical and not is_already_vertical:
-        # Fondo: desenfoque velvet 1080x1920 con boxblur suave
-        # Primer plano: ampliado a 1600px de alto, centrado y cortando laterales para llenar el 83.3% del frame
         v_base = (
             "[0:v]split[v1][v2];"
             "[v1]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,boxblur=25:5,eq=brightness=-0.06:contrast=1.05:saturation=1.2[bg];"
@@ -316,7 +356,7 @@ def render_final_video(
     filter_chains.append(f"[{current_v}][{vignette_idx}:v]overlay=0:0[v_vignetted]")
     current_v = "v_vignetted"
 
-    # C) Superponer Subtítulos modernos flotantes (centrados horizontalmente en zona segura y=1280)
+    # C) Superponer Subtítulos Karaoke palabra por palabra (centrados horizontalmente en zona segura y=1280)
     sub_y = "1280" if is_vertical else "H-h-90"
     for s_idx, (_, start_s, end_s) in enumerate(sub_pngs):
         in_id = sub_inputs_start + s_idx
