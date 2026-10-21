@@ -2,6 +2,11 @@
 
 Sistema de producción y distribución totalmente automatizado para **YouTube Shorts, TikTok e Instagram Reels**, optimizado para ejecutarse silenciosamente en segundo plano en **Apple Silicon (M4)** con aceleración por hardware (`VideoToolbox`).
 
+### 🌐 Redes Sociales y Canales Oficiales:
+- 🔴 **YouTube:** [GTA VI Hub Spain](https://www.youtube.com/channel/UCBOl2KuaHEoUWYWJqb7ID9Q)
+- 📸 **Instagram:** [@gtavihubspain](https://www.instagram.com/gtavihubspain/)
+- 🎵 **TikTok:** [@gtavihubspain](https://www.tiktok.com/@gtavihubspain)
+
 > 📖 **Documentación Completa:** Consulta la [**Guía de Uso Exhaustiva (`GUIA_DE_USO.md`)**](./GUIA_DE_USO.md) para ver tutoriales paso a paso, arquitectura, parámetros y directrices legales.
 
 ---

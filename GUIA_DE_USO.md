@@ -2,6 +2,11 @@
 
 Bienvenido a la documentación oficial del sistema de producción autónoma de contenidos para **GTA VI Hub Spain**. Este pipeline ha sido diseñado específicamente para operar en equipos **macOS Apple Silicon (M1/M2/M3/M4)** con aceleración por hardware (`VideoToolbox`), generando vídeos verticales de máxima retención para **YouTube Shorts, TikTok e Instagram Reels** bajo un marco estricto de **Fair Use (Uso Legítimo)** y respeto absoluto a los creadores originales.
 
+### 🌐 Redes Sociales Oficiales del Canal:
+- 🔴 **YouTube Shorts:** [GTA VI Hub Spain](https://www.youtube.com/channel/UCBOl2KuaHEoUWYWJqb7ID9Q)
+- 📸 **Instagram Reels:** [@gtavihubspain](https://www.instagram.com/gtavihubspain/)
+- 🎵 **TikTok:** [@gtavihubspain](https://www.tiktok.com/@gtavihubspain)
+
 ---
 
 ## 📑 Índice de Contenidos

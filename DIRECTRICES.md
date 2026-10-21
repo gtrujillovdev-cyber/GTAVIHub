@@ -1,5 +1,10 @@
 # 📋 Directrices Operativas, Formato Visual y Calidad (GTA VI Hub Spain)
 
+### 🌐 Canales y Redes Oficiales:
+- **YouTube:** [GTA VI Hub Spain](https://www.youtube.com/channel/UCBOl2KuaHEoUWYWJqb7ID9Q)
+- **Instagram:** [@gtavihubspain](https://www.instagram.com/gtavihubspain/)
+- **TikTok:** [@gtavihubspain](https://www.tiktok.com/@gtavihubspain)
+
 > **Regla de Oro del Proyecto:**  
 > Cada iteración técnica o visual se rige bajo el protocolo estricto:  
 > **Generación Local ➡️ Comprobación (QuickTime / Sandbox Web) ➡️ Borrado de Residuos ➡️ Auditoría ➡️ Consolidación en Git.**
