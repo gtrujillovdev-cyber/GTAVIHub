@@ -4,7 +4,7 @@ import json
 import subprocess
 from pathlib import Path
 from typing import Optional, Tuple, List, Dict, Any
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw, ImageFont, ImageFilter
 
 from .config import FFMPEG_VIDEO_CODEC, FFMPEG_BITRATE
 
@@ -159,7 +159,7 @@ def parse_srt_file(srt_path: Path) -> List[Dict[str, Any]]:
             if not text_lines:
                 continue
 
-            # Desduplicar el buffer rodante de YouTube (teleprompter acumulativo)
+            # Desduplicar el buffer rodante de YouTube
             new_lines = [tl for tl in text_lines if tl not in last_text]
             if not new_lines:
                 full_t = " ".join(text_lines)
@@ -198,11 +198,33 @@ def parse_srt_file(srt_path: Path) -> List[Dict[str, Any]]:
 
     return all_bursts
 
+def render_top_hook_headline(hook_text: str, output_path: Path) -> bool:
+    """Renderiza el titular de gancho superior limpio (segundos 0 a 2.5s)."""
+    clean_hook = clean_text_no_emoji(hook_text).upper()
+    if not clean_hook:
+        return False
+    
+    font = get_best_font(size=42)
+    d_temp = ImageDraw.Draw(Image.new("RGBA", (1, 1)))
+    bb = d_temp.textbbox((0, 0), clean_hook, font=font)
+    w = bb[2] - bb[0]
+    h = bb[3] - bb[1]
+
+    img = Image.new("RGBA", (w + 40, h + 24), (0, 0, 0, 0))
+    d = ImageDraw.Draw(img)
+
+    # Sombra 3D suave
+    d.text((23, 14), clean_hook, font=font, fill=(0, 0, 0, 220))
+    # Texto Amarillo Neón con trazo negro nítido de 3.5px
+    d.text((20, 10), clean_hook, font=font, fill=(255, 230, 0, 255), stroke_width=3, stroke_fill=(0, 0, 0, 255))
+    img.save(output_path, "PNG")
+    return True
+
 def render_karaoke_subtitle_state(words: List[str], active_idx: int, is_vertical: bool, output_path: Path) -> bool:
     """
-    Renderiza un estado Karaoke palabra por palabra:
+    Renderiza un estado Karaoke palabra por palabra con Glow Neón sutil:
     - La línea permanece 100% fija y estable horizontalmente.
-    - La palabra activa se ilumina en Amarillo Eléctrico (#FFE500) con trazo reforzado.
+    - La palabra activa se ilumina con halo dorado y trazo reforzado.
     - Las palabras inactivas permanecen en Blanco Puro (#FFFFFF).
     - CERO cajas oscuras ni marcos.
     """
@@ -231,15 +253,27 @@ def render_karaoke_subtitle_state(words: List[str], active_idx: int, is_vertical
     sample_bb = font.getbbox("AY")
     line_h = (sample_bb[3] - sample_bb[1]) + 20
 
-    box_w = int(total_w + 50)
-    box_h = int(line_h + 24)
+    box_w = int(total_w + 60)
+    box_h = int(line_h + 30)
 
     img = Image.new("RGBA", (box_w, box_h), (0, 0, 0, 0))
+
+    # Capa de halo / resplandor dorado para la palabra activa
+    glow = Image.new("RGBA", (box_w, box_h), (0, 0, 0, 0))
+    d_glow = ImageDraw.Draw(glow)
+    cur_x = 30
+    cur_y = 12
+    for idx, w in enumerate(words):
+        ww = word_widths[idx]
+        if idx == active_idx:
+            d_glow.text((cur_x, cur_y), w, font=font, fill=(255, 230, 0, 130), stroke_width=8, stroke_fill=(255, 230, 0, 130))
+        cur_x += ww + space_w
+
+    glow = glow.filter(ImageFilter.GaussianBlur(5))
+    img = Image.alpha_composite(img, glow)
     d = ImageDraw.Draw(img)
 
-    cur_x = 25
-    cur_y = 10
-
+    cur_x = 30
     for idx, w in enumerate(words):
         ww = word_widths[idx]
         is_active = (idx == active_idx)
@@ -258,8 +292,8 @@ def render_karaoke_subtitle_state(words: List[str], active_idx: int, is_vertical
 
 def create_subtle_vignette(output_png: Path, fg_top: int = 160, fg_bottom: int = 1760) -> bool:
     """
-    Genera gradientes cinemáticos sutiles:
-    - Viñetas en extremos superior (160px) e inferior (160px).
+    Genera gradientes cinemáticos con sombras de unión de tarjeta:
+    - Viñetas en extremos superior e inferior.
     - Sombras suaves en los puntos de unión (fg_top y fg_bottom) para integrar el vídeo sobre el blur.
     """
     w, h = 1080, 1920
@@ -270,13 +304,15 @@ def create_subtle_vignette(output_png: Path, fg_top: int = 160, fg_bottom: int =
         alpha = int(110 * (1 - (y / fg_top)))
         d.line([(0, y), (w, y)], fill=(0, 0, 0, alpha))
 
-    for i in range(25):
-        alpha = int(75 * (1 - (i / 25)))
+    # Sombra de unión superior multicapa (profundidad 35px)
+    for i in range(35):
+        alpha = int(85 * (1 - (i / 35)))
         d.line([(0, fg_top - i), (w, fg_top - i)], fill=(0, 0, 0, alpha))
         d.line([(0, fg_top + i), (w, fg_top + i)], fill=(0, 0, 0, alpha // 2))
 
-    for i in range(25):
-        alpha = int(75 * (1 - (i / 25)))
+    # Sombra de unión inferior multicapa (profundidad 35px)
+    for i in range(35):
+        alpha = int(85 * (1 - (i / 35)))
         d.line([(0, fg_bottom - i), (w, fg_bottom - i)], fill=(0, 0, 0, alpha // 2))
         d.line([(0, fg_bottom + i), (w, fg_bottom + i)], fill=(0, 0, 0, alpha))
 
@@ -297,18 +333,20 @@ def render_final_video(
     hook_text: str = ""
 ) -> bool:
     """
-    Ensamblaje viral definitivo con KARAOKE DINÁMICO palabra por palabra y ANTI-COLISIÓN:
+    Ensamblaje viral definitivo con KARAOKE GLOW, GANCHO SUPERIOR (0-2.5s) y ZOOM 83.3%:
     1. Zoom & Crop Maximizado (83.3% de pantalla):
        - Primer plano ampliado a 1080x1600 (y=160 a y=1760), cortando laterales para centrar acción.
        - Fondo velvet blur (boxblur 25:5) reducido a 160px superior e inferior.
        - Filtro unsharp para nitidez 4K en caras y texturas.
-    2. Subtítulos Karaoke Dinámicos Anti-Solapamiento:
-       - Resaltado activo palabra por palabra en Amarillo Neón sin repetición ni pisado.
-       - Sincronización temporal estrictamente secuencial y no solapada.
+    2. Gancho Superior de Contexto (0.0s a 2.5s):
+       - Texto flotante limpio a y=85 que plantea la incógnita viral y se desvanece a los 2.5s.
+    3. Subtítulos Karaoke Dinámicos con Halo Neón:
+       - Resaltado activo palabra por palabra en Amarillo Neón con glow sutil.
+       - Sincronización temporal estrictamente secuencial y desduplicada.
        - Centrados a y=1280 (zona segura sobre los botones de Shorts/TikTok/Reels).
-    3. Normalización de audio YouTube Shorts (-14 LUFS).
-    4. CERO retraso: El contenido arranca DIRECTAMENTE a 0.0s.
-    5. Aceleración nativa VideoToolbox en Apple Silicon M4.
+    4. Normalización de audio YouTube Shorts (-14 LUFS).
+    5. CERO retraso: El contenido arranca DIRECTAMENTE a 0.0s.
+    6. Aceleración nativa VideoToolbox en Apple Silicon M4.
     """
     temp_dir = input_video.parent
     base_name = input_video.stem
@@ -320,13 +358,21 @@ def render_final_video(
     fg_y = 160
     fg_bottom = fg_y + fg_h
 
-    print(f"[*] Ensamblando vídeo con Karaoke Dinámico Anti-Solapamiento y Zoom 83.3% (Vertical: {is_vertical})...")
+    print(f"[*] Ensamblando vídeo con Gancho Superior, Karaoke Glow y Zoom 83.3% (Vertical: {is_vertical})...")
 
     # 1. Viñeta y sombras de unión
     vignette_png = temp_dir / f"{base_name}_vignette.png"
     create_subtle_vignette(vignette_png, fg_top=fg_y, fg_bottom=fg_bottom)
 
-    # 2. Generación de estados de Karaoke palabra por palabra (sin solapamiento)
+    # 2. Gancho textual superior (0 a 2.5s)
+    hook_png = None
+    if hook_text and is_vertical:
+        hook_png = temp_dir / f"{base_name}_hook.png"
+        rendered_hook = render_top_hook_headline(hook_text, hook_png)
+        if not rendered_hook:
+            hook_png = None
+
+    # 3. Generación de estados de Karaoke palabra por palabra
     cues = parse_srt_file(srt_subtitles) if srt_subtitles else []
     sub_cues = cues[:45]
     sub_pngs = []
@@ -352,9 +398,9 @@ def render_final_video(
                 sub_pngs.append((sub_png, tw["start"], tw["end"]))
                 global_sub_idx += 1
 
-    print(f"[*] {len(sub_pngs)} estados de Karaoke dinámico desduplicados generados.")
+    print(f"[*] {len(sub_pngs)} estados de Karaoke dinámico con glow generados.")
 
-    # 3. Construcción del comando FFmpeg
+    # 4. Construcción del comando FFmpeg
     cmd = ["ffmpeg", "-y", "-i", str(input_video)]
     input_idx = 1
 
@@ -371,6 +417,13 @@ def render_final_video(
     cmd.extend(["-i", str(vignette_png)])
     vignette_idx = input_idx
     input_idx += 1
+
+    # Gancho superior si existe
+    hook_idx = None
+    if hook_png and hook_png.exists():
+        cmd.extend(["-i", str(hook_png)])
+        hook_idx = input_idx
+        input_idx += 1
 
     # Subtítulos Karaoke como inputs
     sub_inputs_start = input_idx
@@ -400,7 +453,12 @@ def render_final_video(
     filter_chains.append(f"[{current_v}][{vignette_idx}:v]overlay=0:0[v_vignetted]")
     current_v = "v_vignetted"
 
-    # C) Superponer Subtítulos Karaoke palabra por palabra (estrictamente secuenciales a y=1280)
+    # C) Superponer Gancho Superior (0.0 a 2.5s)
+    if hook_idx is not None:
+        filter_chains.append(f"[{current_v}][{hook_idx}:v]overlay=(W-w)/2:85:enable='between(t,0,2.5)'[v_hooked]")
+        current_v = "v_hooked"
+
+    # D) Superponer Subtítulos Karaoke palabra por palabra (estrictamente secuenciales a y=1280)
     sub_y = "1280" if is_vertical else "H-h-90"
     for s_idx, (_, start_s, end_s) in enumerate(sub_pngs):
         in_id = sub_inputs_start + s_idx
@@ -442,6 +500,11 @@ def render_final_video(
     if vignette_png.exists():
         try:
             vignette_png.unlink()
+        except OSError:
+            pass
+    if hook_png and hook_png.exists():
+        try:
+            hook_png.unlink()
         except OSError:
             pass
 
