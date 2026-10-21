@@ -23,27 +23,55 @@
 
 ---
 
-## 📐 Estándar Visual y Editorial Definitivo (YouTube Shorts 9:16)
+## ⚖️ Directrices de Seguridad de Cuenta y Cumplimiento Legal (Anti-Ban / Anti-Strike)
+
+> 🚨 **Prioridad Absoluta:**  
+> La supervivencia y reputación de las cuentas en **YouTube, TikTok e Instagram** prima sobre cualquier automatización. Se aplican 5 reglas estrictas e innegociables para evitar *shadowbans*, huelgas de derechos (*copyright strikes*) o suspensión de canales.
+
+### 1. Transformación Editorial Sustancial (Anti-Contenido Reutilizado):
+* **Prohibición Total de Resubida en Bruto:** Jamás se publicará un vídeo descargado tal cual.
+* Para cumplir con la doctrina de **Fair Use (Uso Legítimo)** y las políticas de monetización y originalidad de YouTube, TikTok y Meta, todo clip debe incorporar:
+  * **Reencuadre Cinematográfico:** Escalado al 83.3% vertical (`1080x1600 px`) con recorte lateral centrado y fondo *velvet blur*.
+  * **Aporte Crítico / Informativo:** Subtítulos cinemáticos dinámicos quemados en imagen, ganchos textuales y títulos analíticos.
+  * **Tratamiento Audiovisual:** Filtro de nitidez 4K (`unsharp`), corrección de contraste/color y masterización de audio.
+
+### 2. Blindaje de Música y Derechos de Autor (Anti-Copyright Strike):
+* Cuando el contenido contenga canciones comerciales con copyright (ej. temas oficiales de Rockstar Games / UMG como Tom Petty):
+  * **Atenuación / Ducking:** El audio de fondo debe atenuarse al 15-20% si se dobla con voz en off, o ecualizarse para que no dispare *Content ID*.
+  * **Metadatos Legales Obligatorios:** Inclusión automática en la descripción de los créditos del tema, creadores originales y el descargo legal formal:
+    > *"Aviso de Uso Legítimo (Fair Use): Este vídeo contiene material transformado con fines de análisis, crítica y divulgación bajo el Artículo 107 de la Copyright Act de 1976."*
+
+### 3. Atribución Transparente y Cero Placeholders:
+* Enlaces reales inyectados automáticamente hacia el vídeo original y mención expresa del creador de contenido o streamer de origen (`POR: @Creador`).
+
+### 4. Cadencia de Publicación Orgánica (Anti-Spam):
+* **Límite Diario:** Máximo de **2 a 3 vídeos diarios** por plataforma. Publicar ráfagas masivas (10-20 vídeos al día) activa los filtros de *spam* y congela el alcance de las cuentas (*shadowban*).
+* **Escalonamiento Temporal:** Entre la publicación en YouTube, TikTok e Instagram debe existir un intervalo aleatorio de 5 a 15 minutos (nunca al mismo segundo exacto).
+
+### 5. Aislamiento y Huella Digital Humana (Anti-Detección de Bots):
+* Para TikTok e Instagram, la automatización debe utilizar perfiles persistentes de navegador con *cookies* de sesión reales y retardos aleatorios (*jitter* humano), evitando peticiones sin cabeceras que disparen *captchas*.
+
+---
+
+## 📐 Estándar Visual y Editorial (YouTube Shorts, TikTok y Reels 9:16)
 
 1. **Encuadre Maximizado con Zoom & Crop (83.3% del Alto):**
    * El vídeo de origen (16:9) se escala a **1080x1600 px**, cortando los laterales proporcionales para centrar la cara del streamer o la acción principal del juego.
    * Llena el **83.3%** del lienzo vertical (zona activa desde `y = 160` hasta `y = 1760`).
-   * Las franjas de desenfoque de fondo (*velvet blur* con `boxblur=25:5`) se reducen a un elegante cojín de **160 px** en la parte superior e inferior.
+   * Franjas de fondo con desenfoque aterciopelado (*velvet blur* con `boxblur=25:5`) reducidas a un cojín de **160 px** arriba y abajo.
    * Sombras de unión suaves en `y = 160` e `y = 1760` para integrar el vídeo sobre el desenfoque sin cortes duros.
    * Filtro de enfoque cinematográfico (`unsharp=3:3:0.6:3:3:0.0`) para nitidez 4K en caras y texturas.
 
-2. **Subtítulos Flotantes Modernos (Estilo Opus Clip / CapCut / MrBeast):**
+2. **Subtítulos Flotantes con Karaoke Dinámico Anti-Solapamiento:**
    * **CERO Cajas ni Rótulos:** Quedan terminantemente prohibidas las pastillas oscuras, cajas fucsia/cian, pegatinas superpuestas y caracteres rotos `[]`.
-   * **Tipografía:** `Avenir Next Heavy` (moderna, geométrica y con kerning perfecto).
-   * **Tamaño:** `58 px` en lienzo 9:16 vertical.
-   * **Partición Dinámica:** Ráfagas rápidas de **2 a 3 palabras** adaptadas al ritmo natural de la voz.
-   * **Paleta de Color:** Primera palabra clave en **Amarillo Eléctrico (`#FFE500`)**, resto de palabras en **Blanco Puro (`#FFFFFF`)**.
-   * **Contraste y Profundidad:** Trazo negro nítido de 3.5 px y sombra 3D suave (offset `+3, +4`).
-   * **Constraints de Margen y Zona Segura:** Ancho máximo restringido a `720 px` (mínimo 180 px libres a cada borde lateral) y anclaje vertical centrado en `y = 1280` (sobre la interfaz de YouTube Shorts).
+   * **Tipografía:** `Avenir Next Heavy` (58 px).
+   * **Desduplicación Estricta:** Filtro de *rolling buffer* para que las palabras nunca se repitan ni se pisen.
+   * **Karaoke Palabra por Palabra:** La frase permanece fija horizontalmente mientras la palabra activa se ilumina en **Amarillo Eléctrico (`#FFE500`)** y las restantes en **Blanco Puro (`#FFFFFF`)**.
+   * **Constraints de Margen y Zona Segura:** Ancho máximo restringido a `720 px` y anclaje vertical centrado en `y = 1280` (sobre los botones de la app móvil).
 
 3. **Audio de Alta Fidelidad y Presencia Móvil:**
-   * **Masterización Automática:** Normalización EBU R128 a nivel estándar de YouTube Shorts (`loudnorm=I=-14:LRA=7:TP=-1.5`).
-   * Garantiza que la voz suene nítida, potente y sin distorsión en los altavoces de cualquier smartphone.
+   * **Masterización Automática:** Normalización EBU R128 a nivel estándar móvil (`loudnorm=I=-14:LRA=7:TP=-1.5`).
+   * Garantiza volumen potente y presencia clara en altavoces de smartphone.
 
 4. **Arranque Inmediato a 0.0s (Sin Retrasos):**
    * El vídeo y el audio comienzan en el milisegundo 0.0s sin pantallas de intro, bumpers o transiciones que demoren el gancho.
@@ -58,16 +86,16 @@
 ### Reglas Obligatorias de Limpieza:
 
 1. **Scripts Temporales y de Prueba:**
-   * **Prohibición:** No deben persistir archivos como `test_*.py`, `scratch_*.py`, `debug_*.py` o similares en el directorio del proyecto tras finalizar una prueba o verificación.
-   * **Metodología de Pruebas:** Cualquier script de depuración o validación rápida debe ejecutarse mediante comandos en línea (`python3 -c "..."`) o en el directorio temporal, y ser purgado inmediatamente al concluir.
-   * **Automatización:** El módulo `src/cleaner.py` (`clean_workspace_residuals()`) inspecciona periódicamente y purga de forma proactiva cualquier archivo con prefijo `test_*`, `frame_*` o `scratch_*`.
+   * No deben persistir archivos como `test_*.py`, `scratch_*.py`, `debug_*.py` o similares tras una prueba.
+   * Se ejecutan en memoria o en `temp/`, y son purgados de inmediato.
+   * `src/cleaner.py` (`clean_workspace_residuals()`) purga proactivamente cualquier archivo temporal residual.
 
 2. **Archivos Multimedia Intermedios y Cuadros de Inspección:**
-   * Los fotogramas extraídos para pruebas visuales (`frame_*.jpg`, `test_*.png`) deben eliminarse inmediatamente tras su evaluación.
+   * Los fotogramas extraídos para pruebas (`frame_*.jpg`, `test_*.png`) se eliminan tras su evaluación.
    * La carpeta `temp/` debe quedar en **0 bytes** al finalizar cada ejecución de `main.py`.
 
 3. **Archivos Pesados de Salida (.mp4):**
-   * Una vez que un vídeo es subido a YouTube, su archivo `.mp4` local se borra automáticamente de `output/` (a menos que se pase `--keep-local-video`). Se conservan únicamente el informe `.json` y la miniatura `.jpg`.
+   * Una vez subido el vídeo a las plataformas, su archivo `.mp4` pesado local se borra automáticamente de `output/`. Se conservan únicamente el informe `.json` y la miniatura `.jpg`.
    * Límite preventivo de almacenamiento en disco: **1 GB máximo** en la carpeta `output/`.
 
 ---
