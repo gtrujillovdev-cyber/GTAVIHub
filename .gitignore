@@ -1,0 +1,34 @@
+# Entornos y dependencias
+.venv/
+env/
+__pycache__/
+*.pyc
+
+# Secretos y credenciales de autenticación (NUNCA SUBIR A GIT)
+.env
+client_secrets.json
+token.json
+
+# Directorios de trabajo y renderizado pesado
+temp/
+output/
+*.mp4
+*.mp3
+*.mov
+*.mkv
+*.wav
+*.srt
+*.ass
+
+# Scripts temporales, pruebas y depuración
+test_*
+frame_*
+scratch_*
+debug_*
+*.tmp*
+*.log
+cron.log
+
+# Archivos del sistema
+.DS_Store
+Thumbs.db
