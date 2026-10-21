@@ -14,6 +14,7 @@ from .channels import mark_video_processed
 from .uploader import upload_to_youtube
 from .social_publisher import SocialPublisher
 from .thumbnail_generator import create_video_thumbnail
+from .monitor import notify_macos
 from .cleaner import clean_temp_directory, clean_uploaded_video_file, enforce_storage_limits
 
 def process_single_video(
@@ -204,4 +205,12 @@ def process_single_video(
     if uploaded_yt_id:
         print(f"  -> Vídeo Subido: https://youtu.be/{uploaded_yt_id}")
     print("")
+
+    # Notificación nativa en macOS
+    notify_macos(
+        title="¡Vídeo Procesado con Éxito!",
+        message=f"{metadata.get('title', original_title)[:50]}... por {creator_name}",
+        subtitle="GTA VI Hub Spain"
+    )
+
     return full_info

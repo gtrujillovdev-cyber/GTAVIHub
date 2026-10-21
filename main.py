@@ -107,8 +107,18 @@ def main():
         action="store_true",
         help="Ejecutar limpieza estricta inmediata de archivos temporales y verificar límites de disco."
     )
+    parser.add_argument(
+        "--status",
+        action="store_true",
+        help="Mostrar panel de control, monitorización en tiempo real y cuotas de publicación."
+    )
 
     args = parser.parse_args()
+
+    if args.status:
+        from src.monitor import print_pipeline_dashboard
+        print_pipeline_dashboard()
+        return
 
     if args.clean:
         from src.cleaner import clean_temp_directory, enforce_storage_limits

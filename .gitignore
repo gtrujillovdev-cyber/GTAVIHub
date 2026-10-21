@@ -29,6 +29,7 @@ scratch_*
 debug_*
 *.tmp*
 *.log
+logs/
 cron.log
 
 # Archivos del sistema

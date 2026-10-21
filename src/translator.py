@@ -72,7 +72,13 @@ def translate_srt(input_srt_path: Path, output_srt_path: Path, source_lang: str 
         return True
     except Exception as e:
         print(f"[!] Error traduciendo subtítulos con Gemini: {e}")
-        return False
+        print("[*] Fallback de seguridad: conservando subtítulos originales para mantener el karaoke dinámico...")
+        try:
+            shutil.copyfile(input_srt_path, output_srt_path)
+            return True
+        except Exception as copy_err:
+            print(f"[!] Error en fallback de subtítulos: {copy_err}")
+            return False
 
 def generate_video_metadata(
     original_title: str,

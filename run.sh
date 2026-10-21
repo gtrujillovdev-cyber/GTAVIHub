@@ -21,6 +21,12 @@ if [ "$1" == "auth" ] || [ "$1" == "--auth" ]; then
     exit 0
 fi
 
+# Comando especial para ver estado y monitorización
+if [ "$1" == "status" ] || [ "$1" == "--status" ]; then
+    python3 main.py --status
+    exit 0
+fi
+
 # Ejecutar con argumentos pasados o por defecto --auto
 if [ $# -eq 0 ]; then
     echo "[*] Ejecutando escaneo autónomo estándar..."
