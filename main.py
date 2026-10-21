@@ -112,12 +112,22 @@ def main():
         action="store_true",
         help="Mostrar panel de control, monitorización en tiempo real y cuotas de publicación."
     )
+    parser.add_argument(
+        "--audit",
+        action="store_true",
+        help="Auditar y repasar las políticas normativas de YouTube, TikTok y Meta para evitar strikes."
+    )
 
     args = parser.parse_args()
 
     if args.status:
         from src.monitor import print_pipeline_dashboard
         print_pipeline_dashboard()
+        return
+
+    if args.audit:
+        from src.compliance_auditor import ComplianceAuditor
+        ComplianceAuditor.print_compliance_scorecard()
         return
 
     if args.clean:

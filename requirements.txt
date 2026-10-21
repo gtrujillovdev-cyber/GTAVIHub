@@ -1,0 +1,27 @@
+# ==============================================================================
+# GTA VI Hub Spain - Dependencias del Proyecto
+# Optimizado para macOS Apple Silicon (M1/M2/M3/M4)
+# ==============================================================================
+
+# Descarga y Extracción de Vídeos
+yt-dlp>=2026.8.19
+curl_cffi>=0.16.3
+
+# Manipulación Gráfica y Tipográfica (Filtros, Glow, Emojis, Miniaturas)
+pillow>=13.0.0
+
+# Inteligencia Artificial y Traducción
+google-genai>=2.31.0
+python-dotenv>=1.2.4
+
+# API Oficial de YouTube (OAuth2)
+google-api-python-client>=2.201.0
+google-auth-oauthlib>=1.5.0
+google-auth-httplib2>=0.4.4
+requests>=2.34.2
+
+# Doblaje de Voz Neural (Edge-TTS)
+edge-tts>=7.3.1
+
+# Automatización de Navegador (TikTok / Instagram) - Opcional
+playwright>=1.49.0

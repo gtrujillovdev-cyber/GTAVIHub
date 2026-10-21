@@ -8,6 +8,7 @@ from typing import Dict, Any, List
 
 from .config import BASE_DIR, OUTPUT_DIR, TEMP_DIR, PROCESSED_FILE, CHANNELS_FILE
 from .social_publisher import BROWSER_PROFILE_DIR, AntiBanValidator
+from .compliance_auditor import ComplianceAuditor
 
 LOG_DIR = BASE_DIR / "logs"
 LOG_FILE = LOG_DIR / "pipeline.log"
@@ -73,6 +74,14 @@ def print_pipeline_dashboard():
     print(f"  • YouTube Shorts : {yt_count} / {AntiBanValidator.MAX_DAILY_UPLOADS} vídeos subidos hoy")
     print(f"  • TikTok         : {tt_count} / {AntiBanValidator.MAX_DAILY_UPLOADS} vídeos subidos hoy")
     print(f"  • Instagram Reels: {ig_count} / {AntiBanValidator.MAX_DAILY_UPLOADS} vídeos subidos hoy")
+
+    # 4. Auditoría de Políticas y Cumplimiento
+    audit_info = ComplianceAuditor.get_last_audit_info()
+    audit_status = "[✓ Al día / Compliant]" if not audit_info["needs_review"] else f"[⚠️ Requiere Repaso: {audit_info['days_since_review']} días]"
+    print(f"\n⚖️ AUDITORÍA DE POLÍTICAS Y RESPETO AL CREADOR:")
+    print(f"  • Estado Normativo           : {audit_status}")
+    print(f"  • Frecuencia de Repaso       : Cada {ComplianceAuditor.REVIEW_INTERVAL_DAYS} días (ejecutar ./run.sh audit)")
+    print(f"  • Salvaguarda de Propiedad   : [✓ Atribución obligatoria + Fair Use legal]")
 
     # 4. Canales Monitorizados
     if CHANNELS_FILE.exists():

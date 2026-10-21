@@ -9,6 +9,7 @@ from typing import Optional, Dict, Any, List
 
 from .config import BASE_DIR, OUTPUT_DIR, PROCESSED_FILE
 from .uploader import upload_to_youtube
+from .compliance_auditor import ComplianceAuditor
 
 # Directorio persistente para la sesión del navegador (TikTok / Instagram)
 BROWSER_PROFILE_DIR = BASE_DIR / "assets" / ".browser_profiles"
@@ -43,20 +44,16 @@ class AntiBanValidator:
             return True
 
     @classmethod
-    def validate_metadata(cls, metadata: Dict[str, Any], creator_name: str) -> bool:
-        """Comprueba que los metadatos contengan créditos y descargo de Fair Use."""
-        desc = metadata.get("description", "")
-        # 1. Comprobar descargo legal de Fair Use
-        has_fair_use = "FAIR USE" in desc.upper() or "USO LEGÍTIMO" in desc.upper()
-        # 2. Comprobar atribución al creador
-        has_attribution = creator_name.lower() in desc.lower() or "CREADOR" in desc.upper() or "ORIGINAL" in desc.upper()
-
-        if not has_fair_use:
-            print("[Anti-Ban Warning] La descripción no contiene el aviso formal de Fair Use.")
-        if not has_attribution:
-            print("[Anti-Ban Warning] La descripción no acredita de forma explícita al creador original.")
-
-        return has_fair_use and has_attribution
+    def validate_metadata(cls, metadata: Dict[str, Any], creator_name: str, original_url: str = "") -> bool:
+        """Comprueba rigurosamente que los metadatos respeten al autor y cumplan Fair Use."""
+        is_safe, issues = ComplianceAuditor.audit_clip_metadata(metadata, creator_name, original_url)
+        if not is_safe:
+            print("[Anti-Ban & Compliance Auditor] Observaciones de seguridad:")
+            for issue in issues:
+                print(f"  ⚠️  {issue}")
+        else:
+            print("[Anti-Ban & Compliance Auditor] [✓ Seguro] Respeto al autor y Fair Use verificados.")
+        return is_safe
 
 
 class SocialPublisher:
@@ -224,13 +221,12 @@ class SocialPublisher:
         tags = metadata.get("tags", ["GTA6", "Shorts", "Gaming"])
         thumb = metadata.get("thumbnail_path")
 
-        # 1. Comprobación estricta de directrices Anti-Ban
+        # 1. Comprobación estricta de directrices Anti-Ban y respeto al autor
         print("\n" + "=" * 65)
         print("🛡️  AUDITORÍA DE SEGURIDAD PREVIA A PUBLICACIÓN MULTIPLATAFORMA")
         print("=" * 65)
-        is_compliant = AntiBanValidator.validate_metadata(metadata, creator_name)
-        if not is_compliant:
-            print("[!] Metadatos optimizados y reforzados con descargo Fair Use formal.")
+        orig_url = metadata.get("original_url", "")
+        is_compliant = AntiBanValidator.validate_metadata(metadata, creator_name, orig_url)
 
         for i, plat in enumerate(platforms):
             if i > 0 and not self.dry_run:

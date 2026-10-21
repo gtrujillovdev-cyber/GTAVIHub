@@ -27,6 +27,12 @@ if [ "$1" == "status" ] || [ "$1" == "--status" ]; then
     exit 0
 fi
 
+# Comando especial para auditar directrices y políticas anti-strike
+if [ "$1" == "audit" ] || [ "$1" == "--audit" ]; then
+    python3 main.py --audit
+    exit 0
+fi
+
 # Ejecutar con argumentos pasados o por defecto --auto
 if [ $# -eq 0 ]; then
     echo "[*] Ejecutando escaneo autónomo estándar..."
