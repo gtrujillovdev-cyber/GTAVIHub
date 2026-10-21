@@ -8,7 +8,7 @@ from pathlib import Path
 # Asegurar path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from src.config import MAX_VIDEOS_PER_RUN, CHANNELS_FILE
+from src.config import MAX_VIDEOS_PER_RUN, CHANNELS_FILE, is_quant_busy
 from src.channels import fetch_channel_candidates
 from src.pipeline import process_single_video
 
@@ -129,6 +129,14 @@ def main():
     )
 
     args = parser.parse_args()
+
+    # Prioridad de cortesía en el planificador de CPU para convivir con GaTDSEQ
+    try:
+        current_nice = os.nice(0)
+        if current_nice < 10:
+            os.nice(10)
+    except Exception:
+        pass
 
     if args.telegram:
         from src.telegram_bot import start_telegram_bot_daemon

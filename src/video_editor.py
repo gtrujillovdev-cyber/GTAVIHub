@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Optional, Tuple, List, Dict, Any
 from PIL import Image, ImageDraw, ImageFont, ImageFilter
 
-from .config import FFMPEG_VIDEO_CODEC, FFMPEG_BITRATE
+from .config import FFMPEG_VIDEO_CODEC, FFMPEG_BITRATE, FFMPEG_THREADS, is_quant_busy
 
 def get_video_dimensions(video_path: Path) -> Tuple[int, int]:
     """Obtiene ancho y alto del vídeo usando ffprobe."""
@@ -558,6 +558,12 @@ def render_final_video(
     cmd.extend(["-filter_complex", ";".join(filter_chains)])
     cmd.extend(["-map", "[v_body]"])
     cmd.extend(["-c:v", FFMPEG_VIDEO_CODEC, "-b:v", FFMPEG_BITRATE])
+
+    # Protocolo de Coexistencia: Limitar hilos de CPU para no asfixiar a GaTDSEQ
+    threads_to_use = 1 if is_quant_busy() else FFMPEG_THREADS
+    if is_quant_busy():
+        print("[Coexistencia GaTDSEQ] Proceso cuantitativo activo en el Mac. Limitando FFmpeg a 1 hilo de CPU.")
+    cmd.extend(["-threads", str(threads_to_use)])
 
     if audio_filter:
         cmd.extend(["-map", "[aout]", "-c:a", "aac", "-b:a", "192k"])

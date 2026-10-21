@@ -44,5 +44,13 @@
     <string>/Users/gabrieltrujillovallejo/Documents/GtrujilloMacDoc/GitHub/GitGa/Developer/Projects/GTA6Channel/logs/launchd_stderr.log</string>
     <key>RunAtLoad</key>
     <false/>
+    <key>Nice</key>
+    <integer>15</integer>
+    <key>ProcessType</key>
+    <string>Background</string>
+    <key>LowPriorityIO</key>
+    <true/>
+    <key>LowPriorityBackgroundIO</key>
+    <true/>
 </dict>
 </plist>
