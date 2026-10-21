@@ -37,10 +37,10 @@ def open_login_assistant():
                 args=["--disable-blink-features=AutomationControlled"]
             )
             page_tt = context.pages[0] if context.pages else context.new_page()
-            page_tt.goto("https://www.tiktok.com/login", wait_until="domcontentloaded")
+            page_tt.goto("https://www.tiktok.com/signup", wait_until="domcontentloaded")
             
             page_ig = context.new_page()
-            page_ig.goto("https://www.instagram.com/accounts/login/", wait_until="domcontentloaded")
+            page_ig.goto("https://www.instagram.com/accounts/emailsignup/", wait_until="domcontentloaded")
 
             print("\n[✓] Navegador abierto con pestañas de TikTok e Instagram.")
             print("👉 Inicia sesión o crea tu cuenta en las pestañas abiertas.")
