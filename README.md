@@ -3,26 +3,27 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Hardware-Apple%20Silicon%20(M4)-f5a623?style=for-the-badge&logo=apple&logoColor=white" />
+  <img src="https://img.shields.io/badge/Hardware-Apple%20Silicon%20%26%20Intel-f5a623?style=for-the-badge&logo=apple&logoColor=white" />
   <img src="https://img.shields.io/badge/GPU_Codec-VideoToolbox%20H.264-00bcd4?style=for-the-badge" />
   <img src="https://img.shields.io/badge/Python-3.11+-3776ab?style=for-the-badge&logo=python&logoColor=white" />
-  <img src="https://img.shields.io/badge/Legal-Fair%20Use%20%2F%20Art.%20107-4caf50?style=for-the-badge" />
+  <img src="https://img.shields.io/badge/Telegram_Bot-@gtavihub__spain__bot-26a5e4?style=for-the-badge&logo=telegram&logoColor=white" />
   <img src="https://img.shields.io/badge/Pipeline-Aut%C3%B3nomo%2024%2F7-ff007f?style=for-the-badge" />
 </p>
 
-# 🎮 GTA VI Hub Spain — Autonomous Content Engine (macOS M4)
+# 🎮 GTA VI Hub Spain — Autonomous Content Engine (macOS)
 
-Pipeline de producción y distribución audiovisual 100% autónomo para **YouTube Shorts, TikTok e Instagram Reels**, optimizado para ejecutarse silenciosamente en segundo plano en **Apple Silicon (M1/M2/M3/M4)** con aceleración por hardware nativa (`h264_videotoolbox`).
+Pipeline de producción y distribución audiovisual 100% autónomo para **YouTube Shorts, TikTok e Instagram Reels**, optimizado para ejecutarse silenciosamente en segundo plano 24/7 en macOS (**Apple Silicon M1/M2/M3/M4 o Intel**) con aceleración por hardware nativa (`h264_videotoolbox`) y control remoto bidireccional vía **Telegram Bot**.
 
 ---
 
-### 🌐 Canales y Redes Sociales Oficiales
+### 🌐 Canales, Redes Sociales y Bot Oficiales
 
-| Plataforma | Canal Oficial | Identidad Visual | Estado |
+| Plataforma | Canal / Bot Oficial | Identidad Visual | Estado |
 | :--- | :--- | :---: | :---: |
 | 🔴 **YouTube Shorts** | [**GTA VI Hub Spain**](https://www.youtube.com/channel/UCBOl2KuaHEoUWYWJqb7ID9Q) | Avatar Neón + Portada 4K | **Conectado (OAuth2 API v3)** |
 | 📸 **Instagram Reels** | [**@gtavihubspain**](https://www.instagram.com/gtavihubspain/) | Avatar Neón + Bio Oficial | **Activo y Verificado** |
 | 🎵 **TikTok** | [**@gtavihubspain**](https://www.tiktok.com/@gtavihubspain) | Avatar Neón + Bio Oficial | **Activo y Verificado** |
+| 🤖 **Telegram Bot** | [**@gtavihub_spain_bot**](https://t.me/gtavihub_spain_bot) | GTA VI Hub Monitor | **Activo 24/7 (Daemon launchd)** |
 
 ---
 
@@ -105,20 +106,50 @@ flowchart TD
 
 ## 🖥️ Operación Desatendida 24/7 en macOS (`launchd`)
 
-Para dejar el motor funcionando de forma continua en tu **MacBook Pro** como servidor headless:
+Para dejar el motor funcionando de forma continua en tu **MacBook Pro** como servidor headless sin necesidad de mantener encendido tu equipo de trabajo principal:
 
-1. **Instalar el demonio de automatización:**
-   ```bash
-   cp assets/com.gtavihub.automation.plist ~/Library/LaunchAgents/
-   launchctl load ~/Library/LaunchAgents/com.gtavihub.automation.plist
-   ```
-2. **Horarios de ejecución automática (Horas punta España):**
-   * 🕑 **14:00** (Hora punta de almuerzo).
-   * 🕖 **19:30** (Hora punta gaming de tarde).
-3. **Desactivar el servicio:**
-   ```bash
-   launchctl unload ~/Library/LaunchAgents/com.gtavihub.automation.plist
-   ```
+### 1. Los 2 Demonios Residentes de Producción:
+* **`com.gtavihub.telegrambot.plist`**: Demonio interactivo 24/7 (`KeepAlive: true`). Mantiene el bot de Telegram escuchando comandos remotos (`/status`, `/run`, `/audit`, `/clean`, `/preview`) y transmite notificaciones push con miniatura en tiempo real tras cada publicación.
+* **`com.gtavihub.automation.plist`**: Tarea programada en segundo plano con ejecución automática diaria en las dos horas punta de España (**14:00** y **19:30 CET**).
+
+### 2. Instalación y Puesta en Marcha:
+```bash
+# 1. Copiar los servicios a LaunchAgents del usuario
+cp assets/com.gtavihub.telegrambot.plist ~/Library/LaunchAgents/
+cp assets/com.gtavihub.automation.plist ~/Library/LaunchAgents/
+
+# 2. Cargar y arrancar los demonios en launchd
+launchctl load -w ~/Library/LaunchAgents/com.gtavihub.telegrambot.plist
+launchctl load -w ~/Library/LaunchAgents/com.gtavihub.automation.plist
+
+# 3. Verificar estado de ejecución de ambos procesos
+launchctl list | grep gtavihub
+```
+
+### 3. Configuración Headless y Prevención de Suspensión (`pmset`):
+Para evitar que el Mac entre en modo reposo al cerrar la tapa o estar desatendido:
+```bash
+# Mantener el sistema despierto en corriente alterna
+sudo pmset -c disablesleep 1
+
+# Verificar configuración activa (SleepDisabled: 1)
+pmset -g
+```
+
+### 4. Monitorización de Logs en Vivo:
+```bash
+# Monitorizar actividad del Bot de Telegram
+tail -f logs/telegram_bot_stdout.log
+
+# Monitorizar ejecuciones automáticas programadas
+tail -f logs/launchd_stdout.log
+```
+
+### 5. Detener o Desactivar Servicios:
+```bash
+launchctl unload ~/Library/LaunchAgents/com.gtavihub.telegrambot.plist
+launchctl unload ~/Library/LaunchAgents/com.gtavihub.automation.plist
+```
 
 ---
 

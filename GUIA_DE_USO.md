@@ -1,11 +1,12 @@
 # 📖 Guía Completa de Uso y Operación - GTA VI Hub Spain Pipeline
 
-Bienvenido a la documentación oficial del sistema de producción autónoma de contenidos para **GTA VI Hub Spain**. Este pipeline ha sido diseñado específicamente para operar en equipos **macOS Apple Silicon (M1/M2/M3/M4)** con aceleración por hardware (`VideoToolbox`), generando vídeos verticales de máxima retención para **YouTube Shorts, TikTok e Instagram Reels** bajo un marco estricto de **Fair Use (Uso Legítimo)** y respeto absoluto a los creadores originales.
+Bienvenido a la documentación oficial del sistema de producción autónoma de contenidos para **GTA VI Hub Spain**. Este pipeline ha sido diseñado específicamente para operar en equipos **macOS (Apple Silicon M1/M2/M3/M4 o Intel)** con aceleración por hardware (`VideoToolbox`), generando vídeos verticales de máxima retención para **YouTube Shorts, TikTok e Instagram Reels** bajo un marco estricto de **Fair Use (Uso Legítimo)** y respeto absoluto a los creadores originales.
 
-### 🌐 Redes Sociales Oficiales del Canal:
+### 🌐 Canales, Redes Sociales y Bot Oficiales:
 - 🔴 **YouTube Shorts:** [GTA VI Hub Spain](https://www.youtube.com/channel/UCBOl2KuaHEoUWYWJqb7ID9Q)
 - 📸 **Instagram Reels:** [@gtavihubspain](https://www.instagram.com/gtavihubspain/)
 - 🎵 **TikTok:** [@gtavihubspain](https://www.tiktok.com/@gtavihubspain)
+- 🤖 **Telegram Bot:** [@gtavihub_spain_bot](https://t.me/gtavihub_spain_bot)
 
 ---
 
@@ -54,9 +55,9 @@ Bienvenido a la documentación oficial del sistema de producción autónoma de c
 ## 2. Instalación y Configuración Inicial
 
 ### Requisitos Previos:
-- macOS con procesador Apple Silicon (M1, M2, M3 o M4).
+- macOS con procesador **Apple Silicon (M1/M2/M3/M4) o Intel x86_64** (macOS 11 Big Sur o posterior).
 - Python 3.11 o superior.
-- FFmpeg instalado con soporte `h264_videotoolbox` (`brew install ffmpeg`).
+- FFmpeg con soporte `h264_videotoolbox` (`brew install ffmpeg` o binario estático).
 
 ### Paso 1: Clonar e Instalar Dependencias
 ```bash
@@ -73,6 +74,8 @@ Crea un archivo `.env` en la raíz copiando `.env.example`:
 GEMINI_API_KEY=tu_clave_de_gemini
 YOUTUBE_PRIVACY_STATUS=private
 MAX_VIDEOS_PER_RUN=2
+TELEGRAM_BOT_TOKEN=8779197930:AAG3...
+TELEGRAM_CHAT_ID=1097154358
 ```
 
 ### Paso 3: Autenticación con YouTube
@@ -89,16 +92,18 @@ Para vincular tus cuentas de TikTok e Instagram guardando las cookies locales de
 ```
 Se abrirá Chromium con tus pestañas listas; tras iniciar sesión, presiona `ENTER` en la terminal para almacenar la sesión de forma segura.
 
-### Paso 5: Configurar Bot de Control Remoto de Telegram (Opcional)
-Para recibir las notificaciones push en tu móvil y controlar el Mac por SSH:
-1. Crea un bot en Telegram hablando con `@BotFather` para obtener tu `TELEGRAM_BOT_TOKEN`.
-2. Obtén tu Chat ID hablando con `@userinfobot` para tu `TELEGRAM_CHAT_ID`.
-3. Añade ambos campos a tu `.env`:
-   ```env
-   TELEGRAM_BOT_TOKEN=123456789:ABCdef...
-   TELEGRAM_CHAT_ID=987654321
-   ```
-4. Inicia el bot con `./run.sh telegram` o déjalo corriendo en segundo plano.
+### Paso 5: Configurar Bot de Control Remoto de Telegram (24/7)
+Para recibir las notificaciones push en tu móvil y controlar el Mac remotamente:
+1. Habla con `@BotFather` para obtener tu `TELEGRAM_BOT_TOKEN`.
+2. Habla con `@userinfobot` para obtener tu Chat ID numérico (`TELEGRAM_CHAT_ID`).
+3. Añade ambos campos a tu `.env`.
+4. El bot responde de forma segura **exclusivamente a tu Chat ID**:
+   - `/status` — Dashboard en vivo, almacenamiento y cuotas.
+   - `/run` — Forzar escaneo y publicación inmediata.
+   - `/audit` — Auditoría de políticas de copyright y anti-ban.
+   - `/clean` — Purga estricta de residuos temporales a 0 bytes.
+   - `/preview` — Ver el último clip renderizado con su miniatura.
+5. Inicia el bot con `./run.sh telegram` o actívalo como servicio desatendido `launchd`.
 
 ---
 
@@ -220,21 +225,52 @@ Cada vez que el sistema finaliza un vídeo en segundo plano, tu Mac emitirá un 
 
 ## 8. Automatización Desatendida con `launchd` en macOS
 
-Para que el sistema funcione de forma 100% autónoma sin necesidad de tener abierta la ventana de la terminal:
+Para que el sistema funcione de forma 100% autónoma como un servidor 24/7 en tu MacBook Pro (sin requerir tener terminales abiertas ni depender de tu MacBook Air):
 
-1. El archivo de servicio ya está configurado en `assets/com.gtavihub.automation.plist`.
-2. Horarios programados de publicación automática:
-   - **14:00** (Hora punta de almuerzo en España).
-   - **19:30** (Hora punta de tarde gaming en España).
-3. Activar el servicio en tu Mac:
-   ```bash
-   cp assets/com.gtavihub.automation.plist ~/Library/LaunchAgents/
-   launchctl load ~/Library/LaunchAgents/com.gtavihub.automation.plist
-   ```
-4. Desactivar el servicio en cualquier momento:
-   ```bash
-   launchctl unload ~/Library/LaunchAgents/com.gtavihub.automation.plist
-   ```
+### Los 2 Demonios Residentes:
+1. **`com.gtavihub.telegrambot.plist`**:
+   - Demonio interactivo 24/7 (`KeepAlive: true`).
+   - Mantiene el bot de Telegram escuchando comandos remotos (`/status`, `/run`, `/audit`, `/clean`, `/preview`) y transmite las notificaciones con miniatura en tiempo real.
+2. **`com.gtavihub.automation.plist`**:
+   - Demonio programado para horas punta en España:
+     - **14:00** (Hora punta de almuerzo).
+     - **19:30** (Hora punta de tarde gaming).
+
+### Instalación de los Servicios:
+```bash
+# Copiar las plantillas a LaunchAgents
+cp assets/com.gtavihub.telegrambot.plist ~/Library/LaunchAgents/
+cp assets/com.gtavihub.automation.plist ~/Library/LaunchAgents/
+
+# Activar ambos demonios
+launchctl load -w ~/Library/LaunchAgents/com.gtavihub.telegrambot.plist
+launchctl load -w ~/Library/LaunchAgents/com.gtavihub.automation.plist
+
+# Comprobar que ambos están registrados y activos
+launchctl list | grep gtavihub
+```
+
+### Configuración Headless y Energía (`pmset`):
+Para evitar que el Mac se duerma al cerrar la pantalla o estar desatendido:
+```bash
+sudo pmset -c disablesleep 1
+pmset -g
+```
+
+### Monitorización de Logs en Tiempo Real:
+```bash
+# Monitorizar el bot de Telegram
+tail -f logs/telegram_bot_stdout.log
+
+# Monitorizar la automatización diaria
+tail -f logs/launchd_stdout.log
+```
+
+### Desactivar los Servicios:
+```bash
+launchctl unload ~/Library/LaunchAgents/com.gtavihub.telegrambot.plist
+launchctl unload ~/Library/LaunchAgents/com.gtavihub.automation.plist
+```
 
 ---
 
