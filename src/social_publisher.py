@@ -158,13 +158,20 @@ class SocialPublisher:
         try:
             # Comprobar si playwright está disponible en el entorno
             from playwright.sync_api import sync_playwright
-            print(f"[*] Abriendo sesión persistente de TikTok en {tiktok_profile}...")
+            headless = os.getenv("HEADLESS_BROWSER", "false").lower() in ["true", "1", "yes"]
+            storage_state_file = BROWSER_PROFILE_DIR / "storage_state.json"
+
+            print(f"[*] Abriendo sesión persistente de TikTok en {tiktok_profile} (headless={headless})...")
             with sync_playwright() as p:
-                browser = p.chromium.launch_persistent_context(
-                    user_data_dir=str(tiktok_profile),
-                    headless=False,  # En macOS local es más seguro modo visible para no disparar Cloudflare/Akamai
-                    args=["--disable-blink-features=AutomationControlled"]
-                )
+                launch_kwargs = {
+                    "user_data_dir": str(tiktok_profile),
+                    "headless": headless,
+                    "args": ["--disable-blink-features=AutomationControlled"]
+                }
+                if storage_state_file.exists():
+                    launch_kwargs["storage_state"] = str(storage_state_file)
+
+                browser = p.chromium.launch_persistent_context(**launch_kwargs)
                 page = browser.new_page()
                 page.goto("https://www.tiktok.com/creator-center/upload?from=upload", wait_until="networkidle")
                 time.sleep(3)
@@ -182,7 +189,10 @@ class SocialPublisher:
                     file_input.set_input_files(str(video_path))
                     time.sleep(5)
                     print("[✓] Archivo cargado en TikTok Creator Center.")
-                    # El usuario o script puede pulsar publicar o dejar en borradores
+                    try:
+                        browser.storage_state(path=str(storage_state_file))
+                    except Exception:
+                        pass
                     browser.close()
                     return f"https://www.tiktok.com/@gtavihubspain/video/uploaded_{video_path.stem}"
                 else:
@@ -237,13 +247,20 @@ class SocialPublisher:
         ig_profile = BROWSER_PROFILE_DIR / "tiktok_user_data"
         try:
             from playwright.sync_api import sync_playwright
-            print(f"[*] Abriendo sesión persistente de Instagram en {ig_profile}...")
+            headless = os.getenv("HEADLESS_BROWSER", "false").lower() in ["true", "1", "yes"]
+            storage_state_file = BROWSER_PROFILE_DIR / "storage_state.json"
+
+            print(f"[*] Abriendo sesión persistente de Instagram en {ig_profile} (headless={headless})...")
             with sync_playwright() as p:
-                browser = p.chromium.launch_persistent_context(
-                    user_data_dir=str(ig_profile),
-                    headless=False,
-                    args=["--disable-blink-features=AutomationControlled"]
-                )
+                launch_kwargs = {
+                    "user_data_dir": str(ig_profile),
+                    "headless": headless,
+                    "args": ["--disable-blink-features=AutomationControlled"]
+                }
+                if storage_state_file.exists():
+                    launch_kwargs["storage_state"] = str(storage_state_file)
+
+                browser = p.chromium.launch_persistent_context(**launch_kwargs)
                 page = browser.new_page()
                 page.goto("https://www.instagram.com/", wait_until="domcontentloaded")
                 time.sleep(3)
@@ -263,6 +280,10 @@ class SocialPublisher:
                         file_input.set_input_files(str(video_path))
                         time.sleep(4)
                         print("[✓] Vídeo cargado en Instagram Reels.")
+                        try:
+                            browser.storage_state(path=str(storage_state_file))
+                        except Exception:
+                            pass
                         browser.close()
                         return f"https://www.instagram.com/reel/uploaded_{video_path.stem}"
 

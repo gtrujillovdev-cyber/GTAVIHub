@@ -89,6 +89,17 @@ Para vincular tus cuentas de TikTok e Instagram guardando las cookies locales de
 ```
 Se abrirá Chromium con tus pestañas listas; tras iniciar sesión, presiona `ENTER` en la terminal para almacenar la sesión de forma segura.
 
+### Paso 5: Configurar Bot de Control Remoto de Telegram (Opcional)
+Para recibir las notificaciones push en tu móvil y controlar el Mac por SSH:
+1. Crea un bot en Telegram hablando con `@BotFather` para obtener tu `TELEGRAM_BOT_TOKEN`.
+2. Obtén tu Chat ID hablando con `@userinfobot` para tu `TELEGRAM_CHAT_ID`.
+3. Añade ambos campos a tu `.env`:
+   ```env
+   TELEGRAM_BOT_TOKEN=123456789:ABCdef...
+   TELEGRAM_CHAT_ID=987654321
+   ```
+4. Inicia el bot con `./run.sh telegram` o déjalo corriendo en segundo plano.
+
 ---
 
 ## 3. Manual de Comandos del CLI (`run.sh`)
@@ -98,11 +109,12 @@ El ejecutable `./run.sh` es el punto de entrada unificado:
 | Comando | Descripción |
 | :--- | :--- |
 | `./run.sh` | Ejecuta el escaneo autónomo estándar de canales (`--auto`). |
+| `./run.sh telegram` | Inicia el **Bot de Telegram** para control remoto y alertas al móvil. |
+| `./run.sh status` | Muestra el **panel de control en tiempo real** (disco, cuotas, sesiones y vídeos de hoy). |
+| `./run.sh audit` | Ejecuta la **auditoría de políticas y respeto al autor** (YouTube, TikTok y Meta). |
 | `./run.sh --url "<ENLACE>"` | Procesa un vídeo individual de YouTube o Short. |
 | `./run.sh --url "<ENLACE>" --preview` | Procesa el vídeo y lo abre inmediatamente en **QuickTime Player** para inspección visual. |
 | `./run.sh --url "<ENLACE>" --publish-all --dry-run` | Simula la publicación en **YouTube, TikTok e Instagram** verificando las reglas anti-ban sin alterar cuentas. |
-| `./run.sh status` | Muestra el **panel de control en tiempo real** (disco, cuotas, sesiones y vídeos de hoy). |
-| `./run.sh audit` | Ejecuta la **auditoría de políticas y respeto al autor** (YouTube, TikTok y Meta). |
 | `./run.sh login-social` | Abre Chromium para iniciar sesión y guardar las cookies permanentes de **TikTok e Instagram**. |
 | `./run.sh --clean` | Purga forzosamente todos los residuos temporales de `temp/` y verifica límites de disco. |
 
@@ -124,7 +136,11 @@ El motor visual integrado en [`src/video_editor.py`](file:///Users/gabrieltrujil
      - *Mapa* ➔ 🗺️ | *Filtración / Leaks* ➔ 🚨 | *Loco / Flipas* ➔ 🤯 | *Broma / Risa* ➔ 😂 | *Dinero* ➔ 💰 | *Coche* ➔ 🏎️ | *Policía* ➔ 🚓 | *Fuego / Brutal* ➔ 🔥
 4. **Píldora Flotante de Gancho Superior (0.0s a 2.5s):**
    - Cápsula translúcida en cristal oscuro (`y=85`) que plantea la incógnita inicial y se desvanece a los 2.5 segundos para no estorbar el contenido.
-5. **Audio Masterizado Móvil (-14 LUFS):**
+5. **Ducking Dinámico de Audio Inteligente (`sidechaincompress`):**
+   - El audio del juego o vídeo original se atenúa de forma reactiva al 18% únicamente mientras la voz doblada habla, recuperando automáticamente el 100% de fuerza sonora en silencios, efectos y disparos.
+6. **Detector de Picos Virales en Directos Largos (YouTube Heatmap):**
+   - En vídeos largos (>85s), analiza los datos de *most replayed* para recortar la ventana de 45-55s de mayor retención de audiencia, resincronizando automáticamente los subtítulos al fragmento recortado.
+7. **Audio Masterizado Móvil (-14 LUFS):**
    - Volumen potente y equilibrado bajo la norma EBU R128. Cero pantallas de espera o intros lentas: el contenido arranca en el milisegundo 0.0s.
 
 ---

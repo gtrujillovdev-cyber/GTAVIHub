@@ -50,9 +50,11 @@ def print_pipeline_dashboard():
     tiktok_session = BROWSER_PROFILE_DIR / "tiktok_user_data"
 
     print(f"\n🔐 ESTADO DE CONECTIVIDAD Y SESIONES:")
+    tg_token = os.getenv("TELEGRAM_BOT_TOKEN")
     print(f"  • YouTube OAuth2 (token.json): {'[✓ Conectado / Activo]' if token_yt.exists() else '[!] Falta token (ejecutar ./run.sh auth)'}")
     print(f"  • YouTube Client Secrets     : {'[✓ Presente]' if secrets_yt.exists() else '[!] No encontrado'}")
     print(f"  • TikTok Persistent Profile  : {'[✓ Configurado]' if tiktok_session.exists() else '[*] Pendiente de primer inicio'}")
+    print(f"  • Telegram Push & Control    : {'[✓ Conectado / Activo]' if tg_token else '[*] Opcional (configurar en .env)'}")
     print(f"  • Apple Silicon M4 Hardware  : [✓ VideoToolbox H.264 Acelerado por GPU]")
 
     # 3. Cuotas y Límites Diarios (Anti-Ban)

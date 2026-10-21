@@ -52,7 +52,7 @@ flowchart TD
     F --> G3["📸 Instagram Reels (Meta Graph / Web)"]
     
     G1 & G2 & G3 --> H["🧹 7. Limpieza Estricta\n(0 bytes en temp/, purga de mp4 local)"]
-    H --> I["🔔 8. Notificaciones macOS / Daemon launchd"]
+    H --> I["📱 8. Notificaciones Push Telegram + Daemon launchd"]
 ```
 
 ---
@@ -65,10 +65,14 @@ flowchart TD
 2. **Subtítulos Dinámicos Alex Hormozi (Pop Bounce):**
    * La palabra activa **aumenta de escala dinámicamente (`+4px`)**, iluminándose en amarillo eléctrico o rosa neón con halo de lectura.
    * Filtro de *rolling buffer* para evitar solapamientos y anclaje en `y=1280` (zona segura sobre los botones de TikTok/Reels).
-3. **Píldora Flotante de Gancho Superior (`0.0s a 2.5s`):**
-   * Titular en cristal oscuro translúcido que retiene la atención inicial y se desvanece de forma suave.
-4. **Blindaje de Derechos de Autor (Fair Use):**
-   * Inyección obligatoria de créditos reales (`@CreadorOriginal`), enlace URL directo a la fuente y descargo estatutario bajo el **Artículo 107 de la Copyright Act de 1976**.
+3. **Audio Ducking Dinámico Inteligente (`sidechaincompress`):**
+   * El sonido original del juego se comprime dinámicamente a ~18% solo mientras el locutor habla, recuperando automáticamente el 100% de fuerza sonora en silencios, efectos y disparos.
+   * Normalización formal EBU R128 (`-14 LUFS`) para presencia equilibrada en altavoces de smartphone.
+4. **Detector de Picos Virales en Directos Largos (*Heatmap Slicer*):**
+   * Analiza el mapa de calor de YouTube (*most replayed*) de vídeos largos (>85s) para recortar automáticamente la ventana de 45-55 segundos de máxima retención, resincronizando los subtítulos.
+5. **Control Remoto y Notificaciones Push vía Telegram (`src/telegram_bot.py`):**
+   * Envía la miniatura renderizada y los enlaces de publicación directamente a tu móvil.
+   * Admite comandos remotos interactivos: `/status`, `/run`, `/audit`, `/clean` y `/preview`.
 
 ---
 
@@ -78,19 +82,22 @@ flowchart TD
 # 1. Panel de control y monitorización en tiempo real
 ./run.sh status
 
-# 2. Auditar cumplimiento de políticas de YouTube, TikTok y Meta
+# 2. Iniciar el bot de control remoto y notificaciones de Telegram
+./run.sh telegram
+
+# 3. Auditar cumplimiento de políticas de YouTube, TikTok y Meta
 ./run.sh audit
 
-# 3. Simular publicación completa multiplataforma (Sandbox seguro)
+# 4. Simular publicación completa multiplataforma (Sandbox seguro)
 ./run.sh --url "<ENLACE_YOUTUBE>" --publish-all --dry-run
 
-# 4. Procesar un vídeo y abrirlo inmediatamente en QuickTime Player
+# 5. Procesar un vídeo y abrirlo inmediatamente en QuickTime Player
 ./run.sh --url "<ENLACE_YOUTUBE>" --preview
 
-# 5. Ejecutar escaneo autónomo de canales (channels.json)
+# 6. Ejecutar escaneo autónomo de canales (channels.json)
 ./run.sh --auto
 
-# 6. Forzar purga y limpieza de residuos en disco
+# 7. Forzar purga y limpieza de residuos en disco
 ./run.sh --clean
 ```
 

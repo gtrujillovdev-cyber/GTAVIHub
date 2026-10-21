@@ -39,6 +39,12 @@ if [ "$1" == "login-social" ] || [ "$1" == "--login-social" ] || [ "$1" == "logi
     exit 0
 fi
 
+# Comando especial para iniciar el bot de control remoto de Telegram
+if [ "$1" == "telegram" ] || [ "$1" == "--telegram" ] || [ "$1" == "bot" ]; then
+    python3 main.py --telegram
+    exit 0
+fi
+
 # Ejecutar con argumentos pasados o por defecto --auto
 if [ $# -eq 0 ]; then
     echo "[*] Ejecutando escaneo autónomo estándar..."

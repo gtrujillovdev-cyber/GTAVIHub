@@ -122,8 +122,18 @@ def main():
         action="store_true",
         help="Abrir asistente de terminal para iniciar sesión y guardar cookies de TikTok e Instagram."
     )
+    parser.add_argument(
+        "--telegram",
+        action="store_true",
+        help="Iniciar el bot de control remoto y notificaciones de Telegram."
+    )
 
     args = parser.parse_args()
+
+    if args.telegram:
+        from src.telegram_bot import start_telegram_bot_daemon
+        start_telegram_bot_daemon()
+        return
 
     if args.status:
         from src.monitor import print_pipeline_dashboard

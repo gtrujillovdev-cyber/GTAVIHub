@@ -480,12 +480,18 @@ def render_final_video(
     cmd = ["ffmpeg", "-y", "-i", str(input_video)]
     input_idx = 1
 
-    # Audio doblado si existe
+    # Audio doblado con Ducking Dinámico Inteligente
     if dub_audio and dub_audio.exists():
         cmd.extend(["-i", str(dub_audio)])
         dub_idx = input_idx
         input_idx += 1
-        audio_filter = f"[0:a]volume=0.20[bg_a];[bg_a][{dub_idx}:a]amix=inputs=2:duration=first,loudnorm=I=-14:LRA=7:TP=-1.5[aout]"
+        # Ducking dinámico: comprime el juego/fondo a ~18% solo mientras la voz habla,
+        # recuperando el 100% en silencios de locución para máxima fidelidad
+        audio_filter = (
+            f"[{dub_idx}:a]asplit=2[sc][voice];"
+            f"[0:a][sc]sidechaincompress=threshold=0.08:ratio=5:attack=60:release=350[ducked];"
+            f"[ducked][voice]amix=inputs=2:duration=first,loudnorm=I=-14:LRA=7:TP=-1.5[aout]"
+        )
     else:
         audio_filter = "[0:a]loudnorm=I=-14:LRA=7:TP=-1.5[aout]"
 
