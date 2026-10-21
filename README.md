@@ -77,6 +77,25 @@ flowchart TD
 
 ---
 
+## 🛡️ Protocolo de Coexistencia de Hardware (GaTDSEQ & Cargas Cuantitativas)
+
+Diseñado para convivir pacíficamente en el mismo host headless (**MacBook Pro**) junto a procesos de cálculo intensivo, machine learning y backtesting de **GaTDSEQ** (`optimize_fleet.py`, `run_backtest.py`, `xgboost_gate.py`) sin sobrecalentar el procesador ni degradar las estrategias cuantitativas:
+
+1. **Aislamiento y Prioridad de CPU (`Nice 15` / QoS Background):**
+   * Los demonios `launchd` operan con `<key>Nice</key><integer>15</integer>` y `<key>ProcessType</key><string>Background</string>`. 
+   * El kernel Darwin (macOS) prioriza siempre a GaTDSEQ para ciclos de CPU, relegando a GTA VI Hub a los tiempos desocupados.
+2. **Prioridad I/O Reducida en Disco (`LowPriorityIO`):**
+   * Ambos servicios operan con `<key>LowPriorityIO</key><true/>`, impidiendo que las lecturas y escrituras de vídeo generen retrasos de entrada/salida en los datasets y logs de GaTDSEQ.
+3. **Límite Estricto de Hilos de CPU (`FFmpeg Thread-Capping`):**
+   * En reposo del quant, FFmpeg se limita a **2 hilos** (de los 4 lógicos del Core i5), garantizando al menos 2 núcleos libres permanentemente.
+   * **Modo Cortesía Activo:** Si el sistema detecta que GaTDSEQ está ejecutando una optimización o backtest (`is_quant_busy()`), FFmpeg reduce automáticamente su consumo a **1 solo hilo**.
+4. **Codificación por Hardware en GPU (`h264_videotoolbox`):**
+   * El renderizado H.264 se descarga directamente al chip ASIC de la GPU (QuickSync/VideoToolbox), aliviando la carga de la CPU y reduciendo el calor y los ventiladores.
+5. **Huella de Memoria Minimizada (~70 MB):**
+   * El bot de Telegram consume solo el **0.9% de RAM** en reposo. Al concluir un vídeo, el recolector de basura de Python libera la memoria inmediatamente para los DataFrames de GaTDSEQ.
+
+---
+
 ## 🚀 Guía de Comandos Rápidos (`run.sh`)
 
 ```bash

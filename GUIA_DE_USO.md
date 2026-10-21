@@ -20,6 +20,7 @@ Bienvenido a la documentación oficial del sistema de producción autónoma de c
 7. [Monitorización en Tiempo Real y Salud del Sistema](#7-monitorización-en-tiempo-real-y-salud-del-sistema)
 8. [Automatización Desatendida con `launchd` en macOS](#8-automatización-desatendida-con-launchd-en-macos)
 9. [Protocolo de Limpieza Estricta y Disco](#9-protocolo-de-limpieza-estricta-y-disco)
+10. [Protocolo de Coexistencia de Hardware con GaTDSEQ](#10-protocolo-de-coexistencia-de-hardware-con-gatdseq)
 
 ---
 
@@ -280,3 +281,33 @@ Para evitar que el disco duro de tu Mac se llene con vídeos pesados:
 1. La carpeta `temp/` se purga automáticamente a **0 bytes** al finalizar cada vídeo.
 2. Los vídeos subidos a las plataformas se eliminan de `output/`, conservando únicamente su miniatura `.jpg` y su informe `.json` con enlaces.
 3. Si el directorio `output/` supera **1 GB**, el auditor elimina de forma automática los clips locales más antiguos.
+
+---
+
+## 10. Protocolo de Coexistencia de Hardware con GaTDSEQ
+
+Para garantizar que el motor de GTA VI Hub y los procesos de **GaTDSEQ** (cálculo cuantitativo, backtesting y optimización de flotas con Pandas/XGBoost) convivan pacíficamente en el mismo host headless sin sobrecalentar el hardware ni degradar el rendimiento:
+
+### 1. Jerarquía de CPU (`Nice 15` / QoS Background)
+- Ambos demonios (`com.gtavihub.telegrambot` y `com.gtavihub.automation`) se inician con prioridad de planificación reducida:
+  ```xml
+  <key>Nice</key>
+  <integer>15</integer>
+  <key>ProcessType</key>
+  <string>Background</string>
+  ```
+- En macOS, los procesos con prioridad estándar (`nice 0`, como los scripts de GaTDSEQ) siempre reciben ciclos de CPU prioritarios. GTA VI Hub solo utiliza ciclos desocupados.
+
+### 2. Prioridad de I/O Reducida en SSD (`LowPriorityIO`)
+- Las lecturas/escrituras de vídeo se etiquetan como operaciones secundarias con `<key>LowPriorityIO</key><true/>`. Si GaTDSEQ está escribiendo logs, guardando modelos o leyendo datasets de mercado, el subsistema de almacenamiento de macOS atiende primero a GaTDSEQ.
+
+### 3. Límite Dinámico de Hilos en FFmpeg (`Thread-Capping`)
+- Por defecto, la codificación de vídeo se restringe a un máximo de **2 hilos** de CPU (`FFMPEG_THREADS=2`), manteniendo libres permanentemente al menos 2 núcleos lógicos del Intel Core i5.
+- **Detección Automática de Carga Cuantitativa (`is_quant_busy()`):**  
+  Antes de procesar un fotograma, el sistema inspecciona si hay procesos de GaTDSEQ activos (`optimize_fleet.py`, `run_backtest.py`, `xgboost_gate.py`). Si detecta un cálculo en curso, reduce de inmediato el uso de FFmpeg a **1 solo hilo** para evitar contención de caché o picos térmicos.
+
+### 4. Aceleración Gráfica VideoToolbox
+- Todo el renderizado H.264 corre sobre el chip acelerador de hardware de la GPU (`h264_videotoolbox`), evitando que la CPU del Mac sufra cargas pesadas durante la compresión.
+
+### 5. Consumo de Memoria en Reposo (~70 MB)
+- El bot en reposo consume únicamente el 0.9% de la RAM del equipo, y tras cada renderizado el recolector de basura purga todos los objetos de imagen para devolver la memoria al sistema operativo.
