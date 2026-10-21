@@ -160,6 +160,7 @@ def process_single_video(
         full_info["multiplatform_urls"] = multiplatform_results
         if multiplatform_results.get("youtube"):
             full_info["uploaded_youtube_url"] = multiplatform_results["youtube"]
+            uploaded_yt_id = multiplatform_results["youtube"]
     elif auto_upload:
         uploaded_yt_id = upload_to_youtube(
             video_path=output_path,
