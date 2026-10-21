@@ -117,6 +117,11 @@ def main():
         action="store_true",
         help="Auditar y repasar las políticas normativas de YouTube, TikTok y Meta para evitar strikes."
     )
+    parser.add_argument(
+        "--login-social",
+        action="store_true",
+        help="Abrir asistente de terminal para iniciar sesión y guardar cookies de TikTok e Instagram."
+    )
 
     args = parser.parse_args()
 
@@ -128,6 +133,11 @@ def main():
     if args.audit:
         from src.compliance_auditor import ComplianceAuditor
         ComplianceAuditor.print_compliance_scorecard()
+        return
+
+    if args.login_social:
+        from src.social_publisher import open_login_assistant
+        open_login_assistant()
         return
 
     if args.clean:

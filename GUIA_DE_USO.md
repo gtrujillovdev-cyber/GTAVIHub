@@ -77,6 +77,13 @@ Para conectar tu canal de YouTube de forma oficial mediante OAuth2:
 ```
 Se abrirá el navegador para autorizar la aplicación de Google Cloud y se generará el archivo seguro `token.json` (protegido por `.gitignore`).
 
+### Paso 4: Iniciar Sesión en TikTok e Instagram (Perfil Persistente)
+Para vincular tus cuentas de TikTok e Instagram guardando las cookies locales de forma permanente:
+```bash
+./run.sh login-social
+```
+Se abrirá Chromium con tus pestañas listas; tras iniciar sesión, presiona `ENTER` en la terminal para almacenar la sesión de forma segura.
+
 ---
 
 ## 3. Manual de Comandos del CLI (`run.sh`)
@@ -91,6 +98,7 @@ El ejecutable `./run.sh` es el punto de entrada unificado:
 | `./run.sh --url "<ENLACE>" --publish-all --dry-run` | Simula la publicación en **YouTube, TikTok e Instagram** verificando las reglas anti-ban sin alterar cuentas. |
 | `./run.sh status` | Muestra el **panel de control en tiempo real** (disco, cuotas, sesiones y vídeos de hoy). |
 | `./run.sh audit` | Ejecuta la **auditoría de políticas y respeto al autor** (YouTube, TikTok y Meta). |
+| `./run.sh login-social` | Abre Chromium para iniciar sesión y guardar las cookies permanentes de **TikTok e Instagram**. |
 | `./run.sh --clean` | Purga forzosamente todos los residuos temporales de `temp/` y verifica límites de disco. |
 
 ---

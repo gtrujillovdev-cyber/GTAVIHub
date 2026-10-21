@@ -48,6 +48,9 @@ Sistema de producción y distribución totalmente automatizado para **YouTube Sh
 # Procesar y abrir inmediatamente en QuickTime para inspección visual
 ./run.sh --url "<ENLACE>" --preview
 
+# Iniciar sesión persistente en TikTok e Instagram
+./run.sh login-social
+
 # Escaneo autónomo de canales configurados en channels.json
 ./run.sh --auto
 ```

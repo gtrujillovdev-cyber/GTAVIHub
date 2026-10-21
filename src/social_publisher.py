@@ -14,6 +14,46 @@ from .compliance_auditor import ComplianceAuditor
 # Directorio persistente para la sesión del navegador (TikTok / Instagram)
 BROWSER_PROFILE_DIR = BASE_DIR / "assets" / ".browser_profiles"
 
+def open_login_assistant():
+    """
+    Abre una ventana de Chromium con el perfil persistente local
+    para que el usuario inicie sesión en TikTok e Instagram desde la terminal.
+    """
+    tiktok_profile = BROWSER_PROFILE_DIR / "tiktok_user_data"
+    tiktok_profile.mkdir(parents=True, exist_ok=True)
+
+    print("\n" + "=" * 65)
+    print(" 🌐 ASISTENTE DE SESIÓN PERSISTENTE (TikTok & Instagram)")
+    print("=" * 65)
+    print(f"[*] Perfil local: {tiktok_profile}")
+    print("[*] Abriendo navegador Chromium local...")
+
+    try:
+        from playwright.sync_api import sync_playwright
+        with sync_playwright() as p:
+            context = p.chromium.launch_persistent_context(
+                user_data_dir=str(tiktok_profile),
+                headless=False,
+                args=["--disable-blink-features=AutomationControlled"]
+            )
+            page_tt = context.pages[0] if context.pages else context.new_page()
+            page_tt.goto("https://www.tiktok.com/login", wait_until="domcontentloaded")
+            
+            page_ig = context.new_page()
+            page_ig.goto("https://www.instagram.com/accounts/login/", wait_until="domcontentloaded")
+
+            print("\n[✓] Navegador abierto con pestañas de TikTok e Instagram.")
+            print("👉 Inicia sesión o crea tu cuenta en las pestañas abiertas.")
+            print("👉 Cuando termines, pulsa [ENTER] en la terminal para guardar las cookies...")
+            input("\nPresiona [ENTER] para cerrar el navegador y guardar la sesión: ")
+
+            context.close()
+            print("\n[✓] ¡Sesión guardada con éxito en tu Mac M4!")
+            print("    A partir de ahora, las subidas automáticas utilizarán estas credenciales.")
+            print("=" * 65 + "\n")
+    except Exception as e:
+        print(f"[!] Error iniciando navegador: {e}")
+
 class AntiBanValidator:
     """
     Verifica que el vídeo y sus metadatos cumplan rigurosamente

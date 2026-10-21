@@ -33,6 +33,12 @@ if [ "$1" == "audit" ] || [ "$1" == "--audit" ]; then
     exit 0
 fi
 
+# Comando especial para iniciar sesión persistente en TikTok e Instagram
+if [ "$1" == "login-social" ] || [ "$1" == "--login-social" ] || [ "$1" == "login" ]; then
+    python3 main.py --login-social
+    exit 0
+fi
+
 # Ejecutar con argumentos pasados o por defecto --auto
 if [ $# -eq 0 ]; then
     echo "[*] Ejecutando escaneo autónomo estándar..."
