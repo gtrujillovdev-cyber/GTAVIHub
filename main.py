@@ -87,6 +87,22 @@ def main():
         help="Abrir automáticamente el vídeo generado en pantalla (QuickTime) al finalizar para inspección local."
     )
     parser.add_argument(
+        "--publish-all",
+        action="store_true",
+        help="Publicación unificada y escalonada en YouTube Shorts, TikTok e Instagram Reels."
+    )
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Simulación de subida segura en modo sandbox sin alterar cuentas ni gastar cuotas."
+    )
+    parser.add_argument(
+        "--stagger-delay",
+        type=int,
+        default=12,
+        help="Minutos de intervalo escalonado entre plataformas para evitar detección de bots (default: 12)."
+    )
+    parser.add_argument(
         "--clean",
         action="store_true",
         help="Ejecutar limpieza estricta inmediata de archivos temporales y verificar límites de disco."
@@ -116,6 +132,8 @@ def main():
         force_short = True
     elif args.format == "normal":
         force_short = False
+    elif args.url and "/shorts/" in args.url.lower():
+        force_short = True
 
     # Modo 1: URL individual
     if args.url:
@@ -130,7 +148,10 @@ def main():
             force_short=force_short,
             auto_upload=args.upload,
             privacy_status=args.privacy,
-            keep_local_video=args.keep_local_video
+            keep_local_video=args.keep_local_video,
+            publish_all=args.publish_all,
+            dry_run=args.dry_run,
+            stagger_delay=args.stagger_delay
         )
         if args.preview and res and "output_video" in res:
             vid_path = Path(res["output_video"])
@@ -165,7 +186,10 @@ def main():
                 force_short=True if item.get("is_short") or force_short else force_short,
                 auto_upload=args.upload,
                 privacy_status=args.privacy,
-                keep_local_video=args.keep_local_video
+                keep_local_video=args.keep_local_video,
+                publish_all=args.publish_all,
+                dry_run=args.dry_run,
+                stagger_delay=args.stagger_delay
             )
             if res:
                 count += 1

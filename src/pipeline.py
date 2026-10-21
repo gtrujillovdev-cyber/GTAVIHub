@@ -12,6 +12,7 @@ from .dubber import generate_voiceover
 from .video_editor import render_final_video, get_video_dimensions
 from .channels import mark_video_processed
 from .uploader import upload_to_youtube
+from .social_publisher import SocialPublisher
 from .thumbnail_generator import create_video_thumbnail
 from .cleaner import clean_temp_directory, clean_uploaded_video_file, enforce_storage_limits
 
@@ -25,7 +26,10 @@ def process_single_video(
     force_short: Optional[bool] = None,
     auto_upload: bool = False,
     privacy_status: str = "private",
-    keep_local_video: bool = False
+    keep_local_video: bool = False,
+    publish_all: bool = False,
+    dry_run: bool = False,
+    stagger_delay: int = 12
 ) -> Optional[Dict[str, Any]]:
     """
     Ejecuta el ciclo de vida completo de un vídeo con transformación editorial real:
@@ -136,9 +140,26 @@ def process_single_video(
         "youtube_metadata": metadata
     }
 
-    # 7. Subida a YouTube
+    # 7. Publicación (Multiplataforma o YouTube)
     uploaded_yt_id = None
-    if auto_upload:
+    multiplatform_results = {}
+
+    if publish_all:
+        publisher = SocialPublisher(dry_run=dry_run)
+        multiplatform_results = publisher.publish_all(
+            video_path=output_path,
+            metadata={
+                "title": metadata.get("title", f"GTA 6 - {original_title}").upper(),
+                "description": metadata.get("description", ""),
+                "thumbnail_path": thumb_path if thumb_path.exists() else None
+            },
+            creator_name=creator_name or "Rockstar Games",
+            stagger_delay_minutes=stagger_delay
+        )
+        full_info["multiplatform_urls"] = multiplatform_results
+        if multiplatform_results.get("youtube"):
+            full_info["uploaded_youtube_url"] = multiplatform_results["youtube"]
+    elif auto_upload:
         uploaded_yt_id = upload_to_youtube(
             video_path=output_path,
             title=metadata.get("title", f"GTA 6 - {original_title}").upper(),
@@ -164,6 +185,7 @@ def process_single_video(
         "thumbnail": str(thumb_path) if thumb_path.exists() else None,
         "youtube_title": metadata.get("title", ""),
         "youtube_uploaded_url": full_info.get("uploaded_youtube_url"),
+        "multiplatform": multiplatform_results if publish_all else None,
         "date": datetime.now().isoformat()
     })
 

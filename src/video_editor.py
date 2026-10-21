@@ -198,41 +198,89 @@ def parse_srt_file(srt_path: Path) -> List[Dict[str, Any]]:
 
     return all_bursts
 
+def get_emoji_font(size: int = 40):
+    """Carga la tipografía nativa de emojis a color de Apple en macOS."""
+    for p in ["/System/Library/Fonts/Apple Color Emoji.ttc", "/System/Library/Fonts/Supplemental/Apple Color Emoji.ttc"]:
+        if os.path.exists(p):
+            try:
+                return ImageFont.truetype(p, size)
+            except Exception:
+                pass
+    return None
+
+EMOJI_KEYWORDS = {
+    "mapa": "🗺️",
+    "map": "🗺️",
+    "filtracion": "🚨",
+    "filtración": "🚨",
+    "filtrado": "🚨",
+    "leak": "🚨",
+    "leaks": "🚨",
+    "loco": "🤯",
+    "flipar": "🤯",
+    "flipas": "🤯",
+    "broma": "😂",
+    "risa": "😂",
+    "dinero": "💰",
+    "millones": "💰",
+    "coche": "🏎️",
+    "coches": "🏎️",
+    "policia": "🚓",
+    "policía": "🚓",
+    "fuego": "🔥",
+    "brutal": "🔥",
+    "arma": "🔫",
+    "rockstar": "⭐",
+    "vice": "🌴",
+    "trailer": "🎬",
+    "juego": "🎮"
+}
+
+HOT_PINK_KEYWORDS = {"loco", "flipas", "filtracion", "filtración", "broma", "increible", "increíble", "bomba"}
+
 def render_top_hook_headline(hook_text: str, output_path: Path) -> bool:
-    """Renderiza el titular de gancho superior limpio (segundos 0 a 2.5s)."""
+    """Renderiza una elegante píldora de gancho superior en cristal oscuro (0.0 a 2.5s)."""
     clean_hook = clean_text_no_emoji(hook_text).upper()
     if not clean_hook:
         return False
     
-    font = get_best_font(size=42)
+    font = get_best_font(size=40)
     d_temp = ImageDraw.Draw(Image.new("RGBA", (1, 1)))
     bb = d_temp.textbbox((0, 0), clean_hook, font=font)
     w = bb[2] - bb[0]
     h = bb[3] - bb[1]
 
-    img = Image.new("RGBA", (w + 40, h + 24), (0, 0, 0, 0))
+    pad_x = 28
+    pad_y = 12
+    box_w = int(w + pad_x * 2)
+    box_h = int(h + pad_y * 2)
+
+    img = Image.new("RGBA", (box_w, box_h), (0, 0, 0, 0))
     d = ImageDraw.Draw(img)
 
-    # Sombra 3D suave
-    d.text((23, 14), clean_hook, font=font, fill=(0, 0, 0, 220))
-    # Texto Amarillo Neón con trazo negro nítido de 3.5px
-    d.text((20, 10), clean_hook, font=font, fill=(255, 230, 0, 255), stroke_width=3, stroke_fill=(0, 0, 0, 255))
+    # Fondo píldora translúcido estilo Apple/Shorts con borde dorado
+    d.rounded_rectangle([(0, 0), (box_w - 1, box_h - 1)], radius=14, fill=(12, 12, 16, 210), outline=(255, 230, 0, 180), width=2)
+    # Sombra del texto
+    d.text((pad_x + 2, pad_y + 2), clean_hook, font=font, fill=(0, 0, 0, 220))
+    # Texto Amarillo Neón de alta legibilidad
+    d.text((pad_x, pad_y), clean_hook, font=font, fill=(255, 235, 20, 255), stroke_width=2, stroke_fill=(0, 0, 0, 255))
     img.save(output_path, "PNG")
     return True
 
 def render_karaoke_subtitle_state(words: List[str], active_idx: int, is_vertical: bool, output_path: Path) -> bool:
     """
-    Renderiza un estado Karaoke palabra por palabra con Glow Neón sutil:
+    Renderiza un estado Karaoke palabra por palabra nivel Broadcast Viral:
     - La línea permanece 100% fija y estable horizontalmente.
-    - La palabra activa se ilumina con halo dorado y trazo reforzado.
+    - La palabra activa se ilumina con halo dorado / rosa neón y efecto de escala (Pop-up).
+    - Inyección automática de emoji contextual flotante sobre palabras clave (ej: 🗺️, 🚨, 🤯, 😂).
     - Las palabras inactivas permanecen en Blanco Puro (#FFFFFF).
-    - CERO cajas oscuras ni marcos.
+    - CERO cajas oscuras ni marcos toscos en los subtítulos.
     """
     if not words:
         return False
 
     max_w = 720 if is_vertical else 1100
-    font_size = 58 if is_vertical else 42
+    font_size = 56 if is_vertical else 42
     font = get_best_font(size=font_size)
 
     temp_img = Image.new("RGBA", (1, 1))
@@ -247,44 +295,72 @@ def render_karaoke_subtitle_state(words: List[str], active_idx: int, is_vertical
         font_size -= 4
         font = get_best_font(size=font_size)
 
+    # Tipografía de Pop para palabra activa (+4px)
+    pop_font = get_best_font(size=font_size + 4)
+    emoji_font = get_emoji_font(size=40) if is_vertical else None
+
     space_w = 18
     word_widths = [d_temp.textbbox((0, 0), w, font=font)[2] - d_temp.textbbox((0, 0), w, font=font)[0] for w in words]
     total_w = sum(word_widths) + space_w * (len(words) - 1)
     sample_bb = font.getbbox("AY")
     line_h = (sample_bb[3] - sample_bb[1]) + 20
 
-    box_w = int(total_w + 60)
-    box_h = int(line_h + 30)
+    # Altura adicional para permitir el emoji flotante superior si aplica
+    emoji_room = 50 if is_vertical else 0
+    box_w = int(total_w + 70)
+    box_h = int(line_h + emoji_room + 30)
 
     img = Image.new("RGBA", (box_w, box_h), (0, 0, 0, 0))
 
-    # Capa de halo / resplandor dorado para la palabra activa
+    # Detectar si la palabra activa tiene emoji contextual o color especial
+    raw_active_word = words[active_idx] if 0 <= active_idx < len(words) else ""
+    clean_active = re.sub(r'[^a-zA-ZáéíóúñÁÉÍÓÚÑ]', '', raw_active_word).lower()
+    active_emoji = EMOJI_KEYWORDS.get(clean_active) if emoji_font else None
+    is_hot_pink = clean_active in HOT_PINK_KEYWORDS
+
+    active_color = (255, 45, 135, 255) if is_hot_pink else (255, 230, 0, 255)
+    glow_color = (255, 45, 135, 140) if is_hot_pink else (255, 230, 0, 140)
+
+    base_y = 15 + emoji_room
+
+    # 1. Capa de halo / resplandor neón sutil para la palabra activa
     glow = Image.new("RGBA", (box_w, box_h), (0, 0, 0, 0))
     d_glow = ImageDraw.Draw(glow)
-    cur_x = 30
-    cur_y = 12
+    cur_x = 35
     for idx, w in enumerate(words):
         ww = word_widths[idx]
         if idx == active_idx:
-            d_glow.text((cur_x, cur_y), w, font=font, fill=(255, 230, 0, 130), stroke_width=8, stroke_fill=(255, 230, 0, 130))
+            d_glow.text((cur_x - 1, base_y - 2), w, font=pop_font, fill=glow_color, stroke_width=10, stroke_fill=glow_color)
         cur_x += ww + space_w
 
-    glow = glow.filter(ImageFilter.GaussianBlur(5))
+    glow = glow.filter(ImageFilter.GaussianBlur(6))
     img = Image.alpha_composite(img, glow)
     d = ImageDraw.Draw(img)
 
-    cur_x = 30
+    # 2. Dibujar texto palabra por palabra con alineación estable
+    cur_x = 35
     for idx, w in enumerate(words):
         ww = word_widths[idx]
         is_active = (idx == active_idx)
-        text_color = (255, 229, 0, 255) if is_active else (240, 240, 245, 255)
+        current_font = pop_font if is_active else font
+        text_color = active_color if is_active else (255, 255, 255, 255)
         stroke_w = 4 if is_active else 3
+        draw_y = base_y - 2 if is_active else base_y
 
         # Sombra de profundidad 3D
-        d.text((cur_x + 3, cur_y + 4), w, font=font, fill=(0, 0, 0, 220))
-        # Trazo negro nítido
-        d.text((cur_x, cur_y), w, font=font, fill=text_color, stroke_width=stroke_w, stroke_fill=(0, 0, 0, 255))
+        d.text((cur_x + 3, draw_y + 4), w, font=current_font, fill=(0, 0, 0, 220))
+        # Trazo negro nítido + Relleno
+        d.text((cur_x, draw_y), w, font=current_font, fill=text_color, stroke_width=stroke_w, stroke_fill=(0, 0, 0, 255))
         
+        # Emoji flotante encima de la palabra activa
+        if is_active and active_emoji and emoji_font:
+            emoji_x = int(cur_x + (ww - 40) / 2)
+            emoji_y = max(4, base_y - 48)
+            try:
+                d.text((emoji_x, emoji_y), active_emoji, font=emoji_font, embedded_color=True)
+            except Exception:
+                pass
+
         cur_x += ww + space_w
 
     img.save(output_path, "PNG")
