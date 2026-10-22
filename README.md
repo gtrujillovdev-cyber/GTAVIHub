@@ -131,17 +131,12 @@ Para dejar el motor funcionando de forma continua en tu **MacBook Pro** como ser
 * **`com.gtavihub.telegrambot.plist`**: Demonio interactivo 24/7 (`KeepAlive: true`). Mantiene el bot de Telegram escuchando comandos remotos (`/status`, `/run`, `/audit`, `/clean`, `/preview`) y transmite notificaciones push con miniatura en tiempo real tras cada publicación.
 * **`com.gtavihub.automation.plist`**: Tarea programada en segundo plano con ejecución automática diaria en las dos horas punta de España (**14:00** y **19:30 CET**).
 
-### 2. Instalación y Puesta en Marcha:
+### 2. Instalación y Puesta en Marcha (Un solo comando):
 ```bash
-# 1. Copiar los servicios a LaunchAgents del usuario
-cp assets/com.gtavihub.telegrambot.plist ~/Library/LaunchAgents/
-cp assets/com.gtavihub.automation.plist ~/Library/LaunchAgents/
+# Instalador automático que adapta rutas absolutas y carga los demonios en launchd
+./deploy/launchd/install_daemons.sh
 
-# 2. Cargar y arrancar los demonios en launchd
-launchctl load -w ~/Library/LaunchAgents/com.gtavihub.telegrambot.plist
-launchctl load -w ~/Library/LaunchAgents/com.gtavihub.automation.plist
-
-# 3. Verificar estado de ejecución de ambos procesos
+# Verificar estado de ejecución de ambos procesos
 launchctl list | grep gtavihub
 ```
 
@@ -172,8 +167,79 @@ launchctl unload ~/Library/LaunchAgents/com.gtavihub.automation.plist
 
 ---
 
+## 📁 Estructura del Proyecto (Clean Architecture)
+
+```
+GTAVIHub/
+├── README.md                 # Visión general y arranque rápido
+├── LICENSE                   # Licencia de código abierto MIT
+├── pyproject.toml            # Metadata estándar del paquete Python (PEP 518/621)
+├── requirements.txt          # Dependencias fijadas y verificadas
+├── run.sh                    # CLI runner unificado
+├── main.py                   # Orquestador principal del pipeline
+│
+├── config/                   # Configuración del sistema
+│   └── channels.json         # Directorio de fuentes y creadores monitorizados
+│
+├── data/                     # Estado en tiempo de ejecución
+│   ├── processed.json        # Registro de vídeos procesados (DB local)
+│   └── .policy_audit.json    # Historial de auditorías de políticas
+│
+├── docs/                     # Documentación exhaustiva
+│   ├── GUIA_DE_USO.md        # Manual paso a paso de uso y credenciales
+│   └── DIRECTRICES.md        # Normativas de calidad, anti-ban y Fair Use
+│
+├── deploy/                   # Despliegue e infraestructura headless
+│   └── launchd/              # Servicios desatendidos 24/7 de macOS
+│       ├── com.gtavihub.automation.plist
+│       ├── com.gtavihub.telegrambot.plist
+│       └── install_daemons.sh # Instalador automático en 1 comando
+│
+├── assets/                   # Identidad visual y branding del canal
+│   ├── avatar.jpg            # Logotipo oficial (800x800)
+│   └── banner.jpg            # Portada cinemática 4K (2560x1440)
+│
+├── scripts/                  # Herramientas y asistentes operativos
+│   └── auth_youtube.py       # Asistente OAuth2 para conectar YouTube Studio
+│
+├── src/                      # Módulos del núcleo (Core Engine)
+│   ├── channels.py           # Gestor de feeds de canales
+│   ├── cleaner.py            # Protocolo estricto de disco
+│   ├── compliance_auditor.py # Auditoría legal y anti-strike
+│   ├── config.py             # Configuración y coexistencia de hardware
+│   ├── downloader.py         # Ingesta multimedia con heatmap slicing
+│   ├── dubber.py             # Doblaje neural multilingüe
+│   ├── monitor.py            # Dashboard en tiempo real
+│   ├── pipeline.py           # Flujo editorial end-to-end
+│   ├── social_publisher.py   # Publicación con perfiles persistentes
+│   ├── telegram_bot.py       # Bot interactivo de control y push
+│   ├── thumbnail_generator.py# Generación de portadas broadcast
+│   ├── translator.py         # Adaptación con Gemini 2.5 Flash
+│   ├── uploader.py           # Subida a YouTube Data API v3
+│   └── video_editor.py       # Motor gráfico GPU VideoToolbox con ducking
+│
+├── tests/                    # Batería de pruebas automatizadas
+│   ├── test_config.py        # Comprobación de rutas y coexistencia
+│   ├── test_compliance.py    # Validación de reglas de Fair Use
+│   └── test_sanity.py        # Pruebas de integración de módulos
+│
+├── output/                   # [Gitignored] Salida final de renders
+└── temp/                     # [Gitignored] Espacio volátil de trabajo (0 bytes)
+```
+
+---
+
+## 🧪 Batería de Pruebas Automatizadas
+
+Para validar la integridad de todas las rutas, configuraciones y módulos:
+```bash
+./.venv/bin/python3 -m unittest discover -s tests
+```
+
+---
+
 ## 📚 Documentación de Referencia
 
-* [**Guía de Uso Exhaustiva (`GUIA_DE_USO.md`)**](./GUIA_DE_USO.md): Manual paso a paso, instalación, configuración de OAuth2 y credenciales.
-* [**Directrices de Calidad y Anti-Ban (`DIRECTRICES.md`)**](./DIRECTRICES.md): Protocolos de seguridad algorítmica, límites diarios y prevención de strikes.
-* [**Lista de Canales Monitorizados (`channels.json`)**](./channels.json): Canales oficiales y creadores configurados.
+* [**Guía de Uso Exhaustiva (`docs/GUIA_DE_USO.md`)**](./docs/GUIA_DE_USO.md): Manual paso a paso, instalación, configuración de OAuth2 y credenciales.
+* [**Directrices de Calidad y Anti-Ban (`docs/DIRECTRICES.md`)**](./docs/DIRECTRICES.md): Protocolos de seguridad algorítmica, límites diarios y prevención de strikes.
+* [**Lista de Canales Monitorizados (`config/channels.json`)**](./config/channels.json): Canales oficiales y creadores configurados.

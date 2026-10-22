@@ -7,7 +7,7 @@ from typing import Dict, Any, List, Tuple
 
 from .config import BASE_DIR, PROCESSED_FILE
 
-POLICY_AUDIT_FILE = BASE_DIR / "assets" / ".policy_audit.json"
+POLICY_AUDIT_FILE = BASE_DIR / "data" / ".policy_audit.json"
 
 # Directrices actualizadas de las 3 plataformas principales (YouTube, TikTok, Meta/Instagram)
 PLATFORM_POLICIES = {

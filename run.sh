@@ -17,7 +17,11 @@ fi
 
 # Comando especial para autenticar YouTube
 if [ "$1" == "auth" ] || [ "$1" == "--auth" ]; then
-    python3 auth_youtube.py
+    if [ -f "scripts/auth_youtube.py" ]; then
+        python3 scripts/auth_youtube.py
+    else
+        python3 auth_youtube.py
+    fi
     exit 0
 fi
 

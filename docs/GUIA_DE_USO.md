@@ -239,13 +239,8 @@ Para que el sistema funcione de forma 100% autónoma como un servidor 24/7 en tu
 
 ### Instalación de los Servicios:
 ```bash
-# Copiar las plantillas a LaunchAgents
-cp assets/com.gtavihub.telegrambot.plist ~/Library/LaunchAgents/
-cp assets/com.gtavihub.automation.plist ~/Library/LaunchAgents/
-
-# Activar ambos demonios
-launchctl load -w ~/Library/LaunchAgents/com.gtavihub.telegrambot.plist
-launchctl load -w ~/Library/LaunchAgents/com.gtavihub.automation.plist
+# Instalador automático en 1 comando (ajusta rutas y recarga demonios)
+./deploy/launchd/install_daemons.sh
 
 # Comprobar que ambos están registrados y activos
 launchctl list | grep gtavihub

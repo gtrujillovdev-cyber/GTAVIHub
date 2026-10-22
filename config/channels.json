@@ -1,0 +1,93 @@
+{
+  "channels": [
+    {
+      "name": "Rockstar Games (Oficial)",
+      "url": "https://www.youtube.com/@RockstarGames/videos",
+      "type": "official",
+      "lang": "en",
+      "filter_keywords": false,
+      "enabled": true,
+      "description": "Tráilers oficiales de Rockstar"
+    },
+    {
+      "name": "GTA Series Videos",
+      "url": "https://www.youtube.com/@GTASeriesVideos/videos",
+      "type": "breakdowns",
+      "lang": "en",
+      "filter_keywords": false,
+      "enabled": true,
+      "description": "Análisis y secretos técnicos en inglés"
+    },
+    {
+      "name": "Mors Mutual",
+      "url": "https://www.youtube.com/@MorsMutual/videos",
+      "type": "shorts_memes",
+      "lang": "en",
+      "filter_keywords": false,
+      "enabled": true,
+      "description": "Memes y clips cortos en inglés"
+    },
+    {
+      "name": "IlloJuan (LMDShow)",
+      "url": "https://www.youtube.com/@LMDShow/videos",
+      "type": "streamer_reaction",
+      "lang": "es",
+      "filter_keywords": true,
+      "enabled": true,
+      "description": "Reacciones y directos de IlloJuan"
+    },
+    {
+      "name": "DaniRep",
+      "url": "https://www.youtube.com/@TheDaniRep/videos",
+      "type": "gta_creator",
+      "lang": "es",
+      "filter_keywords": true,
+      "enabled": true,
+      "description": "Contenido de GTA de DaniRep"
+    },
+    {
+      "name": "ElXokas",
+      "url": "https://www.youtube.com/@elxokas/videos",
+      "type": "streamer_reaction",
+      "lang": "es",
+      "filter_keywords": true,
+      "enabled": true,
+      "description": "Opiniones y reacciones de Xokas"
+    },
+    {
+      "name": "Ibai",
+      "url": "https://www.youtube.com/@IbaiLlanos/videos",
+      "type": "streamer_reaction",
+      "lang": "es",
+      "filter_keywords": true,
+      "enabled": true,
+      "description": "Reacciones y eventos de Ibai"
+    },
+    {
+      "name": "3DJuegos",
+      "url": "https://www.youtube.com/@3djuegos/videos",
+      "type": "media_analysis",
+      "lang": "es",
+      "filter_keywords": true,
+      "enabled": true,
+      "description": "Noticias y análisis de 3DJuegos"
+    },
+    {
+      "name": "Vandal",
+      "url": "https://www.youtube.com/@vandal/videos",
+      "type": "media_analysis",
+      "lang": "es",
+      "filter_keywords": true,
+      "enabled": true,
+      "description": "Cobertura periodística de Vandal"
+    }
+  ],
+  "search_queries": [
+    {
+      "query": "ytsearch3:GTA 6 reaccion",
+      "lang": "es",
+      "filter_keywords": false,
+      "enabled": false
+    }
+  ]
+}

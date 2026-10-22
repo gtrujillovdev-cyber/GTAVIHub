@@ -1,0 +1,30 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "gtavihub"
+version = "1.0.0"
+description = "Autonomous Content Creation & Publishing Pipeline for GTA VI Hub Spain"
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+authors = [
+    { name = "Gabriel Trujillo Vallejo", email = "dev@gtavihub.es" }
+]
+dependencies = [
+    "yt-dlp>=2026.8.19",
+    "curl_cffi>=0.16.3",
+    "pillow>=13.0.0",
+    "google-genai>=2.31.0",
+    "python-dotenv>=1.2.4",
+    "google-api-python-client>=2.201.0",
+    "google-auth-oauthlib>=1.5.0",
+    "google-auth-httplib2>=0.4.4",
+    "requests>=2.34.2",
+    "edge-tts>=7.3.1",
+    "playwright>=1.49.0",
+]
+
+[project.scripts]
+gtavihub = "main:main"
