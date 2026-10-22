@@ -11,13 +11,15 @@ def clean_workspace_residuals(base_dir: Optional[Path] = None):
     """
     target_dir = base_dir or BASE_DIR
     patterns = [
-        "test_*",
+        "test_*.py",
         "frame_*",
         "scratch_*",
         "debug_*",
+        "tmp_*",
         "*.tmp*",
         "*_preview_*.jpg",
-        "*_preview_*.png"
+        "*_preview_*.png",
+        ".DS_Store"
     ]
     
     for pat in patterns:
