@@ -71,9 +71,13 @@ flowchart TD
    * Normalización formal EBU R128 (`-14 LUFS`) para presencia equilibrada en altavoces de smartphone.
 4. **Detector de Picos Virales en Directos Largos (*Heatmap Slicer*):**
    * Analiza el mapa de calor de YouTube (*most replayed*) de vídeos largos (>85s) para recortar automáticamente la ventana de 45-55 segundos de máxima retención, resincronizando los subtítulos.
-5. **Control Remoto y Notificaciones Push vía Telegram (`src/telegram_bot.py`):**
-   * Envía la miniatura renderizada y los enlaces de publicación directamente a tu móvil.
-   * Admite comandos remotos interactivos: `/status`, `/run`, `/audit`, `/clean` y `/preview`.
+5. **Centro de Control Móvil Interactivo vía Telegram (`src/telegram_bot.py`):**
+   * **Teclado Táctil Persistente:** Acceso con 1 toque a `[🚀 Forzar Escaneo]`, `[📊 Dashboard]`, `[🎬 Último Clip]`, `[🖥️ Estado Host / GaTDSEQ]`, `[📈 Métricas YouTube]`, `[⚙️ Canales]`, `[🛡️ Modo Co-Pilot]`, `[🧹 Limpiar Temp]`.
+   * **Ingesta Bajo Demanda de Enlaces:** Pega cualquier enlace de YouTube o TikTok en el chat; el bot extraerá la miniatura y ofrecerá botones de formato instantáneos (`⚡ Short Hormozi`, `🎙️ Doblaje Neural`, `💬 Subtítulos`).
+   * **Modo Co-Pilot (Puerta de Enlace Humana):** Pausa la publicación y envía una vista previa a Telegram con botones interactivos `[✅ Aprobar y Publicar]` y `[❌ Descartar y Purgar]`.
+   * **Telemetría de Hardware y GaTDSEQ (`/host`):** Monitorea CPU load, RAM real macOS, SSD, batería y convivencia cuantitativa.
+   * **Analíticas en Vivo de YouTube (`/stats`):** Muestra suscriptores, visualizaciones totales y rendimiento de subidas recientes vía API v3.
+   * **Gestión Dinámica de Canales (`/channels`):** Activa, desactiva o añade fuentes (`/addchannel`) directamente desde el chat.
 
 ---
 
@@ -203,25 +207,30 @@ GTAVIHub/
 │   └── auth_youtube.py       # Asistente OAuth2 para conectar YouTube Studio
 │
 ├── src/                      # Módulos del núcleo (Core Engine)
-│   ├── channels.py           # Gestor de feeds de canales
-│   ├── cleaner.py            # Protocolo estricto de disco
+│   ├── channels.py           # Gestor dinámico de feeds de canales
+│   ├── cleaner.py            # Protocolo estricto de disco (0 MB temp)
 │   ├── compliance_auditor.py # Auditoría legal y anti-strike
 │   ├── config.py             # Configuración y coexistencia de hardware
+│   ├── copilot.py            # Motor de aprobación humana y staging previo
 │   ├── downloader.py         # Ingesta multimedia con heatmap slicing
 │   ├── dubber.py             # Doblaje neural multilingüe
 │   ├── monitor.py            # Dashboard en tiempo real
 │   ├── pipeline.py           # Flujo editorial end-to-end
 │   ├── social_publisher.py   # Publicación con perfiles persistentes
-│   ├── telegram_bot.py       # Bot interactivo de control y push
+│   ├── telegram_bot.py       # Bot interactivo de control móvil y push
+│   ├── telemetry.py          # Telemetría de hardware, host y GaTDSEQ
 │   ├── thumbnail_generator.py# Generación de portadas broadcast
 │   ├── translator.py         # Adaptación con Gemini 2.5 Flash
 │   ├── uploader.py           # Subida a YouTube Data API v3
-│   └── video_editor.py       # Motor gráfico GPU VideoToolbox con ducking
+│   ├── video_editor.py       # Motor gráfico GPU VideoToolbox con ducking
+│   └── youtube_analytics.py  # Analíticas en vivo de YouTube Data API v3
 │
-├── tests/                    # Batería de pruebas automatizadas
+├── tests/                    # Batería de pruebas automatizadas (19 tests)
 │   ├── test_config.py        # Comprobación de rutas y coexistencia
 │   ├── test_compliance.py    # Validación de reglas de Fair Use
-│   └── test_sanity.py        # Pruebas de integración de módulos
+│   ├── test_sanity.py        # Pruebas de integración de todos los módulos
+│   ├── test_telegram.py      # Validación de teclados, regex y Co-Pilot
+│   └── test_telemetry.py     # Pruebas de RAM, CPU, SSD y hardware host
 │
 ├── output/                   # [Gitignored] Salida final de renders
 └── temp/                     # [Gitignored] Espacio volátil de trabajo (0 bytes)

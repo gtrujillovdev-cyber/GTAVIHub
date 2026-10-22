@@ -133,3 +133,114 @@ def fetch_channel_candidates(max_per_channel: int = 2) -> List[Dict[str, Any]]:
             print(f"[!] Error en query {query}: {e}")
 
     return candidates
+
+def list_monitored_channels() -> List[Dict[str, Any]]:
+    """Devuelve la lista actual de canales en channels.json."""
+    if not CHANNELS_FILE.exists():
+        return []
+    try:
+        with open(CHANNELS_FILE, "r", encoding="utf-8") as f:
+            data = json.load(f)
+            return data.get("channels", [])
+    except Exception:
+        return []
+
+def save_channels_config(config: Dict[str, Any]) -> bool:
+    """Guarda la configuración actualizada en channels.json."""
+    try:
+        with open(CHANNELS_FILE, "w", encoding="utf-8") as f:
+            json.dump(config, f, indent=2, ensure_ascii=False)
+        return True
+    except Exception as e:
+        print(f"[Channels] Error guardando {CHANNELS_FILE}: {e}")
+        return False
+
+def add_monitored_channel(url: str, name: str = "", lang: str = "en") -> Dict[str, Any]:
+    """Añade un nuevo canal a channels.json."""
+    config = {"channels": [], "search_queries": []}
+    if CHANNELS_FILE.exists():
+        try:
+            with open(CHANNELS_FILE, "r", encoding="utf-8") as f:
+                config = json.load(f)
+        except Exception:
+            pass
+
+    clean_url = url.strip()
+    if not clean_url.endswith("/videos") and ("youtube.com/@" in clean_url or "youtube.com/channel/" in clean_url):
+        clean_url = clean_url.rstrip("/") + "/videos"
+
+    for ch in config.get("channels", []):
+        if ch.get("url") == clean_url:
+            return {"success": False, "message": f"El canal ya estaba registrado como '{ch.get('name')}'."}
+
+    channel_name = name.strip() if name else ""
+    if not channel_name:
+        try:
+            res = subprocess.run([
+                sys.executable, "-m", "yt_dlp",
+                "--impersonate", "chrome",
+                "--no-check-certificates",
+                "--print", "%(uploader)s",
+                clean_url
+            ], capture_output=True, text=True, timeout=12)
+            first_line = res.stdout.strip().split("\n")[0]
+            if first_line:
+                channel_name = first_line
+        except Exception:
+            pass
+    if not channel_name:
+        channel_name = clean_url.split("/")[-2] if "/videos" in clean_url else clean_url.split("/")[-1]
+
+    new_channel = {
+        "name": channel_name,
+        "url": clean_url,
+        "type": "custom",
+        "lang": lang,
+        "filter_keywords": False,
+        "enabled": True,
+        "description": "Añadido desde Telegram Bot"
+    }
+    config.setdefault("channels", []).append(new_channel)
+    save_channels_config(config)
+    return {"success": True, "channel": new_channel}
+
+def remove_monitored_channel(identifier: str) -> bool:
+    """Elimina un canal por índice numérico (1-based) o nombre/URL."""
+    if not CHANNELS_FILE.exists():
+        return False
+    with open(CHANNELS_FILE, "r", encoding="utf-8") as f:
+        config = json.load(f)
+
+    channels = config.get("channels", [])
+    initial_len = len(channels)
+
+    if identifier.strip().isdigit():
+        idx = int(identifier.strip()) - 1
+        if 0 <= idx < len(channels):
+            channels.pop(idx)
+    else:
+        ident_lower = identifier.lower().strip()
+        channels = [
+            ch for ch in channels
+            if ident_lower not in ch.get("name", "").lower() and ident_lower not in ch.get("url", "").lower()
+        ]
+
+    if len(channels) < initial_len:
+        config["channels"] = channels
+        save_channels_config(config)
+        return True
+    return False
+
+def toggle_channel_enabled(index: int) -> Optional[bool]:
+    """Invierte el estado de activación (enabled: True/False) de un canal."""
+    if not CHANNELS_FILE.exists():
+        return None
+    with open(CHANNELS_FILE, "r", encoding="utf-8") as f:
+        config = json.load(f)
+    channels = config.get("channels", [])
+    if 0 <= index < len(channels):
+        channels[index]["enabled"] = not channels[index].get("enabled", True)
+        config["channels"] = channels
+        save_channels_config(config)
+        return channels[index]["enabled"]
+    return None

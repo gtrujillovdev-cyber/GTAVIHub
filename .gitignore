@@ -40,3 +40,5 @@ Thumbs.db
 data/processed.json
 processed.json
 data/.policy_audit.json
+data/copilot_state.json
+data/pending_approvals/

@@ -16,6 +16,7 @@ from .social_publisher import SocialPublisher
 from .thumbnail_generator import create_video_thumbnail
 from .monitor import notify_macos
 from .cleaner import clean_temp_directory, clean_uploaded_video_file, enforce_storage_limits
+from .copilot import is_copilot_enabled, stage_pending_video
 
 def process_single_video(
     url: str,
@@ -30,7 +31,8 @@ def process_single_video(
     keep_local_video: bool = False,
     publish_all: bool = False,
     dry_run: bool = False,
-    stagger_delay: int = 12
+    stagger_delay: int = 12,
+    copilot_mode: Optional[bool] = None
 ) -> Optional[Dict[str, Any]]:
     """
     Ejecuta el ciclo de vida completo de un vídeo con transformación editorial real:
@@ -141,40 +143,58 @@ def process_single_video(
         "youtube_metadata": metadata
     }
 
-    # 7. Publicación (Multiplataforma o YouTube)
-    uploaded_yt_id = None
-    multiplatform_results = {}
-
-    if publish_all:
-        publisher = SocialPublisher(dry_run=dry_run)
-        multiplatform_results = publisher.publish_all(
-            video_path=output_path,
-            metadata={
-                "title": metadata.get("title", f"GTA 6 - {original_title}").upper(),
-                "description": metadata.get("description", ""),
-                "thumbnail_path": thumb_path if thumb_path.exists() else None
-            },
-            creator_name=creator_name or "Rockstar Games",
-            stagger_delay_minutes=stagger_delay
-        )
-        full_info["multiplatform_urls"] = multiplatform_results
-        if multiplatform_results.get("youtube"):
-            full_info["uploaded_youtube_url"] = multiplatform_results["youtube"]
-            uploaded_yt_id = multiplatform_results["youtube"]
-    elif auto_upload:
-        uploaded_yt_id = upload_to_youtube(
-            video_path=output_path,
-            title=metadata.get("title", f"GTA 6 - {original_title}").upper(),
-            description=metadata.get("description", ""),
-            privacy_status=privacy_status,
-            is_short=is_short,
-            thumbnail_path=thumb_path if thumb_path.exists() else None
-        )
-        if uploaded_yt_id:
-            full_info["uploaded_youtube_url"] = f"https://youtu.be/{uploaded_yt_id}"
-
     with open(meta_path, "w", encoding="utf-8") as f:
         json.dump(full_info, f, indent=2, ensure_ascii=False)
+
+    # 7. Co-Pilot Mode: Aprobación previa humana antes de publicar
+    effective_copilot = is_copilot_enabled() if copilot_mode is None else copilot_mode
+    if effective_copilot:
+        print(f"[*] Modo Co-Pilot ACTIVO: Pausando publicación a la espera de aprobación en Telegram...")
+        stage_pending_video(
+            video_id=video_id,
+            original_url=url,
+            original_title=original_title,
+            creator_name=creator_name,
+            output_video_path=output_path,
+            thumbnail_path=thumb_path if thumb_path.exists() else None,
+            metadata=metadata,
+            is_short=is_short,
+            mode=mode,
+            publish_all=publish_all,
+            privacy_status=privacy_status,
+            stagger_delay=stagger_delay,
+            keep_local_video=keep_local_video
+        )
+        # Limpieza estricta de archivos temporales
+        clean_temp_directory(video_id)
+        
+        full_info["status"] = "staged_for_copilot"
+
+        # Notificación en Telegram para aprobación
+        try:
+            from .telegram_bot import send_copilot_approval_request
+            send_copilot_approval_request(
+                video_id=video_id,
+                title=metadata.get("title", original_title),
+                creator=creator_name or "Rockstar Games",
+                thumbnail_path=thumb_path if thumb_path.exists() else None,
+                is_short=is_short,
+                mode=mode,
+                hook_text=hook_text
+            )
+        except Exception as e:
+            print(f"[Pipeline] Info Co-Pilot Telegram: {e}")
+
+        notify_macos(
+            title="Co-Pilot: Vídeo Listo para Aprobación",
+            message=f"{metadata.get('title', original_title)[:50]}... Pulsa en Telegram para publicar.",
+            subtitle="GTA VI Hub Spain"
+        )
+        return full_info
+
+    # 8. Publicación Directa (Multiplataforma o YouTube)
+    uploaded_yt_id = None
+    multiplatform_results = {}
 
     # 8. Registro en processed.json
     mark_video_processed({
