@@ -127,6 +127,17 @@ def main():
         action="store_true",
         help="Iniciar el bot de control remoto y notificaciones de Telegram."
     )
+    parser.add_argument(
+        "--radar", "--viral-radar",
+        dest="viral_radar",
+        action="store_true",
+        help="Escanea el Radar Viral en busca de los clips y canales con mayor engagement."
+    )
+    parser.add_argument(
+        "--auto-viral",
+        action="store_true",
+        help="Ingesta y procesa automáticamente el clip #1 más viral del Radar."
+    )
 
     args = parser.parse_args()
 
@@ -141,6 +152,38 @@ def main():
     if args.telegram:
         from src.telegram_bot import start_telegram_bot_daemon
         start_telegram_bot_daemon()
+        return
+
+    if args.viral_radar:
+        from src.viral_discovery import scan_viral_radar, print_viral_leaderboard
+        print("[*] Iniciando escaneo del Radar Viral de GTA 6...")
+        candidates = scan_viral_radar(max_candidates=10)
+        print_viral_leaderboard(candidates)
+        return
+
+    if args.auto_viral:
+        from src.viral_discovery import scan_viral_radar
+        print("[*] Buscando el clip #1 de mayor engagement viral para ingesta inmediata...")
+        candidates = scan_viral_radar(max_candidates=5)
+        if not candidates:
+            print("[✓] No se encontraron clips virales nuevos en este escaneo.")
+            return
+        top_clip = candidates[0]
+        print(f"[🔥] Seleccionado: '{top_clip['title']}' (Score: {top_clip['score']}/100) de {top_clip['uploader']}")
+        res = process_single_video(
+            url=top_clip["url"],
+            video_id=top_clip["id"],
+            original_title=top_clip["title"],
+            creator_name=top_clip["uploader"],
+            mode=args.mode,
+            force_short=True if top_clip.get("is_short") else None,
+            auto_upload=args.upload,
+            privacy_status=args.privacy,
+            keep_local_video=args.keep_local_video,
+            publish_all=args.publish_all,
+            dry_run=args.dry_run,
+            stagger_delay=args.stagger_delay
+        )
         return
 
     if args.status:

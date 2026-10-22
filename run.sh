@@ -49,6 +49,12 @@ if [ "$1" == "telegram" ] || [ "$1" == "--telegram" ] || [ "$1" == "bot" ]; then
     exit 0
 fi
 
+# Comando especial para escanear el Radar Viral de engagement
+if [ "$1" == "radar" ] || [ "$1" == "--radar" ] || [ "$1" == "viral" ]; then
+    python3 main.py --radar
+    exit 0
+fi
+
 # Ejecutar con argumentos pasados o por defecto --auto
 if [ $# -eq 0 ]; then
     echo "[*] Ejecutando escaneo autónomo estándar..."

@@ -44,6 +44,7 @@ class TestTelegramBot(unittest.TestCase):
         self.assertIn("🖥️ Estado Host / GaTDSEQ", buttons)
         self.assertIn("📈 Métricas YouTube", buttons)
         self.assertIn("⚙️ Canales", buttons)
+        self.assertIn("🔥 Radar Viral", buttons)
         self.assertIn("🛡️ Modo Co-Pilot", buttons)
 
     def test_inline_keyboards(self):

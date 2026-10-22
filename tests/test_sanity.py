@@ -14,6 +14,7 @@ class TestSanity(unittest.TestCase):
         import src.telemetry
         import src.youtube_analytics
         import src.copilot
+        import src.viral_discovery
         import src.thumbnail_generator
         import src.translator
         import src.uploader

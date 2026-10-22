@@ -7,7 +7,7 @@
       "lang": "en",
       "filter_keywords": false,
       "enabled": true,
-      "description": "Tráilers oficiales de Rockstar"
+      "description": "Tráilers y comunicados oficiales de Rockstar Games"
     },
     {
       "name": "GTA Series Videos",
@@ -16,7 +16,34 @@
       "lang": "en",
       "filter_keywords": false,
       "enabled": true,
-      "description": "Análisis y secretos técnicos en inglés"
+      "description": "Análisis técnicos, comparativas y secretos de GTA"
+    },
+    {
+      "name": "TGG",
+      "url": "https://www.youtube.com/@TGG/videos",
+      "type": "gta_authority",
+      "lang": "en",
+      "filter_keywords": false,
+      "enabled": true,
+      "description": "Mayor creador global de noticias y guías de GTA"
+    },
+    {
+      "name": "LegacyKillaHD",
+      "url": "https://www.youtube.com/@LegacyKillaHD/videos",
+      "type": "insider_leaks",
+      "lang": "en",
+      "filter_keywords": false,
+      "enabled": true,
+      "description": "Filtraciones fiables de la industria y análisis profundo de GTA 6"
+    },
+    {
+      "name": "DarkViperAU",
+      "url": "https://www.youtube.com/@DarkViperAU/videos",
+      "type": "gta_creator",
+      "lang": "en",
+      "filter_keywords": true,
+      "enabled": true,
+      "description": "Opiniones, retos y reacciones masivas a novedades de GTA"
     },
     {
       "name": "Mors Mutual",
@@ -25,16 +52,25 @@
       "lang": "en",
       "filter_keywords": false,
       "enabled": true,
-      "description": "Memes y clips cortos en inglés"
+      "description": "Clips cortos, memes y virales de la comunidad GTA"
     },
     {
-      "name": "IlloJuan (LMDShow)",
-      "url": "https://www.youtube.com/@LMDShow/videos",
-      "type": "streamer_reaction",
-      "lang": "es",
+      "name": "IGN",
+      "url": "https://www.youtube.com/@IGN/videos",
+      "type": "media_global",
+      "lang": "en",
       "filter_keywords": true,
       "enabled": true,
-      "description": "Reacciones y directos de IlloJuan"
+      "description": "Tráilers mundiales y entrevistas exclusivas de la industria"
+    },
+    {
+      "name": "GameSpot",
+      "url": "https://www.youtube.com/@GameSpot/videos",
+      "type": "media_global",
+      "lang": "en",
+      "filter_keywords": true,
+      "enabled": true,
+      "description": "Desgloses oficiales y gameplay de grandes lanzamientos"
     },
     {
       "name": "DaniRep",
@@ -43,7 +79,16 @@
       "lang": "es",
       "filter_keywords": true,
       "enabled": true,
-      "description": "Contenido de GTA de DaniRep"
+      "description": "Pionero y mayor creador diario de GTA en español"
+    },
+    {
+      "name": "IlloJuan (LMDShow)",
+      "url": "https://www.youtube.com/@LMDShow/videos",
+      "type": "streamer_reaction",
+      "lang": "es",
+      "filter_keywords": true,
+      "enabled": true,
+      "description": "Reacciones y directos de IlloJuan sobre GTA 6"
     },
     {
       "name": "ElXokas",
@@ -52,7 +97,7 @@
       "lang": "es",
       "filter_keywords": true,
       "enabled": true,
-      "description": "Opiniones y reacciones de Xokas"
+      "description": "Opiniones directas y reacciones de Xokas"
     },
     {
       "name": "Ibai",
@@ -61,7 +106,52 @@
       "lang": "es",
       "filter_keywords": true,
       "enabled": true,
-      "description": "Reacciones y eventos de Ibai"
+      "description": "Reacciones en streaming de Ibai a los tráilers"
+    },
+    {
+      "name": "AuronPlay",
+      "url": "https://www.youtube.com/@Auron/videos",
+      "type": "streamer_reaction",
+      "lang": "es",
+      "filter_keywords": true,
+      "enabled": true,
+      "description": "Reacciones de AuronPlay y clips virales"
+    },
+    {
+      "name": "Rubius Z",
+      "url": "https://www.youtube.com/@elrubiusOMG/videos",
+      "type": "streamer_reaction",
+      "lang": "es",
+      "filter_keywords": true,
+      "enabled": true,
+      "description": "Reacciones y cobertura de Rubius sobre GTA VI"
+    },
+    {
+      "name": "TheGrefg",
+      "url": "https://www.youtube.com/@TheGrefg/videos",
+      "type": "streamer_reaction",
+      "lang": "es",
+      "filter_keywords": true,
+      "enabled": true,
+      "description": "Reacciones energéticas en directo de TheGrefg"
+    },
+    {
+      "name": "Nexxuz HD",
+      "url": "https://www.youtube.com/@NexxuzHD/videos",
+      "type": "gta_creator",
+      "lang": "es",
+      "filter_keywords": true,
+      "enabled": true,
+      "description": "Contenido de locuras, mods y roleplay de GTA"
+    },
+    {
+      "name": "DjMaRiiO",
+      "url": "https://www.youtube.com/@DjMaRiiO/videos",
+      "type": "streamer_reaction",
+      "lang": "es",
+      "filter_keywords": true,
+      "enabled": true,
+      "description": "Reacciones gaming de DjMaRiiO en España"
     },
     {
       "name": "3DJuegos",
@@ -70,7 +160,7 @@
       "lang": "es",
       "filter_keywords": true,
       "enabled": true,
-      "description": "Noticias y análisis de 3DJuegos"
+      "description": "Prensa especializada, debates y análisis de 3DJuegos"
     },
     {
       "name": "Vandal",
@@ -79,15 +169,57 @@
       "lang": "es",
       "filter_keywords": true,
       "enabled": true,
-      "description": "Cobertura periodística de Vandal"
+      "description": "Reportajes, análisis y noticias de Vandal"
+    },
+    {
+      "name": "Hobby Consolas",
+      "url": "https://www.youtube.com/@HobbyConsolas/videos",
+      "type": "media_analysis",
+      "lang": "es",
+      "filter_keywords": true,
+      "enabled": true,
+      "description": "Cobertura periodística de videojuegos en España"
+    },
+    {
+      "name": "Eurogamer España",
+      "url": "https://www.youtube.com/@eurogamerspain/videos",
+      "type": "media_analysis",
+      "lang": "es",
+      "filter_keywords": true,
+      "enabled": true,
+      "description": "Análisis técnicos y periodísticos en español"
+    },
+    {
+      "name": "Pelicanger",
+      "url": "https://www.youtube.com/@Pelicanger/videos",
+      "type": "streamer_reaction",
+      "lang": "es",
+      "filter_keywords": true,
+      "enabled": true,
+      "description": "Reacciones y entretenimiento gaming en LatAm"
     }
   ],
   "search_queries": [
     {
-      "query": "ytsearch3:GTA 6 reaccion",
+      "query": "ytsearch5:GTA 6 Shorts",
       "lang": "es",
       "filter_keywords": false,
-      "enabled": false
+      "enabled": true,
+      "description": "Detección rápida de clips verticales de GTA 6"
+    },
+    {
+      "query": "ytsearch5:GTA 6 trailer 2",
+      "lang": "es",
+      "filter_keywords": false,
+      "enabled": true,
+      "description": "Búsqueda de novedades y tráilers"
+    },
+    {
+      "query": "ytsearch5:GTA 6 reaccion",
+      "lang": "es",
+      "filter_keywords": false,
+      "enabled": true,
+      "description": "Reacciones recientes de la comunidad hispana"
     }
   ]
 }

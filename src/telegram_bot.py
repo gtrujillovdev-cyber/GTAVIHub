@@ -30,12 +30,18 @@ from .channels import (
     toggle_channel_enabled,
     fetch_channel_candidates
 )
+from .viral_discovery import (
+    scan_viral_radar,
+    get_viral_radar_summary,
+    auto_register_top_channels
+)
 
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
 
 # Cache en memoria para sesiones de enlaces pendientes de procesamiento
 CACHED_INGEST_URLS: Dict[str, Dict[str, Any]] = {}
+CACHED_VIRAL_CANDIDATES: List[Dict[str, Any]] = []
 
 # Control de concurrencia para evitar sobrecargar hardware
 BACKGROUND_LOCK = threading.Lock()
@@ -61,7 +67,8 @@ def get_persistent_menu_keyboard() -> Dict[str, Any]:
             [{"text": "🚀 Forzar Escaneo"}, {"text": "📊 Dashboard"}],
             [{"text": "🎬 Último Clip"}, {"text": "🖥️ Estado Host / GaTDSEQ"}],
             [{"text": "📈 Métricas YouTube"}, {"text": "⚙️ Canales"}],
-            [{"text": "🛡️ Modo Co-Pilot"}, {"text": "🧹 Limpiar Temp"}]
+            [{"text": "🔥 Radar Viral"}, {"text": "🛡️ Modo Co-Pilot"}],
+            [{"text": "🧹 Limpiar Temp"}]
         ],
         "resize_keyboard": True,
         "persistent": True
@@ -271,6 +278,24 @@ def get_channels_inline_keyboard() -> Dict[str, Any]:
 
     return {"inline_keyboard": buttons}
 
+def get_viral_radar_inline_keyboard(candidates: List[Dict[str, Any]]) -> Dict[str, Any]:
+    """Teclado interactivo para ingestar los clips más virales o registrar creadores nuevos."""
+    buttons = []
+    row = []
+    for idx, c in enumerate(candidates[:4]):
+        row.append({"text": f"⚡ Ingestar #{idx+1}", "callback_data": f"viral:ingest:{idx}"})
+        if len(row) == 2:
+            buttons.append(row)
+            row = []
+    if row:
+        buttons.append(row)
+
+    buttons.append([
+        {"text": "➕ Añadir Nuevos Creadores", "callback_data": "viral:add_channels"},
+        {"text": "🔄 Actualizar Radar", "callback_data": "viral:refresh"}
+    ])
+    return {"inline_keyboard": buttons}
+
 # ═══════════════════════════════════════════════════════════════════
 # 3. NOTIFICACIONES Y GESTIÓN DE CO-PILOT
 # ═══════════════════════════════════════════════════════════════════
@@ -433,6 +458,25 @@ def run_approval_publish_in_background(video_id: str):
             send_telegram_alert("⚠️ *Vídeo procesado, pero revisa las credenciales de publicación.*")
     except Exception as e:
         send_telegram_alert(f"❌ *Error al publicar vídeo aprobado:* `{e}`")
+    finally:
+        with BACKGROUND_LOCK:
+            ACTIVE_TASK = None
+
+def run_viral_radar_in_background(chat_id: str):
+    """Escanea el Radar Viral de YouTube en segundo plano y envía candidatos con botones."""
+    global ACTIVE_TASK, CACHED_VIRAL_CANDIDATES
+    with BACKGROUND_LOCK:
+        ACTIVE_TASK = "Escaneo Radar Viral"
+
+    try:
+        send_telegram_alert("🔍 *Escaneando YouTube en busca de contenido viral de GTA 6 con máximo engagement...*")
+        candidates = scan_viral_radar(max_candidates=5)
+        CACHED_VIRAL_CANDIDATES = candidates
+        summary = get_viral_radar_summary(candidates)
+        keyboard = get_viral_radar_inline_keyboard(candidates)
+        send_telegram_alert(summary, reply_markup=keyboard)
+    except Exception as e:
+        send_telegram_alert(f"❌ *Error en Radar Viral:* `{e}`")
     finally:
         with BACKGROUND_LOCK:
             ACTIVE_TASK = None
@@ -620,6 +664,43 @@ def handle_callback_query(cq: Dict[str, Any]):
         send_telegram_alert(help_txt)
         return
 
+    # E) Acciones del Radar Viral
+    if data.startswith("viral:ingest:"):
+        idx = int(data.split(":")[2])
+        if idx < len(CACHED_VIRAL_CANDIDATES):
+            item = CACHED_VIRAL_CANDIDATES[idx]
+            answer_callback_query(cq_id, f"Iniciando ingesta #{idx+1}...")
+            edit_telegram_message(
+                msg_id,
+                f"⏳ *Procesando clip viral #{idx+1}:* `{item['title'][:40]}...` en segundo plano."
+            )
+            fmt_opt = "short" if item.get("is_short") else "subs"
+            t = threading.Thread(
+                target=run_ingest_in_background,
+                args=(item["url"], item["id"], item["title"], item["uploader"], fmt_opt),
+                daemon=True
+            )
+            t.start()
+        else:
+            answer_callback_query(cq_id, "Clip no disponible en el radar actual.")
+        return
+
+    if data == "viral:add_channels":
+        answer_callback_query(cq_id, "Añadiendo creadores descubiertos...")
+        added = auto_register_top_channels(min_score=40)
+        if added:
+            names = ", ".join([f"`{a.get('name')}`" for a in added[:5]])
+            send_telegram_alert(f"✅ *{len(added)} nuevo(s) creador(es) añadido(s) al monitoreo continuo:*\n{names}")
+        else:
+            send_telegram_alert("ℹ️ Todos los canales del radar ya están registrados en channels.json.")
+        return
+
+    if data == "viral:refresh":
+        answer_callback_query(cq_id, "Actualizando Radar Viral...")
+        t = threading.Thread(target=run_viral_radar_in_background, args=(str(msg.get("chat", {}).get("id", "")),), daemon=True)
+        t.start()
+        return
+
     answer_callback_query(cq_id)
 
 # ═══════════════════════════════════════════════════════════════════
@@ -712,6 +793,7 @@ def start_telegram_bot_daemon():
                         "• `🖥️ Estado Host / GaTDSEQ` — Carga CPU, RAM, SSD, batería y quant.\n"
                         "• `📈 Métricas YouTube` — Suscriptores, vistas totales y últimos vídeos.\n"
                         "• `⚙️ Canales` — Lista interactiva para activar/desactivar fuentes.\n"
+                        "• `🔥 Radar Viral` — Descubre clips y creadores en tendencia con máximo engagement.\n"
                         "• `🛡️ Modo Co-Pilot` — Activar/desactivar aprobación previa con 1 clic.\n"
                         "• `🧹 Limpiar Temp` — Purgar archivos de render a 0 bytes.\n\n"
                         "📥 *Ingesta Rápida:* Pega cualquier enlace de YouTube o TikTok directamente en este chat."
@@ -739,6 +821,13 @@ def start_telegram_bot_daemon():
                         "⚙️ *GESTIÓN DE CANALES MONITOREADOS*\n_Pulsa sobre cualquier canal para activarlo/desactivarlo:_",
                         reply_markup=get_channels_inline_keyboard()
                     )
+
+                elif cmd in ["/radar", "/viral", "🔥"] or text == "🔥 Radar Viral":
+                    if ACTIVE_TASK:
+                        send_telegram_alert(f"⚠️ *Tarea activa en curso:* `{ACTIVE_TASK}`. Por favor espera a que finalice.")
+                    else:
+                        t = threading.Thread(target=run_viral_radar_in_background, args=(allowed_chat_id,), daemon=True)
+                        t.start()
 
                 elif cmd == "/addchannel":
                     parts = text.split(maxsplit=2)

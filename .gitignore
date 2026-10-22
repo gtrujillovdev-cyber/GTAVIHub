@@ -42,3 +42,4 @@ processed.json
 data/.policy_audit.json
 data/copilot_state.json
 data/pending_approvals/
+data/discovered_channels.json

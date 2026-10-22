@@ -123,6 +123,9 @@ Diseñado para convivir pacíficamente en el mismo host headless (**MacBook Pro*
 
 # 7. Forzar purga y limpieza de residuos en disco
 ./run.sh --clean
+
+# 8. Escanear el Radar Viral de engagement y descubrir creadores
+./run.sh radar
 ```
 
 ---
@@ -223,14 +226,16 @@ GTAVIHub/
 │   ├── translator.py         # Adaptación con Gemini 2.5 Flash
 │   ├── uploader.py           # Subida a YouTube Data API v3
 │   ├── video_editor.py       # Motor gráfico GPU VideoToolbox con ducking
+│   ├── viral_discovery.py    # Motor de búsqueda dinámica y engagement viral
 │   └── youtube_analytics.py  # Analíticas en vivo de YouTube Data API v3
 │
-├── tests/                    # Batería de pruebas automatizadas (19 tests)
+├── tests/                    # Batería de pruebas automatizadas (25 tests)
 │   ├── test_config.py        # Comprobación de rutas y coexistencia
 │   ├── test_compliance.py    # Validación de reglas de Fair Use
 │   ├── test_sanity.py        # Pruebas de integración de todos los módulos
 │   ├── test_telegram.py      # Validación de teclados, regex y Co-Pilot
-│   └── test_telemetry.py     # Pruebas de RAM, CPU, SSD y hardware host
+│   ├── test_telemetry.py     # Pruebas de RAM, CPU, SSD y hardware host
+│   └── test_viral_discovery.py# Pruebas de scoring viral y radar de engagement
 │
 ├── output/                   # [Gitignored] Salida final de renders
 └── temp/                     # [Gitignored] Espacio volátil de trabajo (0 bytes)
