@@ -1,7 +1,7 @@
 import sys
 import json
 import subprocess
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 from .config import CHANNELS_FILE, PROCESSED_FILE
 
 def get_processed_ids() -> set:
