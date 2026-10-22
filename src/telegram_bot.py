@@ -186,6 +186,35 @@ def send_telegram_photo(
         print(f"[Telegram] Error enviando foto: {e}")
         return False
 
+def send_telegram_video(
+    video_path: Path,
+    caption: str,
+    reply_markup: Optional[Dict[str, Any]] = None
+) -> bool:
+    """Envía un archivo de vídeo MP4 nativo al chat para descarga directa y publicación en TikTok/Reels."""
+    token = os.getenv("TELEGRAM_BOT_TOKEN") or TELEGRAM_BOT_TOKEN
+    chat_id = os.getenv("TELEGRAM_CHAT_ID") or TELEGRAM_CHAT_ID
+    if not token or not chat_id or not video_path.exists():
+        return False
+
+    url = get_api_url("sendVideo")
+    try:
+        with open(video_path, "rb") as video:
+            files = {"video": video}
+            data: Dict[str, Any] = {
+                "chat_id": chat_id,
+                "caption": caption[:1024],
+                "parse_mode": "Markdown",
+                "supports_streaming": True
+            }
+            if reply_markup:
+                data["reply_markup"] = json.dumps(reply_markup)
+            res = requests.post(url, data=data, files=files, timeout=120)
+            return res.status_code == 200
+    except Exception as e:
+        print(f"[Telegram] Error enviando vídeo: {e}")
+        return False
+
 def send_telegram_notification(
     title: str,
     creator: str,
@@ -1097,18 +1126,29 @@ def start_telegram_bot_daemon():
                     clean_workspace_residuals()
                     send_telegram_alert("🧹 *Limpieza estricta ejecutada.* Archivos temporales purgados a 0 bytes.", reply_markup=get_persistent_menu_keyboard())
 
-                elif cmd in ["/preview", "🎬"] or text == "🎬 Último Clip":
+                elif cmd in ["/preview", "/video", "🎬"] or text == "🎬 Último Clip":
                     mp4s = sorted(OUTPUT_DIR.glob("*.mp4"), key=lambda f: f.stat().st_mtime, reverse=True)
                     if mp4s:
                         latest = mp4s[0]
-                        thumb = latest.with_suffix("").with_name(latest.stem.replace("_ES", "") + "_thumb.jpg")
-                        caption = f"🎬 *Último clip disponible:* `{latest.name}`"
-                        if thumb.exists():
-                            send_telegram_photo(thumb, caption)
-                        else:
-                            send_telegram_alert(caption, reply_markup=get_persistent_menu_keyboard())
+                        size_mb = latest.stat().st_size / (1024 * 1024)
+                        caption = (
+                            f"🎬 *ÚLTIMO CLIP RENDERIZADO (9:16)*\n\n"
+                            f"📁 Archivo: `{latest.name}`\n"
+                            f"⚖️ Tamaño: `{size_mb:.1f} MB`\n\n"
+                            f"📱 _Guarda este vídeo en tus fotos para publicarlo directamente en TikTok e Instagram Reels con un toque._"
+                        )
+                        sent = False
+                        if latest.stat().st_size < 48 * 1024 * 1024:
+                            send_telegram_alert("⏳ *Preparando y enviando vídeo a Telegram...*")
+                            sent = send_telegram_video(latest, caption)
+                        if not sent:
+                            thumb = latest.with_suffix("").with_name(latest.stem.replace("_ES", "") + "_thumb.jpg")
+                            if thumb.exists():
+                                send_telegram_photo(thumb, caption)
+                            else:
+                                send_telegram_alert(caption, reply_markup=get_persistent_menu_keyboard())
                     else:
-                        send_telegram_alert("ℹ️ No hay vídeos locales pendientes en output/.", reply_markup=get_persistent_menu_keyboard())
+                        send_telegram_alert("ℹ️ No hay vídeos locales disponibles en output/.", reply_markup=get_persistent_menu_keyboard())
 
         except KeyboardInterrupt:
             print("\n[*] Bot detenido por el usuario.")

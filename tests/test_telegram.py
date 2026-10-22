@@ -12,6 +12,7 @@ from src.telegram_bot import (
     get_system_actions_inline_keyboard,
     update_heartbeat,
     kill_hung_subprocesses,
+    send_telegram_video,
     get_dashboard_text
 )
 from src.copilot import is_copilot_enabled, set_copilot_enabled
@@ -103,6 +104,10 @@ class TestTelegramBot(unittest.TestCase):
 
         # Matar subprocesos huérfanos sin excepción
         kill_hung_subprocesses()
+
+        # send_telegram_video con archivo inexistente devuelve False limpiamente
+        from pathlib import Path
+        self.assertFalse(send_telegram_video(Path("/tmp/nonexistent_dummy.mp4"), "caption"))
 
     def test_my_channels_report(self):
         report = get_my_channels_report()
