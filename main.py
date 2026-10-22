@@ -92,6 +92,11 @@ def main():
         help="Publicación unificada y escalonada en YouTube Shorts, TikTok e Instagram Reels."
     )
     parser.add_argument(
+        "--no-copilot",
+        action="store_true",
+        help="Ignorar modo Co-Pilot y forzar la publicación directa sin requerir confirmación táctil en Telegram."
+    )
+    parser.add_argument(
         "--dry-run",
         action="store_true",
         help="Simulación de subida segura en modo sandbox sin alterar cuentas ni gastar cuotas."
@@ -182,7 +187,8 @@ def main():
             keep_local_video=args.keep_local_video,
             publish_all=args.publish_all,
             dry_run=args.dry_run,
-            stagger_delay=args.stagger_delay
+            stagger_delay=args.stagger_delay,
+            copilot_mode=False if args.no_copilot else None
         )
         return
 
@@ -242,7 +248,8 @@ def main():
             keep_local_video=args.keep_local_video,
             publish_all=args.publish_all,
             dry_run=args.dry_run,
-            stagger_delay=args.stagger_delay
+            stagger_delay=args.stagger_delay,
+            copilot_mode=False if args.no_copilot else None
         )
         if args.preview and res and "output_video" in res:
             vid_path = Path(res["output_video"])
@@ -280,7 +287,8 @@ def main():
                 keep_local_video=args.keep_local_video,
                 publish_all=args.publish_all,
                 dry_run=args.dry_run,
-                stagger_delay=args.stagger_delay
+                stagger_delay=args.stagger_delay,
+                copilot_mode=False if args.no_copilot else None
             )
             if res:
                 count += 1

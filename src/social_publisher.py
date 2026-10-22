@@ -323,13 +323,17 @@ class SocialPublisher:
 
         for i, plat in enumerate(platforms):
             if i > 0 and not self.dry_run:
-                # Escalonamiento con jitter aleatorio humano (ej. 10 a 16 minutos)
-                jitter_seconds = random.randint(
-                    max(1, (stagger_delay_minutes - 2) * 60),
-                    (stagger_delay_minutes + 4) * 60
-                )
-                print(f"\n⏳ [Escalonamiento Anti-Ban] Pausando {jitter_seconds // 60} minutos antes de publicar en {plat.upper()}...")
-                time.sleep(jitter_seconds)
+                if stagger_delay_minutes <= 0:
+                    jitter_seconds = 0
+                else:
+                    # Escalonamiento con jitter aleatorio humano (ej. 10 a 16 minutos)
+                    jitter_seconds = random.randint(
+                        max(1, (stagger_delay_minutes - 2) * 60),
+                        (stagger_delay_minutes + 4) * 60
+                    )
+                if jitter_seconds > 0:
+                    print(f"\n⏳ [Escalonamiento Anti-Ban] Pausando {jitter_seconds // 60} minutos antes de publicar en {plat.upper()}...")
+                    time.sleep(jitter_seconds)
 
             if plat == "youtube":
                 url = self.publish_to_youtube(video_path, title, desc, privacy="private", thumbnail_path=thumb)
