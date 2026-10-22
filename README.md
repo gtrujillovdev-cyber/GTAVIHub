@@ -72,12 +72,62 @@ flowchart TD
 4. **Detector de Picos Virales en Directos Largos (*Heatmap Slicer*):**
    * Analiza el mapa de calor de YouTube (*most replayed*) de vídeos largos (>85s) para recortar automáticamente la ventana de 45-55 segundos de máxima retención, resincronizando los subtítulos.
 5. **Centro de Control Móvil Interactivo vía Telegram (`src/telegram_bot.py`):**
-   * **Teclado Táctil Persistente:** Acceso con 1 toque a `[🚀 Forzar Escaneo]`, `[📊 Dashboard]`, `[🎬 Último Clip]`, `[🖥️ Estado Host / GaTDSEQ]`, `[📈 Métricas YouTube]`, `[⚙️ Canales]`, `[🛡️ Modo Co-Pilot]`, `[🧹 Limpiar Temp]`.
+   * **Teclado Táctil Persistente:** Acceso con 1 toque a `[🚀 Forzar Escaneo]`, `[📊 Dashboard]`, `[🎬 Último Clip]`, `[🖥️ Estado Host / GaTDSEQ]`, `[📈 Métricas YouTube]`, `[⚙️ Canales]`, `[🔥 Radar Viral]`, `[🛡️ Modo Co-Pilot]`, `[🧹 Limpiar Temp]`.
+   * **Radar Viral de Máximo Engagement:** Descubre en tiempo real clips emergentes de GTA 6 y nuevos canales con tracción explosiva.
    * **Ingesta Bajo Demanda de Enlaces:** Pega cualquier enlace de YouTube o TikTok en el chat; el bot extraerá la miniatura y ofrecerá botones de formato instantáneos (`⚡ Short Hormozi`, `🎙️ Doblaje Neural`, `💬 Subtítulos`).
    * **Modo Co-Pilot (Puerta de Enlace Humana):** Pausa la publicación y envía una vista previa a Telegram con botones interactivos `[✅ Aprobar y Publicar]` y `[❌ Descartar y Purgar]`.
    * **Telemetría de Hardware y GaTDSEQ (`/host`):** Monitorea CPU load, RAM real macOS, SSD, batería y convivencia cuantitativa.
    * **Analíticas en Vivo de YouTube (`/stats`):** Muestra suscriptores, visualizaciones totales y rendimiento de subidas recientes vía API v3.
    * **Gestión Dinámica de Canales (`/channels`):** Activa, desactiva o añade fuentes (`/addchannel`) directamente desde el chat.
+
+---
+
+## 📡 Directorio Oficial de Fuentes Monitorizadas (22 Canales)
+
+El pipeline vigila periódicamente las fuentes de mayor credibilidad, alcance e impacto cultural divididas en cuatro cuadrantes estratégicos:
+
+| Categoría | Creador / Medio | Enlace Oficial | Idioma | Filtro GTA |
+| :--- | :--- | :--- | :---: | :---: |
+| 👑 **Oficiales & Análisis Técnico** | **Rockstar Games** | [`@RockstarGames`](https://youtube.com/@RockstarGames) | EN | No |
+| | **GTA Series Videos** | [`@GTASeriesVideos`](https://youtube.com/@GTASeriesVideos) | EN | No |
+| | **TGG** | [`@TGG`](https://youtube.com/@TGG) | EN | No |
+| | **LegacyKillaHD** | [`@LegacyKillaHD`](https://youtube.com/@LegacyKillaHD) | EN | No |
+| | **DarkViperAU** | [`@DarkViperAU`](https://youtube.com/@DarkViperAU) | EN | Sí |
+| | **Mors Mutual** | [`@MorsMutual`](https://youtube.com/@MorsMutual) | EN | No |
+| | **IGN** | [`@IGN`](https://youtube.com/@IGN) | EN | Sí |
+| | **GameSpot** | [`@GameSpot`](https://youtube.com/@GameSpot) | EN | Sí |
+| 🎙️ **Streamers Top Hispanos** | **DaniRep** | [`@TheDaniRep`](https://youtube.com/@TheDaniRep) | ES | Sí |
+| | **IlloJuan (LMDShow)** | [`@LMDShow`](https://youtube.com/@LMDShow) | ES | Sí |
+| | **ElXokas** | [`@elxokas`](https://youtube.com/@elxokas) | ES | Sí |
+| | **Ibai Llanos** | [`@IbaiLlanos`](https://youtube.com/@IbaiLlanos) | ES | Sí |
+| | **AuronPlay** | [`@Auron`](https://youtube.com/@Auron) | ES | Sí |
+| | **Rubius Z** | [`@elrubiusOMG`](https://youtube.com/@elrubiusOMG) | ES | Sí |
+| | **TheGrefg** | [`@TheGrefg`](https://youtube.com/@TheGrefg) | ES | Sí |
+| | **Nexxuz HD** | [`@NexxuzHD`](https://youtube.com/@NexxuzHD) | ES | Sí |
+| | **DjMaRiiO** | [`@DjMaRiiO`](https://youtube.com/@DjMaRiiO) | ES | Sí |
+| | **Pelicanger (LatAm)** | [`@Pelicanger`](https://youtube.com/@Pelicanger) | ES | Sí |
+| 📰 **Prensa Especializada (España)** | **3DJuegos** | [`@3djuegos`](https://youtube.com/@3djuegos) | ES | Sí |
+| | **Vandal** | [`@vandal`](https://youtube.com/@vandal) | ES | Sí |
+| | **Hobby Consolas** | [`@HobbyConsolas`](https://youtube.com/@HobbyConsolas) | ES | Sí |
+| | **Eurogamer España** | [`@eurogamerspain`](https://youtube.com/@eurogamerspain) | ES | Sí |
+
+---
+
+## 🔥 Motor de Descubrimiento Viral y Algoritmo de Engagement (`src/viral_discovery.py`)
+
+A diferencia de los sistemas tradicionales que dependen exclusivamente de listas estáticas, el sistema incorpora un **Radar Viral Autónomo** que rastrea dinámicamente YouTube mediante múltiples consultas simultáneas en busca de clips emergentes con alto engagement:
+
+### 1. Modelo de Puntuación Multi-Factor (0 a 100 Puntos):
+$$\text{Score} = \text{Score}_{\text{Vistas}} + \text{Score}_{\text{Formato}} + \text{Score}_{\text{Keywords}} + \text{Score}_{\text{Impulso}}$$
+
+* **Volumen de Vistas (0 - 40 pts):** Escala progresiva: $\ge 500\text{K}$ (40 pts), $\ge 100\text{K}$ (30 pts), $\ge 20\text{K}$ (20 pts), $\ge 5\text{K}$ (15 pts).
+* **Retención y Formato (0 - 30 pts):** Privilegia clips verticales de corta duración ($10\text{s} \le \text{duración} \le 65\text{s}$ otorgan 30 pts completos).
+* **Densidad de Palabras Clave Virales (0 - 20 pts):** Analiza la presencia de términos detonantes: `trailer 2`, `filtración`, `mapa`, `vice city`, `lucia`, `jason`, `leak`, `gameplay`, `fecha`, `exclusiva`.
+* **Bonificación de Tendencia (+10 pts):** Detección de etiquetas `#shorts` o revelaciones inmediatas.
+
+### 2. Censo Dinámico de Creadores Emergentes (`data/discovered_channels.json`):
+* Si el radar detecta un clip con puntuación superior a 60 cuyo creador no figura en la lista de monitoreo, lo etiqueta como `[NUEVO CANAL]` y almacena su historial y métricas.
+* La función `auto_register_top_channels()` (accesible con 1 toque en Telegram) permite agregarlos directamente a `config/channels.json`.
 
 ---
 

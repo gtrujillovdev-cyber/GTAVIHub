@@ -784,19 +784,33 @@ def start_telegram_bot_daemon():
                 cmd = text.split()[0].lower()
 
                 # B) Comandos del Teclado Persistente y Slash Commands
-                if cmd in ["/start", "/help", "/menu"]:
+                if cmd in ["/start", "/help", "/menu", "/guia", "/docs"]:
                     help_msg = (
-                        "🎮 *CENTRO DE MANDO — GTA VI HUB SPAIN:*\n\n"
-                        "• `🚀 Forzar Escaneo` — Busca novedades y publica automáticamente.\n"
-                        "• `📊 Dashboard` — Estado de almacenamiento, GPU y cuotas.\n"
-                        "• `🎬 Último Clip` — Ver miniatura y metadatos del clip más reciente.\n"
-                        "• `🖥️ Estado Host / GaTDSEQ` — Carga CPU, RAM, SSD, batería y quant.\n"
-                        "• `📈 Métricas YouTube` — Suscriptores, vistas totales y últimos vídeos.\n"
-                        "• `⚙️ Canales` — Lista interactiva para activar/desactivar fuentes.\n"
-                        "• `🔥 Radar Viral` — Descubre clips y creadores en tendencia con máximo engagement.\n"
-                        "• `🛡️ Modo Co-Pilot` — Activar/desactivar aprobación previa con 1 clic.\n"
-                        "• `🧹 Limpiar Temp` — Purgar archivos de render a 0 bytes.\n\n"
-                        "📥 *Ingesta Rápida:* Pega cualquier enlace de YouTube o TikTok directamente en este chat."
+                        "🎮 *CENTRO DE MANDO MÓVIL — GTA VI HUB SPAIN*\n"
+                        + ("═" * 36) + "\n\n"
+                        + "📱 *BOTONES DE CONTROL EN PANTALLA:*\n"
+                        + "• `🚀 Forzar Escaneo` — Rastrea los 22 canales configurados y publica nuevos clips.\n"
+                        + "• `🔥 Radar Viral` — Rastrear clips de GTA 6 con mayor engagement y creadores emergentes.\n"
+                        + "• `🛡️ Modo Co-Pilot` — Activa/desactiva la puerta de enlace humana (1-clic para aprobar o purgar).\n"
+                        + "• `📊 Dashboard` — Estado de cuotas orgánicas, almacenamiento y sesiones de redes.\n"
+                        + "• `🖥️ Estado Host / GaTDSEQ` — CPU load, RAM real en Mac, SSD, batería y convivencia quant.\n"
+                        + "• `📈 Métricas YouTube` — Suscriptores, visualizaciones y analíticas en tiempo real vía API v3.\n"
+                        + "• `⚙️ Canales` — Conmutador interactivo para activar/pausar las 22 fuentes con 1 toque.\n"
+                        + "• `🎬 Último Clip` — Envía la miniatura renderizada y los metadatos del clip más reciente.\n"
+                        + "• `🧹 Limpiar Temp` — Purga estricta de archivos de trabajo volátiles a 0 bytes.\n\n"
+                        + "📥 *INGESTA BAJO DEMANDA DE ENLACES:*\n"
+                        + "Pega cualquier enlace de YouTube o TikTok en este chat. El bot detectará el vídeo y desplegará botones para elegir el formato:\n"
+                        + "  • `⚡ Short Vertical Hormozi`: Reencuadre 9:16 + subtítulos Pop Bounce.\n"
+                        + "  • `🎙️ Doblaje Neural`: Traducción de audio al español neutro + subtítulos.\n"
+                        + "  • `💬 Solo Subtítulos`: Audio original + subtítulos quemados en pantalla.\n\n"
+                        + "⌨️ *COMANDOS ADICIONALES:*\n"
+                        + "• `/addchannel <url> [nombre]` — Añade un canal al monitoreo continuo.\n"
+                        + "• `/delchannel <número o nombre>` — Da de baja una fuente.\n"
+                        + "• `/radar` o `/viral` — Ejecuta el Radar Viral de engagement.\n"
+                        + "• `/copilot` — Configura la aprobación táctil de publicaciones.\n"
+                        + "• `/audit` — Auditoría de directrices anti-strike y Fair Use.\n"
+                        + "• `/clean` — Limpieza inmediata de disco en el host.\n"
+                        + "• `/guia` — Vuelve a mostrar este manual completo."
                     )
                     send_telegram_alert(help_msg, reply_markup=get_persistent_menu_keyboard())
 

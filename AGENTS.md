@@ -93,7 +93,7 @@ Para evitar sobrecalentamiento, estrangulamiento térmico o degradación de los 
 ## 7. 🤖 Centro de Control Móvil Telegram & Modo Co-Pilot
 
 1. **Teclado Táctil Persistente (`ReplyKeyboardMarkup`)**:
-   - Barra inferior con acceso rápido a: `[🚀 Forzar Escaneo]`, `[📊 Dashboard]`, `[🎬 Último Clip]`, `[🖥️ Estado Host / GaTDSEQ]`, `[📈 Métricas YouTube]`, `[⚙️ Canales]`, `[🛡️ Modo Co-Pilot]`, `[🧹 Limpiar Temp]`.
+   - Barra inferior con acceso rápido a: `[🚀 Forzar Escaneo]`, `[📊 Dashboard]`, `[🎬 Último Clip]`, `[🖥️ Estado Host / GaTDSEQ]`, `[📈 Métricas YouTube]`, `[⚙️ Canales]`, `[🔥 Radar Viral]`, `[🛡️ Modo Co-Pilot]`, `[🧹 Limpiar Temp]`.
 2. **Ingesta Bajo Demanda de Enlaces**:
    - Al pegar cualquier enlace de YouTube o TikTok en el bot, se analizan los metadatos y se despliega un selector interactivo inline (`⚡ Short Hormozi`, `🎙️ Doblaje Neural`, `💬 Solo Subtítulos`).
 3. **Modo Co-Pilot (Puerta de Enlace Humana)**:
@@ -103,5 +103,8 @@ Para evitar sobrecalentamiento, estrangulamiento térmico o degradación de los 
    - `/host`: CPU load, RAM real en macOS, almacenamiento libre en SSD, batería y estado del quantitative worker de GaTDSEQ.
    - `/stats`: Suscriptores, visualizaciones y analíticas de los últimos clips mediante YouTube Data API v3 (`token.json`).
 5. **Gestión Dinámica de Canales**:
-   - `/channels`: Lista interactiva con conmutadores táctiles para activar/desactivar canales sin editar código.
+   - `/channels`: Lista interactiva con conmutadores táctiles para activar/desactivar las 22 fuentes sin editar código.
    - `/addchannel <url> [nombre]`: Inclusión inmediata de nuevas fuentes en `config/channels.json`.
+6. **Radar Viral y Algoritmo de Engagement (`src/viral_discovery.py`)**:
+   - `/radar` o botón `[🔥 Radar Viral]`: Escanea YouTube en tiempo real buscando clips emergentes con puntuación de engagement (0 a 100).
+   - Ingesta de 1 toque mediante botones `[⚡ Ingestar #1]` y auto-registro de creadores emergentes con `[➕ Añadir Nuevos Creadores]`.

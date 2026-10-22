@@ -22,6 +22,8 @@ Bienvenido a la documentación oficial del sistema de producción autónoma de c
 9. [Protocolo de Limpieza Estricta y Disco](#9-protocolo-de-limpieza-estricta-y-disco)
 10. [Protocolo de Coexistencia de Hardware con GaTDSEQ](#10-protocolo-de-coexistencia-de-hardware-con-gatdseq)
 11. [Centro de Control Móvil Telegram y Modo Co-Pilot](#11-centro-de-control-móvil-telegram-y-modo-co-pilot)
+12. [Motor de Descubrimiento Viral y Algoritmo de Engagement](#12-motor-de-descubrimiento-viral-y-algoritmo-de-engagement)
+13. [Directorio de Canales y Fuentes Autorizadas](#13-directorio-de-canales-y-fuentes-autorizadas)
 
 ---
 
@@ -322,6 +324,7 @@ En lugar de escribir comandos manualmente, la barra inferior de Telegram muestra
 - `[🖥️ Estado Host / GaTDSEQ]`: Carga de CPU, memoria RAM real, espacio en SSD, batería y quant.
 - `[📈 Métricas YouTube]`: Suscriptores, visualizaciones y analíticas de subidas recientes vía API v3.
 - `[⚙️ Canales]`: Panel inline interactivo para activar o pausar canales con 1 toque.
+- `[🔥 Radar Viral]`: Rastrea clips emergentes de GTA 6 con máximo engagement y clasifica los mejores contenidos.
 - `[🛡️ Modo Co-Pilot]`: Activa o desactiva la aprobación previa humana antes de publicar.
 - `[🧹 Limpiar Temp]`: Purga cualquier residuo en `temp/` a 0 bytes.
 
@@ -346,3 +349,41 @@ Para operar con total tranquilidad sin temor a publicaciones erróneas:
 - `/channels`: Despliega los canales monitorizados con botones `[✅]` y `[❌]` para conmutar su estado en vivo.
 - `/addchannel <url> [nombre]`: Añade una fuente directamente al monitoreo de `config/channels.json`.
 - `/delchannel <número o nombre>`: Da de baja una fuente.
+
+---
+
+## 12. Motor de Descubrimiento Viral y Algoritmo de Engagement
+
+Ubicado en `src/viral_discovery.py`, este motor rastrea dinámicamente YouTube mediante múltiples consultas simultáneas (`ytsearch`) en busca de clips sobre GTA 6 con tracción explosiva:
+
+### 1. Algoritmo de Puntuación Multi-Factor (0 a 100 Puntos)
+- **Volumen de Vistas (0 - 40 pts):** Escala logarítmica: $\ge 500\text{K}$ (40 pts), $\ge 100\text{K}$ (30 pts), $\ge 20\text{K}$ (20 pts), $\ge 5\text{K}$ (15 pts).
+- **Retención y Formato (0 - 30 pts):** Otorga la puntuación máxima a clips verticales de corta duración ($10\text{s} \le \text{duración} \le 65\text{s}$).
+- **Densidad de Palabras Clave Virales (0 - 20 pts):** Analiza la presencia de términos detonantes: `trailer 2`, `filtración`, `mapa`, `vice city`, `lucia`, `jason`, `leak`, `gameplay`, `fecha`, `exclusiva`.
+- **Bonificación de Impulso (+10 pts):** Detección de etiquetas `#shorts` o términos de revelación inmediata.
+
+### 2. Censo Dinámico de Creadores Emergentes (`data/discovered_channels.json`)
+- Si el radar detecta un clip con puntuación superior a 60 cuyo creador no figura en la lista de monitoreo, lo cataloga como `[NUEVO CANAL]`.
+- Al pulsar `[➕ Añadir Nuevos Creadores]` en Telegram o invocar `auto_register_top_channels()`, estos canales se agregan automáticamente a la lista permanente.
+
+### 3. Comandos de Terminal y Telegram
+```bash
+# Escanear el Radar Viral y mostrar el Leaderboard en terminal:
+./run.sh radar
+
+# Ingestar y publicar directamente el vídeo #1 en engagement:
+./run.sh --auto-viral
+```
+
+---
+
+## 13. Directorio de Canales y Fuentes Autorizadas
+
+La lista de fuentes en `config/channels.json` cuenta con 22 canales de referencia:
+
+1. **Oficiales & Análisis Técnico (Global / EN):**
+   - Rockstar Games, GTA Series Videos, TGG, LegacyKillaHD, DarkViperAU, Mors Mutual, IGN, GameSpot.
+2. **Streamers Top Hispanos (ES / LatAm):**
+   - DaniRep, IlloJuan (LMDShow), ElXokas, Ibai Llanos, AuronPlay, Rubius Z, TheGrefg, Nexxuz HD, DjMaRiiO, Pelicanger.
+3. **Prensa Especializada (ES):**
+   - 3DJuegos, Vandal, Hobby Consolas, Eurogamer España.
