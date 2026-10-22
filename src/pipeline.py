@@ -59,7 +59,17 @@ def process_single_video(
     # Auditoría inicial de almacenamiento
     enforce_storage_limits(max_mb=1000)
 
+    def report_stage(stage_text: str):
+        print(f"\n[*] {stage_text}")
+        try:
+            from .telegram_bot import send_telegram_alert
+            display_title = original_title or video_id
+            send_telegram_alert(f"{stage_text}\n🎬 `{display_title[:55]}`")
+        except Exception:
+            pass
+
     # 1. Descarga limpia
+    report_stage("📥 [1/5] Descargando vídeo y pistas originales (1080p)...")
     video_path, srt_path, detected_lang = download_video_and_subtitles(url, video_id)
     if not video_path:
         print(f"[!] Falló la descarga del vídeo {video_id}. Abortando.")
@@ -74,6 +84,7 @@ def process_single_video(
     is_short = force_short if force_short is not None else is_vertical
 
     # 2. Procesar/Traducir subtítulos si existen
+    report_stage("🤖 [2/5] Analizando con Gemini Flash y generando metadatos virales...")
     es_srt_path = None
     if srt_path and srt_path.exists():
         es_srt_path = TEMP_DIR / f"{video_id}_es.srt"
@@ -100,6 +111,7 @@ def process_single_video(
     hook_text = metadata.get("hook", "¡ANÁLISIS AL DETALLE!")
 
     # 5. Renderizado final transformado
+    report_stage("⚙️ [3/5] Renderizando vídeo 9:16 con VideoToolbox (Subtítulos Hormozi Pop Bounce)...")
     prefix = "SHORT" if is_short else "VIDEO"
     output_filename = f"{prefix}_{video_id}_ES.mp4"
     output_path = OUTPUT_DIR / output_filename
@@ -119,6 +131,7 @@ def process_single_video(
         return None
 
     # 6. Generación de Miniatura de alto CTR
+    report_stage("📸 [4/5] Generando miniatura personalizada de alto impacto...")
     thumb_path = OUTPUT_DIR / f"{prefix}_{video_id}_thumb.jpg"
     create_video_thumbnail(
         video_path=output_path,
@@ -195,6 +208,40 @@ def process_single_video(
     # 8. Publicación Directa (Multiplataforma o YouTube)
     uploaded_yt_id = None
     multiplatform_results = {}
+
+    if publish_all:
+        report_stage("🚀 [5/5] Publicando en YouTube Shorts, TikTok e Instagram Reels...")
+        publisher = SocialPublisher(dry_run=dry_run)
+        multiplatform_results = publisher.publish_all(
+            video_path=output_path,
+            metadata={
+                "title": metadata.get("title", f"GTA 6 - {original_title}").upper(),
+                "description": metadata.get("description", ""),
+                "thumbnail_path": thumb_path if thumb_path.exists() else None,
+                "original_url": url
+            },
+            creator_name=creator_name or "Rockstar Games",
+            stagger_delay_minutes=stagger_delay
+        )
+        full_info["multiplatform_urls"] = multiplatform_results
+        if multiplatform_results.get("youtube"):
+            full_info["uploaded_youtube_url"] = multiplatform_results["youtube"]
+            uploaded_yt_id = multiplatform_results["youtube"]
+    elif auto_upload:
+        report_stage("🚀 [5/5] Subiendo a YouTube Shorts vía API v3...")
+        uploaded_yt_id = upload_to_youtube(
+            video_path=output_path,
+            title=metadata.get("title", f"GTA 6 - {original_title}").upper(),
+            description=metadata.get("description", ""),
+            privacy_status=privacy_status,
+            is_short=is_short,
+            thumbnail_path=thumb_path if thumb_path.exists() else None
+        )
+        if uploaded_yt_id:
+            full_info["uploaded_youtube_url"] = f"https://youtu.be/{uploaded_yt_id}"
+
+    with open(meta_path, "w", encoding="utf-8") as f:
+        json.dump(full_info, f, indent=2, ensure_ascii=False)
 
     # 8. Registro en processed.json
     mark_video_processed({
