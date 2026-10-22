@@ -22,8 +22,8 @@ output/
 *.srt
 *.ass
 
-# Scripts temporales, pruebas y depuración
-test_*
+# Scripts temporales y depuración en la raíz
+/test_*.py
 frame_*
 scratch_*
 debug_*
