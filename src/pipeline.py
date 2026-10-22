@@ -194,7 +194,8 @@ def process_single_video(
                 thumbnail_path=thumb_path if thumb_path.exists() else None,
                 is_short=is_short,
                 mode=mode,
-                hook_text=hook_text
+                hook_text=hook_text,
+                original_url=url
             )
         except Exception as e:
             print(f"[Pipeline] Info Co-Pilot Telegram: {e}")

@@ -6,6 +6,8 @@ from src.telegram_bot import (
     get_copilot_approval_keyboard,
     get_copilot_toggle_keyboard,
     get_channels_inline_keyboard,
+    get_channel_links_inline_keyboard,
+    get_channels_profiles_report,
     get_dashboard_text
 )
 from src.copilot import is_copilot_enabled, set_copilot_enabled
@@ -46,19 +48,41 @@ class TestTelegramBot(unittest.TestCase):
         self.assertIn("⚙️ Canales", buttons)
         self.assertIn("🔥 Radar Viral", buttons)
         self.assertIn("🛡️ Modo Co-Pilot", buttons)
+        self.assertIn("🌐 Perfiles Oficiales", buttons)
 
     def test_inline_keyboards(self):
         ingest_kb = get_url_ingest_keyboard("test_token")
         self.assertIn("inline_keyboard", ingest_kb)
         
-        copilot_kb = get_copilot_approval_keyboard("vid_123")
+        copilot_kb = get_copilot_approval_keyboard("vid_123", original_url="https://www.youtube.com/watch?v=vid_123")
         self.assertIn("inline_keyboard", copilot_kb)
+        # Verificar que contiene botón de visualización con URL oficial
+        has_url_btn = any(btn.get("url") for row in copilot_kb["inline_keyboard"] for btn in row)
+        self.assertTrue(has_url_btn)
         
         toggle_kb = get_copilot_toggle_keyboard()
         self.assertIn("inline_keyboard", toggle_kb)
 
         chan_kb = get_channels_inline_keyboard()
         self.assertIn("inline_keyboard", chan_kb)
+
+        # Teclado de enlaces web a canales y perfiles oficiales
+        links_kb = get_channel_links_inline_keyboard(page=0)
+        self.assertIn("inline_keyboard", links_kb)
+        url_buttons = [btn for row in links_kb["inline_keyboard"] for btn in row if "url" in btn]
+        self.assertGreater(len(url_buttons), 0)
+        # Verificar que contiene enlaces a redes oficiales
+        urls = [b["url"] for b in url_buttons]
+        self.assertTrue(any("youtube.com" in u for u in urls))
+        self.assertTrue(any("tiktok.com" in u for u in urls))
+
+    def test_channels_profiles_report(self):
+        report = get_channels_profiles_report()
+        self.assertIn("PERFILES Y CANALES OFICIALES", report)
+        self.assertIn("GTA VI HUB SPAIN", report)
+        self.assertIn("Rockstar Games", report)
+        self.assertIn("https://www.youtube.com/@RockstarGames", report)
+        self.assertIn("tiktok.com/@gtavihubspain", report)
 
     def test_copilot_state_toggle(self):
         original = is_copilot_enabled()

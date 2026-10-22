@@ -299,9 +299,10 @@ def get_viral_radar_summary(top_candidates: Optional[List[Dict[str, Any]]] = Non
         views_str = f"{item.get('views', 0):,}"
         new_tag = " ⭐ *[NUEVO CREADOR]*" if item.get("is_new_channel") else ""
 
+        ch_url = item.get("channel_url") or item.get("url")
         summary += (
             f"{medal} *[{short_title}]({item['url']})*\n"
-            f"   👤 *Canal:* `{item['uploader']}`{new_tag}\n"
+            f"   👤 *Canal:* [{item['uploader']}]({ch_url}){new_tag}\n"
             f"   📊 *Score:* `{item['score']}/100` | 👁️ `{views_str}` vistas | ⏱️ `{dur_str}`\n\n"
         )
 

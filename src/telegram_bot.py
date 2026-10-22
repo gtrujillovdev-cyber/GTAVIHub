@@ -68,7 +68,7 @@ def get_persistent_menu_keyboard() -> Dict[str, Any]:
             [{"text": "🎬 Último Clip"}, {"text": "🖥️ Estado Host / GaTDSEQ"}],
             [{"text": "📈 Métricas YouTube"}, {"text": "⚙️ Canales"}],
             [{"text": "🔥 Radar Viral"}, {"text": "🛡️ Modo Co-Pilot"}],
-            [{"text": "🧹 Limpiar Temp"}]
+            [{"text": "🌐 Perfiles Oficiales"}, {"text": "🧹 Limpiar Temp"}]
         ],
         "resize_keyboard": True,
         "persistent": True
@@ -233,13 +233,17 @@ def get_url_ingest_keyboard(token_id: str) -> Dict[str, Any]:
         ]
     }
 
-def get_copilot_approval_keyboard(video_id: str) -> Dict[str, Any]:
-    """Teclado interactivo de aprobación/descarte en modo Co-Pilot."""
+def get_copilot_approval_keyboard(video_id: str, original_url: Optional[str] = None) -> Dict[str, Any]:
+    """Teclado interactivo de aprobación/descarte en modo Co-Pilot con enlace directo al vídeo."""
+    source_url = original_url or f"https://www.youtube.com/watch?v={video_id}"
     return {
         "inline_keyboard": [
             [
                 {"text": "✅ Aprobar y Publicar", "callback_data": f"copilot:approve:{video_id}"},
                 {"text": "❌ Descartar y Purgar", "callback_data": f"copilot:reject:{video_id}"}
+            ],
+            [
+                {"text": "👁️ Ver Vídeo Original en YouTube", "url": source_url}
             ]
         ]
     }
@@ -273,25 +277,80 @@ def get_channels_inline_keyboard() -> Dict[str, Any]:
     if row:
         buttons.append(row)
 
-    # Fila de control
+    # Fila de control y acceso a enlaces directos
     buttons.append([
-        {"text": "🔄 Refrescar", "callback_data": "chan_refresh"},
+        {"text": "🌐 Ver Enlaces Web Directos", "callback_data": "chan_mode:links"},
+        {"text": "🔄 Refrescar", "callback_data": "chan_refresh"}
+    ])
+    buttons.append([
         {"text": "ℹ️ Ayuda Comandos", "callback_data": "chan_help"}
     ])
 
     return {"inline_keyboard": buttons}
 
-def get_viral_radar_inline_keyboard(candidates: List[Dict[str, Any]]) -> Dict[str, Any]:
-    """Teclado interactivo para ingestar los clips más virales o registrar creadores nuevos."""
+def get_channel_links_inline_keyboard(page: int = 0) -> Dict[str, Any]:
+    """
+    Teclado interactivo con botones URL directos para abrir cada canal
+    en su plataforma oficial (YouTube, TikTok, Instagram) desde el móvil.
+    """
+    channels = list_monitored_channels()
     buttons = []
+
+    # 1. Perfiles Oficiales Propios de GTA VI Hub Spain
+    buttons.append([
+        {"text": "🔴 YouTube Shorts", "url": "https://www.youtube.com/channel/UCBOl2KuaHEoUWYWJqb7ID9Q"},
+        {"text": "🎵 TikTok (@gtavihubspain)", "url": "https://www.tiktok.com/@gtavihubspain"}
+    ])
+    buttons.append([
+        {"text": "📸 Instagram Reels", "url": "https://www.instagram.com/gtavihubspain/"},
+        {"text": "📊 YouTube Studio", "url": "https://studio.youtube.com/channel/UCBOl2KuaHEoUWYWJqb7ID9Q"}
+    ])
+
+    # 2. Canales Monitoreados Paginados (6 canales por página para vista limpia)
+    CH_PER_PAGE = 6
+    total_pages = max(1, (len(channels) + CH_PER_PAGE - 1) // CH_PER_PAGE)
+    page = max(0, min(page, total_pages - 1))
+
+    start_idx = page * CH_PER_PAGE
+    page_channels = channels[start_idx:start_idx + CH_PER_PAGE]
+
     row = []
-    for idx, c in enumerate(candidates[:4]):
-        row.append({"text": f"⚡ Ingestar #{idx+1}", "callback_data": f"viral:ingest:{idx}"})
+    for ch in page_channels:
+        short_name = ch.get("name", "Canal")[:14]
+        ch_url = ch.get("url") or "https://youtube.com"
+        row.append({"text": f"🔗 {short_name}", "url": ch_url})
         if len(row) == 2:
             buttons.append(row)
             row = []
     if row:
         buttons.append(row)
+
+    # 3. Fila de Navegación de páginas
+    nav_row = []
+    if page > 0:
+        nav_row.append({"text": "⬅️ Anterior", "callback_data": f"chan_page:{page-1}"})
+    nav_row.append({"text": f"📄 Pág. {page+1}/{total_pages}", "callback_data": "noop"})
+    if page < total_pages - 1:
+        nav_row.append({"text": "Siguiente ➡️", "callback_data": f"chan_page:{page+1}"})
+    buttons.append(nav_row)
+
+    # 4. Alternar a modo toggle ON/OFF
+    buttons.append([
+        {"text": "⚙️ Cambiar a Gestión ON/OFF", "callback_data": "chan_mode:toggle"},
+        {"text": "🔄 Refrescar", "callback_data": f"chan_page:{page}"}
+    ])
+
+    return {"inline_keyboard": buttons}
+
+def get_viral_radar_inline_keyboard(candidates: List[Dict[str, Any]]) -> Dict[str, Any]:
+    """Teclado interactivo para ingestar los clips más virales o abrirlos directamente en YouTube."""
+    buttons = []
+    for idx, c in enumerate(candidates[:4]):
+        vid_url = c.get("url") or f"https://www.youtube.com/watch?v={c.get('id')}"
+        buttons.append([
+            {"text": f"⚡ Ingestar #{idx+1}", "callback_data": f"viral:ingest:{idx}"},
+            {"text": f"👁️ Ver #{idx+1} en YouTube", "url": vid_url}
+        ])
 
     buttons.append([
         {"text": "➕ Añadir Nuevos Creadores", "callback_data": "viral:add_channels"},
@@ -310,9 +369,10 @@ def send_copilot_approval_request(
     thumbnail_path: Optional[Path] = None,
     is_short: bool = True,
     mode: str = "subs",
-    hook_text: str = ""
+    hook_text: str = "",
+    original_url: Optional[str] = None
 ) -> bool:
-    """Envía la tarjeta de revisión Co-Pilot a Telegram con botones de acción."""
+    """Envía la tarjeta de revisión Co-Pilot a Telegram con botones de acción y enlace de origen."""
     caption = (
         "🛡️ *CO-PILOT: VÍDEO EN ESPERA DE APROBACIÓN*\n"
         + ("═" * 36) + "\n\n"
@@ -324,7 +384,7 @@ def send_copilot_approval_request(
         + "⚖️ *Compliance:* `[✓ Fair Use y Atribución Listos]`\n\n"
         + "👇 *Pulsa una opción para proceder:*"
     )
-    keyboard = get_copilot_approval_keyboard(video_id)
+    keyboard = get_copilot_approval_keyboard(video_id, original_url=original_url)
 
     if thumbnail_path and thumbnail_path.exists():
         if send_telegram_photo(thumbnail_path, caption, reply_markup=keyboard):
@@ -358,6 +418,59 @@ def get_dashboard_text() -> str:
         + f"• Modo Co-Pilot: `{copilot_status}`\n\n"
         + "⚖️ *Políticas Anti-Strike:* `[✓ Compliant]`\n"
         + f"📡 *Canales Activos:* `{len(list_monitored_channels())} monitoreados`\n"
+    )
+    return msg
+
+def get_channels_profiles_report() -> str:
+    """
+    Genera un informe interactivo con enlaces directos clicables
+    a todos los canales monitoreados y perfiles oficiales.
+    """
+    channels = list_monitored_channels()
+
+    msg = (
+        "🌐 *PERFILES Y CANALES OFICIALES*\n"
+        + ("═" * 36) + "\n\n"
+        + "🌴 *GTA VI HUB SPAIN (Perfiles Propios):*\n"
+        + "• 🔴 [YouTube Channel & Shorts](https://www.youtube.com/channel/UCBOl2KuaHEoUWYWJqb7ID9Q) (`@gtavihubspain`)\n"
+        + "• 🎵 [TikTok Oficial](https://www.tiktok.com/@gtavihubspain) (`@gtavihubspain`)\n"
+        + "• 📸 [Instagram Reels](https://www.instagram.com/gtavihubspain/) (`@gtavihubspain`)\n"
+        + "• 📊 [YouTube Studio](https://studio.youtube.com/channel/UCBOl2KuaHEoUWYWJqb7ID9Q)\n"
+        + "• 🤖 [Bot Mobile Host](https://t.me/gtavihub_spain_bot) (`@gtavihub_spain_bot`)\n\n"
+        + f"📡 *CANALES MONITOREADOS ({len(channels)} CREADORES):*\n"
+    )
+
+    categorized: Dict[str, List[str]] = {
+        "🌟 OFICIALES & ANÁLISIS TÉCNICO": [],
+        "🇪🇸 COMUNIDAD ESPAÑA & TOP STREAMERS": [],
+        "📰 MEDIOS & PRENSA ESPECIALIZADA": [],
+        "➕ OTROS CREADORES": []
+    }
+
+    for ch in channels:
+        name = ch.get("name", "Canal")
+        url = ch.get("url", "https://youtube.com")
+        status = "✅" if ch.get("enabled", True) else "⏸️"
+        lang = f"`[{ch.get('lang', 'en').upper()}]`"
+        line = f"• {status} [{name}]({url}) {lang}"
+
+        ch_type = ch.get("type", "").lower()
+        if any(k in ch_type for k in ["official", "breakdowns", "gta_authority", "insider", "shorts_memes", "gta_creator"]):
+            categorized["🌟 OFICIALES & ANÁLISIS TÉCNICO"].append(line)
+        elif any(k in ch_type for k in ["spanish", "streamer", "top_creator"]):
+            categorized["🇪🇸 COMUNIDAD ESPAÑA & TOP STREAMERS"].append(line)
+        elif any(k in ch_type for k in ["media", "press", "news"]):
+            categorized["📰 MEDIOS & PRENSA ESPECIALIZADA"].append(line)
+        else:
+            categorized["➕ OTROS CREADORES"].append(line)
+
+    for cat_name, entries in categorized.items():
+        if entries:
+            msg += f"\n*{cat_name}:*\n" + "\n".join(entries) + "\n"
+
+    msg += (
+        "\n💡 _Pulsa sobre el nombre de cualquier canal para abrir su plataforma oficial en YouTube._\n"
+        + "⚙️ _Para activar/desactivar canales usa los botones inferiores o_ `/channels`."
     )
     return msg
 
@@ -656,10 +769,48 @@ def handle_callback_query(cq: Dict[str, Any]):
         )
         return
 
+    if data == "chan_mode:links":
+        answer_callback_query(cq_id, "Cargando enlaces oficiales...")
+        edit_telegram_message(
+            msg_id,
+            get_channels_profiles_report(),
+            reply_markup=get_channel_links_inline_keyboard(page=0)
+        )
+        return
+
+    if data == "chan_mode:toggle":
+        answer_callback_query(cq_id, "Modo de activación ON/OFF.")
+        edit_telegram_message(
+            msg_id,
+            "⚙️ *GESTIÓN DE CANALES MONITOREADOS*\n_Pulsa sobre cualquier canal para activarlo/desactivarlo:_",
+            reply_markup=get_channels_inline_keyboard()
+        )
+        return
+
+    if data.startswith("chan_page:"):
+        page_idx = int(data.split(":")[1])
+        answer_callback_query(cq_id, f"Página {page_idx + 1}")
+        edit_telegram_message(
+            msg_id,
+            get_channels_profiles_report(),
+            reply_markup=get_channel_links_inline_keyboard(page=page_idx)
+        )
+        return
+
+    if data == "chan_text_list":
+        answer_callback_query(cq_id, "Reporte generado.")
+        send_telegram_alert(get_channels_profiles_report())
+        return
+
+    if data == "noop":
+        answer_callback_query(cq_id)
+        return
+
     if data == "chan_help":
         answer_callback_query(cq_id)
         help_txt = (
             "ℹ️ *Comandos para gestión rápida de canales:*\n\n"
+            "• `/perfiles` — Lista completa y botones URL a todos los canales.\n"
             "• `/addchannel <url> [nombre]` — Añade un canal al monitoreo.\n"
             "• `/delchannel <número o nombre>` — Elimina un canal.\n"
             "• `/channels` — Abre este panel interactivo."
@@ -798,7 +949,8 @@ def start_telegram_bot_daemon():
                         + "• `📊 Dashboard` — Estado de cuotas orgánicas, almacenamiento y sesiones de redes.\n"
                         + "• `🖥️ Estado Host / GaTDSEQ` — CPU load, RAM real en Mac, SSD, batería y convivencia quant.\n"
                         + "• `📈 Métricas YouTube` — Suscriptores, visualizaciones y analíticas en tiempo real vía API v3.\n"
-                        + "• `⚙️ Canales` — Conmutador interactivo para activar/pausar las 22 fuentes con 1 toque.\n"
+                        + "• `⚙️ Canales` — Conmutador interactivo y enlaces web a los 22 canales monitoreados.\n"
+                        + "• `🌐 Perfiles Oficiales` — Enlaces directos a los 22 creadores y redes propias (YouTube, TikTok, Instagram).\n"
                         + "• `🎬 Último Clip` — Envía la miniatura renderizada y los metadatos del clip más reciente.\n"
                         + "• `🧹 Limpiar Temp` — Purga estricta de archivos de trabajo volátiles a 0 bytes.\n\n"
                         + "📥 *INGESTA BAJO DEMANDA DE ENLACES:*\n"
@@ -807,6 +959,7 @@ def start_telegram_bot_daemon():
                         + "  • `🎙️ Doblaje Neural`: Traducción de audio al español neutro + subtítulos.\n"
                         + "  • `💬 Solo Subtítulos`: Audio original + subtítulos quemados en pantalla.\n\n"
                         + "⌨️ *COMANDOS ADICIONALES:*\n"
+                        + "• `/perfiles` o `/profiles` — Despliega todos los enlaces oficiales web y botones directos.\n"
                         + "• `/addchannel <url> [nombre]` — Añade un canal al monitoreo continuo.\n"
                         + "• `/delchannel <número o nombre>` — Da de baja una fuente.\n"
                         + "• `/radar` o `/viral` — Ejecuta el Radar Viral de engagement.\n"
@@ -833,10 +986,16 @@ def start_telegram_bot_daemon():
                 elif cmd in ["/stats", "/analytics", "📈"] or text == "📈 Métricas YouTube":
                     send_telegram_alert(get_youtube_analytics_report(), reply_markup=get_persistent_menu_keyboard())
 
-                elif cmd in ["/channels", "⚙️"] or text == "⚙️ Canales":
+                elif cmd in ["/channels", "/canales", "⚙️"] or text == "⚙️ Canales":
                     send_telegram_alert(
-                        "⚙️ *GESTIÓN DE CANALES MONITOREADOS*\n_Pulsa sobre cualquier canal para activarlo/desactivarlo:_",
-                        reply_markup=get_channels_inline_keyboard()
+                        get_channels_profiles_report(),
+                        reply_markup=get_channel_links_inline_keyboard(page=0)
+                    )
+
+                elif cmd in ["/profiles", "/perfiles", "/links", "/enlaces", "🌐"] or text == "🌐 Perfiles Oficiales":
+                    send_telegram_alert(
+                        get_channels_profiles_report(),
+                        reply_markup=get_channel_links_inline_keyboard(page=0)
                     )
 
                 elif cmd in ["/radar", "/viral", "🔥"] or text == "🔥 Radar Viral":
