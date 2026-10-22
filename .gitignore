@@ -35,3 +35,8 @@ cron.log
 # Archivos del sistema
 .DS_Store
 Thumbs.db
+
+# Base de datos local y estado en tiempo de ejecución
+data/processed.json
+processed.json
+data/.policy_audit.json
