@@ -114,7 +114,7 @@ def scan_viral_radar(
                 "--impersonate", "chrome",
                 "--no-check-certificates",
                 "--flat-playlist",
-                "--print", "%(id)s\t%(title)s\t%(duration)s\t%(view_count)s\t%(playlist_uploader)s\t%(channel_url)s\t%(webpage_url)s",
+                "--print", "%(id)s\t%(title)s\t%(duration)s\t%(view_count)s\t%(uploader)s\t%(channel_url)s\t%(webpage_url)s",
                 query
             ], capture_output=True, text=True, timeout=25)
 
