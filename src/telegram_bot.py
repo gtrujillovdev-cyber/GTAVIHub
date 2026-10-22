@@ -68,7 +68,7 @@ def get_persistent_menu_keyboard() -> Dict[str, Any]:
             [{"text": "🎬 Último Clip"}, {"text": "🖥️ Estado Host / GaTDSEQ"}],
             [{"text": "📈 Métricas YouTube"}, {"text": "⚙️ Canales"}],
             [{"text": "🔥 Radar Viral"}, {"text": "🛡️ Modo Co-Pilot"}],
-            [{"text": "🌐 Perfiles Oficiales"}, {"text": "🧹 Limpiar Temp"}]
+            [{"text": "🌐 Mis Canales"}, {"text": "🧹 Limpiar Temp"}]
         ],
         "resize_keyboard": True,
         "persistent": True
@@ -277,70 +277,31 @@ def get_channels_inline_keyboard() -> Dict[str, Any]:
     if row:
         buttons.append(row)
 
-    # Fila de control y acceso a enlaces directos
+    # Fila de control
     buttons.append([
-        {"text": "🌐 Ver Enlaces Web Directos", "callback_data": "chan_mode:links"},
-        {"text": "🔄 Refrescar", "callback_data": "chan_refresh"}
-    ])
-    buttons.append([
+        {"text": "🔄 Refrescar", "callback_data": "chan_refresh"},
         {"text": "ℹ️ Ayuda Comandos", "callback_data": "chan_help"}
     ])
 
     return {"inline_keyboard": buttons}
 
-def get_channel_links_inline_keyboard(page: int = 0) -> Dict[str, Any]:
-    """
-    Teclado interactivo con botones URL directos para abrir cada canal
-    en su plataforma oficial (YouTube, TikTok, Instagram) desde el móvil.
-    """
-    channels = list_monitored_channels()
-    buttons = []
-
-    # 1. Perfiles Oficiales Propios de GTA VI Hub Spain
-    buttons.append([
-        {"text": "🔴 YouTube Shorts", "url": "https://www.youtube.com/channel/UCBOl2KuaHEoUWYWJqb7ID9Q"},
-        {"text": "🎵 TikTok (@gtavihubspain)", "url": "https://www.tiktok.com/@gtavihubspain"}
-    ])
-    buttons.append([
-        {"text": "📸 Instagram Reels", "url": "https://www.instagram.com/gtavihubspain/"},
-        {"text": "📊 YouTube Studio", "url": "https://studio.youtube.com/channel/UCBOl2KuaHEoUWYWJqb7ID9Q"}
-    ])
-
-    # 2. Canales Monitoreados Paginados (6 canales por página para vista limpia)
-    CH_PER_PAGE = 6
-    total_pages = max(1, (len(channels) + CH_PER_PAGE - 1) // CH_PER_PAGE)
-    page = max(0, min(page, total_pages - 1))
-
-    start_idx = page * CH_PER_PAGE
-    page_channels = channels[start_idx:start_idx + CH_PER_PAGE]
-
-    row = []
-    for ch in page_channels:
-        short_name = ch.get("name", "Canal")[:14]
-        ch_url = ch.get("url") or "https://youtube.com"
-        row.append({"text": f"🔗 {short_name}", "url": ch_url})
-        if len(row) == 2:
-            buttons.append(row)
-            row = []
-    if row:
-        buttons.append(row)
-
-    # 3. Fila de Navegación de páginas
-    nav_row = []
-    if page > 0:
-        nav_row.append({"text": "⬅️ Anterior", "callback_data": f"chan_page:{page-1}"})
-    nav_row.append({"text": f"📄 Pág. {page+1}/{total_pages}", "callback_data": "noop"})
-    if page < total_pages - 1:
-        nav_row.append({"text": "Siguiente ➡️", "callback_data": f"chan_page:{page+1}"})
-    buttons.append(nav_row)
-
-    # 4. Alternar a modo toggle ON/OFF
-    buttons.append([
-        {"text": "⚙️ Cambiar a Gestión ON/OFF", "callback_data": "chan_mode:toggle"},
-        {"text": "🔄 Refrescar", "callback_data": f"chan_page:{page}"}
-    ])
-
-    return {"inline_keyboard": buttons}
+def get_my_channels_inline_keyboard() -> Dict[str, Any]:
+    """Teclado interactivo con botones URL directos a los canales y redes propios."""
+    return {
+        "inline_keyboard": [
+            [
+                {"text": "🔴 YouTube Shorts", "url": "https://www.youtube.com/channel/UCBOl2KuaHEoUWYWJqb7ID9Q/shorts"},
+                {"text": "📊 YouTube Studio", "url": "https://studio.youtube.com/channel/UCBOl2KuaHEoUWYWJqb7ID9Q"}
+            ],
+            [
+                {"text": "🎵 TikTok (@gtavihubspain)", "url": "https://www.tiktok.com/@gtavihubspain"},
+                {"text": "📸 Instagram (@gtavihubspain)", "url": "https://www.instagram.com/gtavihubspain/"}
+            ],
+            [
+                {"text": "🔴 Canal Principal YouTube", "url": "https://www.youtube.com/channel/UCBOl2KuaHEoUWYWJqb7ID9Q"}
+            ]
+        ]
+    }
 
 def get_viral_radar_inline_keyboard(candidates: List[Dict[str, Any]]) -> Dict[str, Any]:
     """Teclado interactivo para ingestar los clips más virales o abrirlos directamente en YouTube."""
@@ -421,58 +382,23 @@ def get_dashboard_text() -> str:
     )
     return msg
 
-def get_channels_profiles_report() -> str:
+def get_my_channels_report() -> str:
     """
-    Genera un informe interactivo con enlaces directos clicables
-    a todos los canales monitoreados y perfiles oficiales.
+    Genera el informe exclusivo con los enlaces a las redes y canales
+    propios de GTA VI Hub Spain.
     """
-    channels = list_monitored_channels()
-
-    msg = (
-        "🌐 *PERFILES Y CANALES OFICIALES*\n"
+    return (
+        "🌐 *MIS CANALES Y REDES SOCIALES*\n"
         + ("═" * 36) + "\n\n"
-        + "🌴 *GTA VI HUB SPAIN (Perfiles Propios):*\n"
-        + "• 🔴 [YouTube Channel & Shorts](https://www.youtube.com/channel/UCBOl2KuaHEoUWYWJqb7ID9Q) (`@gtavihubspain`)\n"
-        + "• 🎵 [TikTok Oficial](https://www.tiktok.com/@gtavihubspain) (`@gtavihubspain`)\n"
-        + "• 📸 [Instagram Reels](https://www.instagram.com/gtavihubspain/) (`@gtavihubspain`)\n"
-        + "• 📊 [YouTube Studio](https://studio.youtube.com/channel/UCBOl2KuaHEoUWYWJqb7ID9Q)\n"
-        + "• 🤖 [Bot Mobile Host](https://t.me/gtavihub_spain_bot) (`@gtavihub_spain_bot`)\n\n"
-        + f"📡 *CANALES MONITOREADOS ({len(channels)} CREADORES):*\n"
+        + "🌴 *GTA VI HUB SPAIN*\n\n"
+        + "• 🔴 *YouTube:* [Canal Oficial](https://www.youtube.com/channel/UCBOl2KuaHEoUWYWJqb7ID9Q)\n"
+        + "  └ 🎬 *Shorts:* [Ver Feed de Shorts](https://www.youtube.com/channel/UCBOl2KuaHEoUWYWJqb7ID9Q/shorts)\n"
+        + "  └ ⚙️ *Studio:* [Abrir YouTube Studio](https://studio.youtube.com/channel/UCBOl2KuaHEoUWYWJqb7ID9Q)\n\n"
+        + "• 🎵 *TikTok:* [Ver Perfil en TikTok](https://www.tiktok.com/@gtavihubspain) (`@gtavihubspain`)\n\n"
+        + "• 📸 *Instagram Reels:* [Ver Perfil en Instagram](https://www.instagram.com/gtavihubspain/) (`@gtavihubspain`)\n\n"
+        + "• 🤖 *Bot de Control:* [Chat del Bot](https://t.me/gtavihub_spain_bot) (`@gtavihub_spain_bot`)\n\n"
+        + "👇 _Toca cualquiera de los botones para abrir tu canal en su app oficial:_"
     )
-
-    categorized: Dict[str, List[str]] = {
-        "🌟 OFICIALES & ANÁLISIS TÉCNICO": [],
-        "🇪🇸 COMUNIDAD ESPAÑA & TOP STREAMERS": [],
-        "📰 MEDIOS & PRENSA ESPECIALIZADA": [],
-        "➕ OTROS CREADORES": []
-    }
-
-    for ch in channels:
-        name = ch.get("name", "Canal")
-        url = ch.get("url", "https://youtube.com")
-        status = "✅" if ch.get("enabled", True) else "⏸️"
-        lang = f"`[{ch.get('lang', 'en').upper()}]`"
-        line = f"• {status} [{name}]({url}) {lang}"
-
-        ch_type = ch.get("type", "").lower()
-        if any(k in ch_type for k in ["official", "breakdowns", "gta_authority", "insider", "shorts_memes", "gta_creator"]):
-            categorized["🌟 OFICIALES & ANÁLISIS TÉCNICO"].append(line)
-        elif any(k in ch_type for k in ["spanish", "streamer", "top_creator"]):
-            categorized["🇪🇸 COMUNIDAD ESPAÑA & TOP STREAMERS"].append(line)
-        elif any(k in ch_type for k in ["media", "press", "news"]):
-            categorized["📰 MEDIOS & PRENSA ESPECIALIZADA"].append(line)
-        else:
-            categorized["➕ OTROS CREADORES"].append(line)
-
-    for cat_name, entries in categorized.items():
-        if entries:
-            msg += f"\n*{cat_name}:*\n" + "\n".join(entries) + "\n"
-
-    msg += (
-        "\n💡 _Pulsa sobre el nombre de cualquier canal para abrir su plataforma oficial en YouTube._\n"
-        + "⚙️ _Para activar/desactivar canales usa los botones inferiores o_ `/channels`."
-    )
-    return msg
 
 # ═══════════════════════════════════════════════════════════════════
 # 5. EJECUCIÓN DE PROCESOS EN SEGUNDO PLANO (THREADS)
@@ -769,51 +695,14 @@ def handle_callback_query(cq: Dict[str, Any]):
         )
         return
 
-    if data == "chan_mode:links":
-        answer_callback_query(cq_id, "Cargando enlaces oficiales...")
-        edit_telegram_message(
-            msg_id,
-            get_channels_profiles_report(),
-            reply_markup=get_channel_links_inline_keyboard(page=0)
-        )
-        return
-
-    if data == "chan_mode:toggle":
-        answer_callback_query(cq_id, "Modo de activación ON/OFF.")
-        edit_telegram_message(
-            msg_id,
-            "⚙️ *GESTIÓN DE CANALES MONITOREADOS*\n_Pulsa sobre cualquier canal para activarlo/desactivarlo:_",
-            reply_markup=get_channels_inline_keyboard()
-        )
-        return
-
-    if data.startswith("chan_page:"):
-        page_idx = int(data.split(":")[1])
-        answer_callback_query(cq_id, f"Página {page_idx + 1}")
-        edit_telegram_message(
-            msg_id,
-            get_channels_profiles_report(),
-            reply_markup=get_channel_links_inline_keyboard(page=page_idx)
-        )
-        return
-
-    if data == "chan_text_list":
-        answer_callback_query(cq_id, "Reporte generado.")
-        send_telegram_alert(get_channels_profiles_report())
-        return
-
-    if data == "noop":
-        answer_callback_query(cq_id)
-        return
-
     if data == "chan_help":
         answer_callback_query(cq_id)
         help_txt = (
             "ℹ️ *Comandos para gestión rápida de canales:*\n\n"
-            "• `/perfiles` — Lista completa y botones URL a todos los canales.\n"
             "• `/addchannel <url> [nombre]` — Añade un canal al monitoreo.\n"
             "• `/delchannel <número o nombre>` — Elimina un canal.\n"
-            "• `/channels` — Abre este panel interactivo."
+            "• `/channels` — Abre el panel interactivo ON/OFF.\n"
+            "• `/miscanales` — Abre los enlaces directos a tus redes y canal."
         )
         send_telegram_alert(help_txt)
         return
@@ -949,8 +838,8 @@ def start_telegram_bot_daemon():
                         + "• `📊 Dashboard` — Estado de cuotas orgánicas, almacenamiento y sesiones de redes.\n"
                         + "• `🖥️ Estado Host / GaTDSEQ` — CPU load, RAM real en Mac, SSD, batería y convivencia quant.\n"
                         + "• `📈 Métricas YouTube` — Suscriptores, visualizaciones y analíticas en tiempo real vía API v3.\n"
-                        + "• `⚙️ Canales` — Conmutador interactivo y enlaces web a los 22 canales monitoreados.\n"
-                        + "• `🌐 Perfiles Oficiales` — Enlaces directos a los 22 creadores y redes propias (YouTube, TikTok, Instagram).\n"
+                        + "• `⚙️ Canales` — Conmutador interactivo para activar o pausar fuentes monitoreadas.\n"
+                        + "• `🌐 Mis Canales` — Enlaces directos a tus redes y canal (YouTube Shorts, Studio, TikTok, Instagram).\n"
                         + "• `🎬 Último Clip` — Envía la miniatura renderizada y los metadatos del clip más reciente.\n"
                         + "• `🧹 Limpiar Temp` — Purga estricta de archivos de trabajo volátiles a 0 bytes.\n\n"
                         + "📥 *INGESTA BAJO DEMANDA DE ENLACES:*\n"
@@ -959,7 +848,7 @@ def start_telegram_bot_daemon():
                         + "  • `🎙️ Doblaje Neural`: Traducción de audio al español neutro + subtítulos.\n"
                         + "  • `💬 Solo Subtítulos`: Audio original + subtítulos quemados en pantalla.\n\n"
                         + "⌨️ *COMANDOS ADICIONALES:*\n"
-                        + "• `/perfiles` o `/profiles` — Despliega todos los enlaces oficiales web y botones directos.\n"
+                        + "• `/miscanales` o `/redes` — Enlaces y accesos directos a tus canales propios.\n"
                         + "• `/addchannel <url> [nombre]` — Añade un canal al monitoreo continuo.\n"
                         + "• `/delchannel <número o nombre>` — Da de baja una fuente.\n"
                         + "• `/radar` o `/viral` — Ejecuta el Radar Viral de engagement.\n"
@@ -988,14 +877,14 @@ def start_telegram_bot_daemon():
 
                 elif cmd in ["/channels", "/canales", "⚙️"] or text == "⚙️ Canales":
                     send_telegram_alert(
-                        get_channels_profiles_report(),
-                        reply_markup=get_channel_links_inline_keyboard(page=0)
+                        "⚙️ *GESTIÓN DE CANALES MONITOREADOS*\n_Pulsa sobre cualquier canal para activarlo/desactivarlo:_",
+                        reply_markup=get_channels_inline_keyboard()
                     )
 
-                elif cmd in ["/profiles", "/perfiles", "/links", "/enlaces", "🌐"] or text == "🌐 Perfiles Oficiales":
+                elif cmd in ["/mychannels", "/miscanales", "/redes", "/perfiles", "/profiles", "🌐"] or text in ["🌐 Mis Canales", "🌐 Perfiles Oficiales"]:
                     send_telegram_alert(
-                        get_channels_profiles_report(),
-                        reply_markup=get_channel_links_inline_keyboard(page=0)
+                        get_my_channels_report(),
+                        reply_markup=get_my_channels_inline_keyboard()
                     )
 
                 elif cmd in ["/radar", "/viral", "🔥"] or text == "🔥 Radar Viral":

@@ -6,8 +6,8 @@ from src.telegram_bot import (
     get_copilot_approval_keyboard,
     get_copilot_toggle_keyboard,
     get_channels_inline_keyboard,
-    get_channel_links_inline_keyboard,
-    get_channels_profiles_report,
+    get_my_channels_inline_keyboard,
+    get_my_channels_report,
     get_dashboard_text
 )
 from src.copilot import is_copilot_enabled, set_copilot_enabled
@@ -48,7 +48,7 @@ class TestTelegramBot(unittest.TestCase):
         self.assertIn("⚙️ Canales", buttons)
         self.assertIn("🔥 Radar Viral", buttons)
         self.assertIn("🛡️ Modo Co-Pilot", buttons)
-        self.assertIn("🌐 Perfiles Oficiales", buttons)
+        self.assertIn("🌐 Mis Canales", buttons)
 
     def test_inline_keyboards(self):
         ingest_kb = get_url_ingest_keyboard("test_token")
@@ -66,23 +66,25 @@ class TestTelegramBot(unittest.TestCase):
         chan_kb = get_channels_inline_keyboard()
         self.assertIn("inline_keyboard", chan_kb)
 
-        # Teclado de enlaces web a canales y perfiles oficiales
-        links_kb = get_channel_links_inline_keyboard(page=0)
-        self.assertIn("inline_keyboard", links_kb)
-        url_buttons = [btn for row in links_kb["inline_keyboard"] for btn in row if "url" in btn]
+        # Teclado exclusivo de mis canales y redes
+        my_kb = get_my_channels_inline_keyboard()
+        self.assertIn("inline_keyboard", my_kb)
+        url_buttons = [btn for row in my_kb["inline_keyboard"] for btn in row if "url" in btn]
         self.assertGreater(len(url_buttons), 0)
-        # Verificar que contiene enlaces a redes oficiales
         urls = [b["url"] for b in url_buttons]
         self.assertTrue(any("youtube.com" in u for u in urls))
         self.assertTrue(any("tiktok.com" in u for u in urls))
+        self.assertTrue(any("instagram.com" in u for u in urls))
 
-    def test_channels_profiles_report(self):
-        report = get_channels_profiles_report()
-        self.assertIn("PERFILES Y CANALES OFICIALES", report)
+    def test_my_channels_report(self):
+        report = get_my_channels_report()
+        self.assertIn("MIS CANALES Y REDES SOCIALES", report)
         self.assertIn("GTA VI HUB SPAIN", report)
-        self.assertIn("Rockstar Games", report)
-        self.assertIn("https://www.youtube.com/@RockstarGames", report)
         self.assertIn("tiktok.com/@gtavihubspain", report)
+        self.assertIn("youtube.com/channel/UCBOl2KuaHEoUWYWJqb7ID9Q", report)
+        # Asegurarse de que no incluye canales de terceros
+        self.assertNotIn("DarkViperAU", report)
+        self.assertNotIn("IlloJuan", report)
 
     def test_copilot_state_toggle(self):
         original = is_copilot_enabled()
