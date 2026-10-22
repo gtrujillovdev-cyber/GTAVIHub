@@ -221,10 +221,23 @@ def send_telegram_notification(
     multiplatform_urls: Dict[str, Optional[str]],
     thumbnail_path: Optional[Path] = None
 ) -> bool:
-    """Envía un anuncio de publicación exitosa con enlaces y miniatura."""
+    """Envía un anuncio de publicación exitosa con enlaces, miniatura y texto para TikTok/Reels."""
     yt_url = multiplatform_urls.get("youtube") or "Pendiente"
     tt_url = multiplatform_urls.get("tiktok") or "Pendiente"
     ig_url = multiplatform_urls.get("instagram") or "Pendiente"
+
+    clean_title = (
+        title.replace("¡BRUTAL! 🔥 ", "")
+        .replace("REACCIÓN Y ANÁLISIS DE GTA 6: ", "")
+        .replace("REACCIÓN Y ANÁLISIS: ", "")
+        .strip()
+    )
+
+    tiktok_reels_copy = (
+        f"{clean_title} 🤯🌴\n\n"
+        f"Todo sobre GTA 6 en español en @gtavihubspain 🇪🇸\n"
+        f"#GTA6 #GTAVI #ViceCity #GTA6Leaks #RockstarGames #Gaming #Shorts #Reels"
+    )
 
     caption = (
         "🌴 *¡NUEVO VÍDEO PUBLICADO EN GTA VI HUB!* 🎮\n\n"
@@ -234,6 +247,8 @@ def send_telegram_notification(
         f"• 🔴 *YouTube Shorts:* [Ver en YouTube]({yt_url})\n"
         f"• 🎵 *TikTok:* [Ver en TikTok]({tt_url})\n"
         f"• 📸 *Instagram Reels:* [Ver en Instagram]({ig_url})\n\n"
+        "📋 *Texto para TikTok / Reels (1 toque para copiar):*\n"
+        f"`{tiktok_reels_copy}`\n\n"
         "⚖️ _Fair Use (Art. 107) verificado y créditos asignados._"
     )
 
@@ -1131,11 +1146,44 @@ def start_telegram_bot_daemon():
                     if mp4s:
                         latest = mp4s[0]
                         size_mb = latest.stat().st_size / (1024 * 1024)
+
+                        # 1. Recuperar metadatos dinámicos generados por la IA para este clip
+                        info_file = latest.with_name(f"{latest.stem}_info.json")
+                        video_title = "Novedades & Filtraciones de GTA 6"
+                        creator_name = "Rockstar Games"
+                        hook_text = "¡NO TE PIERDAS ESTA NOVEDAD DE GTA 6! 🌴🔥"
+
+                        if info_file.exists():
+                            try:
+                                info_data = json.loads(info_file.read_text(encoding="utf-8"))
+                                creator_name = info_data.get("creator") or creator_name
+                                yt_meta = info_data.get("youtube_metadata") or {}
+                                video_title = yt_meta.get("title") or info_data.get("original_title") or video_title
+                                hook_text = yt_meta.get("hook") or "¡NUEVA FILTRACIÓN!"
+                            except Exception as e:
+                                print(f"[Telegram] Error leyendo info.json: {e}")
+
+                        # Limpiar título para redes
+                        clean_title = (
+                            video_title.replace("¡BRUTAL! 🔥 ", "")
+                            .replace("REACCIÓN Y ANÁLISIS DE GTA 6: ", "")
+                            .replace("REACCIÓN Y ANÁLISIS: ", "")
+                            .strip()
+                        )
+
+                        # Generar texto viral único para TikTok e Instagram
+                        tiktok_reels_copy = (
+                            f"{hook_text} {clean_title} 🤯🌴\n\n"
+                            f"Todo sobre GTA 6 en español en @gtavihubspain 🇪🇸\n"
+                            f"#GTA6 #GTAVI #ViceCity #GTA6Leaks #RockstarGames #Gaming #Shorts #Reels"
+                        )
+
                         caption = (
-                            f"🎬 *ÚLTIMO CLIP RENDERIZADO (9:16)*\n\n"
-                            f"📁 Archivo: `{latest.name}`\n"
-                            f"⚖️ Tamaño: `{size_mb:.1f} MB`\n\n"
-                            f"📱 _Guarda este vídeo en tus fotos para publicarlo directamente en TikTok e Instagram Reels con un toque._"
+                            f"🎬 *{clean_title[:70]}*\n"
+                            f"👤 *Fuente:* `{creator_name}` | ⚖️ `{size_mb:.1f} MB`\n\n"
+                            f"📋 *Texto para TikTok / Reels (toca para copiar):*\n"
+                            f"`{tiktok_reels_copy}`\n\n"
+                            f"👉 *1 toque al cuadro de texto para copiar* ➔ Pulsa *Compartir* en el vídeo ➔ TikTok / Reels ➔ Pega y publica."
                         )
                         sent = False
                         if latest.stat().st_size < 48 * 1024 * 1024:
