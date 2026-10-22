@@ -27,7 +27,7 @@ def process_single_video(
     mode: str = "subs",
     force_short: Optional[bool] = None,
     auto_upload: bool = False,
-    privacy_status: str = "private",
+    privacy_status: Optional[str] = None,
     keep_local_video: bool = False,
     publish_all: bool = False,
     dry_run: bool = False,
@@ -47,13 +47,15 @@ def process_single_video(
     6. (Opcional) Sube a YouTube con miniatura y visibilidad indicada.
     7. Limpieza estricta de archivos temporales y vídeo local subido.
     """
+    effective_privacy = privacy_status or os.getenv("YOUTUBE_PRIVACY_STATUS", "public")
+
     print(f"\n=======================================================")
     print(f"[▶] INICIANDO PROCESAMIENTO EDITORIAL: {video_id}")
     print(f"    Título Original: {original_title}")
     print(f"    Creador: {creator_name or 'Rockstar Games'}")
     print(f"    Idioma Origen: {source_lang.upper()}")
     print(f"    Modo: {'Subtítulos Dinámicos' if mode == 'subs' else 'Doblaje de Voz'}")
-    print(f"    Auto-Subida: {'SÍ (' + privacy_status + ')' if auto_upload else 'NO'}")
+    print(f"    Auto-Subida: {'SÍ (' + effective_privacy.upper() + ')' if auto_upload else 'NO'}")
     print(f"=======================================================")
 
     # Auditoría inicial de almacenamiento
@@ -220,7 +222,8 @@ def process_single_video(
                 "title": metadata.get("title", f"GTA 6 - {original_title}").upper(),
                 "description": metadata.get("description", ""),
                 "thumbnail_path": thumb_path if thumb_path.exists() else None,
-                "original_url": url
+                "original_url": url,
+                "privacy": effective_privacy
             },
             creator_name=creator_name or "Rockstar Games",
             stagger_delay_minutes=stagger_delay
@@ -230,12 +233,12 @@ def process_single_video(
             full_info["uploaded_youtube_url"] = multiplatform_results["youtube"]
             uploaded_yt_id = multiplatform_results["youtube"]
     elif auto_upload:
-        report_stage("🚀 [5/5] Subiendo a YouTube Shorts vía API v3...")
+        report_stage(f"🚀 [5/5] Subiendo a YouTube Shorts ({effective_privacy.upper()}) vía API v3...")
         uploaded_yt_id = upload_to_youtube(
             video_path=output_path,
             title=metadata.get("title", f"GTA 6 - {original_title}").upper(),
             description=metadata.get("description", ""),
-            privacy_status=privacy_status,
+            privacy_status=effective_privacy,
             is_short=is_short,
             thumbnail_path=thumb_path if thumb_path.exists() else None
         )

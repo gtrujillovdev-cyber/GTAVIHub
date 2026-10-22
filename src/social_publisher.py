@@ -111,7 +111,7 @@ class SocialPublisher:
         video_path: Path,
         title: str,
         description: str,
-        privacy: str = "private",
+        privacy: str = "public",
         thumbnail_path: Optional[Path] = None
     ) -> Optional[str]:
         """Sube el vídeo a YouTube Shorts mediante API oficial v3."""
@@ -338,7 +338,8 @@ class SocialPublisher:
                     time.sleep(jitter_seconds)
 
             if plat == "youtube":
-                url = self.publish_to_youtube(video_path, title, desc, privacy="private", thumbnail_path=thumb)
+                target_privacy = metadata.get("privacy") or os.getenv("YOUTUBE_PRIVACY_STATUS", "public")
+                url = self.publish_to_youtube(video_path, title, desc, privacy=target_privacy, thumbnail_path=thumb)
                 results["youtube"] = url
             elif plat == "tiktok":
                 url = self.publish_to_tiktok(video_path, title, tags)

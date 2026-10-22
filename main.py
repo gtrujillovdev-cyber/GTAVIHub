@@ -62,8 +62,8 @@ def main():
     parser.add_argument(
         "--privacy",
         choices=["private", "public", "unlisted"],
-        default=os.getenv("YOUTUBE_PRIVACY_STATUS", "private"),
-        help="Visibilidad del vídeo en YouTube al subirlo: private (recomendado para revisar), public o unlisted."
+        default=os.getenv("YOUTUBE_PRIVACY_STATUS", "public"),
+        help="Visibilidad del vídeo en YouTube al subirlo: public (por defecto), private o unlisted."
     )
     parser.add_argument(
         "--max-videos",
