@@ -22,7 +22,7 @@ El proyecto sigue una estructura modular estricta. Queda terminantemente prohibi
 
 ## 2. 🛡️ Protocolo de Coexistencia de Hardware con GaTDSEQ (MacBook Pro)
 
-El host de producción 24/7 es un **MacBook Pro** (`gabrieltrujillovallejo@192.168.1.193`, Intel Core i5 Haswell, macOS Big Sur 11.7.11) que aloja simultáneamente el nodo de cálculo cuantitativo y backtesting **GaTDSEQ** (`~/GaTDSEQ_Worker/`).
+El host de producción 24/7 es un **MacBook Pro** (`gabrieltrujillovallejo@100.108.212.124` vía Tailscale VPN, Intel Core i5 Haswell, macOS Big Sur 11.7.11) que aloja simultáneamente el nodo de cálculo cuantitativo y backtesting **GaTDSEQ** (`~/GaTDSEQ_Worker/`).
 
 Para evitar sobrecalentamiento, estrangulamiento térmico o degradación de los modelos financieros:
 
@@ -41,17 +41,18 @@ Para evitar sobrecalentamiento, estrangulamiento térmico o degradación de los 
 
 ---
 
-## 3. 🖥️ Operación Headless 24/7 y macOS `launchd`
+## 3. 🖥️ Operación Headless 24/7, Resiliencia y Auto-Healing
 
-1. **Los 2 Demonios Residentes**:
-   - `com.gtavihub.telegrambot.plist`: Daemon residente (`KeepAlive: true`, `RunAtLoad: true`) con polling continuo para control remoto y notificaciones push con miniatura.
-   - `com.gtavihub.automation.plist`: Tarea programada en segundo plano para horas punta en España (**14:00** y **19:30 CET**).
-2. **Prevención de Suspensión**:
+1. **Watchdog y Auto-Healing Inmune a Reinicios (`deploy/launchd/watchdog.sh`)**:
+   - macOS Big Sur en arranque headless sin sesión de usuario Aqua bloquea `launchctl load` de agentes de usuario.
+   - La resiliencia está garantizada mediante `/usr/sbin/cron` (`*/5 * * * * ~/GTAVIHub/deploy/launchd/watchdog.sh`).
+   - El watchdog verifica cada 5 minutos la salud de `main.py --telegram` y lo resucita automáticamente si cayó o tras el reinicio preventivo diario de las **04:30 CET** (`com.gatdseq.maintenance`).
+2. **Tareas Programadas en Horas Punta**:
+   - Registradas en cron y launchd a las **14:00** y **19:30 CET** (picos de audiencia en España).
+3. **Prevención de Suspensión**:
    - En el host headless, mantener `sudo pmset -c disablesleep 1` activo.
-3. **Salida de Logs en Tiempo Real**:
-   - Pasar `-u` a Python y fijar `PYTHONUNBUFFERED=1` en los plist para garantizar que los logs se vuelquen sin demoras a `logs/`.
-4. **Instalación Automatizada**:
-   - Utilizar siempre `./deploy/launchd/install_daemons.sh` para actualizar o recargar servicios en el Mac.
+4. **Salida de Logs en Tiempo Real**:
+   - Pasar `-u` a Python y fijar `PYTHONUNBUFFERED=1` para garantizar que los logs se vuelquen sin demoras a `logs/`.
 
 ---
 
@@ -82,7 +83,25 @@ Para evitar sobrecalentamiento, estrangulamiento térmico o degradación de los 
 ## 6. 🔐 Seguridad y Despliegue por Terminal
 
 1. **Gestión de Secretos**:
-   - NUNCA subir a Git: `.env`, `token.json`, `client_secrets.json`, `.browser_profiles/`.
+   - NUNCA subir a Git: `.env`, `token.json`, `client_secrets.json`, `.browser_profiles/`, `data/processed.json`, `data/copilot_state.json`.
    - La transferencia hacia el MacBook Pro se realiza exclusivamente mediante `scp`.
 2. **Operación Exclusiva por Terminal**:
-   - Todas las configuraciones en el host remoto se realizan mediante SSH y scripts CLI automatizados.
+   - Todas las configuraciones en el host remoto se realizan mediante SSH y scripts CLI automatizados sobre la red Tailscale (`100.108.212.124`).
+
+---
+
+## 7. 🤖 Centro de Control Móvil Telegram & Modo Co-Pilot
+
+1. **Teclado Táctil Persistente (`ReplyKeyboardMarkup`)**:
+   - Barra inferior con acceso rápido a: `[🚀 Forzar Escaneo]`, `[📊 Dashboard]`, `[🎬 Último Clip]`, `[🖥️ Estado Host / GaTDSEQ]`, `[📈 Métricas YouTube]`, `[⚙️ Canales]`, `[🛡️ Modo Co-Pilot]`, `[🧹 Limpiar Temp]`.
+2. **Ingesta Bajo Demanda de Enlaces**:
+   - Al pegar cualquier enlace de YouTube o TikTok en el bot, se analizan los metadatos y se despliega un selector interactivo inline (`⚡ Short Hormozi`, `🎙️ Doblaje Neural`, `💬 Solo Subtítulos`).
+3. **Modo Co-Pilot (Puerta de Enlace Humana)**:
+   - Pausa la publicación de cualquier vídeo y envía una vista previa a Telegram con botones `[✅ Aprobar y Publicar]` y `[❌ Descartar y Purgar]`.
+   - Los vídeos aprobados se publican en segundo plano; los descartados purgan automáticamente sus archivos pesados de disco.
+4. **Telemetría y Métricas en Vivo**:
+   - `/host`: CPU load, RAM real en macOS, almacenamiento libre en SSD, batería y estado del quantitative worker de GaTDSEQ.
+   - `/stats`: Suscriptores, visualizaciones y analíticas de los últimos clips mediante YouTube Data API v3 (`token.json`).
+5. **Gestión Dinámica de Canales**:
+   - `/channels`: Lista interactiva con conmutadores táctiles para activar/desactivar canales sin editar código.
+   - `/addchannel <url> [nombre]`: Inclusión inmediata de nuevas fuentes en `config/channels.json`.

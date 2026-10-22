@@ -21,6 +21,7 @@ Bienvenido a la documentación oficial del sistema de producción autónoma de c
 8. [Automatización Desatendida con `launchd` en macOS](#8-automatización-desatendida-con-launchd-en-macos)
 9. [Protocolo de Limpieza Estricta y Disco](#9-protocolo-de-limpieza-estricta-y-disco)
 10. [Protocolo de Coexistencia de Hardware con GaTDSEQ](#10-protocolo-de-coexistencia-de-hardware-con-gatdseq)
+11. [Centro de Control Móvil Telegram y Modo Co-Pilot](#11-centro-de-control-móvil-telegram-y-modo-co-pilot)
 
 ---
 
@@ -306,3 +307,42 @@ Para garantizar que el motor de GTA VI Hub y los procesos de **GaTDSEQ** (cálcu
 
 ### 5. Consumo de Memoria en Reposo (~70 MB)
 - El bot en reposo consume únicamente el 0.9% de la RAM del equipo, y tras cada renderizado el recolector de basura purga todos los objetos de imagen para devolver la memoria al sistema operativo.
+
+---
+
+## 11. Centro de Control Móvil Telegram y Modo Co-Pilot
+
+El bot oficial de Telegram (**@gtavihub_spain_bot**) transforma tu teléfono móvil en un centro de comando táctil integral:
+
+### 1. Teclado Táctil Persistente (`ReplyKeyboardMarkup`)
+En lugar de escribir comandos manualmente, la barra inferior de Telegram muestra permanentemente botones de acceso rápido:
+- `[🚀 Forzar Escaneo]`: Dispara una búsqueda y publicación inmediata en segundo plano.
+- `[📊 Dashboard]`: Muestra cuotas, almacenamiento y sesiones de redes.
+- `[🎬 Último Clip]`: Envía la miniatura y datos del último vídeo generado.
+- `[🖥️ Estado Host / GaTDSEQ]`: Carga de CPU, memoria RAM real, espacio en SSD, batería y quant.
+- `[📈 Métricas YouTube]`: Suscriptores, visualizaciones y analíticas de subidas recientes vía API v3.
+- `[⚙️ Canales]`: Panel inline interactivo para activar o pausar canales con 1 toque.
+- `[🛡️ Modo Co-Pilot]`: Activa o desactiva la aprobación previa humana antes de publicar.
+- `[🧹 Limpiar Temp]`: Purga cualquier residuo en `temp/` a 0 bytes.
+
+### 2. Ingesta de Enlaces Bajo Demanda
+Pega cualquier URL de **YouTube** (`/watch?v=...`, `youtu.be/...`, `/shorts/...`) o **TikTok** en el chat:
+1. El bot detectará el enlace, extraerá el título y la duración.
+2. Presentará una botonera interactiva:
+   - `[⚡ Short Vertical Hormozi]`: Encuadre vertical 9:16 con subtítulos dinámicos Pop Bounce.
+   - `[🎙️ Doblaje Neural + Subs]`: Doblaje al español neutro mediante Edge-TTS y subtítulos.
+   - `[💬 Solo Subtítulos (Orig)]`: Conserva el audio original e inserta subtítulos quemados.
+   - `[❌ Cancelar]`
+3. Al pulsar una opción, el procesamiento arranca en un hilo secundario sin bloquear el bot.
+
+### 3. Modo Co-Pilot (Puerta de Enlace Humana)
+Para operar con total tranquilidad sin temor a publicaciones erróneas:
+- Al activar Co-Pilot (`/copilot`), el pipeline renderiza el vídeo y su miniatura, pero **pausa la publicación**.
+- Envía una tarjeta a Telegram con la miniatura y dos botones:
+  - `[✅ Aprobar y Publicar]`: Sube inmediatamente a YouTube Shorts, TikTok e Instagram Reels.
+  - `[❌ Descartar y Purgar]`: Cancela el contenido y elimina los archivos de vídeo del disco.
+
+### 4. Gestión Dinámica de Canales
+- `/channels`: Despliega los canales monitorizados con botones `[✅]` y `[❌]` para conmutar su estado en vivo.
+- `/addchannel <url> [nombre]`: Añade una fuente directamente al monitoreo de `config/channels.json`.
+- `/delchannel <número o nombre>`: Da de baja una fuente.
