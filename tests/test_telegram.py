@@ -8,6 +8,10 @@ from src.telegram_bot import (
     get_channels_inline_keyboard,
     get_my_channels_inline_keyboard,
     get_my_channels_report,
+    get_restart_confirm_keyboard,
+    get_system_actions_inline_keyboard,
+    update_heartbeat,
+    kill_hung_subprocesses,
     get_dashboard_text
 )
 from src.copilot import is_copilot_enabled, set_copilot_enabled
@@ -75,6 +79,30 @@ class TestTelegramBot(unittest.TestCase):
         self.assertTrue(any("youtube.com" in u for u in urls))
         self.assertTrue(any("tiktok.com" in u for u in urls))
         self.assertTrue(any("instagram.com" in u for u in urls))
+
+        # Teclados de reinicio y acciones de sistema
+        restart_kb = get_restart_confirm_keyboard()
+        self.assertIn("inline_keyboard", restart_kb)
+        restart_callbacks = [btn.get("callback_data") for row in restart_kb["inline_keyboard"] for btn in row]
+        self.assertIn("system:confirm_restart", restart_callbacks)
+        self.assertIn("system:cancel_restart", restart_callbacks)
+
+        actions_kb = get_system_actions_inline_keyboard()
+        self.assertIn("inline_keyboard", actions_kb)
+        action_callbacks = [btn.get("callback_data") for row in actions_kb["inline_keyboard"] for btn in row]
+        self.assertIn("system:ask_restart", action_callbacks)
+        self.assertIn("system:unlock", action_callbacks)
+
+    def test_heartbeat_and_subprocesses_cleanup(self):
+        update_heartbeat()
+        from src.config import DATA_DIR
+        hb_file = DATA_DIR / "heartbeat.txt"
+        self.assertTrue(hb_file.exists())
+        val = int(hb_file.read_text().strip())
+        self.assertGreater(val, 1700000000)
+
+        # Matar subprocesos huérfanos sin excepción
+        kill_hung_subprocesses()
 
     def test_my_channels_report(self):
         report = get_my_channels_report()

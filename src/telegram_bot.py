@@ -319,6 +319,70 @@ def get_viral_radar_inline_keyboard(candidates: List[Dict[str, Any]]) -> Dict[st
     ])
     return {"inline_keyboard": buttons}
 
+def get_restart_confirm_keyboard() -> Dict[str, Any]:
+    """Teclado interactivo de confirmación para reiniciar el servicio."""
+    return {
+        "inline_keyboard": [
+            [
+                {"text": "🔄 Sí, Reiniciar Ahora", "callback_data": "system:confirm_restart"},
+                {"text": "❌ Cancelar", "callback_data": "system:cancel_restart"}
+            ]
+        ]
+    }
+
+def get_system_actions_inline_keyboard() -> Dict[str, Any]:
+    """Botones de acción rápida para el Dashboard y Estado del Host."""
+    return {
+        "inline_keyboard": [
+            [
+                {"text": "🔄 Reiniciar Bot", "callback_data": "system:ask_restart"},
+                {"text": "🔓 Desbloquear Tareas", "callback_data": "system:unlock"}
+            ]
+        ]
+    }
+
+def kill_hung_subprocesses():
+    """Mata procesos hijos de ffmpeg o yt-dlp que hayan podido quedar bloqueados."""
+    try:
+        subprocess.run(["pkill", "-9", "-f", "ffmpeg.*SHORT_"], capture_output=True)
+        subprocess.run(["pkill", "-9", "-f", "yt_dlp"], capture_output=True)
+    except Exception:
+        pass
+
+def update_heartbeat():
+    """Actualiza el timestamp de heartbeat para supervisión continua del watchdog."""
+    try:
+        from .config import DATA_DIR
+        hb_file = DATA_DIR / "heartbeat.txt"
+        hb_file.write_text(str(int(time.time())))
+    except Exception:
+        pass
+
+def execute_bot_restart():
+    """Reinicia el proceso del bot de Telegram en caliente."""
+    global ACTIVE_TASK
+    with BACKGROUND_LOCK:
+        ACTIVE_TASK = None
+
+    kill_hung_subprocesses()
+
+    try:
+        from .cleaner import clean_temp_directory, clean_workspace_residuals
+        clean_temp_directory()
+        clean_workspace_residuals()
+    except Exception:
+        pass
+
+    send_telegram_alert(
+        "🔄 *Reiniciando Centro de Control...*\n"
+        + "Cancelando procesos colgados y arrancando nueva instancia. Listo en ~2 segundos."
+    )
+    time.sleep(1)
+
+    main_script = str(BASE_DIR / "main.py")
+    args = [sys.executable, main_script, "--telegram"]
+    os.execv(sys.executable, args)
+
 # ═══════════════════════════════════════════════════════════════════
 # 3. NOTIFICACIONES Y GESTIÓN DE CO-PILOT
 # ═══════════════════════════════════════════════════════════════════
@@ -744,6 +808,51 @@ def handle_callback_query(cq: Dict[str, Any]):
         t.start()
         return
 
+    # F) Acciones de Sistema y Reinicio de Emergencia
+    if data == "system:ask_restart":
+        answer_callback_query(cq_id)
+        msg_txt = (
+            "⚠️ *CONFIRMACIÓN DE REINICIO*\n"
+            + ("═" * 36) + "\n\n"
+            + "¿Deseas reiniciar el Centro de Control y cancelar cualquier proceso colgado?\n\n"
+            + "• Se liberarán bloqueos de hardware (`ACTIVE_TASK`).\n"
+            + "• Se purgarán procesos huérfanos de `ffmpeg` y `yt-dlp`.\n"
+            + "• El bot volverá a responder en ~2 segundos."
+        )
+        send_telegram_alert(msg_txt, reply_markup=get_restart_confirm_keyboard())
+        return
+
+    if data == "system:confirm_restart":
+        answer_callback_query(cq_id, "Reiniciando...")
+        edit_telegram_message(msg_id, "🔄 *Ejecutando reinicio del servicio...*")
+        t = threading.Thread(target=execute_bot_restart, daemon=True)
+        t.start()
+        return
+
+    if data == "system:cancel_restart":
+        answer_callback_query(cq_id, "Reinicio cancelado.")
+        edit_telegram_message(msg_id, "✓ *Reinicio cancelado.* El sistema continúa operando con normalidad.")
+        return
+
+    if data == "system:unlock":
+        answer_callback_query(cq_id, "Desbloqueando...")
+        with BACKGROUND_LOCK:
+            ACTIVE_TASK = None
+        kill_hung_subprocesses()
+        try:
+            from .cleaner import clean_temp_directory, clean_workspace_residuals
+            clean_temp_directory()
+            clean_workspace_residuals()
+        except Exception:
+            pass
+        edit_telegram_message(
+            msg_id,
+            "🔓 *Tareas y bloqueos liberados con éxito.*\n"
+            + "Se han cancelado procesos secundarios y limpiado temporales. El bot está libre para recibir nuevos comandos.",
+            reply_markup=get_system_actions_inline_keyboard()
+        )
+        return
+
     answer_callback_query(cq_id)
 
 # ═══════════════════════════════════════════════════════════════════
@@ -788,6 +897,7 @@ def start_telegram_bot_daemon():
 
     while True:
         try:
+            update_heartbeat()
             params = {"offset": last_update_id + 1, "timeout": 20}
             res = requests.get(url_updates, params=params, timeout=25)
             if res.status_code != 200:
@@ -848,6 +958,8 @@ def start_telegram_bot_daemon():
                         + "  • `🎙️ Doblaje Neural`: Traducción de audio al español neutro + subtítulos.\n"
                         + "  • `💬 Solo Subtítulos`: Audio original + subtítulos quemados en pantalla.\n\n"
                         + "⌨️ *COMANDOS ADICIONALES:*\n"
+                        + "• `/restart` o `/reiniciar` — Reinicia el bot en caliente si se queda pillado.\n"
+                        + "• `/unlock` — Libera bloqueos y tareas si el sistema está atascado.\n"
                         + "• `/miscanales` o `/redes` — Enlaces y accesos directos a tus canales propios.\n"
                         + "• `/addchannel <url> [nombre]` — Añade un canal al monitoreo continuo.\n"
                         + "• `/delchannel <número o nombre>` — Da de baja una fuente.\n"
@@ -867,10 +979,42 @@ def start_telegram_bot_daemon():
                         t.start()
 
                 elif cmd in ["/status", "📊"] or text == "📊 Dashboard":
-                    send_telegram_alert(get_dashboard_text(), reply_markup=get_persistent_menu_keyboard())
+                    send_telegram_alert(get_dashboard_text(), reply_markup=get_system_actions_inline_keyboard())
 
                 elif cmd in ["/host", "/telemetry", "🖥️"] or text == "🖥️ Estado Host / GaTDSEQ":
-                    send_telegram_alert(get_host_telemetry_report(), reply_markup=get_persistent_menu_keyboard())
+                    send_telegram_alert(get_host_telemetry_report(), reply_markup=get_system_actions_inline_keyboard())
+
+                elif cmd in ["/restart", "/reiniciar", "/reboot", "/reset"]:
+                    if "force" in text.lower():
+                        t = threading.Thread(target=execute_bot_restart, daemon=True)
+                        t.start()
+                    else:
+                        msg_txt = (
+                            "⚠️ *CONFIRMACIÓN DE REINICIO*\n"
+                            + ("═" * 36) + "\n\n"
+                            + "¿Deseas reiniciar el Centro de Control y cancelar cualquier proceso colgado?\n\n"
+                            + "• Se liberarán bloqueos de hardware (`ACTIVE_TASK`).\n"
+                            + "• Se purgarán procesos huérfanos de `ffmpeg` y `yt-dlp`.\n"
+                            + "• El bot volverá a responder en ~2 segundos.\n\n"
+                            + "💡 _Para reiniciar directamente sin confirmación usa_ `/restart force`."
+                        )
+                        send_telegram_alert(msg_txt, reply_markup=get_restart_confirm_keyboard())
+
+                elif cmd in ["/unlock", "/cancel", "/desbloquear"]:
+                    with BACKGROUND_LOCK:
+                        ACTIVE_TASK = None
+                    kill_hung_subprocesses()
+                    try:
+                        from .cleaner import clean_temp_directory, clean_workspace_residuals
+                        clean_temp_directory()
+                        clean_workspace_residuals()
+                    except Exception:
+                        pass
+                    send_telegram_alert(
+                        "🔓 *Bloqueo liberado con éxito.*\n"
+                        + "Se han cancelado procesos secundarios y limpiado temporales. El sistema vuelve a estar libre.",
+                        reply_markup=get_persistent_menu_keyboard()
+                    )
 
                 elif cmd in ["/stats", "/analytics", "📈"] or text == "📈 Métricas YouTube":
                     send_telegram_alert(get_youtube_analytics_report(), reply_markup=get_persistent_menu_keyboard())
