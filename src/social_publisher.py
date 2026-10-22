@@ -123,7 +123,7 @@ class SocialPublisher:
             print(f"[1/3 YouTube] [DRY RUN] Simulación exitosa. Vídeo marcado como listo ({privacy}).")
             return f"https://youtu.be/mock_yt_{video_path.stem}"
 
-        url = upload_to_youtube(
+        video_id = upload_to_youtube(
             video_path=video_path,
             title=title,
             description=description,
@@ -131,7 +131,9 @@ class SocialPublisher:
             is_short=True,
             thumbnail_path=thumbnail_path
         )
-        return url
+        if video_id:
+            return f"https://youtu.be/{video_id}" if not str(video_id).startswith("http") else str(video_id)
+        return None
 
     def publish_to_tiktok(
         self,
