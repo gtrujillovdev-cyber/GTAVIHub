@@ -64,9 +64,10 @@ def process_single_video(
         try:
             from .telegram_bot import send_telegram_alert
             display_title = original_title or video_id
-            send_telegram_alert(f"{stage_text}\n🎬 `{display_title[:55]}`")
-        except Exception:
-            pass
+            clean_title = str(display_title).replace("`", "").replace("*", "").replace("_", "")
+            send_telegram_alert(f"{stage_text}\n🎬 `{clean_title[:55]}`")
+        except Exception as e:
+            print(f"[Pipeline] Info Telegram Stage Alert: {e}")
 
     # 1. Descarga limpia
     report_stage("📥 [1/5] Descargando vídeo y pistas originales (1080p)...")

@@ -101,6 +101,9 @@ def send_telegram_alert(
 
     try:
         res = requests.post(url, json=payload, timeout=12)
+        if res.status_code != 200 and parse_mode:
+            payload.pop("parse_mode", None)
+            res = requests.post(url, json=payload, timeout=12)
         return res.status_code == 200
     except Exception as e:
         print(f"[Telegram] Error enviando mensaje: {e}")
