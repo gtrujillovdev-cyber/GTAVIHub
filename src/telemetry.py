@@ -95,6 +95,31 @@ def get_gatdseq_status() -> Dict[str, Any]:
     except Exception as e:
         return {"busy": False, "pids": [], "policy": "Estándar"}
 
+def get_active_processes() -> str:
+    """Lista los procesos clave del bot y pipeline activos en este momento."""
+    checks = [
+        ("Bot Telegram",  ["pgrep", "-f", "main.py --telegram"]),
+        ("Pipeline Auto", ["pgrep", "-f", "main.py --auto"]),
+        ("ffmpeg",        ["pgrep", "-x", "ffmpeg"]),
+        ("yt-dlp",        ["pgrep", "-f", "yt_dlp"]),
+        ("Chromium",      ["pgrep", "-f", "chromium"]),
+    ]
+    lines = []
+    for name, cmd in checks:
+        try:
+            out = subprocess.check_output(cmd, stderr=subprocess.DEVNULL).decode().strip()
+            pids = out.split() if out else []
+            if pids:
+                lines.append(f"• {name}: `Activo` (PID {', '.join(pids[:3])})")
+            else:
+                lines.append(f"• {name}: `Inactivo`")
+        except subprocess.CalledProcessError:
+            lines.append(f"• {name}: `Inactivo`")
+        except Exception:
+            lines.append(f"• {name}: `Desconocido`")
+    return "\n".join(lines)
+
+
 def get_host_telemetry_report() -> str:
     """
     Genera un informe completo y visual del estado del hardware, 
@@ -124,6 +149,8 @@ def get_host_telemetry_report() -> str:
 
     quant_indicator = "🟡 *ACTIVO* (Proceso Cuantitativo)" if gatdseq["busy"] else "🟢 *INACTIVO* (Hardware Disponible)"
     
+    procs_str = get_active_processes()
+
     report = (
         "🖥️ *TELEMETRÍA DEL HOST & GaTDSEQ*\n"
         + ("═" * 36) + "\n\n"
@@ -131,18 +158,20 @@ def get_host_telemetry_report() -> str:
         + f"🍏 *SO:* `macOS {system_ver} ({machine})`\n"
         + f"⏱️ *Uptime:* `{uptime_str}`\n\n"
         + "⚡ *Rendimiento de Hardware:*\n"
-        + f"• CPU Load: `{load_1:.2f}`, `{load_5:.2f}`, `{load_15:.2f}` ({cores} núcleos, ~{load_pct:.0f}%)\n"
+        + f"• CPU Load: `{load_1:.2f}` / `{load_5:.2f}` / `{load_15:.2f}` ({cores} núcleos, ~{load_pct:.0f}%)\n"
         + f"• Memoria RAM: `{ram_str}`\n"
         + f"• SSD Sistema: `{disk['used_gb']:.1f} GB / {disk['total_gb']:.1f} GB ({disk['pct_used']:.1f}% ocupado)`\n"
-        + f"• Batería / Energía: `{batt_str}`\n\n"
+        + f"• 🔋 Batería / Energía: `{batt_str}`\n\n"
+        + "🔄 *Procesos Activos:*\n"
+        + procs_str + "\n\n"
         + "📈 *Convivencia con GaTDSEQ:*\n"
         + f"• Motor Quant: {quant_indicator}\n"
         + f"• PIDs Quant: `{', '.join(gatdseq['pids']) if gatdseq['pids'] else 'Ninguno'}`\n"
         + f"• Prioridad Pipeline: `{gatdseq['policy']}`\n\n"
-        + "🛡️ *Almacenamiento Pipeline & Resiliencia:*\n"
-        + f"• Temp Pipeline: `{temp_mb:.2f} MB` {'(✓ Limpio)' if temp_mb < 5 else '(!)'}\n"
+        + "🛡️ *Almacenamiento & Resiliencia:*\n"
+        + f"• Temp Pipeline: `{temp_mb:.2f} MB` {'✓' if temp_mb < 5 else '⚠️'}\n"
         + f"• Output Staging: `{output_mb:.2f} MB`\n"
         + "• Watchdog Cron: `Activo (cada 5 min)`\n"
-        + "• Reinicio Diario: `04:30 CET (Mantenimiento)`\n"
+        + "• Reinicio Diario: `04:30 CET`\n"
     )
     return report
