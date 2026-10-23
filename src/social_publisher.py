@@ -206,15 +206,102 @@ class SocialPublisher:
                 except Exception:
                     pass
                 file_input = page.locator("input[type='file'][accept*='video']").first
-                if file_input.count() > 0:
-                    file_input.set_input_files(str(video_path))
-                    time.sleep(5)
-                    print("[✓] Archivo cargado en TikTok Creator Center.")
+                if file_input.count() == 0:
+                    print("[!] Selector de subida no encontrado en TikTok.")
                     browser.close()
-                    return f"https://www.tiktok.com/@gtavihubspain/video/uploaded_{video_path.stem}"
-                print("[!] Selector de subida no encontrado en TikTok.")
+                    return None
+
+                file_input.set_input_files(str(video_path))
+                print("[*] Esperando que el archivo se procese...")
+
+                # Esperar a que desaparezca el indicador de carga (hasta 3 min para vídeos grandes)
+                try:
+                    page.wait_for_selector(".upload-progress, [class*='uploading'], [class*='loading']",
+                                           state="detached", timeout=180000)
+                except Exception:
+                    pass
+                time.sleep(4)
+
+                print("[✓] Archivo cargado. Rellenando descripción...")
+
+                # Rellenar caption — TikTok usa un contenteditable o textarea
+                caption_selectors = [
+                    "[data-testid='caption-input']",
+                    "div[contenteditable='true']",
+                    "textarea[placeholder*='caption'], textarea[placeholder*='escribe']",
+                    ".caption-wrap textarea",
+                    ".editor-input-box div[contenteditable]",
+                ]
+                caption_filled = False
+                for sel in caption_selectors:
+                    try:
+                        el = page.locator(sel).first
+                        if el.count() > 0:
+                            el.click()
+                            time.sleep(0.5)
+                            el.fill(caption[:150])
+                            caption_filled = True
+                            print(f"[*] Caption introducida ({sel})")
+                            break
+                    except Exception:
+                        continue
+
+                if not caption_filled:
+                    # Fallback: buscar el primer contenteditable visible
+                    try:
+                        page.evaluate(f"document.querySelector('div[contenteditable=\"true\"]').innerText = {repr(caption[:150])}")
+                        caption_filled = True
+                        print("[*] Caption introducida vía JS")
+                    except Exception:
+                        print("[!] No se pudo rellenar la caption — se publicará sin descripción")
+
+                time.sleep(2)
+
+                # Hacer click en el botón de publicar
+                post_selectors = [
+                    "button:has-text('Post')",
+                    "button:has-text('Publicar')",
+                    "button[data-testid='post-button']",
+                    ".btn-post",
+                    "button.submit",
+                ]
+                posted = False
+                for sel in post_selectors:
+                    try:
+                        btn = page.locator(sel).first
+                        if btn.count() > 0 and btn.is_visible():
+                            btn.click()
+                            print(f"[*] Click en botón publicar ({sel})")
+                            posted = True
+                            break
+                    except Exception:
+                        continue
+
+                if not posted:
+                    print("[!] No se encontró botón de publicar — guardando como borrador")
+                    browser.close()
+                    return None
+
+                # Esperar confirmación (redirección o mensaje de éxito)
+                try:
+                    page.wait_for_url("**/manage**", timeout=30000)
+                except Exception:
+                    try:
+                        page.wait_for_selector("[class*='success'], [class*='uploaded'], [class*='posted']",
+                                               timeout=20000)
+                    except Exception:
+                        pass
+
+                time.sleep(3)
+                current_url = page.url
                 browser.close()
-                return None
+
+                if "manage" in current_url or "content" in current_url:
+                    print("[✓] Vídeo publicado en TikTok.")
+                    return f"https://www.tiktok.com/@gtavihubspain"
+                else:
+                    print(f"[*] URL final: {current_url} — vídeo posiblemente en revisión")
+                    return f"https://www.tiktok.com/@gtavihubspain"
         except ImportError:
             print("[TikTok] Playwright no está instalado o configurado aún. Puedes activarlo con: pip install playwright && playwright install chromium")
             print(f"[TikTok] Archivo preparado para subida manual o por navegador: {video_path}")
