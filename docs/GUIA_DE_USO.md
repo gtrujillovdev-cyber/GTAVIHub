@@ -81,8 +81,8 @@ MAX_VIDEOS_PER_RUN=2
 MAX_DAILY_UPLOADS_YOUTUBE=6   # límites diarios por plataforma (ver nota de política en AGENTS.md §5)
 MAX_DAILY_UPLOADS_TIKTOK=10
 MAX_DAILY_UPLOADS_INSTAGRAM=10
-TELEGRAM_BOT_TOKEN=8779197930:AAG3...
-TELEGRAM_CHAT_ID=1097154358
+TELEGRAM_BOT_TOKEN=tu_token_de_botfather
+TELEGRAM_CHAT_ID=tu_chat_id_numerico
 ```
 
 ### Paso 3: Autenticación con YouTube
