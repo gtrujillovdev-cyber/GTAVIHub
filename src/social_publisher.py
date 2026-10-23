@@ -181,12 +181,15 @@ class SocialPublisher:
                     "headless": headless,
                     "args": ["--disable-blink-features=AutomationControlled"]
                 }
-                if storage_state_file.exists():
-                    launch_kwargs["storage_state"] = str(storage_state_file)
 
                 browser = p.chromium.launch_persistent_context(**launch_kwargs)
+                if storage_state_file.exists():
+                    import json as _json
+                    state = _json.loads(storage_state_file.read_text())
+                    if state.get("cookies"):
+                        browser.add_cookies(state["cookies"])
                 page = browser.new_page()
-                page.goto("https://www.tiktok.com/creator-center/upload?from=upload", wait_until="networkidle")
+                page.goto("https://www.tiktok.com/creator-center/upload?from=upload", wait_until="load", timeout=60000)
                 time.sleep(3)
                 
                 # Si requiere inicio de sesión manual la primera vez
@@ -197,21 +200,26 @@ class SocialPublisher:
                     return None
 
                 print("[*] Subiendo archivo a TikTok Creator Center...")
-                file_input = page.locator("input[type='file']")
-                if file_input.count() > 0:
-                    file_input.set_input_files(str(video_path))
-                    time.sleep(5)
-                    print("[✓] Archivo cargado en TikTok Creator Center.")
-                    try:
-                        browser.storage_state(path=str(storage_state_file))
-                    except Exception:
-                        pass
-                    browser.close()
-                    return f"https://www.tiktok.com/@gtavihubspain/video/uploaded_{video_path.stem}"
-                else:
+                # El input puede estar en la página principal o dentro de un iframe
+                file_input = page.locator("input[type='file'], input[accept*='video']").first
+                if file_input.count() == 0:
+                    for frame in page.frames:
+                        fi = frame.locator("input[type='file'], input[accept*='video']")
+                        if fi.count() > 0:
+                            fi.set_input_files(str(video_path))
+                            time.sleep(5)
+                            print("[✓] Archivo cargado en TikTok Creator Center (iframe).")
+                            browser.close()
+                            return f"https://www.tiktok.com/@gtavihubspain/video/uploaded_{video_path.stem}"
                     print("[!] Selector de subida no encontrado en TikTok.")
                     browser.close()
                     return None
+                else:
+                    file_input.set_input_files(str(video_path))
+                    time.sleep(5)
+                    print("[✓] Archivo cargado en TikTok Creator Center.")
+                    browser.close()
+                    return f"https://www.tiktok.com/@gtavihubspain/video/uploaded_{video_path.stem}"
         except ImportError:
             print("[TikTok] Playwright no está instalado o configurado aún. Puedes activarlo con: pip install playwright && playwright install chromium")
             print(f"[TikTok] Archivo preparado para subida manual o por navegador: {video_path}")
@@ -270,10 +278,13 @@ class SocialPublisher:
                     "headless": headless,
                     "args": ["--disable-blink-features=AutomationControlled"]
                 }
-                if storage_state_file.exists():
-                    launch_kwargs["storage_state"] = str(storage_state_file)
 
                 browser = p.chromium.launch_persistent_context(**launch_kwargs)
+                if storage_state_file.exists():
+                    import json as _json
+                    state = _json.loads(storage_state_file.read_text())
+                    if state.get("cookies"):
+                        browser.add_cookies(state["cookies"])
                 page = browser.new_page()
                 page.goto("https://www.instagram.com/", wait_until="domcontentloaded")
                 time.sleep(3)
@@ -286,7 +297,7 @@ class SocialPublisher:
                 print("[*] Sesión activa confirmada en Instagram (@gtavihubspain).")
                 create_btn = page.locator("svg[aria-label='Nueva publicación'], svg[aria-label='New post'], a:has-text('Crear')").first
                 if create_btn.count() > 0:
-                    create_btn.click()
+                    page.evaluate("el => el.closest('a, button')?.click()", create_btn.element_handle())
                     time.sleep(2)
                     file_input = page.locator("input[type='file']").first
                     if file_input.count() > 0:
