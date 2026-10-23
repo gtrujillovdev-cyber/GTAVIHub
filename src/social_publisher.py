@@ -226,7 +226,8 @@ class SocialPublisher:
     def publish_to_instagram(
         self,
         video_path: Path,
-        caption: str
+        caption: str,
+        thumbnail_path: Optional[Path] = None
     ) -> Optional[str]:
         """
         Publica en Instagram Reels via instagrapi (API privada de Instagram).
@@ -272,14 +273,10 @@ class SocialPublisher:
             cl.dump_settings(str(session_file))
 
             print("[*] Subiendo Reel a Instagram...")
-            # Buscar miniatura pre-generada para evitar dependencia de MoviePy
-            thumb = video_path.parent / (video_path.stem + "_thumb.jpg")
-            if not thumb.exists():
-                thumb = Path(str(video_path) + ".jpg")
             clip_kwargs = {"caption": caption[:2200]}
-            if thumb.exists():
-                clip_kwargs["thumbnail"] = str(thumb)
-                print(f"[*] Usando miniatura existente: {thumb.name}")
+            if thumbnail_path and Path(thumbnail_path).exists():
+                clip_kwargs["thumbnail"] = str(thumbnail_path)
+                print(f"[*] Usando miniatura: {Path(thumbnail_path).name}")
             media = cl.clip_upload(video_path, **clip_kwargs)
             url = f"https://www.instagram.com/reel/{media.code}/"
             print(f"[✓] Reel publicado en Instagram: {url}")
@@ -340,7 +337,7 @@ class SocialPublisher:
                 results["tiktok"] = url
             elif plat == "instagram":
                 caption = f"{title}\n\n{desc[:1800]}\n\n#GTA6 #Gaming #Reels"
-                url = self.publish_to_instagram(video_path, caption)
+                url = self.publish_to_instagram(video_path, caption, thumbnail_path=thumb)
                 results["instagram"] = url
 
         print("\n" + "=" * 65)
