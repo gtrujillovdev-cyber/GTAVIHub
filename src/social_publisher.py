@@ -179,7 +179,7 @@ class SocialPublisher:
                 launch_kwargs = {
                     "user_data_dir": str(tiktok_profile),
                     "headless": headless,
-                    "args": ["--disable-blink-features=AutomationControlled"]
+                    "args": ["--disable-blink-features=AutomationControlled", "--no-sandbox"]
                 }
 
                 browser = p.chromium.launch_persistent_context(**launch_kwargs)
@@ -272,7 +272,15 @@ class SocialPublisher:
             cl.dump_settings(str(session_file))
 
             print("[*] Subiendo Reel a Instagram...")
-            media = cl.clip_upload(video_path, caption=caption[:2200])
+            # Buscar miniatura pre-generada para evitar dependencia de MoviePy
+            thumb = video_path.parent / (video_path.stem + "_thumb.jpg")
+            if not thumb.exists():
+                thumb = Path(str(video_path) + ".jpg")
+            clip_kwargs = {"caption": caption[:2200]}
+            if thumb.exists():
+                clip_kwargs["thumbnail"] = str(thumb)
+                print(f"[*] Usando miniatura existente: {thumb.name}")
+            media = cl.clip_upload(video_path, **clip_kwargs)
             url = f"https://www.instagram.com/reel/{media.code}/"
             print(f"[✓] Reel publicado en Instagram: {url}")
             return url
