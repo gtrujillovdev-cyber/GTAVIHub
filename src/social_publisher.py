@@ -200,26 +200,21 @@ class SocialPublisher:
                     return None
 
                 print("[*] Subiendo archivo a TikTok Creator Center...")
-                # El input puede estar en la página principal o dentro de un iframe
-                file_input = page.locator("input[type='file'], input[accept*='video']").first
-                if file_input.count() == 0:
-                    for frame in page.frames:
-                        fi = frame.locator("input[type='file'], input[accept*='video']")
-                        if fi.count() > 0:
-                            fi.set_input_files(str(video_path))
-                            time.sleep(5)
-                            print("[✓] Archivo cargado en TikTok Creator Center (iframe).")
-                            browser.close()
-                            return f"https://www.tiktok.com/@gtavihubspain/video/uploaded_{video_path.stem}"
-                    print("[!] Selector de subida no encontrado en TikTok.")
-                    browser.close()
-                    return None
-                else:
+                # Esperar a que React monte el input (puede tardar hasta 15s)
+                try:
+                    page.wait_for_selector("input[type='file'][accept*='video']", timeout=15000)
+                except Exception:
+                    pass
+                file_input = page.locator("input[type='file'][accept*='video']").first
+                if file_input.count() > 0:
                     file_input.set_input_files(str(video_path))
                     time.sleep(5)
                     print("[✓] Archivo cargado en TikTok Creator Center.")
                     browser.close()
                     return f"https://www.tiktok.com/@gtavihubspain/video/uploaded_{video_path.stem}"
+                print("[!] Selector de subida no encontrado en TikTok.")
+                browser.close()
+                return None
         except ImportError:
             print("[TikTok] Playwright no está instalado o configurado aún. Puedes activarlo con: pip install playwright && playwright install chromium")
             print(f"[TikTok] Archivo preparado para subida manual o por navegador: {video_path}")
@@ -234,8 +229,9 @@ class SocialPublisher:
         caption: str
     ) -> Optional[str]:
         """
-        Publica en Instagram Reels mediante sesión persistente local
-        o mediante Meta Graph API oficial.
+        Publica en Instagram Reels via instagrapi (API privada de Instagram).
+        Credenciales en .env: INSTAGRAM_USERNAME, INSTAGRAM_PASSWORD.
+        Session cache en assets/.browser_profiles/instagrapi_session.json.
         """
         print(f"\n[3/3 Instagram] Preparando subida a Instagram Reels (@gtavihubspain)...")
         if not AntiBanValidator.check_daily_limit("instagram"):
@@ -245,76 +241,44 @@ class SocialPublisher:
             print(f"[3/3 Instagram] [DRY RUN] Simulación exitosa. Caption: '{caption[:60]}...'")
             return f"https://www.instagram.com/reel/mock_{video_path.stem}"
 
-        # Comprobar si existen credenciales de Meta Graph API en .env
-        ig_user_id = os.getenv("INSTAGRAM_ACCOUNT_ID")
-        ig_access_token = os.getenv("INSTAGRAM_ACCESS_TOKEN")
+        ig_user = os.getenv("INSTAGRAM_USERNAME")
+        ig_pass = os.getenv("INSTAGRAM_PASSWORD")
+        if not ig_user or not ig_pass:
+            print("[Instagram] Faltan INSTAGRAM_USERNAME / INSTAGRAM_PASSWORD en .env")
+            return None
 
-        if ig_user_id and ig_access_token:
-            print("[*] Publicando vía Meta Graph API oficial...")
-            try:
-                import requests
-                container_url = f"https://graph.facebook.com/v20.0/{ig_user_id}/media"
-                payload = {
-                    "media_type": "REELS",
-                    "caption": caption[:2200],
-                    "share_to_feed": True,
-                    "access_token": ig_access_token
-                }
-                print("[Instagram] Meta Graph API requiere URL pública del vídeo. Usando modo sesión local...")
-            except Exception as e:
-                print(f"[Instagram API] Error: {e}")
+        session_file = BROWSER_PROFILE_DIR / "instagrapi_session.json"
+        BROWSER_PROFILE_DIR.mkdir(parents=True, exist_ok=True)
 
-        # Subida directa mediante sesión de navegador persistente
-        ig_profile = BROWSER_PROFILE_DIR / "tiktok_user_data"
         try:
-            from playwright.sync_api import sync_playwright
-            headless = os.getenv("HEADLESS_BROWSER", "false").lower() in ["true", "1", "yes"]
-            storage_state_file = BROWSER_PROFILE_DIR / "storage_state.json"
+            from instagrapi import Client
+            cl = Client()
+            cl.delay_range = [2, 5]
 
-            print(f"[*] Abriendo sesión persistente de Instagram en {ig_profile} (headless={headless})...")
-            with sync_playwright() as p:
-                launch_kwargs = {
-                    "user_data_dir": str(ig_profile),
-                    "headless": headless,
-                    "args": ["--disable-blink-features=AutomationControlled"]
-                }
+            if session_file.exists():
+                try:
+                    cl.load_settings(str(session_file))
+                    cl.login(ig_user, ig_pass)
+                    print("[*] Sesión de Instagram restaurada desde cache.")
+                except Exception:
+                    print("[*] Cache expirado, haciendo login completo...")
+                    cl = Client()
+                    cl.delay_range = [2, 5]
+                    cl.login(ig_user, ig_pass)
+            else:
+                cl.login(ig_user, ig_pass)
+                print("[*] Login en Instagram completado.")
 
-                browser = p.chromium.launch_persistent_context(**launch_kwargs)
-                if storage_state_file.exists():
-                    import json as _json
-                    state = _json.loads(storage_state_file.read_text())
-                    if state.get("cookies"):
-                        browser.add_cookies(state["cookies"])
-                page = browser.new_page()
-                page.goto("https://www.instagram.com/", wait_until="domcontentloaded")
-                time.sleep(3)
+            cl.dump_settings(str(session_file))
 
-                if "accounts/login" in page.url.lower():
-                    print("[!] Instagram requiere inicio de sesión. Por favor inicia sesión con @gtavihubspain.")
-                    browser.close()
-                    return None
+            print("[*] Subiendo Reel a Instagram...")
+            media = cl.clip_upload(video_path, caption=caption[:2200])
+            url = f"https://www.instagram.com/reel/{media.code}/"
+            print(f"[✓] Reel publicado en Instagram: {url}")
+            return url
 
-                print("[*] Sesión activa confirmada en Instagram (@gtavihubspain).")
-                create_btn = page.locator("svg[aria-label='Nueva publicación'], svg[aria-label='New post'], a:has-text('Crear')").first
-                if create_btn.count() > 0:
-                    page.evaluate("el => el.closest('a, button')?.click()", create_btn.element_handle())
-                    time.sleep(2)
-                    file_input = page.locator("input[type='file']").first
-                    if file_input.count() > 0:
-                        file_input.set_input_files(str(video_path))
-                        time.sleep(4)
-                        print("[✓] Vídeo cargado en Instagram Reels.")
-                        try:
-                            browser.storage_state(path=str(storage_state_file))
-                        except Exception:
-                            pass
-                        browser.close()
-                        return f"https://www.instagram.com/reel/uploaded_{video_path.stem}"
-
-                browser.close()
-                return "https://www.instagram.com/gtavihubspain/"
         except Exception as e:
-            print(f"[Instagram] Error en subida por navegador: {e}")
+            print(f"[Instagram] Error con instagrapi: {e}")
             return None
 
     def publish_all(

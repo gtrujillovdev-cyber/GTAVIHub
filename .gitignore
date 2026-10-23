@@ -45,3 +45,7 @@ data/copilot_state.json
 data/pending_approvals/
 data/discovered_channels.json
 data/heartbeat.txt
+
+.codegraph/
+branding_token.json
+scripts/_inspect_ig.py
