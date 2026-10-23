@@ -928,6 +928,7 @@ def start_telegram_bot_daemon():
     print("[*] Ingesta bajo demanda & Co-Pilot: ACTIVOS")
     print("=" * 65 + "\n")
 
+    global ACTIVE_TASK
     last_update_id = 0
     url_updates = get_api_url("getUpdates")
 
@@ -942,8 +943,8 @@ def start_telegram_bot_daemon():
     while True:
         try:
             update_heartbeat()
-            params = {"offset": last_update_id + 1, "timeout": 20}
-            res = requests.get(url_updates, params=params, timeout=25)
+            params = {"offset": last_update_id + 1, "timeout": 10}
+            res = requests.get(url_updates, params=params, timeout=15)
             if res.status_code != 200:
                 time.sleep(4)
                 continue

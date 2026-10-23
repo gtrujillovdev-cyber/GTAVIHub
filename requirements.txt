@@ -24,4 +24,5 @@ requests>=2.34.2
 edge-tts>=7.3.1
 
 # Automatización de Navegador (TikTok / Instagram) - Opcional
-playwright>=1.49.0
+# NOTA: macOS 11 Big Sur requiere <=1.37.0 (Node 20+ requiere macOS 12+)
+playwright==1.37.0
