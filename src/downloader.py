@@ -75,6 +75,7 @@ def find_viral_heatmap_segment(url: str, target_duration: int = 50) -> Optional[
         cmd = [
             sys.executable, "-m", "yt_dlp",
             "--impersonate", "chrome",
+            "--extractor-args", "youtube:player_client=ios,android",
             "--skip-download",
             "--dump-single-json",
             url
@@ -131,6 +132,8 @@ def download_video_and_subtitles(url: str, video_id: str) -> Tuple[Optional[Path
         "--impersonate", "chrome",
         "--no-check-certificates",
         "--no-playlist",
+        # Forzar cliente iOS/Android para evitar JS runtime en Big Sur
+        "--extractor-args", "youtube:player_client=ios,android",
         "-f", "bestvideo[height<=1080][ext=mp4]+bestaudio[ext=m4a]/best[height<=1080][ext=mp4]/best",
         "--merge-output-format", "mp4",
         "-o", output_template,

@@ -234,8 +234,10 @@ def process_single_video(
         )
         full_info["multiplatform_urls"] = multiplatform_results
         if multiplatform_results.get("youtube"):
-            full_info["uploaded_youtube_url"] = multiplatform_results["youtube"]
-            uploaded_yt_id = multiplatform_results["youtube"]
+            yt_val = multiplatform_results["youtube"]
+            full_info["uploaded_youtube_url"] = yt_val
+            # social_publisher devuelve URL completa; extraer solo el ID para el print
+            uploaded_yt_id = yt_val.split("youtu.be/")[-1] if "youtu.be/" in str(yt_val) else yt_val
     elif auto_upload:
         report_stage(f"🚀 [5/5] Subiendo a YouTube Shorts ({effective_privacy.upper()}) vía API v3...")
         uploaded_yt_id = upload_to_youtube(
