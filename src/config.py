@@ -39,6 +39,11 @@ FFMPEG_BITRATE = "6M"
 FFMPEG_THREADS = int(os.getenv("FFMPEG_THREADS", "2"))
 CHECK_QUANT_BUSY = os.getenv("CHECK_QUANT_BUSY", "true").lower() in ("1", "true", "yes")
 
+def get_ffmpeg_threads() -> int:
+    """Hilos de FFmpeg: 1 si GaTDSEQ esta activo (Modo Cortesia), si no FFMPEG_THREADS (2)."""
+    return 1 if is_quant_busy() else FFMPEG_THREADS
+
+
 def is_quant_busy() -> bool:
     """Detecta si hay un proceso cuantitativo de GaTDSEQ ejecutándose en el equipo."""
     if not CHECK_QUANT_BUSY:

@@ -90,7 +90,7 @@ def get_gatdseq_status() -> Dict[str, Any]:
         return {
             "busy": busy,
             "pids": pids,
-            "policy": "Modo Cortés (1 hilo FFmpeg, Nice 15)" if busy else "Modo Rápido (VideoToolbox 2 hilos, Nice 10)"
+            "policy": "Modo Cortés (1 hilo FFmpeg, Nice 15)" if busy else "Modo Rápido (VideoToolbox 2 hilos, Nice 15)"
         }
     except Exception as e:
         return {"busy": False, "pids": [], "policy": "Estándar"}

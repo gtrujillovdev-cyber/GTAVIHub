@@ -73,9 +73,9 @@ def print_pipeline_dashboard():
             records = []
 
     print(f"\n🛡️ CUOTAS DIARIAS ORGÁNICAS (Anti-Spam / Anti-Ban):")
-    print(f"  • YouTube Shorts : {yt_count} / {AntiBanValidator.MAX_DAILY_UPLOADS} vídeos subidos hoy")
-    print(f"  • TikTok         : {tt_count} / {AntiBanValidator.MAX_DAILY_UPLOADS} vídeos subidos hoy")
-    print(f"  • Instagram Reels: {ig_count} / {AntiBanValidator.MAX_DAILY_UPLOADS} vídeos subidos hoy")
+    print(f"  • YouTube Shorts : {yt_count} / {AntiBanValidator.get_daily_limit('youtube')} vídeos subidos hoy")
+    print(f"  • TikTok         : {tt_count} / {AntiBanValidator.get_daily_limit('tiktok')} vídeos subidos hoy")
+    print(f"  • Instagram Reels: {ig_count} / {AntiBanValidator.get_daily_limit('instagram')} vídeos subidos hoy")
 
     # 4. Auditoría de Políticas y Cumplimiento
     audit_info = ComplianceAuditor.get_last_audit_info()

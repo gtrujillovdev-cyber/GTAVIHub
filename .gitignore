@@ -9,6 +9,7 @@ __pycache__/
 client_secrets.json
 token.json
 .browser_profiles/
+data/browser_profile/
 *.session
 
 # Directorios de trabajo y renderizado pesado

@@ -1,3 +1,4 @@
+import gc
 import os
 import json
 import shutil
@@ -77,6 +78,7 @@ def process_single_video(
     if not video_path:
         print(f"[!] Falló la descarga del vídeo {video_id}. Abortando.")
         clean_temp_directory(video_id)
+        gc.collect()  # Liberar buffers para GaTDSEQ
         return None
 
     lang_to_use = detected_lang if detected_lang in ["es", "en"] else source_lang
@@ -131,6 +133,7 @@ def process_single_video(
     if not success_render or not output_path.exists():
         print("[!] Error en el renderizado final del vídeo.")
         clean_temp_directory(video_id)
+        gc.collect()  # Liberar buffers para GaTDSEQ
         return None
 
     # 6. Generación de Miniatura de alto CTR
@@ -183,6 +186,7 @@ def process_single_video(
         )
         # Limpieza estricta de archivos temporales
         clean_temp_directory(video_id)
+        gc.collect()  # Liberar buffers para GaTDSEQ
         
         full_info["status"] = "staged_for_copilot"
 
@@ -266,6 +270,7 @@ def process_single_video(
     # 9. REGLAS ESTRICTAS DE LIMPIEZA
     # Limpiar todos los archivos de trabajo en temp/
     clean_temp_directory(video_id)
+    gc.collect()  # Liberar buffers para GaTDSEQ
 
     # Si se subió con éxito y no se especificó guardar copia pesada, borrar el mp4 local
     if uploaded_yt_id and not keep_local_video:

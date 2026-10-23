@@ -60,11 +60,21 @@ class AntiBanValidator:
     con las directrices anti-baneo y de uso legítimo (Fair Use).
     """
 
-    MAX_DAILY_UPLOADS = 3
+    @classmethod
+    def get_daily_limit(cls, platform: str) -> int:
+        """Obtiene el límite diario configurado por plataforma."""
+        p = platform.lower()
+        if p == "youtube":
+            return int(os.getenv("MAX_DAILY_UPLOADS_YOUTUBE", os.getenv("MAX_DAILY_UPLOADS", "6")))
+        elif p == "tiktok":
+            return int(os.getenv("MAX_DAILY_UPLOADS_TIKTOK", os.getenv("MAX_DAILY_UPLOADS", "10")))
+        elif p == "instagram":
+            return int(os.getenv("MAX_DAILY_UPLOADS_INSTAGRAM", os.getenv("MAX_DAILY_UPLOADS", "10")))
+        return int(os.getenv("MAX_DAILY_UPLOADS", "10"))
 
     @classmethod
     def check_daily_limit(cls, platform: str) -> bool:
-        """Comprueba que no se supere el límite orgánico de 2-3 vídeos diarios."""
+        """Comprueba que no se supere el límite configurado de vídeos diarios."""
         if not PROCESSED_FILE.exists():
             return True
         try:
@@ -75,8 +85,9 @@ class AntiBanValidator:
                 r for r in records
                 if r.get(f"{platform}_uploaded_url") and r.get("date", "").startswith(today_str)
             ]
-            if len(today_uploads) >= cls.MAX_DAILY_UPLOADS:
-                print(f"[Anti-Ban] Límite diario alcanzado para {platform.upper()} ({len(today_uploads)}/{cls.MAX_DAILY_UPLOADS}). Saltando para proteger la cuenta.")
+            limit = cls.get_daily_limit(platform)
+            if len(today_uploads) >= limit:
+                print(f"[Anti-Ban] Límite diario alcanzado para {platform.upper()} ({len(today_uploads)}/{limit}). Saltando para proteger la cuenta.")
                 return False
             return True
         except Exception as e:

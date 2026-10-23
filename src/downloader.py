@@ -5,7 +5,7 @@ import json
 import subprocess
 from pathlib import Path
 from typing import Optional, Tuple, Dict, Any
-from .config import TEMP_DIR
+from .config import TEMP_DIR, get_ffmpeg_threads
 
 def parse_srt_time(ts_str: str) -> float:
     """Convierte HH:MM:SS,mmm a segundos flotantes."""
@@ -211,6 +211,7 @@ def download_video_and_subtitles(url: str, video_id: str) -> Tuple[Optional[Path
                 "-ss", str(v_start),
                 "-to", str(v_end),
                 "-i", str(video_path),
+                "-threads", str(get_ffmpeg_threads()),
                 "-c:v", "h264_videotoolbox",
                 "-b:v", "8M",
                 "-c:a", "aac",

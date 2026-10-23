@@ -149,8 +149,8 @@ def main():
     # Prioridad de cortesía en el planificador de CPU para convivir con GaTDSEQ
     try:
         current_nice = os.nice(0)
-        if current_nice < 10:
-            os.nice(10)
+        if current_nice < 15:
+            os.nice(15 - current_nice)
     except Exception:
         pass
 
