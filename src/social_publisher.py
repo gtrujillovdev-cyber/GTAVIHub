@@ -278,6 +278,24 @@ class SocialPublisher:
 
                 time.sleep(3)
 
+                # Descartar/Aceptar popups modales de TikTok Studio que bloquean la vista ('Got it', 'Turn on', etc.)
+                try:
+                    dismiss_selectors = [
+                        "button:has-text('Got it')",
+                        "button:has-text('Turn on')",
+                        "button:has-text('Entendido')",
+                        "button:has-text('Aceptar')",
+                        "button.Button__root--size-lg:has-text('Got it')"
+                    ]
+                    for d_sel in dismiss_selectors:
+                        m_btn = page.locator(d_sel).first
+                        if m_btn.count() > 0 and m_btn.is_visible():
+                            m_btn.click()
+                            print(f"[*] Popup de aviso de TikTok Studio aceptado ({d_sel}).")
+                            time.sleep(1)
+                except Exception:
+                    pass
+
                 # Scroll hacia abajo para asegurar visibilidad de controles y botón de publicar
                 try:
                     page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
@@ -285,19 +303,17 @@ class SocialPublisher:
                     pass
                 time.sleep(2)
 
-                # Hacer click en el botón de publicar con reintentos y selectores exhaustivos
+                # Hacer click en el botón de publicar con reintentos y selectores exhaustivos de TikTok Studio
                 post_selectors = [
-                    "button:has-text('Publicar')",
+                    "button.Button__root--type-primary:has-text('Post')",
+                    "button.Button__root--type-primary:has-text('Publicar')",
                     "button:has-text('Post')",
+                    "button:has-text('Publicar')",
+                    "button[data-testid='post-button']",
                     "div.btn-post button",
                     "button.btn-post",
                     ".btn-post",
-                    "button[data-testid='post-button']",
                     "button.TUXButton--primary",
-                    "button[type='button']:has-text('Publicar')",
-                    "button[type='button']:has-text('Post')",
-                    "//button[contains(translate(., 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), 'publicar')]",
-                    "//button[contains(translate(., 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), 'post')]",
                     "button.submit",
                 ]
 
@@ -305,6 +321,16 @@ class SocialPublisher:
                 # Reintentar encontrar y clickear el botón hasta por 45s (esperando validaciones de copyright/render)
                 start_post_wait = time.time()
                 while time.time() - start_post_wait < 45 and not posted:
+                    # Descartar posibles popups modales que se hayan superpuesto
+                    try:
+                        for d_sel in ["button:has-text('Got it')", "button:has-text('Turn on')"]:
+                            m_btn = page.locator(d_sel).first
+                            if m_btn.count() > 0 and m_btn.is_visible():
+                                m_btn.click()
+                                time.sleep(1)
+                    except Exception:
+                        pass
+
                     try:
                         page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
                     except Exception:
@@ -317,7 +343,8 @@ class SocialPublisher:
                             if locator.count() > 0:
                                 btn = locator.first
                                 btn.scroll_into_view_if_needed(timeout=2000)
-                                if btn.is_enabled():
+                                is_aria_disabled = btn.get_attribute("aria-disabled") == "true"
+                                if btn.is_enabled() and not is_aria_disabled:
                                     btn.click(force=True)
                                     print(f"[*] Click en botón publicar ({sel})")
                                     posted = True
@@ -331,11 +358,14 @@ class SocialPublisher:
                             clicked_via_js = page.evaluate("""() => {
                                 const buttons = Array.from(document.querySelectorAll('button, div[role="button"]'));
                                 for (const b of buttons) {
-                                    const txt = (b.innerText || b.textContent || '').trim().toLowerCase();
-                                    if ((txt === 'publicar' || txt === 'post') && !b.disabled && !b.getAttribute('aria-disabled')) {
-                                        b.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                                        b.click();
-                                        return true;
+                                    const txt = (b.innerText || b.textContent || '').trim();
+                                    if (txt === 'Post' || txt === 'Publicar') {
+                                        const isDis = b.disabled || b.getAttribute('aria-disabled') === 'true' || b.className.includes('disabled');
+                                        if (!isDis) {
+                                            b.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                            b.click();
+                                            return true;
+                                        }
                                     }
                                 }
                                 return false;
@@ -350,13 +380,13 @@ class SocialPublisher:
                     if not posted:
                         time.sleep(3)
 
-                # Comprobar posibles diálogos modales de confirmación ("Post anyway", "Publicar de todos modos")
+                # Comprobar posibles diálogos modales de confirmación post-publicación
                 time.sleep(2)
                 try:
-                    modal_buttons = page.locator("button:has-text('Post anyway'), button:has-text('Publicar de todos modos'), button:has-text('Aceptar')")
+                    modal_buttons = page.locator("button:has-text('Post anyway'), button:has-text('Publicar de todos modos'), button:has-text('Manage your posts'), button:has-text('Aceptar')")
                     if modal_buttons.count() > 0 and modal_buttons.first.is_visible():
                         modal_buttons.first.click()
-                        print("[*] Confirmación de diálogo modal aceptada.")
+                        print("[*] Confirmación de diálogo modal post-publicación aceptada.")
                 except Exception:
                     pass
 
