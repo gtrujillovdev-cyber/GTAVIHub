@@ -7,7 +7,7 @@ from pathlib import Path
 from datetime import datetime, date
 from typing import Optional, Dict, Any, List
 
-from .config import BASE_DIR, OUTPUT_DIR, PROCESSED_FILE
+from .config import BASE_DIR, OUTPUT_DIR, PROCESSED_FILE, BUSINESS_EMAIL, MONETIZATION_AFFILIATE_URL
 from .uploader import upload_to_youtube
 from .compliance_auditor import ComplianceAuditor
 
@@ -123,7 +123,8 @@ class SocialPublisher:
         title: str,
         description: str,
         privacy: str = "public",
-        thumbnail_path: Optional[Path] = None
+        thumbnail_path: Optional[Path] = None,
+        pinned_comment: Optional[str] = None
     ) -> Optional[str]:
         """Sube el vídeo a YouTube Shorts mediante API oficial v3."""
         print(f"\n[1/3 YouTube] Iniciando publicación de '{video_path.name}'...")
@@ -140,7 +141,8 @@ class SocialPublisher:
             description=description,
             privacy_status=privacy,
             is_short=True,
-            thumbnail_path=thumbnail_path
+            thumbnail_path=thumbnail_path,
+            pinned_comment=pinned_comment
         )
         if video_id:
             return f"https://youtu.be/{video_id}" if not str(video_id).startswith("http") else str(video_id)
@@ -160,7 +162,9 @@ class SocialPublisher:
         if not AntiBanValidator.check_daily_limit("tiktok"):
             return None
 
-        caption = f"{title[:100]} " + " ".join([f"#{t.replace(' ', '')}" for t in tags[:5]])
+        tags_str = " ".join([f"#{t.replace(' ', '')}" for t in tags[:4]])
+        # Caption optimizada con Call to Action a bio link y contacto comercial
+        caption = f"{title[:75]} {tags_str} 🎮 Link en bio para reservas de GTA 6 | 📩 {BUSINESS_EMAIL}"
         tiktok_profile = BROWSER_PROFILE_DIR / "tiktok_user_data"
 
         if self.dry_run:
@@ -536,13 +540,21 @@ class SocialPublisher:
 
             if plat == "youtube":
                 target_privacy = metadata.get("privacy") or os.getenv("YOUTUBE_PRIVACY_STATUS", "public")
-                url = self.publish_to_youtube(video_path, title, desc, privacy=target_privacy, thumbnail_path=thumb)
+                pinned_comment = metadata.get("pinned_comment")
+                url = self.publish_to_youtube(
+                    video_path,
+                    title,
+                    desc,
+                    privacy=target_privacy,
+                    thumbnail_path=thumb,
+                    pinned_comment=pinned_comment
+                )
                 results["youtube"] = url
             elif plat == "tiktok":
                 url = self.publish_to_tiktok(video_path, title, tags)
                 results["tiktok"] = url
             elif plat == "instagram":
-                caption = f"{title}\n\n{desc[:1800]}\n\n#GTA6 #Gaming #Reels"
+                caption = f"{title}\n\n{desc[:1600]}\n\n🎮 Reserva oficial de GTA VI y novedades en el LINK DE LA BIO.\n📩 Contacto / Business: {BUSINESS_EMAIL}\n\n#GTA6 #Gaming #Reels"
                 url = self.publish_to_instagram(video_path, caption, thumbnail_path=thumb)
                 results["instagram"] = url
 

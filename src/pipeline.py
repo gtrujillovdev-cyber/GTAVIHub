@@ -234,6 +234,7 @@ def process_single_video(
                 "title": metadata.get("title", f"GTA 6 - {original_title}").upper(),
                 "description": metadata.get("description", ""),
                 "thumbnail_path": thumb_path if thumb_path.exists() else None,
+                "pinned_comment": metadata.get("pinned_comment"),
                 "original_url": url,
                 "privacy": effective_privacy
             },
@@ -254,7 +255,8 @@ def process_single_video(
             description=metadata.get("description", ""),
             privacy_status=effective_privacy,
             is_short=is_short,
-            thumbnail_path=thumb_path if thumb_path.exists() else None
+            thumbnail_path=thumb_path if thumb_path.exists() else None,
+            pinned_comment=metadata.get("pinned_comment")
         )
         if uploaded_yt_id:
             full_info["uploaded_youtube_url"] = f"https://youtu.be/{uploaded_yt_id}"

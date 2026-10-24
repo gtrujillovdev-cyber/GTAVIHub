@@ -3,7 +3,7 @@ import shutil
 from pathlib import Path
 from typing import Optional, Dict
 from google import genai
-from .config import GEMINI_API_KEY, GEMINI_MODEL
+from .config import GEMINI_API_KEY, GEMINI_MODEL, BUSINESS_EMAIL, MONETIZATION_AFFILIATE_URL
 
 _client = None
 
@@ -167,10 +167,23 @@ Devuelve tu respuesta EXACTAMENTE en este formato JSON (sin texto extra):
 🔔 ¡SUSCRÍBETE a GTA VI Hub España para no perderte ninguna noticia, tráiler y filtración del juego más esperado de la historia!
 
 ═══════════════════════════════════════
+🎮 RESERVA OFICIAL GTA VI & ACCESORIOS RECOMENDADOS:
+═══════════════════════════════════════
+👉 Consigue las mejores ofertas de consolas PS5/Xbox y reserva de GTA VI aquí:
+{MONETIZATION_AFFILIATE_URL}
+
+═══════════════════════════════════════
 📌 CRÉDITOS DEL CONTENIDO ORIGINAL:
 ═══════════════════════════════════════
 {creator_line}{url_line}
 Todo el reconocimiento a los creadores originales por su gran trabajo. ¡Apoya el canal original en el enlace superior!
+
+═══════════════════════════════════════
+💼 CONTACTO COMERCIAL Y RETIRADA DE CONTENIDO:
+═══════════════════════════════════════
+📩 Email de contacto / Business: {BUSINESS_EMAIL}
+🛡️ Retirada inmediata de contenido / Copyright inquiry:
+Si eres el autor o propietario de algún fragmento y deseas su retirada o modificación, por favor escríbenos al email arriba indicado y lo resolveremos inmediatamente de forma amistosa en menos de 2 horas.
 
 ═══════════════════════════════════════
 {music_disclaimer}
@@ -186,8 +199,15 @@ Grand Theft Auto VI, GTA VI, Vice City y los logotipos asociados son marcas regi
 #GTA6 #GrandTheftAutoVI #RockstarGames #GTAVI #ViceCity #Gaming #Shorts #Videojuegos
 """
 
+    pinned_comment = (
+        f"🌴 ¿Qué opinas de esta revelación? ¡Déjanos tu teoría en los comentarios! 👇\n\n"
+        f"🎮 Reserva oficial de GTA VI y accesorios gaming recomendados 👉 {MONETIZATION_AFFILIATE_URL}\n"
+        f"📩 Contacto comercial / Colaboraciones: {BUSINESS_EMAIL}"
+    )
+
     return {
         "title": viral_title[:100],
         "description": full_description[:5000],
-        "hook": hook
+        "hook": hook,
+        "pinned_comment": pinned_comment
     }
