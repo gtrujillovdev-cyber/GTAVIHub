@@ -257,28 +257,91 @@ class SocialPublisher:
 
                 time.sleep(2)
 
-                # Hacer click en el botón de publicar
+                # Scroll hacia abajo para asegurar visibilidad de controles y botón de publicar
+                try:
+                    page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
+                except Exception:
+                    pass
+                time.sleep(2)
+
+                # Hacer click en el botón de publicar con reintentos y selectores exhaustivos
                 post_selectors = [
-                    "button:has-text('Post')",
                     "button:has-text('Publicar')",
-                    "button[data-testid='post-button']",
+                    "button:has-text('Post')",
+                    "div.btn-post button",
+                    "button.btn-post",
                     ".btn-post",
+                    "button[data-testid='post-button']",
+                    "button.TUXButton--primary",
+                    "button[type='button']:has-text('Publicar')",
+                    "button[type='button']:has-text('Post')",
+                    "//button[contains(translate(., 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), 'publicar')]",
+                    "//button[contains(translate(., 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), 'post')]",
                     "button.submit",
                 ]
+
                 posted = False
-                for sel in post_selectors:
-                    try:
-                        btn = page.locator(sel).first
-                        if btn.count() > 0 and btn.is_visible():
-                            btn.click()
-                            print(f"[*] Click en botón publicar ({sel})")
-                            posted = True
-                            break
-                    except Exception:
-                        continue
+                # Reintentar encontrar y clickear el botón hasta por 30s (esperando checks de copyright/render)
+                start_post_wait = time.time()
+                while time.time() - start_post_wait < 30 and not posted:
+                    # 1. Intentar con selectores Playwright
+                    for sel in post_selectors:
+                        try:
+                            locator = page.locator(sel)
+                            if locator.count() > 0:
+                                btn = locator.first
+                                btn.scroll_into_view_if_needed(timeout=3000)
+                                if btn.is_enabled():
+                                    btn.click(force=True)
+                                    print(f"[*] Click en botón publicar ({sel})")
+                                    posted = True
+                                    break
+                        except Exception:
+                            continue
+
+                    # 2. Si no ha clickeado, fallback profundo vía evaluación directa de DOM JS
+                    if not posted:
+                        try:
+                            clicked_via_js = page.evaluate("""() => {
+                                const buttons = Array.from(document.querySelectorAll('button, div[role="button"]'));
+                                for (const b of buttons) {
+                                    const txt = (b.innerText || b.textContent || '').trim().toLowerCase();
+                                    if ((txt === 'publicar' || txt === 'post') && !b.disabled) {
+                                        b.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                        b.click();
+                                        return true;
+                                    }
+                                }
+                                return false;
+                            }""")
+                            if clicked_via_js:
+                                print("[*] Click en botón publicar ejecutado con éxito vía DOM JS")
+                                posted = True
+                                break
+                        except Exception:
+                            pass
+
+                    if not posted:
+                        time.sleep(3)
+
+                # Comprobar posibles diálogos modales de confirmación ("Post anyway", "Publicar de todos modos")
+                time.sleep(2)
+                try:
+                    modal_buttons = page.locator("button:has-text('Post anyway'), button:has-text('Publicar de todos modos'), button:has-text('Aceptar')")
+                    if modal_buttons.count() > 0 and modal_buttons.first.is_visible():
+                        modal_buttons.first.click()
+                        print("[*] Confirmación de diálogo modal aceptada.")
+                except Exception:
+                    pass
 
                 if not posted:
-                    print("[!] No se encontró botón de publicar — guardando como borrador")
+                    print("[!] No se encontró botón de publicar activo — guardando captura de debug...")
+                    try:
+                        debug_shot = BASE_DIR / "logs" / "tiktok_button_debug.png"
+                        page.screenshot(path=str(debug_shot), full_page=True)
+                        print(f"[*] Captura guardada en: {debug_shot}")
+                    except Exception:
+                        pass
                     browser.close()
                     return None
 
