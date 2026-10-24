@@ -199,6 +199,15 @@ class SocialPublisher:
                     browser.close()
                     return None
 
+                # Aceptar cookies o cerrar modales de bienvenida si aparecen
+                try:
+                    cookie_btn = page.locator("button:has-text('Accept all'), button:has-text('Aceptar todas'), button:has-text('Accept')").first
+                    if cookie_btn.count() > 0 and cookie_btn.is_visible():
+                        cookie_btn.click()
+                        time.sleep(1)
+                except Exception:
+                    pass
+
                 print("[*] Subiendo archivo a TikTok Creator Center...")
                 # Esperar a que React monte el input (puede tardar hasta 15s)
                 try:
@@ -220,17 +229,18 @@ class SocialPublisher:
                                            state="detached", timeout=180000)
                 except Exception:
                     pass
-                time.sleep(4)
+                time.sleep(5)
 
                 print("[✓] Archivo cargado. Rellenando descripción...")
 
-                # Rellenar caption — TikTok usa un contenteditable o textarea
+                # Rellenar caption — Tecleo real para activar el estado de React en TikTok Studio
                 caption_selectors = [
-                    "[data-testid='caption-input']",
                     "div[contenteditable='true']",
+                    "[data-testid='caption-input']",
                     "textarea[placeholder*='caption'], textarea[placeholder*='escribe']",
                     ".caption-wrap textarea",
                     ".editor-input-box div[contenteditable]",
+                    "div[role='textbox']"
                 ]
                 caption_filled = False
                 for sel in caption_selectors:
@@ -239,23 +249,34 @@ class SocialPublisher:
                         if el.count() > 0:
                             el.click()
                             time.sleep(0.5)
-                            el.fill(caption[:150])
+                            # Limpiar y teclear con eventos de teclado reales para React
+                            page.keyboard.press("Meta+A")
+                            page.keyboard.press("Backspace")
+                            page.keyboard.type(caption[:150], delay=15)
                             caption_filled = True
-                            print(f"[*] Caption introducida ({sel})")
+                            print(f"[*] Caption introducida con eventos de teclado ({sel})")
                             break
                     except Exception:
                         continue
 
                 if not caption_filled:
-                    # Fallback: buscar el primer contenteditable visible
+                    # Fallback JS con disparo explícito de eventos React
                     try:
-                        page.evaluate(f"document.querySelector('div[contenteditable=\"true\"]').innerText = {repr(caption[:150])}")
+                        page.evaluate(f"""() => {{
+                            const el = document.querySelector('div[contenteditable="true"], div[role="textbox"], textarea');
+                            if (el) {{
+                                el.focus();
+                                el.innerText = {repr(caption[:150])};
+                                el.dispatchEvent(new Event('input', {{ bubbles: true }}));
+                                el.dispatchEvent(new Event('change', {{ bubbles: true }}));
+                            }}
+                        }}""")
                         caption_filled = True
-                        print("[*] Caption introducida vía JS")
+                        print("[*] Caption introducida vía JS con dispatchEvent(input)")
                     except Exception:
                         print("[!] No se pudo rellenar la caption — se publicará sin descripción")
 
-                time.sleep(2)
+                time.sleep(3)
 
                 # Scroll hacia abajo para asegurar visibilidad de controles y botón de publicar
                 try:
@@ -281,16 +302,21 @@ class SocialPublisher:
                 ]
 
                 posted = False
-                # Reintentar encontrar y clickear el botón hasta por 30s (esperando checks de copyright/render)
+                # Reintentar encontrar y clickear el botón hasta por 45s (esperando validaciones de copyright/render)
                 start_post_wait = time.time()
-                while time.time() - start_post_wait < 30 and not posted:
+                while time.time() - start_post_wait < 45 and not posted:
+                    try:
+                        page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
+                    except Exception:
+                        pass
+
                     # 1. Intentar con selectores Playwright
                     for sel in post_selectors:
                         try:
                             locator = page.locator(sel)
                             if locator.count() > 0:
                                 btn = locator.first
-                                btn.scroll_into_view_if_needed(timeout=3000)
+                                btn.scroll_into_view_if_needed(timeout=2000)
                                 if btn.is_enabled():
                                     btn.click(force=True)
                                     print(f"[*] Click en botón publicar ({sel})")
@@ -306,7 +332,7 @@ class SocialPublisher:
                                 const buttons = Array.from(document.querySelectorAll('button, div[role="button"]'));
                                 for (const b of buttons) {
                                     const txt = (b.innerText || b.textContent || '').trim().toLowerCase();
-                                    if ((txt === 'publicar' || txt === 'post') && !b.disabled) {
+                                    if ((txt === 'publicar' || txt === 'post') && !b.disabled && !b.getAttribute('aria-disabled')) {
                                         b.scrollIntoView({ behavior: 'smooth', block: 'center' });
                                         b.click();
                                         return true;
@@ -338,7 +364,7 @@ class SocialPublisher:
                     print("[!] No se encontró botón de publicar activo — guardando captura de debug...")
                     try:
                         debug_shot = BASE_DIR / "logs" / "tiktok_button_debug.png"
-                        page.screenshot(path=str(debug_shot), full_page=True)
+                        page.screenshot(path=str(debug_shot))
                         print(f"[*] Captura guardada en: {debug_shot}")
                     except Exception:
                         pass

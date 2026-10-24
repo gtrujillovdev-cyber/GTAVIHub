@@ -229,6 +229,9 @@ def main():
         force_short = True
     elif args.format == "normal":
         force_short = False
+    elif args.publish_all:
+        # Publicación multiplataforma (Shorts, TikTok, Reels) REQUIERE formato vertical 9:16
+        force_short = True
     elif args.url and "/shorts/" in args.url.lower():
         force_short = True
 
@@ -281,7 +284,7 @@ def main():
                 creator_name=item.get("source_name", ""),
                 source_lang=item.get("lang", "en"),
                 mode=args.mode,
-                force_short=True if item.get("is_short") or force_short else force_short,
+                force_short=True if (args.publish_all or item.get("is_short") or force_short) else force_short,
                 auto_upload=args.upload,
                 privacy_status=args.privacy,
                 keep_local_video=args.keep_local_video,

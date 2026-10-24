@@ -86,7 +86,15 @@ def process_single_video(
     # Detectar dimensiones y formato
     width, height = get_video_dimensions(video_path)
     is_vertical = (height > width)
-    is_short = force_short if force_short is not None else is_vertical
+    # Si publish_all está activo o force_short=True, OBLIGATORIO formato vertical 9:16 (Shorts/TikTok/Reels)
+    if publish_all and force_short is not False:
+        is_short = True
+    elif force_short is not None:
+        is_short = force_short
+    else:
+        is_short = is_vertical
+
+    print(f"    Formato Final: {'Vertical 9:16 (Shorts/TikTok/Reels)' if is_short else 'Horizontal 16:9'}")
 
     # 2. Procesar/Traducir subtítulos si existen
     report_stage("🤖 [2/5] Analizando con Gemini Flash y generando metadatos virales...")
