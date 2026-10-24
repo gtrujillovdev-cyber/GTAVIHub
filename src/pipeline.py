@@ -306,12 +306,16 @@ def process_single_video(
     # Notificación remota push en Telegram (si está configurado)
     try:
         from .telegram_bot import send_telegram_notification
-        send_telegram_notification(
+        notif_sent = send_telegram_notification(
             title=metadata.get("title", original_title),
             creator=creator_name or "Rockstar Games",
             multiplatform_urls=multiplatform_results if publish_all else {"youtube": full_info.get("uploaded_youtube_url")},
             thumbnail_path=thumb_path if thumb_path.exists() else None
         )
+        if notif_sent:
+            print("[Pipeline] [✓] Notificación de resumen multiplataforma entregada a Telegram.")
+        else:
+            print("[Pipeline] [!] No se pudo entregar la notificación resumen a Telegram.")
     except Exception as e:
         print(f"[Pipeline] Info Telegram: {e}")
 

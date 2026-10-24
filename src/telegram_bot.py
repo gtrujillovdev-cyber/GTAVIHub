@@ -99,15 +99,19 @@ def send_telegram_alert(
     elif include_menu:
         payload["reply_markup"] = get_persistent_menu_keyboard()
 
-    try:
-        res = requests.post(url, json=payload, timeout=12)
-        if res.status_code != 200 and parse_mode:
-            payload.pop("parse_mode", None)
+    for attempt in range(3):
+        try:
             res = requests.post(url, json=payload, timeout=12)
-        return res.status_code == 200
-    except Exception as e:
-        print(f"[Telegram] Error enviando mensaje: {e}")
-        return False
+            if res.status_code != 200 and parse_mode:
+                payload.pop("parse_mode", None)
+                res = requests.post(url, json=payload, timeout=12)
+            if res.status_code == 200:
+                return True
+            print(f"[Telegram] Error {res.status_code} enviando mensaje: {res.text}")
+        except Exception as e:
+            print(f"[Telegram] Intento {attempt + 1}/3 enviando mensaje falló: {e}")
+            time.sleep(2)
+    return False
 
 def edit_telegram_message(
     message_id: int,
@@ -170,21 +174,32 @@ def send_telegram_photo(
         return False
 
     url = get_api_url("sendPhoto")
-    try:
-        with open(photo_path, "rb") as photo:
-            files = {"photo": photo}
-            data: Dict[str, Any] = {
-                "chat_id": chat_id,
-                "caption": caption[:1024],
-                "parse_mode": "Markdown"
-            }
-            if reply_markup:
-                data["reply_markup"] = json.dumps(reply_markup)
-            res = requests.post(url, data=data, files=files, timeout=20)
-            return res.status_code == 200
-    except Exception as e:
-        print(f"[Telegram] Error enviando foto: {e}")
-        return False
+    for attempt in range(3):
+        try:
+            with open(photo_path, "rb") as photo:
+                files = {"photo": photo}
+                data: Dict[str, Any] = {
+                    "chat_id": chat_id,
+                    "caption": caption[:1024],
+                    "parse_mode": "Markdown"
+                }
+                if reply_markup:
+                    data["reply_markup"] = json.dumps(reply_markup)
+                res = requests.post(url, data=data, files=files, timeout=20)
+                if res.status_code == 200:
+                    return True
+                # Si falló por formato Markdown, reintentar de inmediato sin parse_mode
+                if res.status_code != 200 and "parse_mode" in data:
+                    data.pop("parse_mode", None)
+                    photo.seek(0)
+                    res2 = requests.post(url, data=data, files={"photo": photo}, timeout=20)
+                    if res2.status_code == 200:
+                        return True
+                print(f"[Telegram] Error {res.status_code} enviando foto: {res.text}")
+        except Exception as e:
+            print(f"[Telegram] Intento {attempt + 1}/3 enviando foto falló: {e}")
+            time.sleep(2)
+    return False
 
 def send_telegram_video(
     video_path: Path,

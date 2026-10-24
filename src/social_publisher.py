@@ -117,6 +117,15 @@ class SocialPublisher:
         self.dry_run = dry_run
         BROWSER_PROFILE_DIR.mkdir(parents=True, exist_ok=True)
 
+    @staticmethod
+    def _notify_telegram(text: str) -> None:
+        """Envía una actualización rápida del estado de publicación a Telegram."""
+        try:
+            from .telegram_bot import send_telegram_alert
+            send_telegram_alert(text)
+        except Exception:
+            pass
+
     def publish_to_youtube(
         self,
         video_path: Path,
@@ -535,7 +544,9 @@ class SocialPublisher:
                         (stagger_delay_minutes + 4) * 60
                     )
                 if jitter_seconds > 0:
-                    print(f"\n⏳ [Escalonamiento Anti-Ban] Pausando {jitter_seconds // 60} minutos antes de publicar en {plat.upper()}...")
+                    wait_msg = f"⏳ *[Escalonamiento Anti-Ban]* Pausando {jitter_seconds // 60} minutos antes de publicar en *{plat.upper()}*..."
+                    print(f"\n{wait_msg}")
+                    self._notify_telegram(wait_msg)
                     time.sleep(jitter_seconds)
 
             if plat == "youtube":
@@ -550,13 +561,21 @@ class SocialPublisher:
                     pinned_comment=pinned_comment
                 )
                 results["youtube"] = url
+                if url:
+                    self._notify_telegram(f"✅ *[1/3] YouTube Shorts publicado:* [Ver en YouTube]({url})")
             elif plat == "tiktok":
                 url = self.publish_to_tiktok(video_path, title, tags)
                 results["tiktok"] = url
+                if url:
+                    self._notify_telegram(f"✅ *[2/3] TikTok publicado:* [Ver en TikTok]({url})")
+                else:
+                    self._notify_telegram("⚠️ *[2/3] TikTok:* Subido y guardado como borrador en TikTok Studio.")
             elif plat == "instagram":
                 caption = f"{title}\n\n{desc[:1600]}\n\n🎮 Reserva oficial de GTA VI y novedades en el LINK DE LA BIO.\n📩 Contacto / Business: {BUSINESS_EMAIL}\n\n#GTA6 #Gaming #Reels"
                 url = self.publish_to_instagram(video_path, caption, thumbnail_path=thumb)
                 results["instagram"] = url
+                if url:
+                    self._notify_telegram(f"✅ *[3/3] Instagram Reels publicado:* [Ver en Instagram]({url})")
 
         print("\n" + "=" * 65)
         print("📊 RESUMEN DE PUBLICACIÓN MULTIPLATAFORMA:")
