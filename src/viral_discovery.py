@@ -12,12 +12,12 @@ from .channels import get_processed_ids, list_monitored_channels, add_monitored_
 DISCOVERED_CHANNELS_FILE = DATA_DIR / "discovered_channels.json"
 
 DEFAULT_VIRAL_QUERIES = [
-    "ytsearch6:GTA 6 Shorts viral",
-    "ytsearch6:GTA 6 trailer 2",
-    "ytsearch6:GTA 6 gameplay leak Shorts",
-    "ytsearch6:GTA 6 filtracion mapa",
-    "ytsearch6:Grand Theft Auto VI secrets",
-    "ytsearch6:GTA 6 reaccion streamer"
+    "ytsearch6:GTA 6 reaccion streamer Shorts",
+    "ytsearch6:GTA 6 clips streamers",
+    "ytsearch6:GTA 6 gameplay filtracion",
+    "ytsearch6:GTA 6 detalles secretos creadores",
+    "ytsearch6:GTA 6 IlloJuan Xokas DaniRep",
+    "ytsearch6:Grand Theft Auto VI secrets breakdown"
 ]
 
 VIRAL_KEYWORDS = [
@@ -27,26 +27,40 @@ VIRAL_KEYWORDS = [
     "rockstar", "confirmado", "noticia", "exclusiva", "easter egg"
 ]
 
-# Palabras excluidas para garantizar 100% Fair Use y evitar infracciones de Content ID musical o contenido sin transformar
+# Palabras clave de creadores y momentos reales (reciben bonus de puntuación)
+CREATOR_KEYWORDS = [
+    "stream", "directo", "reaccion", "reacción", "clip", "clips", "streamer",
+    "jugando", "gameplay", "momento", "fails", "risas", "truco", "mision",
+    "misión", "ibai", "xokas", "elxokas", "auron", "rubius", "thegrefg",
+    "illojuan", "danirep", "tgg", "mors mutual", "darkviperau", "speedrun",
+    "secreto", "easter egg", "misterio", "locura"
+]
+
+# Palabras excluidas para garantizar 100% Fair Use, evitar infracciones de Content ID musical
+# y filtrar conceptos abstractos/CGI/Unreal Engine hechos por fans que no son clips reales de creadores
 EXCLUDED_KEYWORDS = [
     "soundtrack", "ost", "full album", "vevo", "remix song", "cover song",
     "trap beat", "rap beat", "no commentary walkthrough", "full movie",
-    "cancion oficial", "canción oficial", "tema musical"
+    "cancion oficial", "canción oficial", "tema musical",
+    # Conceptos abstractos / CGI / Fan-made / Unreal Engine
+    "concept", "concept trailer", "gameplay concept", "fan made", "fan trailer",
+    "fan-made", "unreal engine", "ue5", "unreal engine 5", "ai trailer",
+    "artificial intelligence", "blender render", "remake concept", "graphics showcase"
 ]
 
 def calculate_virality_score(title: str, duration: float, views: int) -> Dict[str, Any]:
     """
     Calcula una puntuación de virabilidad y potencial de engagement (0 a 100),
     asegurando cumplimiento estricto de directrices (Fair Use & Anti-Content-ID):
-    1. Filtro de Exclusión de Copyright Musical / Contenido Crudo
+    1. Filtro de Exclusión de Copyright Musical / Contenido Abstracto Fan-Made
     2. Volumen de Visualizaciones (0 - 40 pts)
     3. Retención y Formato Vertical (0 - 30 pts): Primando Shorts (10s a 65s)
     4. Relevancia Semántica de Palabras Clave (0 - 20 pts)
-    5. Factor Extra de Viralidad (0 - 10 pts)
+    5. Prioridad a Creadores y Streamers Reales (Bonus 0 - 10 pts)
     """
     title_lower = title.lower()
 
-    # Filtro de seguridad: excluir música comercial y gameplays crudos sin valor transformativo
+    # Filtro de seguridad: excluir música comercial, gameplays crudos y conceptos abstractos CGI
     for exc in EXCLUDED_KEYWORDS:
         if exc in title_lower:
             return {
@@ -57,7 +71,7 @@ def calculate_virality_score(title: str, duration: float, views: int) -> Dict[st
                 "bonus": 0,
                 "matches": [],
                 "is_short": (0 < duration <= 65),
-                "excluded_reason": f"Infracción potencial de Content ID o falta de transformación: '{exc}'"
+                "excluded_reason": f"Filtro de exclusión activo: '{exc}' (evita música o conceptos abstractos no oficiales)"
             }
 
     # 1. Puntos por visualizaciones (0 a 40)
@@ -93,12 +107,16 @@ def calculate_virality_score(title: str, duration: float, views: int) -> Dict[st
     matches = [kw for kw in VIRAL_KEYWORDS if kw in title_lower]
     keyword_score = min(20, len(matches) * 5)
 
-    # 4. Factor de impulso extra
+    # 4. Factor de impulso extra + Creadores/Streamers reales
     bonus = 0
     if "shorts" in title_lower or "#shorts" in title_lower:
         bonus += 5
     if any(k in title_lower for k in ["trailer 2", "filtracion", "leak", "exclusiva", "easter egg"]):
         bonus += 5
+
+    creator_matches = [ck for ck in CREATOR_KEYWORDS if ck in title_lower]
+    if creator_matches:
+        bonus = min(10, bonus + 5)
 
     total_score = min(100, views_score + format_score + keyword_score + bonus)
 
@@ -108,7 +126,7 @@ def calculate_virality_score(title: str, duration: float, views: int) -> Dict[st
         "format_score": format_score,
         "keyword_score": keyword_score,
         "bonus": bonus,
-        "matches": matches,
+        "matches": list(set(matches + creator_matches)),
         "is_short": (0 < duration <= 65),
         "excluded_reason": None
     }
