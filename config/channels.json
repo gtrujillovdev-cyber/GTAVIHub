@@ -172,15 +172,6 @@
       "description": "Reportajes, análisis y noticias de Vandal"
     },
     {
-      "name": "Hobby Consolas",
-      "url": "https://www.youtube.com/@HobbyConsolas/videos",
-      "type": "media_analysis",
-      "lang": "es",
-      "filter_keywords": true,
-      "enabled": true,
-      "description": "Cobertura periodística de videojuegos en España"
-    },
-    {
       "name": "Eurogamer España",
       "url": "https://www.youtube.com/@eurogamerspain/videos",
       "type": "media_analysis",
@@ -197,29 +188,122 @@
       "filter_keywords": true,
       "enabled": true,
       "description": "Reacciones y entretenimiento gaming en LatAm"
+    },
+    {
+      "name": "Badger Goodger",
+      "url": "https://www.youtube.com/@BadgerGoodger/videos",
+      "type": "breakdowns",
+      "lang": "en",
+      "filter_keywords": false,
+      "enabled": true,
+      "description": "Secretos, misterios y desgloses de fondo del universo Rockstar"
+    },
+    {
+      "name": "GameRoll",
+      "url": "https://www.youtube.com/@GameRollGTA/videos",
+      "type": "gta_authority",
+      "lang": "en",
+      "filter_keywords": false,
+      "enabled": true,
+      "description": "Noticias rápidas y cobertura de GTA 6"
+    },
+    {
+      "name": "INTER",
+      "url": "https://www.youtube.com/@INTER_yt/videos",
+      "type": "breakdowns",
+      "lang": "en",
+      "filter_keywords": false,
+      "enabled": true,
+      "description": "Comparativas gráficas técnicas y análisis de detalles"
+    },
+    {
+      "name": "Gamer Flea",
+      "url": "https://www.youtube.com/@GamerFlea/videos",
+      "type": "shorts_memes",
+      "lang": "en",
+      "filter_keywords": false,
+      "enabled": true,
+      "description": "Shorts de alto impacto y momentos virales de GTA"
+    },
+    {
+      "name": "SWEGTA",
+      "url": "https://www.youtube.com/@SWEGTA/videos",
+      "type": "insider_leaks",
+      "lang": "en",
+      "filter_keywords": false,
+      "enabled": true,
+      "description": "Historia y filtraciones del código de Rockstar Games"
+    },
+    {
+      "name": "BaityBait",
+      "url": "https://www.youtube.com/@BaityBait/videos",
+      "type": "media_analysis",
+      "lang": "es",
+      "filter_keywords": true,
+      "enabled": true,
+      "description": "Crítica y divulgación viral de la industria del videojuego"
+    },
+    {
+      "name": "IlloJuan Clips",
+      "url": "https://www.youtube.com/@IlloJuanClips/videos",
+      "type": "streamer_reaction",
+      "lang": "es",
+      "filter_keywords": true,
+      "enabled": true,
+      "description": "Clips de directos y reacciones virales de IlloJuan"
+    },
+    {
+      "name": "ElXokas Clips",
+      "url": "https://www.youtube.com/@elxokasclips/videos",
+      "type": "streamer_reaction",
+      "lang": "es",
+      "filter_keywords": true,
+      "enabled": true,
+      "description": "Clips rápidos de momentos destacados de ElXokas"
     }
   ],
   "search_queries": [
     {
-      "query": "ytsearch5:GTA 6 Shorts",
+      "query": "ytsearch6:GTA 6 Shorts viral",
       "lang": "es",
       "filter_keywords": false,
       "enabled": true,
-      "description": "Detección rápida de clips verticales de GTA 6"
+      "description": "Detección rápida de clips verticales virales de GTA 6"
     },
     {
-      "query": "ytsearch5:GTA 6 trailer 2",
+      "query": "ytsearch6:GTA 6 trailer 2",
       "lang": "es",
       "filter_keywords": false,
       "enabled": true,
-      "description": "Búsqueda de novedades y tráilers"
+      "description": "Búsqueda de novedades y tráilers oficiales"
     },
     {
-      "query": "ytsearch5:GTA 6 reaccion",
+      "query": "ytsearch6:GTA 6 gameplay leak Shorts",
+      "lang": "en",
+      "filter_keywords": false,
+      "enabled": true,
+      "description": "Filtraciones y gameplay vertical en tendencia"
+    },
+    {
+      "query": "ytsearch6:GTA 6 filtracion mapa",
       "lang": "es",
       "filter_keywords": false,
       "enabled": true,
-      "description": "Reacciones recientes de la comunidad hispana"
+      "description": "Análisis del mapa de Vice City y filtraciones"
+    },
+    {
+      "query": "ytsearch6:Grand Theft Auto VI secrets",
+      "lang": "en",
+      "filter_keywords": false,
+      "enabled": true,
+      "description": "Detalles ocultos y secretos descubiertos"
+    },
+    {
+      "query": "ytsearch6:GTA 6 reaccion streamer",
+      "lang": "es",
+      "filter_keywords": false,
+      "enabled": true,
+      "description": "Reacciones de la comunidad hispanohablante"
     }
   ]
 }

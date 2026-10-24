@@ -181,7 +181,7 @@ def main():
             original_title=top_clip["title"],
             creator_name=top_clip["uploader"],
             mode=args.mode,
-            force_short=True if top_clip.get("is_short") else None,
+            force_short=True if (args.publish_all or top_clip.get("is_short")) else None,
             auto_upload=args.upload,
             privacy_status=args.privacy,
             keep_local_video=args.keep_local_video,

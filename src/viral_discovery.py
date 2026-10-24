@@ -14,27 +14,52 @@ DISCOVERED_CHANNELS_FILE = DATA_DIR / "discovered_channels.json"
 DEFAULT_VIRAL_QUERIES = [
     "ytsearch6:GTA 6 Shorts viral",
     "ytsearch6:GTA 6 trailer 2",
+    "ytsearch6:GTA 6 gameplay leak Shorts",
     "ytsearch6:GTA 6 filtracion mapa",
-    "ytsearch6:GTA 6 gameplay leak",
-    "ytsearch6:GTA 6 reaccion streamer",
-    "ytsearch6:Grand Theft Auto VI secrets"
+    "ytsearch6:Grand Theft Auto VI secrets",
+    "ytsearch6:GTA 6 reaccion streamer"
 ]
 
 VIRAL_KEYWORDS = [
     "trailer", "trailer 2", "filtracion", "filtración", "leak", "leaks",
     "mapa", "secretos", "vice city", "lucia", "jason", "gameplay",
     "reaccion", "reacción", "oficial", "official", "fecha", "online",
-    "rockstar", "confirmado", "noticia", "exclusiva"
+    "rockstar", "confirmado", "noticia", "exclusiva", "easter egg"
+]
+
+# Palabras excluidas para garantizar 100% Fair Use y evitar infracciones de Content ID musical o contenido sin transformar
+EXCLUDED_KEYWORDS = [
+    "soundtrack", "ost", "full album", "vevo", "remix song", "cover song",
+    "trap beat", "rap beat", "no commentary walkthrough", "full movie",
+    "cancion oficial", "canción oficial", "tema musical"
 ]
 
 def calculate_virality_score(title: str, duration: float, views: int) -> Dict[str, Any]:
     """
-    Calcula una puntuación de virabilidad y potencial de engagement (0 a 100):
-    1. Volumen de Visualizaciones (0 - 40 pts)
-    2. Retención y Formato (0 - 30 pts): Primando Shorts (10s a 60s)
-    3. Relevancia Semántica de Palabras Clave (0 - 20 pts)
-    4. Factor Extra de Viralidad (0 - 10 pts)
+    Calcula una puntuación de virabilidad y potencial de engagement (0 a 100),
+    asegurando cumplimiento estricto de directrices (Fair Use & Anti-Content-ID):
+    1. Filtro de Exclusión de Copyright Musical / Contenido Crudo
+    2. Volumen de Visualizaciones (0 - 40 pts)
+    3. Retención y Formato Vertical (0 - 30 pts): Primando Shorts (10s a 65s)
+    4. Relevancia Semántica de Palabras Clave (0 - 20 pts)
+    5. Factor Extra de Viralidad (0 - 10 pts)
     """
+    title_lower = title.lower()
+
+    # Filtro de seguridad: excluir música comercial y gameplays crudos sin valor transformativo
+    for exc in EXCLUDED_KEYWORDS:
+        if exc in title_lower:
+            return {
+                "score": 0,
+                "views_score": 0,
+                "format_score": 0,
+                "keyword_score": 0,
+                "bonus": 0,
+                "matches": [],
+                "is_short": (0 < duration <= 65),
+                "excluded_reason": f"Infracción potencial de Content ID o falta de transformación: '{exc}'"
+            }
+
     # 1. Puntos por visualizaciones (0 a 40)
     if views >= 500_000:
         views_score = 40
@@ -65,7 +90,6 @@ def calculate_virality_score(title: str, duration: float, views: int) -> Dict[st
         format_score = 5
 
     # 3. Puntos por palabras clave virales en título (0 a 20)
-    title_lower = title.lower()
     matches = [kw for kw in VIRAL_KEYWORDS if kw in title_lower]
     keyword_score = min(20, len(matches) * 5)
 
@@ -73,7 +97,7 @@ def calculate_virality_score(title: str, duration: float, views: int) -> Dict[st
     bonus = 0
     if "shorts" in title_lower or "#shorts" in title_lower:
         bonus += 5
-    if any(k in title_lower for k in ["trailer 2", "filtracion", "leak", "exclusiva"]):
+    if any(k in title_lower for k in ["trailer 2", "filtracion", "leak", "exclusiva", "easter egg"]):
         bonus += 5
 
     total_score = min(100, views_score + format_score + keyword_score + bonus)
@@ -85,7 +109,8 @@ def calculate_virality_score(title: str, duration: float, views: int) -> Dict[st
         "keyword_score": keyword_score,
         "bonus": bonus,
         "matches": matches,
-        "is_short": (0 < duration <= 65)
+        "is_short": (0 < duration <= 65),
+        "excluded_reason": None
     }
 
 def scan_viral_radar(
