@@ -3,14 +3,14 @@ import sys
 from pathlib import Path
 from dotenv import load_dotenv
 
-# Monetización & Contacto Comercial
-BUSINESS_EMAIL = os.getenv("BUSINESS_EMAIL", "gtavihubspain.business@gmail.com")
-MONETIZATION_AFFILIATE_URL = os.getenv("MONETIZATION_AFFILIATE_URL", "https://linktr.ee/gtavihubspain")
-ENABLE_AUTO_PINNED_COMMENT = os.getenv("ENABLE_AUTO_PINNED_COMMENT", "true").lower() in ("1", "true", "yes")
-
 # Base directories
 BASE_DIR = Path(__file__).resolve().parent.parent
 load_dotenv(BASE_DIR / ".env", override=True)
+
+# Monetización & Contacto Comercial
+BUSINESS_EMAIL = os.getenv("BUSINESS_EMAIL", "gabtru@hotmail.com")
+MONETIZATION_AFFILIATE_URL = os.getenv("MONETIZATION_AFFILIATE_URL", "https://linktr.ee/gtavihubspain")
+ENABLE_AUTO_PINNED_COMMENT = os.getenv("ENABLE_AUTO_PINNED_COMMENT", "true").lower() in ("1", "true", "yes")
 
 CONFIG_DIR = BASE_DIR / "config"
 DATA_DIR = BASE_DIR / "data"
