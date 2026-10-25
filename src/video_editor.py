@@ -244,7 +244,8 @@ def render_top_hook_headline(hook_text: str, output_path: Path) -> bool:
     if not clean_hook:
         return False
     
-    font = get_best_font(size=40)
+    font_size = 40 if len(clean_hook) < 26 else (33 if len(clean_hook) < 40 else 26)
+    font = get_best_font(size=font_size)
     d_temp = ImageDraw.Draw(Image.new("RGBA", (1, 1)))
     bb = d_temp.textbbox((0, 0), clean_hook, font=font)
     w = bb[2] - bb[0]

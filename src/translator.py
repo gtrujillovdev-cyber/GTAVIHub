@@ -106,9 +106,9 @@ Título original: "{original_title}"
 Creador/Fuente original: "{creator_name or 'Rockstar Games'}"
 
 Tu tarea es generar:
-1. "viral_title": Un título ULTRA LLAMATIVO completamente en MAYÚSCULAS con emojis gaming y etiqueta #GTA6 (máx 80 caracteres). Debe apelar a la curiosidad, misterio o impacto extremo (ej: "¡NO PUEDE SER! 😱 REACCIÓN BRUTAL A GTA 6 [SECRETOS OCULTOS] 🔥🌴 #GTA6").
-2. "summary": Un resumen apasionante de 2 párrafos en español explicando qué ocurre en el vídeo, teorías y por qué los fans están alucinando.
-3. "hook": 2 o 3 palabras MUY IMPACTANTES en MAYÚSCULAS para la miniatura y pantalla de intro (ej: "¡DETALLE OCULTO!", "¡INCREÍBLE!", "¡NO PUEDE SER!", "¡BRUTAL!").
+1. "viral_title": Un título ULTRA LLAMATIVO completamente en MAYÚSCULAS con emojis gaming y etiqueta #GTA6 (máx 80 caracteres). Debe apelar a la curiosidad, misterio o impacto extremo (ej: "¡NO PUEDE SER! 😱 REVELAN SECRETOS DE GTA 6 [DETALLES BRUTALES] 🔥🌴 #GTA6"). REGLA DE ORO: Jamás uses palabras como 'CONCEPTO', 'CGI', 'FAN-MADE' o 'UNREAL ENGINE'. Enfócate en filtraciones, secretos, comparativas y jugabilidad real.
+2. "summary": Un resumen apasionante de 2 párrafos en español explicando qué ocurre en el vídeo, teorías y por qué la comunidad de GTA está impactada.
+3. "hook": Una frase o pregunta corta de MÁXIMA INTRIGA O POLÉMICA para los primeros 2 segundos (máx 4-5 palabras en MAYÚSCULAS) para evitar que deslicen la pantalla (ej: "¿NOTASTE ESTE SECRETO? 🤯", "¿POR QUÉ OCULTARON ESTO? 🚨", "¡ESTO CAMBIA TODO! 🔥", "EL DETALLE QUE NADIE VIO 😱").
 
 Devuelve tu respuesta EXACTAMENTE en este formato JSON (sin texto extra):
 {{

@@ -35,6 +35,8 @@ GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
 # Defaults
 MAX_VIDEOS_PER_RUN = int(os.getenv("MAX_VIDEOS_PER_RUN", "2"))
 DEFAULT_TTS_VOICE = os.getenv("DEFAULT_TTS_VOICE", "es-ES-AlvaroNeural")
+AUTO_DUB_ENGLISH = os.getenv("AUTO_DUB_ENGLISH", "true").lower() in ("1", "true", "yes")
+SHORT_TARGET_DURATION = int(os.getenv("SHORT_TARGET_DURATION", "32"))
 
 # FFmpeg Hardware Acceleration (VideoToolbox para Apple Silicon e Intel)
 FFMPEG_VIDEO_CODEC = "h264_videotoolbox"

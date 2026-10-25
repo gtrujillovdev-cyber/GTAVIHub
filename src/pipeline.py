@@ -6,7 +6,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional, Dict, Any
 
-from .config import OUTPUT_DIR, TEMP_DIR
+from .config import OUTPUT_DIR, TEMP_DIR, AUTO_DUB_ENGLISH
 from .downloader import download_video_and_subtitles
 from .translator import translate_srt, generate_video_metadata
 from .dubber import generate_voiceover
@@ -106,11 +106,16 @@ def process_single_video(
             print("[Warning] No se pudieron traducir subtítulos, se continuará sin subtítulos quemados.")
             es_srt_path = None
 
-    # 3. Doblaje de voz opcional
+    # 3. Doblaje de voz neural en español (automático para fuentes en inglés/extranjeras para maximizar retención)
     dub_audio_path = None
-    if mode == "dub" and lang_to_use != "es" and es_srt_path:
+    should_dub = (mode in ["dub", "voice"]) or (AUTO_DUB_ENGLISH and lang_to_use != "es")
+    if should_dub and lang_to_use != "es" and es_srt_path:
         dub_audio_path = TEMP_DIR / f"{video_id}_es_voice.mp3"
-        generate_voiceover(es_srt_path, dub_audio_path)
+        print(f"[*] Modo voz activa ({lang_to_use.upper()} -> ES). Generando locución neural en español...")
+        if generate_voiceover(es_srt_path, dub_audio_path):
+            mode = "dub"
+        else:
+            dub_audio_path = None
 
     # 4. Generación de Metadatos Virales (Título MAYÚSCULAS + Gancho + Descripción Legal)
     print("[*] Generando metadatos virales con tendencias de YouTube y Fair Use...")
@@ -124,7 +129,8 @@ def process_single_video(
     hook_text = metadata.get("hook", "¡ANÁLISIS AL DETALLE!")
 
     # 5. Renderizado final transformado
-    report_stage("⚙️ [3/5] Renderizando vídeo 9:16 con VideoToolbox (Subtítulos Hormozi Pop Bounce)...")
+    stage_msg = "⚙️ [3/5] Renderizando vídeo 9:16 con Doblaje Neural y Subtítulos Dinámicos..." if dub_audio_path else "⚙️ [3/5] Renderizando vídeo 9:16 con VideoToolbox (Subtítulos Hormozi Pop Bounce)..."
+    report_stage(stage_msg)
     prefix = "SHORT" if is_short else "VIDEO"
     output_filename = f"{prefix}_{video_id}_ES.mp4"
     output_path = OUTPUT_DIR / output_filename

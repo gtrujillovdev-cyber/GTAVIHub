@@ -5,7 +5,7 @@ import json
 import subprocess
 from pathlib import Path
 from typing import Optional, Tuple, Dict, Any
-from .config import TEMP_DIR, get_ffmpeg_threads
+from .config import TEMP_DIR, get_ffmpeg_threads, SHORT_TARGET_DURATION
 
 def parse_srt_time(ts_str: str) -> float:
     """Convierte HH:MM:SS,mmm a segundos flotantes."""
@@ -66,10 +66,10 @@ def slice_srt_file(srt_path: Path, start_trim: float, end_trim: float, output_sr
         print(f"[!] Error recortando SRT: {e}")
     return False
 
-def find_viral_heatmap_segment(url: str, target_duration: int = 50) -> Optional[Tuple[float, float]]:
+def find_viral_heatmap_segment(url: str, target_duration: int = SHORT_TARGET_DURATION) -> Optional[Tuple[float, float]]:
     """
     Analiza el mapa de calor de YouTube ('most replayed' heatmap) con yt-dlp
-    para encontrar la ventana de 45-55 segundos con mayor retención de audiencia.
+    para encontrar la ventana de 28-35 segundos (Sweet Spot) con mayor retención de audiencia.
     """
     try:
         cmd = [
@@ -85,8 +85,8 @@ def find_viral_heatmap_segment(url: str, target_duration: int = 50) -> Optional[
         info = json.loads(res.stdout)
         duration = info.get("duration", 0)
 
-        # Si ya es un vídeo corto (< 85 segundos), no necesita recorte
-        if duration <= 85:
+        # Si ya es un vídeo corto optimizado (<= 42 segundos), no necesita recorte
+        if duration <= 42:
             return None
 
         heatmap = info.get("heatmap")
@@ -197,9 +197,9 @@ def download_video_and_subtitles(url: str, video_id: str) -> Tuple[Optional[Path
             except Exception:
                 continue
 
-    # Paso 3: Análisis de picos virales si el vídeo es largo (> 85s)
+    # Paso 3: Análisis de picos virales si el vídeo es largo (> 42s)
     if video_path and video_path.exists():
-        viral_range = find_viral_heatmap_segment(url, target_duration=50)
+        viral_range = find_viral_heatmap_segment(url, target_duration=SHORT_TARGET_DURATION)
         if viral_range:
             v_start, v_end = viral_range
             trimmed_video = TEMP_DIR / f"{video_id}_viral.mp4"
