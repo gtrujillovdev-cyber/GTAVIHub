@@ -10,6 +10,7 @@ load_dotenv(BASE_DIR / ".env", override=True)
 # Monetización & Contacto Comercial
 BUSINESS_EMAIL = os.getenv("BUSINESS_EMAIL", "gabtru@hotmail.com")
 MONETIZATION_AFFILIATE_URL = os.getenv("MONETIZATION_AFFILIATE_URL", "https://linktr.ee/gtavihubspain")
+ENABLE_AFFILIATE_CTAS = os.getenv("ENABLE_AFFILIATE_CTAS", "false").lower() in ("1", "true", "yes")
 AFFILIATE_CTA_TIKTOK = os.getenv("AFFILIATE_CTA_TIKTOK", "🎮 Saldo PSN/Xbox con descuento & reserva de GTA 6 en link de bio ⬇️")
 AFFILIATE_CTA_INSTAGRAM = os.getenv("AFFILIATE_CTA_INSTAGRAM", "🔥 Consigue saldo PSN/Xbox con descuento y hardware para GTA 6 en el link de la bio 🔗")
 ENABLE_AUTO_PINNED_COMMENT = os.getenv("ENABLE_AUTO_PINNED_COMMENT", "true").lower() in ("1", "true", "yes")

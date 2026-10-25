@@ -9,7 +9,8 @@ from typing import Optional, Dict, Any, List
 
 from .config import (
     BASE_DIR, OUTPUT_DIR, PROCESSED_FILE, BUSINESS_EMAIL,
-    MONETIZATION_AFFILIATE_URL, AFFILIATE_CTA_TIKTOK, AFFILIATE_CTA_INSTAGRAM
+    MONETIZATION_AFFILIATE_URL, ENABLE_AFFILIATE_CTAS,
+    AFFILIATE_CTA_TIKTOK, AFFILIATE_CTA_INSTAGRAM
 )
 from .uploader import upload_to_youtube
 from .compliance_auditor import ComplianceAuditor
@@ -175,8 +176,12 @@ class SocialPublisher:
             return None
 
         tags_str = " ".join([f"#{t.replace(' ', '')}" for t in tags[:4]])
-        # Caption optimizada con Call to Action a bio link de afiliados y contacto comercial
-        caption = f"{title[:70]} {tags_str} {AFFILIATE_CTA_TIKTOK} | 📩 {BUSINESS_EMAIL}"
+        # Caption optimizada con llamada a la acción (afiliados si está activo o comunidad)
+        if ENABLE_AFFILIATE_CTAS:
+            cta_part = f"{AFFILIATE_CTA_TIKTOK} | "
+        else:
+            cta_part = "🎮 Link en bio para novedades de GTA 6 | "
+        caption = f"{title[:70]} {tags_str} {cta_part}📩 {BUSINESS_EMAIL}"
         tiktok_profile = BROWSER_PROFILE_DIR / "tiktok_user_data"
 
         if self.dry_run:
@@ -574,7 +579,8 @@ class SocialPublisher:
                 else:
                     self._notify_telegram("⚠️ *[2/3] TikTok:* Subido y guardado como borrador en TikTok Studio.")
             elif plat == "instagram":
-                caption = f"{title}\n\n{desc[:1500]}\n\n{AFFILIATE_CTA_INSTAGRAM}\n📩 Contacto / Business: {BUSINESS_EMAIL}\n\n#GTA6 #Gaming #Reels"
+                cta_block = AFFILIATE_CTA_INSTAGRAM if ENABLE_AFFILIATE_CTAS else "🎮 Reserva oficial de GTA VI y novedades en el LINK DE LA BIO."
+                caption = f"{title}\n\n{desc[:1500]}\n\n{cta_block}\n📩 Contacto / Business: {BUSINESS_EMAIL}\n\n#GTA6 #Gaming #Reels"
                 url = self.publish_to_instagram(video_path, caption, thumbnail_path=thumb)
                 results["instagram"] = url
                 if url:

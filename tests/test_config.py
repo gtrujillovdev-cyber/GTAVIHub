@@ -3,7 +3,7 @@ from pathlib import Path
 from src.config import (
     BASE_DIR, OUTPUT_DIR, TEMP_DIR, CHANNELS_FILE, PROCESSED_FILE, is_quant_busy,
     SHORT_MIN_DURATION, SHORT_MAX_DURATION, SHORT_TARGET_DURATION,
-    AFFILIATE_CTA_TIKTOK, AFFILIATE_CTA_INSTAGRAM
+    ENABLE_AFFILIATE_CTAS, AFFILIATE_CTA_TIKTOK, AFFILIATE_CTA_INSTAGRAM
 )
 from src.downloader import snap_window_to_subtitles
 
@@ -30,6 +30,8 @@ class TestConfig(unittest.TestCase):
         self.assertLessEqual(SHORT_TARGET_DURATION, SHORT_MAX_DURATION)
 
     def test_affiliate_settings(self):
+        self.assertIsInstance(ENABLE_AFFILIATE_CTAS, bool)
+        self.assertFalse(ENABLE_AFFILIATE_CTAS)  # Desactivado por defecto hasta que el usuario cree las cuentas
         self.assertTrue(len(AFFILIATE_CTA_TIKTOK) > 0)
         self.assertTrue(len(AFFILIATE_CTA_INSTAGRAM) > 0)
 
