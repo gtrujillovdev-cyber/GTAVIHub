@@ -264,46 +264,74 @@
   ],
   "search_queries": [
     {
-      "query": "ytsearch6:GTA 6 Shorts viral",
+      "query": "ytsearch8:GTA 6 Shorts viral #shorts",
       "lang": "es",
-      "filter_keywords": false,
+      "only_shorts": true,
       "enabled": true,
-      "description": "Detección rápida de clips verticales virales de GTA 6"
+      "description": "Shorts virales de GTA 6 en español"
     },
     {
-      "query": "ytsearch6:GTA 6 trailer 2",
-      "lang": "es",
-      "filter_keywords": false,
-      "enabled": true,
-      "description": "Búsqueda de novedades y tráilers oficiales"
-    },
-    {
-      "query": "ytsearch6:GTA 6 gameplay leak Shorts",
+      "query": "ytsearch8:GTA 6 gameplay leak Shorts #shorts",
       "lang": "en",
-      "filter_keywords": false,
+      "only_shorts": true,
       "enabled": true,
       "description": "Filtraciones y gameplay vertical en tendencia"
     },
     {
-      "query": "ytsearch6:GTA 6 filtracion mapa",
+      "query": "ytsearch8:GTA 6 trailer 2 Shorts #shorts",
       "lang": "es",
-      "filter_keywords": false,
+      "only_shorts": true,
       "enabled": true,
-      "description": "Análisis del mapa de Vice City y filtraciones"
+      "description": "Novedades y teorías del Tráiler 2 en formato corto"
     },
     {
-      "query": "ytsearch6:Grand Theft Auto VI secrets",
+      "query": "ytsearch8:GTA 6 Vice City secrets Shorts #shorts",
       "lang": "en",
-      "filter_keywords": false,
+      "only_shorts": true,
       "enabled": true,
-      "description": "Detalles ocultos y secretos descubiertos"
+      "description": "Detalles y secretos del mapa de Vice City en Shorts"
     },
     {
-      "query": "ytsearch6:GTA 6 reaccion streamer",
+      "query": "ytsearch8:GTA 6 Lucia Jason clips #shorts",
       "lang": "es",
-      "filter_keywords": false,
+      "only_shorts": true,
       "enabled": true,
-      "description": "Reacciones de la comunidad hispanohablante"
+      "description": "Clips de los protagonistas Lucía y Jason"
+    },
+    {
+      "query": "ytsearch8:Grand Theft Auto VI secret details Shorts #shorts",
+      "lang": "en",
+      "only_shorts": true,
+      "enabled": true,
+      "description": "Detalles ocultos del motor gráfico y físicas en Shorts"
+    },
+    {
+      "query": "ytsearch8:GTA 6 filtracion mapa Leonida Shorts #shorts",
+      "lang": "es",
+      "only_shorts": true,
+      "enabled": true,
+      "description": "Filtraciones del mapa de Leonida en formato vertical"
+    },
+    {
+      "query": "ytsearch8:GTA 6 reaccion streamer Shorts #shorts",
+      "lang": "es",
+      "only_shorts": true,
+      "enabled": true,
+      "description": "Reacciones virales de streamers a novedades de GTA 6"
+    },
+    {
+      "query": "ytsearch8:GTA 6 Easter eggs misterios Shorts #shorts",
+      "lang": "es",
+      "only_shorts": true,
+      "enabled": true,
+      "description": "Easter eggs y misterios descubiertos de GTA 6"
+    },
+    {
+      "query": "ytsearch8:Grand Theft Auto 6 viral moments Shorts #shorts",
+      "lang": "en",
+      "only_shorts": true,
+      "enabled": true,
+      "description": "Momentos virales globales de la comunidad de GTA 6"
     }
   ]
 }

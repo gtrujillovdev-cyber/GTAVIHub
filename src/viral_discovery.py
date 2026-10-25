@@ -12,12 +12,19 @@ from .channels import get_processed_ids, list_monitored_channels, add_monitored_
 DISCOVERED_CHANNELS_FILE = DATA_DIR / "discovered_channels.json"
 
 DEFAULT_VIRAL_QUERIES = [
-    "ytsearch6:GTA 6 reaccion streamer Shorts",
-    "ytsearch6:GTA 6 clips streamers",
-    "ytsearch6:GTA 6 gameplay filtracion",
-    "ytsearch6:GTA 6 detalles secretos creadores",
-    "ytsearch6:GTA 6 IlloJuan Xokas DaniRep",
-    "ytsearch6:Grand Theft Auto VI secrets breakdown"
+    # Búsquedas dinámicas de máxima virabilidad dedicadas al formato SHORTS de GTA 6
+    "ytsearch8:GTA 6 Shorts viral #shorts",
+    "ytsearch8:GTA 6 gameplay leak Shorts #shorts",
+    "ytsearch8:GTA 6 trailer 2 Shorts #shorts",
+    "ytsearch8:GTA 6 Vice City secrets Shorts #shorts",
+    "ytsearch8:GTA 6 Lucia Jason clips #shorts",
+    "ytsearch8:Grand Theft Auto VI secret details Shorts #shorts",
+    "ytsearch8:GTA 6 filtracion mapa Leonida Shorts #shorts",
+    "ytsearch8:GTA 6 graficos fisicas leak Shorts #shorts",
+    "ytsearch8:GTA 6 reaccion streamer Shorts #shorts",
+    "ytsearch8:GTA 6 Easter eggs misterios Shorts #shorts",
+    "ytsearch8:GTA 6 AI NPC details Shorts #shorts",
+    "ytsearch8:Grand Theft Auto 6 viral moments Shorts #shorts"
 ]
 
 VIRAL_KEYWORDS = [
@@ -92,16 +99,16 @@ def calculate_virality_score(title: str, duration: float, views: int) -> Dict[st
     else:
         views_score = 5
 
-    # 2. Puntos por formato y retención óptima (0 a 30)
-    # Formato Shorts (10s a 65s): retención máxima en feeds verticales
-    if 10 <= duration <= 65:
-        format_score = 30
-    elif 65 < duration <= 180:
-        format_score = 18
-    elif 180 < duration <= 600:
-        format_score = 10
-    else:
+    # 2. Puntos por formato Shorts y retención óptima (0 a 35)
+    # Formato Shorts nativo (10s a 60s): máxima prioridad editorial en feeds verticales
+    if 10 <= duration <= 60:
+        format_score = 35
+    elif 60 < duration <= 80:
+        format_score = 15
+    elif 80 < duration <= 180:
         format_score = 5
+    else:
+        format_score = 0
 
     # 3. Puntos por palabras clave virales en título (0 a 20)
     matches = [kw for kw in VIRAL_KEYWORDS if kw in title_lower]
@@ -134,12 +141,16 @@ def calculate_virality_score(title: str, duration: float, views: int) -> Dict[st
 def scan_viral_radar(
     queries: Optional[List[str]] = None,
     max_candidates: int = 10,
-    min_score: int = 40
+    min_score: int = 40,
+    only_shorts: bool = True
 ) -> List[Dict[str, Any]]:
     """
     Escanea dinámicamente YouTube con múltiples queries de alta tendencia,
     descubre nuevos creadores y clasifica los vídeos por puntuación de engagement.
+    Por defecto prioriza y filtra exclusivamente vídeos en formato Shorts (<= 65s).
     """
+    from .channels import is_strictly_gta6
+
     if queries is None:
         queries = DEFAULT_VIRAL_QUERIES
 
@@ -172,11 +183,19 @@ def scan_viral_radar(
                     if not vid_id or vid_id in processed_ids or vid_id == "NA":
                         continue
 
+                    # FILTRO INNEGOCIABLE DE EXCLUSIVIDAD GTA 6
+                    if not is_strictly_gta6(title):
+                        continue
+
                     # Parsing de duración
                     try:
                         duration = float(parts[2]) if len(parts) > 2 and parts[2] != "NA" else 0.0
                     except ValueError:
                         duration = 0.0
+
+                    # Filtro estricto de formato Shorts (máx 65s)
+                    if only_shorts and (duration > 65 or duration <= 0):
+                        continue
 
                     # Parsing de vistas
                     try:

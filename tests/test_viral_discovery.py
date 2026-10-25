@@ -20,7 +20,7 @@ class TestViralDiscovery(unittest.TestCase):
         )
         self.assertGreaterEqual(res["score"], 80)
         self.assertTrue(res["is_short"])
-        self.assertEqual(res["format_score"], 30)
+        self.assertEqual(res["format_score"], 35)
         self.assertGreaterEqual(res["views_score"], 35)
         self.assertGreaterEqual(len(res["matches"]), 3)
 
@@ -33,7 +33,7 @@ class TestViralDiscovery(unittest.TestCase):
         )
         self.assertLess(res["score"], 30)
         self.assertFalse(res["is_short"])
-        self.assertEqual(res["format_score"], 5)
+        self.assertEqual(res["format_score"], 0)
         self.assertEqual(res["views_score"], 5)
 
     def test_monitored_channels_expanded(self):

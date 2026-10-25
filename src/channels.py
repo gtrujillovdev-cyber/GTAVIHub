@@ -179,16 +179,26 @@ def fetch_channel_candidates(max_per_channel: int = 2) -> List[Dict[str, Any]]:
                             dur_secs = float(duration) if duration and duration != "NA" else 0.0
                         except ValueError:
                             dur_secs = 0.0
+
+                        # Si la query exige solo formato Shorts, filtrar vídeos largos (>65s)
+                        if q.get("only_shorts", True) and (dur_secs > 65 or dur_secs <= 0):
+                            continue
+
                         candidates.append({
                             "id": vid_id,
                             "title": title,
                             "url": vid_url,
                             "duration": dur_secs,
-                            "source_name": f"Search: {query}",
+                            "source_name": f"Search: {query.split(':')[1] if ':' in query else query}",
+                            "source_type": "viral_search",
+                            "lang": q.get("lang", "es"),
                             "is_short": (0 < dur_secs <= 60)
                         })
         except Exception as e:
             print(f"[!] Error en query {query}: {e}")
+
+    # Priorizar fuertemente candidatos en formato Shorts (duración <= 60s)
+    candidates.sort(key=lambda x: (not x.get("is_short", False), x.get("duration", 9999)))
 
     return candidates
 
