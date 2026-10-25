@@ -47,8 +47,8 @@ Para evitar sobrecalentamiento, estrangulamiento térmico o degradación de los 
    - macOS Big Sur en arranque headless sin sesión de usuario Aqua bloquea `launchctl load` de agentes de usuario.
    - La resiliencia está garantizada mediante `/usr/sbin/cron` (`*/5 * * * * ~/GTAVIHub/deploy/launchd/watchdog.sh`).
    - El watchdog verifica cada 5 minutos la salud de `main.py --telegram` y lo resucita automáticamente si cayó o tras el reinicio preventivo diario de las **04:30 CET** (`com.gatdseq.maintenance`).
-2. **Tareas Programadas en Horas Punta (Sweet Spot Algorítmico con Anticipación de Indexación)**:
-   - Registradas en cron con 15 minutos de anticipación (**10:45**, **14:45** y **19:15 CET**) para que la ingesta, renderizado con FFmpeg (limitado por GaTDSEQ), subida e indexación algorítmica culminen exactamente listos para los picos de audiencia (**11:00**, **15:00** y **19:30 CET** en España y LatAm).
+2. **Tareas Programadas en Horas Punta (Sweet Spot Algorítmico - 4 Vídeos/Día)**:
+   - Registradas en cron con 15 minutos de anticipación (**10:45**, **14:15**, **17:45** y **20:45 CET**) para que la ingesta, renderizado con FFmpeg (limitado por GaTDSEQ), subida e indexación algorítmica culminen exactamente listos para los 4 picos de audiencia diarios (**11:00**, **14:30**, **18:00** y **21:00 CET** en España y LatAm).
 3. **Prevención de Suspensión**:
    - En el host headless, mantener `sudo pmset -c disablesleep 1` activo.
 4. **Salida de Logs en Tiempo Real**:
