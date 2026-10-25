@@ -20,10 +20,10 @@
     },
     {
       "name": "TGG",
-      "url": "https://www.youtube.com/@TGG/videos",
+      "url": "https://www.youtube.com/@TGG_/videos",
       "type": "gta_authority",
       "lang": "en",
-      "filter_keywords": false,
+      "filter_keywords": true,
       "enabled": true,
       "description": "Mayor creador global de noticias y guías de GTA"
     },

@@ -1,8 +1,23 @@
 import sys
+import re
 import json
 import subprocess
 from typing import List, Dict, Any, Optional
 from .config import CHANNELS_FILE, PROCESSED_FILE
+
+GTA_CORE_KEYWORDS = [
+    "gta", "grand theft auto", "rockstar", "vice city", "lucia", "jason",
+    "gta6", "gta 6", "gta vi", "gtaonline", "gta online", "leonida", "san andreas"
+]
+
+def is_strictly_gta(title: str, description: str = "") -> bool:
+    """Verifica de forma estricta e innegociable si el contenido trata sobre GTA o Rockstar Games."""
+    combined = f"{title} {description}".lower()
+    for term in GTA_CORE_KEYWORDS:
+        # Búsqueda con límite de palabra o coincidencia directa
+        if re.search(r"\b" + re.escape(term) + r"\b", combined) or term in combined:
+            return True
+    return False
 
 def get_processed_ids() -> set:
     if not PROCESSED_FILE.exists():
@@ -66,11 +81,12 @@ def fetch_channel_candidates(max_per_channel: int = 2) -> List[Dict[str, Any]]:
                     vid_url = parts[3] if len(parts) > 3 else f"https://www.youtube.com/watch?v={vid_id}"
 
                     if vid_id not in processed_ids and vid_id != "NA":
-                        # Si el canal requiere filtrado de palabras clave, verificar que trata sobre GTA
-                        if ch.get("filter_keywords", False):
-                            gta_terms = ["gta", "grand theft auto", "rockstar", "vice city", "lucia", "jason"]
-                            if not any(term in title.lower() for term in gta_terms):
-                                continue
+                        # FILTRO INNEGOCIABLE DE CONTENIDO GTA:
+                        # Salvo el canal oficial de Rockstar Games, TODO vídeo debe tratar sobre GTA
+                        is_official = ("rockstargames" in url.lower() or ch.get("type") == "official")
+                        if not is_official and not is_strictly_gta(title):
+                            print(f"[🛡️ GTA Guardian] Descartado vídeo no relacionado con GTA: '{title[:60]}'")
+                            continue
 
                         try:
                             dur_secs = float(duration) if duration and duration != "NA" else 0.0
@@ -117,6 +133,9 @@ def fetch_channel_candidates(max_per_channel: int = 2) -> List[Dict[str, Any]]:
                     vid_url = parts[3] if len(parts) > 3 else f"https://www.youtube.com/watch?v={vid_id}"
 
                     if vid_id not in processed_ids and vid_id != "NA":
+                        if not is_strictly_gta(title):
+                            print(f"[🛡️ GTA Guardian] Descartado vídeo no relacionado con GTA: '{title[:60]}'")
+                            continue
                         try:
                             dur_secs = float(duration) if duration and duration != "NA" else 0.0
                         except ValueError:

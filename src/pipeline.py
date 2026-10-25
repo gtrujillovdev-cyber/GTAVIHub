@@ -59,6 +59,19 @@ def process_single_video(
     print(f"    Auto-Subida: {'SÍ (' + effective_privacy.upper() + ')' if auto_upload else 'NO'}")
     print(f"=======================================================")
 
+    # 0. PROTOCOLO INNEGOCIABLE DE VALIDACIÓN GTA (Fail-Safe Defense-in-Depth)
+    from .channels import is_strictly_gta
+    is_official_rockstar = "rockstar" in (creator_name or "").lower() or "rockstargames" in url.lower()
+    if not is_official_rockstar and not is_strictly_gta(original_title):
+        err_msg = f"❌ [BLOQUEO DE SEGURIDAD GTA] El vídeo '{original_title}' NO trata sobre GTA. Abortando inmediatamente."
+        print(f"\n{err_msg}")
+        try:
+            from .telegram_bot import send_telegram_alert
+            send_telegram_alert(f"🛡️ *Filtro GTA Activado*\nVídeo no relacionado con GTA descartado:\n`{original_title[:60]}`")
+        except Exception:
+            pass
+        return None
+
     # Auditoría inicial de almacenamiento
     enforce_storage_limits(max_mb=1000)
 

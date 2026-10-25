@@ -1,5 +1,6 @@
 import unittest
 from src.compliance_auditor import ComplianceAuditor, PLATFORM_POLICIES
+from src.channels import is_strictly_gta
 
 class TestCompliance(unittest.TestCase):
     def test_platform_policies_integrity(self):
@@ -32,6 +33,20 @@ class TestCompliance(unittest.TestCase):
         )
         self.assertFalse(is_safe)
         self.assertGreater(len(issues), 0)
+
+    def test_gta_strict_content_filter(self):
+        # Vídeos legítimos de GTA
+        self.assertTrue(is_strictly_gta("GTA 6: Inside the Development of Vice City"))
+        self.assertTrue(is_strictly_gta("TRIPLE MONEY & DISCOUNTS | GTA Online Weekly Update"))
+        self.assertTrue(is_strictly_gta("Rockstar Games anuncia nueva patente de físicas"))
+        self.assertTrue(is_strictly_gta("Detalles ocultos de Lucía y Jason en el trailer"))
+
+        # Vídeos no relacionados (deben ser rechazados sin excepción)
+        self.assertFalse(is_strictly_gta("Senior Offering, May 3, 2007"))
+        self.assertFalse(is_strictly_gta("Jazz Combo, April 29, 2007"))
+        self.assertFalse(is_strictly_gta("Banda tocando música en directo"))
+        self.assertFalse(is_strictly_gta("Receta de cocina con Gordon Ramsay"))
+        self.assertFalse(is_strictly_gta("Concierto de coro escolar"))
 
 if __name__ == "__main__":
     unittest.main()
