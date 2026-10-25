@@ -7,7 +7,10 @@ from pathlib import Path
 from datetime import datetime, date
 from typing import Optional, Dict, Any, List
 
-from .config import BASE_DIR, OUTPUT_DIR, PROCESSED_FILE, BUSINESS_EMAIL, MONETIZATION_AFFILIATE_URL
+from .config import (
+    BASE_DIR, OUTPUT_DIR, PROCESSED_FILE, BUSINESS_EMAIL,
+    MONETIZATION_AFFILIATE_URL, AFFILIATE_CTA_TIKTOK, AFFILIATE_CTA_INSTAGRAM
+)
 from .uploader import upload_to_youtube
 from .compliance_auditor import ComplianceAuditor
 
@@ -172,8 +175,8 @@ class SocialPublisher:
             return None
 
         tags_str = " ".join([f"#{t.replace(' ', '')}" for t in tags[:4]])
-        # Caption optimizada con Call to Action a bio link y contacto comercial
-        caption = f"{title[:75]} {tags_str} 🎮 Link en bio para reservas de GTA 6 | 📩 {BUSINESS_EMAIL}"
+        # Caption optimizada con Call to Action a bio link de afiliados y contacto comercial
+        caption = f"{title[:70]} {tags_str} {AFFILIATE_CTA_TIKTOK} | 📩 {BUSINESS_EMAIL}"
         tiktok_profile = BROWSER_PROFILE_DIR / "tiktok_user_data"
 
         if self.dry_run:
@@ -571,7 +574,7 @@ class SocialPublisher:
                 else:
                     self._notify_telegram("⚠️ *[2/3] TikTok:* Subido y guardado como borrador en TikTok Studio.")
             elif plat == "instagram":
-                caption = f"{title}\n\n{desc[:1600]}\n\n🎮 Reserva oficial de GTA VI y novedades en el LINK DE LA BIO.\n📩 Contacto / Business: {BUSINESS_EMAIL}\n\n#GTA6 #Gaming #Reels"
+                caption = f"{title}\n\n{desc[:1500]}\n\n{AFFILIATE_CTA_INSTAGRAM}\n📩 Contacto / Business: {BUSINESS_EMAIL}\n\n#GTA6 #Gaming #Reels"
                 url = self.publish_to_instagram(video_path, caption, thumbnail_path=thumb)
                 results["instagram"] = url
                 if url:

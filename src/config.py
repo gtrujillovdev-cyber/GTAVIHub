@@ -10,6 +10,8 @@ load_dotenv(BASE_DIR / ".env", override=True)
 # Monetización & Contacto Comercial
 BUSINESS_EMAIL = os.getenv("BUSINESS_EMAIL", "gabtru@hotmail.com")
 MONETIZATION_AFFILIATE_URL = os.getenv("MONETIZATION_AFFILIATE_URL", "https://linktr.ee/gtavihubspain")
+AFFILIATE_CTA_TIKTOK = os.getenv("AFFILIATE_CTA_TIKTOK", "🎮 Saldo PSN/Xbox con descuento & reserva de GTA 6 en link de bio ⬇️")
+AFFILIATE_CTA_INSTAGRAM = os.getenv("AFFILIATE_CTA_INSTAGRAM", "🔥 Consigue saldo PSN/Xbox con descuento y hardware para GTA 6 en el link de la bio 🔗")
 ENABLE_AUTO_PINNED_COMMENT = os.getenv("ENABLE_AUTO_PINNED_COMMENT", "true").lower() in ("1", "true", "yes")
 
 CONFIG_DIR = BASE_DIR / "config"
@@ -32,11 +34,13 @@ PROCESSED_FILE = DATA_DIR / "processed.json" if (DATA_DIR / "processed.json").ex
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
 
-# Defaults
+# Defaults & Duración Dinámica Orgánica (Anti-Fingerprinting)
 MAX_VIDEOS_PER_RUN = int(os.getenv("MAX_VIDEOS_PER_RUN", "2"))
 DEFAULT_TTS_VOICE = os.getenv("DEFAULT_TTS_VOICE", "es-ES-AlvaroNeural")
 AUTO_DUB_ENGLISH = os.getenv("AUTO_DUB_ENGLISH", "true").lower() in ("1", "true", "yes")
-SHORT_TARGET_DURATION = int(os.getenv("SHORT_TARGET_DURATION", "32"))
+SHORT_MIN_DURATION = int(os.getenv("SHORT_MIN_DURATION", "26"))
+SHORT_MAX_DURATION = int(os.getenv("SHORT_MAX_DURATION", "52"))
+SHORT_TARGET_DURATION = int(os.getenv("SHORT_TARGET_DURATION", "38"))
 
 # FFmpeg Hardware Acceleration (VideoToolbox para Apple Silicon e Intel)
 FFMPEG_VIDEO_CODEC = "h264_videotoolbox"
