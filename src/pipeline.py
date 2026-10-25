@@ -59,15 +59,15 @@ def process_single_video(
     print(f"    Auto-Subida: {'SÍ (' + effective_privacy.upper() + ')' if auto_upload else 'NO'}")
     print(f"=======================================================")
 
-    # 0. PROTOCOLO INNEGOCIABLE DE VALIDACIÓN GTA (Fail-Safe Defense-in-Depth)
-    from .channels import is_strictly_gta
+    # 0. PROTOCOLO INNEGOCIABLE DE VALIDACIÓN EXCLUSIVA GTA 6 (Fail-Safe Defense-in-Depth)
+    from .channels import is_strictly_gta6
     is_official_rockstar = "rockstar" in (creator_name or "").lower() or "rockstargames" in url.lower()
-    if not is_official_rockstar and not is_strictly_gta(original_title):
-        err_msg = f"❌ [BLOQUEO DE SEGURIDAD GTA] El vídeo '{original_title}' NO trata sobre GTA. Abortando inmediatamente."
+    if not is_official_rockstar and not is_strictly_gta6(original_title):
+        err_msg = f"❌ [BLOQUEO DE SEGURIDAD GTA 6] El vídeo '{original_title}' NO trata exclusivamente sobre GTA 6. Abortando inmediatamente."
         print(f"\n{err_msg}")
         try:
             from .telegram_bot import send_telegram_alert
-            send_telegram_alert(f"🛡️ *Filtro GTA Activado*\nVídeo no relacionado con GTA descartado:\n`{original_title[:60]}`")
+            send_telegram_alert(f"🛡️ *Filtro Exclusivo GTA 6 Activado*\nVídeo descartado (no es GTA 6):\n`{original_title[:60]}`")
         except Exception:
             pass
         return None

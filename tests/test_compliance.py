@@ -34,14 +34,22 @@ class TestCompliance(unittest.TestCase):
         self.assertFalse(is_safe)
         self.assertGreater(len(issues), 0)
 
-    def test_gta_strict_content_filter(self):
-        # Vídeos legítimos de GTA
+    def test_gta6_exclusive_content_filter(self):
+        # Vídeos legítimos EXCLUSIVOS de GTA 6 / GTA VI
         self.assertTrue(is_strictly_gta("GTA 6: Inside the Development of Vice City"))
-        self.assertTrue(is_strictly_gta("TRIPLE MONEY & DISCOUNTS | GTA Online Weekly Update"))
-        self.assertTrue(is_strictly_gta("Rockstar Games anuncia nueva patente de físicas"))
         self.assertTrue(is_strictly_gta("Detalles ocultos de Lucía y Jason en el trailer"))
+        self.assertTrue(is_strictly_gta("Esto es GTA VI (GAMEPLAY + EXCLUSIVA)"))
+        self.assertTrue(is_strictly_gta("Grand Theft Auto VI - Nuevos Detalles Filtrados de Leonida"))
+        self.assertTrue(is_strictly_gta("Mors Mutual: GTA 6 is unplayable..."))
 
-        # Vídeos no relacionados (deben ser rechazados sin excepción)
+        # Vídeos de GTA 5, GTA Online, GTA 4 u otras entregas (DEBEN SER RECHAZADOS)
+        self.assertFalse(is_strictly_gta("GTA Online Wants Me to Grind FOREVER - 100% Career Progress #48"))
+        self.assertFalse(is_strictly_gta("TRIPLE MONEY & DISCOUNTS | GTA Online Weekly Update"))
+        self.assertFalse(is_strictly_gta("MI ÚLTIMO CARA A CARA EN GTA 5 ONLINE"))
+        self.assertFalse(is_strictly_gta("GTA IV Enhanced Is Better Than I Expected - Final"))
+        self.assertFalse(is_strictly_gta("GTA San Andreas Definitive Edition Gameplay"))
+
+        # Vídeos no relacionados con videojuegos / ajenos
         self.assertFalse(is_strictly_gta("Senior Offering, May 3, 2007"))
         self.assertFalse(is_strictly_gta("Jazz Combo, April 29, 2007"))
         self.assertFalse(is_strictly_gta("Banda tocando música en directo"))

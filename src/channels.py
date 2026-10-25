@@ -5,19 +5,43 @@ import subprocess
 from typing import List, Dict, Any, Optional
 from .config import CHANNELS_FILE, PROCESSED_FILE
 
-GTA_CORE_KEYWORDS = [
-    "gta", "grand theft auto", "rockstar", "vice city", "lucia", "jason",
-    "gta6", "gta 6", "gta vi", "gtaonline", "gta online", "leonida", "san andreas"
+GTA6_POSITIVE_KEYWORDS = [
+    "gta 6", "gta6", "gta vi", "gtavi",
+    "grand theft auto 6", "grand theft auto vi",
+    "vice city", "leonida", "lucia", "jason"
 ]
 
-def is_strictly_gta(title: str, description: str = "") -> bool:
-    """Verifica de forma estricta e innegociable si el contenido trata sobre GTA o Rockstar Games."""
-    combined = f"{title} {description}".lower()
-    for term in GTA_CORE_KEYWORDS:
-        # Búsqueda con límite de palabra o coincidencia directa
-        if re.search(r"\b" + re.escape(term) + r"\b", combined) or term in combined:
-            return True
-    return False
+def is_strictly_gta6(title: str, description: str = "") -> bool:
+    """
+    Verifica de forma estricta e innegociable que el contenido trata EXCLUSIVAMENTE
+    sobre Grand Theft Auto VI (GTA 6).
+    Rechaza tajantemente GTA 5, GTA Online, GTA 4 o cualquier contenido que no sea de GTA 6.
+    """
+    combined = f" {title} {description} ".lower()
+
+    # 1. Requiere mención explícita a GTA 6 / GTA VI o sus elementos canónicos exclusivos
+    has_gta6 = any(
+        re.search(r"(?:\b|_)" + re.escape(term) + r"(?:\b|_)", combined)
+        for term in GTA6_POSITIVE_KEYWORDS
+    )
+    if not has_gta6:
+        return False
+
+    title_lower = title.lower()
+
+    # 2. Descalificadores de contenido rutinario de otras entregas
+    disqualifiers = [
+        "weekly update", "career progress", "cara a cara", "parkour de coches",
+        "gta iv", "gta 4", "san andreas", "gta 3", "gta iii", "gta v ", "gta 5 "
+    ]
+    for dq in disqualifiers:
+        if dq in title_lower and not any(k in title_lower for k in ["gta 6", "gta6", "gta vi", "gtavi"]):
+            return False
+
+    return True
+
+# Alias para retrocompatibilidad
+is_strictly_gta = is_strictly_gta6
 
 def get_processed_ids() -> set:
     if not PROCESSED_FILE.exists():
@@ -81,11 +105,11 @@ def fetch_channel_candidates(max_per_channel: int = 2) -> List[Dict[str, Any]]:
                     vid_url = parts[3] if len(parts) > 3 else f"https://www.youtube.com/watch?v={vid_id}"
 
                     if vid_id not in processed_ids and vid_id != "NA":
-                        # FILTRO INNEGOCIABLE DE CONTENIDO GTA:
-                        # Salvo el canal oficial de Rockstar Games, TODO vídeo debe tratar sobre GTA
+                        # FILTRO INNEGOCIABLE DE CONTENIDO EXCLUSIVO GTA 6:
+                        # Salvo el canal oficial de Rockstar Games, TODO vídeo debe tratar EXCLUSIVAMENTE sobre GTA 6
                         is_official = ("rockstargames" in url.lower() or ch.get("type") == "official")
-                        if not is_official and not is_strictly_gta(title):
-                            print(f"[🛡️ GTA Guardian] Descartado vídeo no relacionado con GTA: '{title[:60]}'")
+                        if not is_official and not is_strictly_gta6(title):
+                            print(f"[🛡️ GTA Guardian] Descartado vídeo no relacionado con GTA 6: '{title[:60]}'")
                             continue
 
                         try:
@@ -133,8 +157,8 @@ def fetch_channel_candidates(max_per_channel: int = 2) -> List[Dict[str, Any]]:
                     vid_url = parts[3] if len(parts) > 3 else f"https://www.youtube.com/watch?v={vid_id}"
 
                     if vid_id not in processed_ids and vid_id != "NA":
-                        if not is_strictly_gta(title):
-                            print(f"[🛡️ GTA Guardian] Descartado vídeo no relacionado con GTA: '{title[:60]}'")
+                        if not is_strictly_gta6(title):
+                            print(f"[🛡️ GTA Guardian] Descartado vídeo no relacionado con GTA 6: '{title[:60]}'")
                             continue
                         try:
                             dur_secs = float(duration) if duration and duration != "NA" else 0.0
