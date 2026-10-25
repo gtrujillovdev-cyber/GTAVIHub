@@ -29,13 +29,28 @@ def is_strictly_gta6(title: str, description: str = "") -> bool:
 
     title_lower = title.lower()
 
-    # 2. Descalificadores de contenido rutinario de otras entregas
-    disqualifiers = [
-        "weekly update", "career progress", "cara a cara", "parkour de coches",
-        "gta iv", "gta 4", "san andreas", "gta 3", "gta iii", "gta v ", "gta 5 "
+    # 2. Descalificadores absolutos: si menciona GTA 5, GTA V, GTA Online, GTA 4, etc.,
+    # se descarta tajantemente para evitar gameplays antiguos o clickbait de GTA 5.
+    # Usamos \b para que 'gta v' NO coincida por error con 'gta vi'.
+    old_game_regexes = [
+        r"\bgta\s*5\b",
+        r"\bgta\s*v\b",
+        r"\bgta\s*online\b",
+        r"\bgta\s*4\b",
+        r"\bgta\s*iv\b",
+        r"\bgta\s*3\b",
+        r"\bgta\s*iii\b",
+        r"\bsan andreas\b",
+        r"\bweekly update\b",
+        r"\bcareer progress\b",
+        r"\bcara a cara\b",
+        r"\bparkour\b",
+        r"\bmega ramp\b",
+        r"\bcayo perico\b",
+        r"\bshark card\b"
     ]
-    for dq in disqualifiers:
-        if dq in title_lower and not any(k in title_lower for k in ["gta 6", "gta6", "gta vi", "gtavi"]):
+    for pattern in old_game_regexes:
+        if re.search(pattern, title_lower):
             return False
 
     return True

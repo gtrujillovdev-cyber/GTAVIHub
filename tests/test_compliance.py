@@ -43,6 +43,7 @@ class TestCompliance(unittest.TestCase):
         self.assertTrue(is_strictly_gta("Mors Mutual: GTA 6 is unplayable..."))
 
         # Vídeos de GTA 5, GTA Online, GTA 4 u otras entregas (DEBEN SER RECHAZADOS)
+        self.assertFalse(is_strictly_gta("CORRE O TE ATROPELLO ESPECIAL GTA 6 - GTA 5 ONLINE"))
         self.assertFalse(is_strictly_gta("GTA Online Wants Me to Grind FOREVER - 100% Career Progress #48"))
         self.assertFalse(is_strictly_gta("TRIPLE MONEY & DISCOUNTS | GTA Online Weekly Update"))
         self.assertFalse(is_strictly_gta("MI ÚLTIMO CARA A CARA EN GTA 5 ONLINE"))
