@@ -203,8 +203,8 @@
       "url": "https://www.youtube.com/@GameRollGTA/videos",
       "type": "gta_authority",
       "lang": "en",
-      "filter_keywords": false,
-      "enabled": true,
+      "filter_keywords": true,
+      "enabled": false,
       "description": "Noticias rápidas y cobertura de GTA 6"
     },
     {
@@ -212,7 +212,7 @@
       "url": "https://www.youtube.com/@INTER_yt/videos",
       "type": "breakdowns",
       "lang": "en",
-      "filter_keywords": false,
+      "filter_keywords": true,
       "enabled": true,
       "description": "Comparativas gráficas técnicas y análisis de detalles"
     },
@@ -221,8 +221,8 @@
       "url": "https://www.youtube.com/@GamerFlea/videos",
       "type": "shorts_memes",
       "lang": "en",
-      "filter_keywords": false,
-      "enabled": true,
+      "filter_keywords": true,
+      "enabled": false,
       "description": "Shorts de alto impacto y momentos virales de GTA"
     },
     {
@@ -230,7 +230,7 @@
       "url": "https://www.youtube.com/@SWEGTA/videos",
       "type": "insider_leaks",
       "lang": "en",
-      "filter_keywords": false,
+      "filter_keywords": true,
       "enabled": true,
       "description": "Historia y filtraciones del código de Rockstar Games"
     },
@@ -240,7 +240,7 @@
       "type": "media_analysis",
       "lang": "es",
       "filter_keywords": true,
-      "enabled": true,
+      "enabled": false,
       "description": "Crítica y divulgación viral de la industria del videojuego"
     },
     {
@@ -249,7 +249,7 @@
       "type": "streamer_reaction",
       "lang": "es",
       "filter_keywords": true,
-      "enabled": true,
+      "enabled": false,
       "description": "Clips de directos y reacciones virales de IlloJuan"
     },
     {
