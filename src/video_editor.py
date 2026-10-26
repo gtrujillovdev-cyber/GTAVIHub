@@ -368,36 +368,46 @@ def render_karaoke_subtitle_state(words: List[str], active_idx: int, is_vertical
     img.save(output_path, "PNG")
     return True
 
-def create_subtle_vignette(output_png: Path, fg_top: int = 160, fg_bottom: int = 1760) -> bool:
+def create_subtle_vignette(output_png: Path, fg_top: int = 160, fg_bottom: int = 1760, is_cinema: bool = False) -> bool:
     """
     Genera gradientes cinemáticos con sombras de unión de tarjeta:
     - Viñetas en extremos superior e inferior.
-    - Sombras suaves en los puntos de unión (fg_top y fg_bottom) para integrar el vídeo sobre el blur.
+    - En modo cinema: sombras suaves y sutil borde OLED en fg_top y fg_bottom.
     """
     w, h = 1080, 1920
     img = Image.new("RGBA", (w, h), (0, 0, 0, 0))
     d = ImageDraw.Draw(img)
 
-    for y in range(fg_top):
-        alpha = int(110 * (1 - (y / fg_top)))
-        d.line([(0, y), (w, y)], fill=(0, 0, 0, alpha))
+    if is_cinema:
+        top_limit = max(1, min(180, fg_top))
+        for y in range(top_limit):
+            alpha = int(120 * (1 - (y / top_limit)))
+            d.line([(0, y), (w, y)], fill=(0, 0, 0, alpha))
 
-    # Sombra de unión superior multicapa (profundidad 35px)
-    for i in range(35):
-        alpha = int(85 * (1 - (i / 35)))
-        d.line([(0, fg_top - i), (w, fg_top - i)], fill=(0, 0, 0, alpha))
-        d.line([(0, fg_top + i), (w, fg_top + i)], fill=(0, 0, 0, alpha // 2))
+        # Sombras de unión superior e inferior
+        for i in range(25):
+            alpha = int(130 * (1 - (i / 25)))
+            if fg_top - i >= 0:
+                d.line([(0, fg_top - i), (w, fg_top - i)], fill=(0, 0, 0, alpha))
+            if fg_bottom + i < h:
+                d.line([(0, fg_bottom + i), (w, fg_bottom + i)], fill=(0, 0, 0, alpha))
 
-    # Sombra de unión inferior multicapa (profundidad 35px)
-    for i in range(35):
-        alpha = int(85 * (1 - (i / 35)))
-        d.line([(0, fg_bottom - i), (w, fg_bottom - i)], fill=(0, 0, 0, alpha // 2))
-        d.line([(0, fg_bottom + i), (w, fg_bottom + i)], fill=(0, 0, 0, alpha))
+        # Borde sutil blanco translúcido
+        d.line([(0, fg_top), (w, fg_top)], fill=(255, 255, 255, 30), width=2)
+        d.line([(0, fg_bottom), (w, fg_bottom)], fill=(255, 255, 255, 30), width=2)
 
-    for y in range(h - fg_bottom):
-        alpha = int(110 * (y / (h - fg_bottom)))
-        y_pos = fg_bottom + y
-        d.line([(0, y_pos), (w, y_pos)], fill=(0, 0, 0, alpha))
+        bot_start = max(fg_bottom, 1740)
+        bot_range = max(1, h - bot_start)
+        for y in range(bot_range):
+            alpha = int(120 * (y / bot_range))
+            d.line([(0, bot_start + y), (w, bot_start + y)], fill=(0, 0, 0, alpha))
+    else:
+        for y in range(160):
+            alpha = int(90 * (1 - (y / 160)))
+            d.line([(0, y), (w, y)], fill=(0, 0, 0, alpha))
+        for y in range(180):
+            alpha = int(110 * (y / 180))
+            d.line([(0, 1920 - 180 + y), (w, 1920 - 180 + y)], fill=(0, 0, 0, alpha))
 
     img.save(output_png, "PNG")
     return True
@@ -411,20 +421,15 @@ def render_final_video(
     hook_text: str = ""
 ) -> bool:
     """
-    Ensamblaje viral definitivo con KARAOKE GLOW, GANCHO SUPERIOR (0-2.5s) y ZOOM 83.3%:
-    1. Zoom & Crop Maximizado (83.3% de pantalla):
-       - Primer plano ampliado a 1080x1600 (y=160 a y=1760), cortando laterales para centrar acción.
-       - Fondo velvet blur (boxblur 25:5) reducido a 160px superior e inferior.
-       - Filtro unsharp para nitidez 4K en caras y texturas.
-    2. Gancho Superior de Contexto (0.0s a 2.5s):
-       - Texto flotante limpio a y=85 que plantea la incógnita viral y se desvanece a los 2.5s.
-    3. Subtítulos Karaoke Dinámicos con Halo Neón:
-       - Resaltado activo palabra por palabra en Amarillo Neón con glow sutil.
-       - Sincronización temporal estrictamente secuencial y desduplicada.
-       - Centrados a y=1280 (zona segura sobre los botones de Shorts/TikTok/Reels).
+    Ensamblaje viral definitivo con KARAOKE GLOW, GANCHO SUPERIOR (0-2.5s) y ZERO CROP CINEMA:
+    1. Formato C (Nativo Vertical 9:16) Prioritario:
+       - Si el vídeo ya es vertical, se escala a pantalla completa nativa sin deformar.
+    2. Formato B (Full Frame Cinema con 0% de recorte):
+       - Si el vídeo es horizontal 16:9, se muestra al 100% de ancho sin recortar los laterales,
+         preservando HUD, mapa, coches y detalles con fondo dinámico desenfocado.
+    3. Gancho Superior de Contexto (0.0s a 2.5s) y Subtítulos Karaoke Dinámicos con Halo Neón.
     4. Normalización de audio YouTube Shorts (-14 LUFS).
-    5. CERO retraso: El contenido arranca DIRECTAMENTE a 0.0s.
-    6. Aceleración nativa VideoToolbox en Apple Silicon M4.
+    5. Aceleración nativa VideoToolbox en Apple Silicon e Intel.
     """
     temp_dir = input_video.parent
     base_name = input_video.stem
@@ -432,15 +437,29 @@ def render_final_video(
     is_already_vertical = (height > width)
     is_vertical = force_short_format or is_already_vertical
 
-    fg_h = 1600
-    fg_y = 160
-    fg_bottom = fg_y + fg_h
-
-    print(f"[*] Ensamblando vídeo con Gancho Superior, Karaoke Glow y Zoom 83.3% (Vertical: {is_vertical})...")
+    if is_vertical and not is_already_vertical:
+        # Formato B (Full Frame Cinema - 0% recorte horizontal):
+        aspect = (width / height) if (width and height and height > 0) else (16 / 9)
+        fg_w = 1080
+        fg_h = int(fg_w / aspect)
+        if fg_h % 2 != 0:
+            fg_h += 1
+        fg_y = 480  # Espacio superior para gancho (y=85) e inferior para subtítulos (y=1360)
+        fg_bottom = fg_y + fg_h
+        is_cinema_layout = True
+        print(f"[*] Modo Full Frame Cinema: Vídeo 16:9 a ancho completo ({fg_w}x{fg_h} @ y={fg_y}) con 0% de recorte.")
+    else:
+        # Formato C (Vertical Nativo 9:16):
+        fg_w = 1080
+        fg_h = 1920
+        fg_y = 0
+        fg_bottom = 1920
+        is_cinema_layout = False
+        print(f"[*] Modo Vertical Nativo 9:16: Pantalla completa sin deformación (Vertical: {is_vertical}).")
 
     # 1. Viñeta y sombras de unión
     vignette_png = temp_dir / f"{base_name}_vignette.png"
-    create_subtle_vignette(vignette_png, fg_top=fg_y, fg_bottom=fg_bottom)
+    create_subtle_vignette(vignette_png, fg_top=fg_y, fg_bottom=fg_bottom, is_cinema=is_cinema_layout)
 
     # 2. Gancho textual superior (0 a 2.5s)
     hook_png = None
@@ -553,15 +572,17 @@ def render_final_video(
 
     filter_chains = []
 
-    # A) Base de vídeo: ZOOM & CROP MAXIMIZADO (83.3% del alto)
+    # A) Base de vídeo:
     if is_vertical and not is_already_vertical:
+        # Formato B (Full Frame Cinema): 0% recorte horizontal, vídeo 16:9 completo sin cortar los laterales
         v_base = (
             "[0:v]split[v1][v2];"
-            "[v1]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,boxblur=25:5,eq=brightness=-0.06:contrast=1.05:saturation=1.2[bg];"
-            f"[v2]scale=-2:{fg_h},crop=1080:{fg_h}:(iw-1080)/2:0,unsharp=3:3:0.6:3:3:0.0,eq=contrast=1.06:saturation=1.12[fg];"
+            "[v1]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,boxblur=30:5,eq=brightness=-0.15:contrast=1.05:saturation=1.2[bg];"
+            f"[v2]scale=1080:{fg_h}:force_original_aspect_ratio=decrease,unsharp=3:3:0.6:3:3:0.0,eq=contrast=1.06:saturation=1.12[fg];"
             f"[bg][fg]overlay=0:{fg_y}[v_framed]"
         )
     elif is_vertical:
+        # Formato C (Nativo Vertical 9:16): Pantalla completa sin bandas
         v_base = "[0:v]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,unsharp=3:3:0.6:3:3:0.0,eq=contrast=1.06:saturation=1.12[v_framed]"
     else:
         v_base = "[0:v]unsharp=3:3:0.6:3:3:0.0,eq=contrast=1.06:saturation=1.12[v_framed]"
@@ -578,8 +599,9 @@ def render_final_video(
         filter_chains.append(f"[{current_v}][{hook_idx}:v]overlay=(W-w)/2:85:enable='between(t,0,2.5)'[v_hooked]")
         current_v = "v_hooked"
 
-    # D) Superponer Subtítulos Karaoke palabra por palabra (estrictamente secuenciales a y=1280)
-    sub_y = "1280" if is_vertical else "H-h-90"
+    # D) Superponer Subtítulos Karaoke palabra por palabra
+    # En modo Cinema (16:9), los subtítulos se colocan abajo a y=1360 para no tapar el gameplay
+    sub_y = "1360" if is_cinema_layout else ("1280" if is_vertical else "H-h-90")
     for s_idx, (_, start_s, end_s) in enumerate(sub_pngs):
         in_id = sub_inputs_start + s_idx
         next_v = f"v_sub_{s_idx}"

@@ -231,7 +231,7 @@ def download_video_and_subtitles(url: str, video_id: str) -> Tuple[Optional[Path
         "--impersonate", "chrome",
         "--no-check-certificates",
         "--no-playlist",
-        "-f", "bestvideo[height<=1080][ext=mp4]+bestaudio[ext=m4a]/best[height<=1080][ext=mp4]/best",
+        "-f", "bestvideo[height<=1440]+bestaudio/bestvideo[height<=1080]+bestaudio/best[height<=1080]/best",
         "--merge-output-format", "mp4",
         "-o", output_template,
         url

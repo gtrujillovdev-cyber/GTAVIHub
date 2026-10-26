@@ -45,7 +45,7 @@ SHORT_TARGET_DURATION = int(os.getenv("SHORT_TARGET_DURATION", "38"))
 
 # FFmpeg Hardware Acceleration (VideoToolbox para Apple Silicon e Intel)
 FFMPEG_VIDEO_CODEC = "h264_videotoolbox"
-FFMPEG_BITRATE = "6M"
+FFMPEG_BITRATE = os.getenv("FFMPEG_BITRATE", "10M")
 
 # Protocolo de Coexistencia de Hardware (GaTDSEQ & Background Friendliness)
 FFMPEG_THREADS = int(os.getenv("FFMPEG_THREADS", "2"))

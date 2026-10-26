@@ -114,16 +114,22 @@ def calculate_virality_score(title: str, duration: float, views: int) -> Dict[st
     matches = [kw for kw in VIRAL_KEYWORDS if kw in title_lower]
     keyword_score = min(20, len(matches) * 5)
 
-    # 4. Factor de impulso extra + Creadores/Streamers reales
+    # 4. Factor de impulso extra: Shorts nativos + Contenido jugoso (Trailer, Gameplay, Leaks, Comparativas)
     bonus = 0
     if "shorts" in title_lower or "#shorts" in title_lower:
         bonus += 5
-    if any(k in title_lower for k in ["trailer 2", "filtracion", "leak", "exclusiva", "easter egg"]):
-        bonus += 5
+    
+    high_value_gta6 = [
+        "trailer", "trailer 2", "gameplay", "leak", "filtracion", "graphics", "graficos",
+        "fisicas", "physics", "secreto", "secret", "easter egg", "lucia", "jason",
+        "vice city", "leonida", "comparativa", "mapa", "detalles", "details"
+    ]
+    if any(k in title_lower for k in high_value_gta6):
+        bonus += 10
 
     creator_matches = [ck for ck in CREATOR_KEYWORDS if ck in title_lower]
     if creator_matches:
-        bonus = min(10, bonus + 5)
+        bonus = min(15, bonus + 5)
 
     total_score = min(100, views_score + format_score + keyword_score + bonus)
 
@@ -141,7 +147,7 @@ def calculate_virality_score(title: str, duration: float, views: int) -> Dict[st
 def scan_viral_radar(
     queries: Optional[List[str]] = None,
     max_candidates: int = 10,
-    min_score: int = 40,
+    min_score: int = 55,
     only_shorts: bool = True
 ) -> List[Dict[str, Any]]:
     """
