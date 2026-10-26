@@ -165,7 +165,8 @@ class SocialPublisher:
         self,
         video_path: Path,
         title: str,
-        tags: List[str]
+        tags: List[str],
+        debate_question: str = ""
     ) -> Optional[str]:
         """
         Publica o programa en TikTok Creator Center mediante navegador automatizado
@@ -176,12 +177,13 @@ class SocialPublisher:
             return None
 
         tags_str = " ".join([f"#{t.replace(' ', '')}" for t in tags[:4]])
-        # Caption optimizada con llamada a la acción (afiliados si está activo o comunidad)
-        if ENABLE_AFFILIATE_CTAS:
-            cta_part = f"{AFFILIATE_CTA_TIKTOK} | "
+        if debate_question:
+            q_clean = debate_question.replace("¿", "").replace("?", "").strip()
+            caption = f"{title[:50]} {tags_str} 💬 ¿{q_clean[:45]}? 👇 | 📩 {BUSINESS_EMAIL}"
+        elif ENABLE_AFFILIATE_CTAS:
+            caption = f"{title[:70]} {tags_str} {AFFILIATE_CTA_TIKTOK} | 📩 {BUSINESS_EMAIL}"
         else:
-            cta_part = "🎮 Link en bio para novedades de GTA 6 | "
-        caption = f"{title[:70]} {tags_str} {cta_part}📩 {BUSINESS_EMAIL}"
+            caption = f"{title[:70]} {tags_str} 🎮 Link en bio para novedades de GTA 6 | 📩 {BUSINESS_EMAIL}"
         tiktok_profile = BROWSER_PROFILE_DIR / "tiktok_user_data"
 
         if self.dry_run:
@@ -572,15 +574,18 @@ class SocialPublisher:
                 if url:
                     self._notify_telegram(f"✅ *[1/3] YouTube Shorts publicado:* [Ver en YouTube]({url})")
             elif plat == "tiktok":
-                url = self.publish_to_tiktok(video_path, title, tags)
+                debate_q = metadata.get("debate_question", "")
+                url = self.publish_to_tiktok(video_path, title, tags, debate_question=debate_q)
                 results["tiktok"] = url
                 if url:
                     self._notify_telegram(f"✅ *[2/3] TikTok publicado:* [Ver en TikTok]({url})")
                 else:
                     self._notify_telegram("⚠️ *[2/3] TikTok:* Subido y guardado como borrador en TikTok Studio.")
             elif plat == "instagram":
+                debate_q = metadata.get("debate_question", "")
+                debate_block = f"💬 DEBATE COMUNIDAD:\n{debate_q}\n\n" if debate_q else ""
                 cta_block = AFFILIATE_CTA_INSTAGRAM if ENABLE_AFFILIATE_CTAS else "🎮 Reserva oficial de GTA VI y novedades en el LINK DE LA BIO."
-                caption = f"{title}\n\n{desc[:1500]}\n\n{cta_block}\n📩 Contacto / Business: {BUSINESS_EMAIL}\n\n#GTA6 #Gaming #Reels"
+                caption = f"{title}\n\n{debate_block}{desc[:1300]}\n\n{cta_block}\n📩 Contacto / Business: {BUSINESS_EMAIL}\n\n#GTA6 #Gaming #Reels"
                 url = self.publish_to_instagram(video_path, caption, thumbnail_path=thumb)
                 results["instagram"] = url
                 if url:

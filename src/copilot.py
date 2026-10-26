@@ -219,3 +219,41 @@ def reject_and_purge_video(video_id: str) -> bool:
 
     clean_temp_directory(video_id)
     return True
+
+COPILOT_AUTO_APPROVE_TIMEOUT_MIN = int(os.getenv("COPILOT_AUTO_APPROVE_TIMEOUT_MIN", "15"))
+
+def check_and_auto_approve_expired_videos(timeout_minutes: int = COPILOT_AUTO_APPROVE_TIMEOUT_MIN) -> List[Dict[str, Any]]:
+    """
+    Revisa si hay vídeos staged en espera que hayan superado el tiempo de cortesía (default: 15 min).
+    Si han expirado sin acción humana, los aprueba y publica automáticamente para no bloquear el canal.
+    """
+    pending = get_all_pending_videos()
+    approved = []
+    now = datetime.now()
+    for item in pending:
+        vid_id = item.get("video_id")
+        staged_str = item.get("staged_at")
+        if not vid_id or not staged_str:
+            continue
+        try:
+            staged_dt = datetime.fromisoformat(staged_str)
+            diff_min = (now - staged_dt).total_seconds() / 60.0
+            if diff_min >= timeout_minutes:
+                print(f"[Co-Pilot] ⏱️ Tiempo de cortesía ({diff_min:.1f}m >= {timeout_minutes}m) expirado para {vid_id}. Auto-aprobando publicación...")
+                res = approve_and_publish_video(vid_id)
+                if res:
+                    approved.append(res)
+                    try:
+                        from .telegram_bot import send_telegram_alert
+                        title = res.get("title", vid_id)
+                        send_telegram_alert(
+                            f"🚀 *[Co-Pilot Auto-Aprobación]*\n"
+                            f"Expiró el tiempo de cortesía de {timeout_minutes} min sin respuesta.\n"
+                            f"Vídeo publicado automáticamente:\n`{str(title)[:60]}`"
+                        )
+                    except Exception as tg_err:
+                        print(f"[Co-Pilot] Info Telegram Auto-Approve Alert: {tg_err}")
+        except Exception as e:
+            print(f"[Co-Pilot] Error verificando timeout de {vid_id}: {e}")
+
+    return approved

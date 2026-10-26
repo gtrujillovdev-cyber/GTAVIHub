@@ -1,12 +1,13 @@
 import os
 import re
 import json
+import random
 import subprocess
 from pathlib import Path
 from typing import Optional, Tuple, List, Dict, Any
 from PIL import Image, ImageDraw, ImageFont, ImageFilter
 
-from .config import FFMPEG_VIDEO_CODEC, FFMPEG_BITRATE, FFMPEG_THREADS, is_quant_busy
+from .config import BASE_DIR, FFMPEG_VIDEO_CODEC, FFMPEG_BITRATE, FFMPEG_THREADS, is_quant_busy
 
 def get_video_dimensions(video_path: Path) -> Tuple[int, int]:
     """Obtiene ancho y alto del vídeo usando ffprobe."""
@@ -482,19 +483,41 @@ def render_final_video(
     input_idx = 1
 
     # Audio doblado con Ducking Dinámico Inteligente
+    dub_idx = None
     if dub_audio and dub_audio.exists():
         cmd.extend(["-i", str(dub_audio)])
         dub_idx = input_idx
         input_idx += 1
-        # Ducking dinámico: comprime el juego/fondo a ~18% solo mientras la voz habla,
-        # recuperando el 100% en silencios de locución para máxima fidelidad
+
+    # Banda Sonora Ambiental Sutil (Synthwave / Vice City Beats) a -22 dB
+    ambient_idx = None
+    ambient_dir = BASE_DIR / "assets" / "audio" / "ambient_beats"
+    if ambient_dir.exists():
+        ambient_tracks = [p for p in ambient_dir.glob("*.mp3") if p.is_file()] + [p for p in ambient_dir.glob("*.wav") if p.is_file()]
+        if ambient_tracks:
+            chosen_ambient = random.choice(ambient_tracks)
+            cmd.extend(["-stream_loop", "-1", "-i", str(chosen_ambient)])
+            ambient_idx = input_idx
+            input_idx += 1
+            print(f"[*] Mezclando pista ambiental sutil: {chosen_ambient.name} (-22 dB)")
+
+    # Construcción de la cadena de mezcla de audio (Juego + Ambiente + Voz con Ducking)
+    if ambient_idx is not None:
+        bg_chain = f"[{ambient_idx}:a]volume=0.08[amb];[0:a][amb]amix=inputs=2:duration=first[bg];"
+        bg_ref = "[bg]"
+    else:
+        bg_chain = ""
+        bg_ref = "[0:a]"
+
+    if dub_idx is not None:
         audio_filter = (
+            f"{bg_chain}"
             f"[{dub_idx}:a]asplit=2[sc][voice];"
-            f"[0:a][sc]sidechaincompress=threshold=0.08:ratio=5:attack=60:release=350[ducked];"
+            f"{bg_ref}[sc]sidechaincompress=threshold=0.08:ratio=5:attack=60:release=350[ducked];"
             f"[ducked][voice]amix=inputs=2:duration=first,loudnorm=I=-14:LRA=7:TP=-1.5[aout]"
         )
     else:
-        audio_filter = "[0:a]loudnorm=I=-14:LRA=7:TP=-1.5[aout]"
+        audio_filter = f"{bg_chain}{bg_ref}loudnorm=I=-14:LRA=7:TP=-1.5[aout]"
 
     # Viñeta discreta
     cmd.extend(["-i", str(vignette_png)])

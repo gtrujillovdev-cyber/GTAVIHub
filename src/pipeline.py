@@ -109,17 +109,28 @@ def process_single_video(
 
     print(f"    Formato Final: {'Vertical 9:16 (Shorts/TikTok/Reels)' if is_short else 'Horizontal 16:9'}")
 
-    # 2. Procesar/Traducir subtítulos si existen
+    # 2. Configuración de Bucle Infinito (Seamless Loop) en 2 de cada 5 vídeos (40% de rotación)
+    processed_count = len(get_processed_ids())
+    enable_seamless_loop = (is_short and (processed_count % 5 in (1, 3)))
+    if enable_seamless_loop:
+        print("[🔁 Seamless Loop] Activado para este vídeo (cadencia 2/5). Conectando remate con gancho inicial...")
+
+    # 3. Procesar/Traducir subtítulos si existen
     report_stage("🤖 [2/5] Analizando con Gemini Flash y generando metadatos virales...")
     es_srt_path = None
     if srt_path and srt_path.exists():
         es_srt_path = TEMP_DIR / f"{video_id}_es.srt"
-        success_trans = translate_srt(srt_path, es_srt_path, source_lang=lang_to_use)
+        success_trans = translate_srt(
+            srt_path,
+            es_srt_path,
+            source_lang=lang_to_use,
+            enable_seamless_loop=enable_seamless_loop
+        )
         if not success_trans:
             print("[Warning] No se pudieron traducir subtítulos, se continuará sin subtítulos quemados.")
             es_srt_path = None
 
-    # 3. Doblaje de voz neural en español (automático para fuentes en inglés/extranjeras para maximizar retención)
+    # 4. Doblaje de voz neural en español (automático para fuentes en inglés/extranjeras para maximizar retención)
     dub_audio_path = None
     should_dub = (mode in ["dub", "voice"]) or (AUTO_DUB_ENGLISH and lang_to_use != "es")
     if should_dub and lang_to_use != "es" and es_srt_path:
@@ -130,14 +141,15 @@ def process_single_video(
         else:
             dub_audio_path = None
 
-    # 4. Generación de Metadatos Virales (Título MAYÚSCULAS + Gancho + Descripción Legal)
+    # 5. Generación de Metadatos Virales (Título + Gancho + Pregunta Polarizante + Descripción Legal)
     print("[*] Generando metadatos virales con tendencias de YouTube y Fair Use...")
     metadata = generate_video_metadata(
         original_title=original_title or video_id,
         original_url=url,
         is_short=is_short,
         creator_name=creator_name,
-        source_lang=lang_to_use
+        source_lang=lang_to_use,
+        enable_seamless_loop=enable_seamless_loop
     )
     hook_text = metadata.get("hook", "¡ANÁLISIS AL DETALLE!")
 

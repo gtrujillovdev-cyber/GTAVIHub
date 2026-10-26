@@ -466,6 +466,7 @@ def send_copilot_approval_request(
         + f"🎙️ *Modo:* `{'Doblaje IA + Subs' if mode == 'dub' else 'Subtítulos Hormozi'}`\n"
         + f"🎯 *Gancho Inicial:* `{hook_text or 'EXCLUSIVA GTA 6'}`\n"
         + "⚖️ *Compliance:* `[✓ Fair Use y Atribución Listos]`\n\n"
+        + "⏱️ *Temporizador:* Si no respondes en 15 min, se auto-aprobará y publicará solo.\n\n"
         + "👇 *Pulsa una opción para proceder:*"
     )
     keyboard = get_copilot_approval_keyboard(video_id, original_url=original_url)
@@ -958,6 +959,14 @@ def start_telegram_bot_daemon():
     while True:
         try:
             update_heartbeat()
+
+            # Revisar auto-aprobación por tiempo de cortesía de Co-Pilot (15 min)
+            try:
+                from .copilot import check_and_auto_approve_expired_videos
+                check_and_auto_approve_expired_videos()
+            except Exception:
+                pass
+
             params = {"offset": last_update_id + 1, "timeout": 10}
             res = requests.get(url_updates, params=params, timeout=15)
             if res.status_code != 200:
