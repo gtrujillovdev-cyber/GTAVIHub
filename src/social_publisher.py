@@ -256,48 +256,66 @@ class SocialPublisher:
 
                 print("[✓] Archivo cargado. Rellenando descripción...")
 
-                # Rellenar caption — Tecleo real para activar el estado de React en TikTok Studio
-                caption_selectors = [
+                # Rellenar caption en TikTok Studio (compatible con Draft.js / Lexical / React)
+                editor_selectors = [
+                    "div.public-DraftEditor-content",
                     "div[contenteditable='true']",
-                    "[data-testid='caption-input']",
-                    "textarea[placeholder*='caption'], textarea[placeholder*='escribe']",
-                    ".caption-wrap textarea",
+                    "div[role='textbox']",
                     ".editor-input-box div[contenteditable]",
-                    "div[role='textbox']"
+                    "[data-testid='caption-input']",
+                    "textarea[placeholder*='caption'], textarea[placeholder*='escribe']"
                 ]
                 caption_filled = False
-                for sel in caption_selectors:
+                clean_caption = caption[:220].strip()
+
+                for sel in editor_selectors:
                     try:
                         el = page.locator(sel).first
                         if el.count() > 0:
-                            el.click()
-                            time.sleep(0.5)
-                            # Limpiar y teclear con eventos de teclado reales para React
-                            page.keyboard.press("Meta+A")
+                            el.scroll_into_view_if_needed(timeout=3000)
+                            el.click(force=True)
+                            time.sleep(0.4)
+                            # Limpiar con atajos multiplataforma (Control+A para Chromium headless y Meta+A para Mac)
+                            page.keyboard.press("Control+a")
+                            page.keyboard.press("Meta+a")
                             page.keyboard.press("Backspace")
-                            page.keyboard.type(caption[:150], delay=15)
-                            caption_filled = True
-                            print(f"[*] Caption introducida con eventos de teclado ({sel})")
-                            break
+                            time.sleep(0.3)
+                            # Tecleo progresivo para disparar los synthetic events de React
+                            page.keyboard.type(clean_caption, delay=10)
+                            time.sleep(0.5)
+                            curr_text = el.inner_text().strip()
+                            if len(curr_text) > 10 and not curr_text.startswith("SHORT_") and not curr_text.startswith("VIDEO_"):
+                                caption_filled = True
+                                print(f"[*] Caption introducida con éxito mediante teclado en TikTok ({sel})")
+                                break
                     except Exception:
                         continue
 
                 if not caption_filled:
-                    # Fallback JS con disparo explícito de eventos React
+                    # Inyección infalible mediante document.execCommand ('insertText')
+                    # Este método dispara los eventos nativos de bajo nivel que Draft.js y Lexical
+                    # interceptan obligatoriamente para actualizar el estado inmutable de React.
                     try:
-                        page.evaluate(f"""() => {{
-                            const el = document.querySelector('div[contenteditable="true"], div[role="textbox"], textarea');
-                            if (el) {{
-                                el.focus();
-                                el.innerText = {repr(caption[:150])};
-                                el.dispatchEvent(new Event('input', {{ bubbles: true }}));
-                                el.dispatchEvent(new Event('change', {{ bubbles: true }}));
-                            }}
-                        }}""")
-                        caption_filled = True
-                        print("[*] Caption introducida vía JS con dispatchEvent(input)")
-                    except Exception:
-                        print("[!] No se pudo rellenar la caption — se publicará sin descripción")
+                        injected = page.evaluate("""(textToInsert) => {
+                            const el = document.querySelector('div.public-DraftEditor-content, div[contenteditable="true"], div[role="textbox"]');
+                            if (!el) return false;
+                            el.focus();
+                            const range = document.createRange();
+                            range.selectNodeContents(el);
+                            const sel = window.getSelection();
+                            sel.removeAllRanges();
+                            sel.addRange(range);
+                            document.execCommand('delete', false, null);
+                            document.execCommand('insertText', false, textToInsert);
+                            el.dispatchEvent(new Event('input', { bubbles: true }));
+                            el.dispatchEvent(new Event('change', { bubbles: true }));
+                            return el.innerText.trim().length > 5;
+                        }""", clean_caption)
+                        if injected:
+                            caption_filled = True
+                            print("[✓] Caption introducida con éxito en TikTok Studio vía execCommand (Draft.js insertText).")
+                    except Exception as e:
+                        print(f"[!] Error en inyección avanzada de caption en TikTok: {e}")
 
                 time.sleep(3)
 

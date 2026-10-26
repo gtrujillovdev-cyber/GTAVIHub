@@ -1,5 +1,6 @@
 import gc
 import os
+import re
 import json
 import shutil
 from datetime import datetime
@@ -156,9 +157,20 @@ def process_single_video(
     # 5. Renderizado final transformado
     stage_msg = "⚙️ [3/5] Renderizando vídeo 9:16 con Doblaje Neural y Subtítulos Dinámicos..." if dub_audio_path else "⚙️ [3/5] Renderizando vídeo 9:16 con VideoToolbox (Subtítulos Hormozi Pop Bounce)..."
     report_stage(stage_msg)
-    prefix = "SHORT" if is_short else "VIDEO"
-    output_filename = f"{prefix}_{video_id}_ES.mp4"
+    
+    # Nombre de archivo viral y legible (evita nombres crudos como SHORT_ID_ES en plataformas como TikTok)
+    raw_title = metadata.get("title", original_title or video_id)
+    slug = re.sub(r'[^\w\s-]', '', raw_title).strip()
+    slug = re.sub(r'[\s_]+', '_', slug)[:55].strip('_')
+    if not slug:
+        slug = f"GTA_6_{video_id}"
+    elif not slug.upper().startswith("GTA"):
+        slug = f"GTA_6_{slug}"
+
+    output_filename = f"{slug}_{video_id}.mp4"
     output_path = OUTPUT_DIR / output_filename
+    thumb_path = OUTPUT_DIR / f"{slug}_{video_id}_thumb.jpg"
+    meta_path = OUTPUT_DIR / f"{slug}_{video_id}_info.json"
 
     success_render = render_final_video(
         input_video=video_path,
@@ -177,7 +189,6 @@ def process_single_video(
 
     # 6. Generación de Miniatura de alto CTR
     report_stage("📸 [4/5] Generando miniatura personalizada de alto impacto...")
-    thumb_path = OUTPUT_DIR / f"{prefix}_{video_id}_thumb.jpg"
     create_video_thumbnail(
         video_path=output_path,
         output_thumb_path=thumb_path,
@@ -186,7 +197,6 @@ def process_single_video(
         is_short=is_short
     )
 
-    meta_path = OUTPUT_DIR / f"{prefix}_{video_id}_ES_info.json"
     full_info = {
         "id": video_id,
         "original_url": url,
