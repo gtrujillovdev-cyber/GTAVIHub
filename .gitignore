@@ -17,6 +17,7 @@ temp/
 output/
 *.mp4
 *.mp3
+!assets/audio/**
 *.mov
 *.mkv
 *.wav
