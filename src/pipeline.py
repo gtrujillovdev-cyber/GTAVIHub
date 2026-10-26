@@ -11,7 +11,7 @@ from .downloader import download_video_and_subtitles
 from .translator import translate_srt, generate_video_metadata
 from .dubber import generate_voiceover
 from .video_editor import render_final_video, get_video_dimensions
-from .channels import mark_video_processed
+from .channels import mark_video_processed, get_processed_ids
 from .uploader import upload_to_youtube
 from .social_publisher import SocialPublisher
 from .thumbnail_generator import create_video_thumbnail
