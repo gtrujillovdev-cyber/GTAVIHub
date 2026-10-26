@@ -12,27 +12,13 @@ from .channels import get_processed_ids, list_monitored_channels, add_monitored_
 DISCOVERED_CHANNELS_FILE = DATA_DIR / "discovered_channels.json"
 
 DEFAULT_VIRAL_QUERIES = [
-    # Búsquedas dinámicas de máxima virabilidad dedicadas al formato SHORTS de GTA 6
-    "ytsearch8:GTA 6 Shorts viral #shorts",
-    "ytsearch8:GTA 6 gameplay leak Shorts #shorts",
-    "ytsearch8:GTA 6 trailer 2 Shorts #shorts",
-    "ytsearch8:GTA 6 Vice City secrets Shorts #shorts",
-    "ytsearch8:GTA 6 Lucia Jason clips #shorts",
-    "ytsearch8:Grand Theft Auto VI secret details Shorts #shorts",
-    "ytsearch8:GTA 6 filtracion mapa Leonida Shorts #shorts",
-    "ytsearch8:GTA 6 graficos fisicas leak Shorts #shorts",
-    "ytsearch8:GTA 6 fisicas agua realismo Shorts #shorts",
-    "ytsearch8:GTA 6 mapa Leonida comparativa GTA 5 Shorts #shorts",
-    "ytsearch8:GTA 6 Lucia Jason gameplay leak Shorts #shorts",
-    "ytsearch8:GTA 6 detalles ocultos trailer 1 Shorts #shorts",
-    "ytsearch8:GTA 6 Trailer 2 novedades filtradas Shorts #shorts",
-    "ytsearch8:GTA 6 Port Gellhorn secretos Shorts #shorts",
-    "ytsearch8:GTA 6 Vice City vs Miami vida real Shorts #shorts",
-    "ytsearch8:GTA 6 IA peatones policia Shorts #shorts",
-    "ytsearch8:GTA 6 reaccion streamer Shorts #shorts",
-    "ytsearch8:GTA 6 Easter eggs misterios Shorts #shorts",
-    "ytsearch8:GTA 6 AI NPC details Shorts #shorts",
-    "ytsearch8:Grand Theft Auto 6 viral moments Shorts #shorts"
+    # Búsquedas restringidas EXCLUSIVAMENTE a análisis de tráiler oficial, desgloses técnicos y desarrolladores
+    "ytsearch8:GTA 6 Rockstar Games official trailer #shorts",
+    "ytsearch8:GTA Series Videos GTA 6 secrets #shorts",
+    "ytsearch8:GTA 6 Digital Foundry graphics analysis #shorts",
+    "ytsearch8:GTA 6 TGG trailer breakdown #shorts",
+    "ytsearch8:GTA 6 ex developer reaction #shorts",
+    "ytsearch8:GTA 6 trailer 1 detalles ocultos #shorts"
 ]
 
 VIRAL_KEYWORDS = [
@@ -65,10 +51,11 @@ EXCLUDED_KEYWORDS = [
     "soundtrack", "ost", "full album", "vevo", "remix song", "cover song",
     "trap beat", "rap beat", "no commentary walkthrough", "full movie",
     "cancion oficial", "canción oficial", "tema musical",
-    # Conceptos abstractos / CGI / Fan-made / Unreal Engine
+    # Conceptos abstractos / CGI / Fan-made / Unreal Engine / IA / Mods
     "concept", "concept trailer", "gameplay concept", "fan made", "fan trailer",
     "fan-made", "unreal engine", "ue5", "unreal engine 5", "ai trailer",
-    "artificial intelligence", "blender render", "remake concept", "graphics showcase"
+    "artificial intelligence", "blender render", "remake concept", "graphics showcase",
+    "mod", "mods", "modded", "cinematic edit", "tiktok edit", "edit", "fake", "simulated", "ai generated"
 ]
 
 def calculate_virality_score(title: str, duration: float, views: int) -> Dict[str, Any]:

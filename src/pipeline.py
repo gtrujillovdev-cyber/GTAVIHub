@@ -158,6 +158,14 @@ def process_single_video(
     stage_msg = "⚙️ [3/5] Renderizando vídeo 9:16 con Doblaje Neural y Subtítulos Dinámicos..." if dub_audio_path else "⚙️ [3/5] Renderizando vídeo 9:16 con VideoToolbox (Subtítulos Hormozi Pop Bounce)..."
     report_stage(stage_msg)
     
+    # Comprobar si es contenido oficial de Rockstar o análisis técnico de la industria (para Full Frame Cinema)
+    creator_lower = (creator_name or "").lower()
+    title_lower = (original_title or "").lower()
+    is_official_content = (
+        any(k in creator_lower for k in ["rockstar", "gta series", "take-two", "digital foundry", "york reaction"])
+        or any(k in title_lower for k in ["official trailer", "tráiler oficial", "trailer 1", "trailer 2", "rockstar games"])
+    )
+
     # Nombre de archivo viral y legible (evita nombres crudos como SHORT_ID_ES en plataformas como TikTok)
     raw_title = metadata.get("title", original_title or video_id)
     slug = re.sub(r'[^\w\s-]', '', raw_title).strip()
@@ -178,7 +186,8 @@ def process_single_video(
         srt_subtitles=es_srt_path,
         dub_audio=dub_audio_path,
         force_short_format=is_short,
-        hook_text=hook_text
+        hook_text=hook_text,
+        is_official_content=is_official_content
     )
 
     if not success_render or not output_path.exists():

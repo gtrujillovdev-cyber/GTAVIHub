@@ -54,6 +54,36 @@ def is_strictly_gta6(title: str, description: str = "") -> bool:
         if re.search(pattern, title_lower):
             return False
 
+    # 3. Filtro Anti-Fake, Anti-IA y Anti-Conceptos (CERO CONTENIDO FALSO O FAN-MADE):
+    # El juego sale oficialmente a finales de 2025; no existe gameplay real fuera de los tráilers oficiales.
+    # Se descarta tajantemente cualquier clip generado por IA, mods de GTA 5, renders o conceptos.
+    fake_ai_regexes = [
+        r"\bconcept\b",
+        r"\bconcept\s*trailer\b",
+        r"\bfan\s*made\b",
+        r"\bfanmade\b",
+        r"\bfan\s*trailer\b",
+        r"\bunreal\b",
+        r"\bue5\b",
+        r"\bunreal\s*engine\b",
+        r"\bai\b",
+        r"\bia\b",
+        r"\bmod\b",
+        r"\bmods\b",
+        r"\bmodded\b",
+        r"\bmodding\b",
+        r"\bcinematic\s*edit\b",
+        r"\btiktok\s*edit\b",
+        r"\bcgi\b",
+        r"\bblender\b",
+        r"\brender\b",
+        r"\bfake\b",
+        r"\bsimulated\b"
+    ]
+    for pattern in fake_ai_regexes:
+        if re.search(pattern, title_lower):
+            return False
+
     return True
 
 # Alias para retrocompatibilidad

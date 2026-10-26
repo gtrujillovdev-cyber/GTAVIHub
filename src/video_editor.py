@@ -458,18 +458,20 @@ def render_final_video(
     srt_subtitles: Optional[Path] = None,
     dub_audio: Optional[Path] = None,
     force_short_format: bool = False,
-    hook_text: str = ""
+    hook_text: str = "",
+    is_official_content: bool = False
 ) -> bool:
     """
-    Ensamblaje viral definitivo con KARAOKE GLOW, GANCHO SUPERIOR (0-2.5s) y ZERO CROP CINEMA:
+    Ensamblaje viral definitivo con KARAOKE GLOW, GANCHO SUPERIOR (0-2.5s) y ENCUADRE INTELIGENTE:
     1. Formato C (Nativo Vertical 9:16) Prioritario:
        - Si el vídeo ya es vertical, se escala a pantalla completa nativa sin deformar.
     2. Formato B (Full Frame Cinema con 0% de recorte):
-       - Si el vídeo es horizontal 16:9, se muestra al 100% de ancho sin recortar los laterales,
-         preservando HUD, mapa, coches y detalles con fondo dinámico desenfocado.
-    3. Gancho Superior de Contexto (0.0s a 2.5s) y Subtítulos Karaoke Dinámicos con Halo Neón.
-    4. Normalización de audio YouTube Shorts (-14 LUFS).
-    5. Aceleración nativa VideoToolbox en Apple Silicon e Intel.
+       - EXCLUSIVO para tráilers y comunicados oficiales de Rockstar Games o análisis técnicos clave
+         donde recortar arruina los detalles de la pantalla panorámica.
+    3. Reencuadre vertical dinámico para clips no oficiales.
+    4. Gancho Superior de Contexto (0.0s a 2.5s) y Subtítulos Karaoke Dinámicos con Halo Neón.
+    5. Normalización de audio YouTube Shorts (-14 LUFS).
+    6. Aceleración nativa VideoToolbox en Apple Silicon e Intel.
     """
     temp_dir = input_video.parent
     base_name = input_video.stem
@@ -477,8 +479,9 @@ def render_final_video(
     is_already_vertical = (height > width)
     is_vertical = force_short_format or is_already_vertical
 
-    if is_vertical and not is_already_vertical:
+    if is_vertical and not is_already_vertical and is_official_content:
         # Formato B (Full Frame Cinema - 0% recorte horizontal):
+        # Exclusivo para contenido oficial de Rockstar o análisis técnicos de alta prioridad
         aspect = (width / height) if (width and height and height > 0) else (16 / 9)
         fg_w = 1080
         fg_h = int(fg_w / aspect)
@@ -487,7 +490,15 @@ def render_final_video(
         fg_y = 480  # Espacio superior para gancho (y=85) e inferior para subtítulos (y=1360)
         fg_bottom = fg_y + fg_h
         is_cinema_layout = True
-        print(f"[*] Modo Full Frame Cinema: Vídeo 16:9 a ancho completo ({fg_w}x{fg_h} @ y={fg_y}) con 0% de recorte.")
+        print(f"[*] [OFICIAL ROCKSTAR] Modo Full Frame Cinema: Vídeo 16:9 a ancho completo ({fg_w}x{fg_h} @ y={fg_y}) con 0% de recorte.")
+    elif is_vertical and not is_already_vertical:
+        # Vídeo horizontal no oficial: reencuadre centrado 83.3% para llenar formato vertical nativo
+        fg_w = 1080
+        fg_h = 1600
+        fg_y = 160
+        fg_bottom = fg_y + fg_h
+        is_cinema_layout = False
+        print(f"[*] Modo Reencuadre Vertical 83.3%: Adaptando vídeo horizontal no oficial a formato Short...")
     else:
         # Formato C (Vertical Nativo 9:16):
         fg_w = 1080
@@ -613,12 +624,20 @@ def render_final_video(
     filter_chains = []
 
     # A) Base de vídeo:
-    if is_vertical and not is_already_vertical:
-        # Formato B (Full Frame Cinema): 0% recorte horizontal, vídeo 16:9 completo sin cortar los laterales
+    if is_vertical and not is_already_vertical and is_cinema_layout:
+        # Formato B (Full Frame Cinema Oficial): 0% recorte horizontal, tráiler oficial 16:9 completo sin cortar los laterales
         v_base = (
             "[0:v]split[v1][v2];"
             "[v1]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,boxblur=30:5,eq=brightness=-0.15:contrast=1.05:saturation=1.2[bg];"
             f"[v2]scale=1080:{fg_h}:force_original_aspect_ratio=decrease,unsharp=3:3:0.6:3:3:0.0,eq=contrast=1.06:saturation=1.12[fg];"
+            f"[bg][fg]overlay=0:{fg_y}[v_framed]"
+        )
+    elif is_vertical and not is_already_vertical:
+        # Vídeo horizontal no oficial: reencuadre centrado al 83.3% para formato vertical nativo
+        v_base = (
+            "[0:v]split[v1][v2];"
+            "[v1]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,boxblur=25:5,eq=brightness=-0.06:contrast=1.05:saturation=1.2[bg];"
+            f"[v2]scale=-2:{fg_h},crop=1080:{fg_h}:(iw-1080)/2:0,unsharp=3:3:0.6:3:3:0.0,eq=contrast=1.06:saturation=1.12[fg];"
             f"[bg][fg]overlay=0:{fg_y}[v_framed]"
         )
     elif is_vertical:

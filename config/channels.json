@@ -260,6 +260,51 @@
       "filter_keywords": true,
       "enabled": true,
       "description": "Clips rápidos de momentos destacados de ElXokas"
+    },
+    {
+      "name": "Rockstar Games (Shorts)",
+      "url": "https://www.youtube.com/@RockstarGames/shorts",
+      "type": "official",
+      "lang": "en",
+      "filter_keywords": false,
+      "enabled": true,
+      "description": "Shorts oficiales de Rockstar Games"
+    },
+    {
+      "name": "GTA Series Videos (Shorts)",
+      "url": "https://www.youtube.com/@GTASeriesVideos/shorts",
+      "type": "breakdowns",
+      "lang": "en",
+      "filter_keywords": false,
+      "enabled": true,
+      "description": "Shorts de análisis y comparativas de GTA Series"
+    },
+    {
+      "name": "TGG (Shorts)",
+      "url": "https://www.youtube.com/@TGG_/shorts",
+      "type": "gta_authority",
+      "lang": "en",
+      "filter_keywords": true,
+      "enabled": true,
+      "description": "Shorts rápidos con noticias y detalles verificados de TGG"
+    },
+    {
+      "name": "Digital Foundry",
+      "url": "https://www.youtube.com/@DigitalFoundry/videos",
+      "type": "technical_analysis",
+      "lang": "en",
+      "filter_keywords": true,
+      "enabled": true,
+      "description": "Análisis técnico de gráficos, motor RAGE y rendimiento de Rockstar"
+    },
+    {
+      "name": "York Reaction (Ex-Rockstar)",
+      "url": "https://www.youtube.com/@YorkReaction/videos",
+      "type": "developer_opinion",
+      "lang": "en",
+      "filter_keywords": true,
+      "enabled": true,
+      "description": "Mike York, ex-animador de Rockstar Games analizando tráilers oficiales"
     }
   ],
   "search_queries": [
@@ -267,71 +312,71 @@
       "query": "ytsearch8:GTA 6 Shorts viral #shorts",
       "lang": "es",
       "only_shorts": true,
-      "enabled": true,
-      "description": "Shorts virales de GTA 6 en español"
+      "enabled": false,
+      "description": "Shorts virales de GTA 6 en español (DESACTIVADO: Cero búsquedas genéricas)"
     },
     {
       "query": "ytsearch8:GTA 6 gameplay leak Shorts #shorts",
       "lang": "en",
       "only_shorts": true,
-      "enabled": true,
-      "description": "Filtraciones y gameplay vertical en tendencia"
+      "enabled": false,
+      "description": "Filtraciones (DESACTIVADO: Cero búsquedas genéricas)"
     },
     {
       "query": "ytsearch8:GTA 6 trailer 2 Shorts #shorts",
       "lang": "es",
       "only_shorts": true,
-      "enabled": true,
-      "description": "Novedades y teorías del Tráiler 2 en formato corto"
+      "enabled": false,
+      "description": "Tráiler 2 (DESACTIVADO: Cero búsquedas genéricas)"
     },
     {
       "query": "ytsearch8:GTA 6 Vice City secrets Shorts #shorts",
       "lang": "en",
       "only_shorts": true,
-      "enabled": true,
-      "description": "Detalles y secretos del mapa de Vice City en Shorts"
+      "enabled": false,
+      "description": "Secretos (DESACTIVADO: Cero búsquedas genéricas)"
     },
     {
       "query": "ytsearch8:GTA 6 Lucia Jason clips #shorts",
       "lang": "es",
       "only_shorts": true,
-      "enabled": true,
-      "description": "Clips de los protagonistas Lucía y Jason"
+      "enabled": false,
+      "description": "Clips (DESACTIVADO: Cero búsquedas genéricas)"
     },
     {
       "query": "ytsearch8:Grand Theft Auto VI secret details Shorts #shorts",
       "lang": "en",
       "only_shorts": true,
-      "enabled": true,
-      "description": "Detalles ocultos del motor gráfico y físicas en Shorts"
+      "enabled": false,
+      "description": "Detalles (DESACTIVADO: Cero búsquedas genéricas)"
     },
     {
       "query": "ytsearch8:GTA 6 filtracion mapa Leonida Shorts #shorts",
       "lang": "es",
       "only_shorts": true,
-      "enabled": true,
-      "description": "Filtraciones del mapa de Leonida en formato vertical"
+      "enabled": false,
+      "description": "Filtraciones (DESACTIVADO: Cero búsquedas genéricas)"
     },
     {
       "query": "ytsearch8:GTA 6 reaccion streamer Shorts #shorts",
       "lang": "es",
       "only_shorts": true,
-      "enabled": true,
-      "description": "Reacciones virales de streamers a novedades de GTA 6"
+      "enabled": false,
+      "description": "Reacciones (DESACTIVADO: Cero búsquedas genéricas)"
     },
     {
       "query": "ytsearch8:GTA 6 Easter eggs misterios Shorts #shorts",
       "lang": "es",
       "only_shorts": true,
-      "enabled": true,
-      "description": "Easter eggs y misterios descubiertos de GTA 6"
+      "enabled": false,
+      "description": "Easter eggs (DESACTIVADO: Cero búsquedas genéricas)"
     },
     {
       "query": "ytsearch8:Grand Theft Auto 6 viral moments Shorts #shorts",
       "lang": "en",
       "only_shorts": true,
-      "enabled": true,
-      "description": "Momentos virales globales de la comunidad de GTA 6"
+      "enabled": false,
+      "description": "Momentos (DESACTIVADO: Cero búsquedas genéricas)"
     }
   ]
 }
