@@ -8,7 +8,8 @@ from .config import CHANNELS_FILE, PROCESSED_FILE
 GTA6_POSITIVE_KEYWORDS = [
     "gta 6", "gta6", "gta vi", "gtavi",
     "grand theft auto 6", "grand theft auto vi",
-    "vice city", "leonida", "lucia", "jason"
+    "vice city", "leonida", "lucia", "jason",
+    "port gellhorn", "mud girl", "rage 9", "trailer 2", "tráiler 2"
 ]
 
 def is_strictly_gta6(title: str, description: str = "") -> bool:

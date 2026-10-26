@@ -210,34 +210,74 @@ def get_emoji_font(size: int = 40):
     return None
 
 EMOJI_KEYWORDS = {
+    # Personajes & Lore de GTA 6
+    "lucia": "💃",
+    "jason": "🧢",
+    "caiman": "🐊",
+    "caimán": "🐊",
+    "cocodrilo": "🐊",
+    "mud": "🚜",
+    "joker": "🃏",
+    # Geografía & Leonida
     "mapa": "🗺️",
     "map": "🗺️",
+    "leonida": "🗺️",
+    "vice": "🌴",
+    "miami": "🌴",
+    "playa": "🏖️",
+    "beach": "🏖️",
+    # Filtraciones & Alertas
     "filtracion": "🚨",
     "filtración": "🚨",
     "filtrado": "🚨",
     "leak": "🚨",
     "leaks": "🚨",
+    "secreto": "🔍",
+    "secretos": "🔍",
+    "secret": "🔍",
+    "easter": "🥚",
+    "misterio": "👀",
+    # Reacciones & Virabilidad
     "loco": "🤯",
     "flipar": "🤯",
     "flipas": "🤯",
     "broma": "😂",
     "risa": "😂",
+    "bomba": "💥",
+    "bombazo": "💥",
+    "impacto": "💥",
+    # Jugabilidad & Acción
     "dinero": "💰",
     "millones": "💰",
+    "atraco": "💰",
     "coche": "🏎️",
     "coches": "🏎️",
+    "motor": "🏎️",
     "policia": "🚓",
     "policía": "🚓",
     "fuego": "🔥",
     "brutal": "🔥",
     "arma": "🔫",
+    "armas": "🔫",
+    "tiroteo": "🔫",
     "rockstar": "⭐",
-    "vice": "🌴",
     "trailer": "🎬",
-    "juego": "🎮"
+    "tráiler": "🎬",
+    "juego": "🎮",
+    "gameplay": "🎮",
+    "graficos": "✨",
+    "gráficos": "✨",
+    "fisicas": "🌊",
+    "físicas": "🌊",
+    "agua": "🌊"
 }
 
-HOT_PINK_KEYWORDS = {"loco", "flipas", "filtracion", "filtración", "broma", "increible", "increíble", "bomba"}
+HOT_PINK_KEYWORDS = {
+    "loco", "flipas", "filtracion", "filtración", "leak", "leaks", "broma",
+    "increible", "increíble", "bomba", "bombazo", "lucia", "jason", "vice",
+    "leonida", "trailer", "tráiler", "rage", "gellhorn", "brutal", "secreto",
+    "alucinante", "exclusiva", "confirmado"
+}
 
 def render_top_hook_headline(hook_text: str, output_path: Path) -> bool:
     """Renderiza una elegante píldora de gancho superior en cristal oscuro (0.0 a 2.5s)."""

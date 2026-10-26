@@ -21,6 +21,14 @@ DEFAULT_VIRAL_QUERIES = [
     "ytsearch8:Grand Theft Auto VI secret details Shorts #shorts",
     "ytsearch8:GTA 6 filtracion mapa Leonida Shorts #shorts",
     "ytsearch8:GTA 6 graficos fisicas leak Shorts #shorts",
+    "ytsearch8:GTA 6 fisicas agua realismo Shorts #shorts",
+    "ytsearch8:GTA 6 mapa Leonida comparativa GTA 5 Shorts #shorts",
+    "ytsearch8:GTA 6 Lucia Jason gameplay leak Shorts #shorts",
+    "ytsearch8:GTA 6 detalles ocultos trailer 1 Shorts #shorts",
+    "ytsearch8:GTA 6 Trailer 2 novedades filtradas Shorts #shorts",
+    "ytsearch8:GTA 6 Port Gellhorn secretos Shorts #shorts",
+    "ytsearch8:GTA 6 Vice City vs Miami vida real Shorts #shorts",
+    "ytsearch8:GTA 6 IA peatones policia Shorts #shorts",
     "ytsearch8:GTA 6 reaccion streamer Shorts #shorts",
     "ytsearch8:GTA 6 Easter eggs misterios Shorts #shorts",
     "ytsearch8:GTA 6 AI NPC details Shorts #shorts",
@@ -28,10 +36,18 @@ DEFAULT_VIRAL_QUERIES = [
 ]
 
 VIRAL_KEYWORDS = [
-    "trailer", "trailer 2", "filtracion", "filtración", "leak", "leaks",
-    "mapa", "secretos", "vice city", "lucia", "jason", "gameplay",
-    "reaccion", "reacción", "oficial", "official", "fecha", "online",
-    "rockstar", "confirmado", "noticia", "exclusiva", "easter egg"
+    # Protagonistas & Personajes
+    "lucia", "jason", "stefanie", "mud girl", "florida joker",
+    # Geografía & Lugares de Leonida
+    "vice city", "leonida", "port gellhorn", "ocean drive", "keys", "vice beach", "grassrivers",
+    # Jugabilidad, Físicas & Motor
+    "gameplay", "leak", "leaks", "filtracion", "filtración", "fisicas", "físicas", "physics",
+    "graphics", "graficos", "gráficos", "rage 9", "water physics", "interiores", "ia npc",
+    "atraco", "armas", "weapon wheel", "saqueo", "animaciones",
+    # Tráilers, Secretos & Novedades
+    "trailer", "trailer 1", "trailer 2", "tráiler", "mapa", "secretos", "secreto",
+    "easter egg", "detalles", "details", "comparativa", "vida real", "oficial", "official",
+    "fecha", "rockstar", "confirmado", "noticia", "exclusiva", "bombazo"
 ]
 
 # Palabras clave de creadores y momentos reales (reciben bonus de puntuación)
@@ -120,9 +136,11 @@ def calculate_virality_score(title: str, duration: float, views: int) -> Dict[st
         bonus += 5
     
     high_value_gta6 = [
-        "trailer", "trailer 2", "gameplay", "leak", "filtracion", "graphics", "graficos",
-        "fisicas", "physics", "secreto", "secret", "easter egg", "lucia", "jason",
-        "vice city", "leonida", "comparativa", "mapa", "detalles", "details"
+        "trailer", "trailer 1", "trailer 2", "tráiler", "gameplay", "leak", "leaks", "filtracion", "filtración",
+        "graphics", "graficos", "gráficos", "fisicas", "físicas", "physics", "secreto", "secret", "secretos",
+        "easter egg", "lucia", "jason", "stefanie", "mud girl", "florida joker",
+        "vice city", "leonida", "port gellhorn", "comparativa", "mapa", "detalles", "details",
+        "rage 9", "atraco", "caimán", "cocodrilo", "vida real", "interiores", "ia npc"
     ]
     if any(k in title_lower for k in high_value_gta6):
         bonus += 10

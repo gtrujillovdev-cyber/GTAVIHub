@@ -128,6 +128,12 @@ Tipo de formato: {tipo}.
 Título original: "{original_title}"
 Creador/Fuente original: "{creator_name or 'Rockstar Games'}"{loop_prompt_extra}
 
+Usa terminología del GLOSARIO OFICIAL Y VIRAL DE GTA 6 cuando sea pertinente:
+- Protagonistas: Lucía (primera protagonista femenina), Jason (pareja criminal), Stefanie (consejera), Mud Girl, Florida Joker.
+- Ubicaciones de Leonida: Vice City, Port Gellhorn, Ocean Drive, Grassrivers (Everglades), Los Cayos (Keys), Vice Beach.
+- Físicas & Jugabilidad: Físicas de agua realistas, IA de peatones/multitudes, motor RAGE 9, sistema de saqueo, animaciones al agacharse, interiores explorables, atracos a restaurantes, caimanes.
+- Expectación: Tráiler 1, Tráiler 2, Easter eggs, comparativa GTA 5 vs GTA 6, vida real vs Vice City.
+
 Tu tarea es generar:
 1. "viral_title": Un título ULTRA LLAMATIVO completamente en MAYÚSCULAS con emojis gaming y etiqueta #GTA6 (máx 80 caracteres). Debe apelar a la curiosidad, misterio o impacto extremo (ej: "¡NO PUEDE SER! 😱 REVELAN SECRETOS DE GTA 6 [DETALLES BRUTALES] 🔥🌴 #GTA6"). REGLA DE ORO: Jamás uses palabras como 'CONCEPTO', 'CGI', 'FAN-MADE' o 'UNREAL ENGINE'. Enfócate en filtraciones, secretos, comparativas y jugabilidad real.
 2. "summary": Un resumen apasionante de 2 párrafos en español explicando qué ocurre en el vídeo, teorías y por qué la comunidad de GTA está impactada.
