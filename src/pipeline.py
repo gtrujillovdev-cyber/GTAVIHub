@@ -130,9 +130,9 @@ def process_single_video(
             print("[Warning] No se pudieron traducir subtítulos, se continuará sin subtítulos quemados.")
             es_srt_path = None
 
-    # 4. Doblaje de voz neural en español (automático para fuentes en inglés/extranjeras para maximizar retención)
+    # 4. Doblaje de voz neural en español (solo si se solicita explícitamente en modo 'dub' o 'voice')
     dub_audio_path = None
-    should_dub = (mode in ["dub", "voice"]) or (AUTO_DUB_ENGLISH and lang_to_use != "es")
+    should_dub = (mode in ["dub", "voice"]) or (mode != "subs" and AUTO_DUB_ENGLISH and lang_to_use != "es")
     if should_dub and lang_to_use != "es" and es_srt_path:
         dub_audio_path = TEMP_DIR / f"{video_id}_es_voice.mp3"
         print(f"[*] Modo voz activa ({lang_to_use.upper()} -> ES). Generando locución neural en español...")

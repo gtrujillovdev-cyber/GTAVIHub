@@ -502,22 +502,34 @@ def render_final_video(
             print(f"[*] Mezclando pista ambiental sutil: {chosen_ambient.name} (-22 dB)")
 
     # Construcción de la cadena de mezcla de audio (Juego + Ambiente + Voz con Ducking)
-    if ambient_idx is not None:
-        bg_chain = f"[{ambient_idx}:a]volume=0.08[amb];[0:a][amb]amix=inputs=2:duration=first[bg];"
-        bg_ref = "[bg]"
-    else:
-        bg_chain = ""
-        bg_ref = "[0:a]"
-
     if dub_idx is not None:
-        audio_filter = (
-            f"{bg_chain}"
-            f"[{dub_idx}:a]asplit=2[sc][voice];"
-            f"{bg_ref}[sc]sidechaincompress=threshold=0.08:ratio=5:attack=60:release=350[ducked];"
-            f"[ducked][voice]amix=inputs=2:duration=first,loudnorm=I=-14:LRA=7:TP=-1.5[aout]"
-        )
+        # Modo Doblaje: El audio original se atenúa drásticamente para silenciar la voz original en inglés
+        # y evitar cacofonía de idiomas simultáneos.
+        if ambient_idx is not None:
+            audio_filter = (
+                f"[{ambient_idx}:a]volume=0.12[amb];"
+                f"[0:a]volume=0.04[orig_quiet];"
+                f"[{dub_idx}:a]asplit=2[sc][voice];"
+                f"[orig_quiet][sc]sidechaincompress=threshold=0.02:ratio=20:attack=10:release=600[orig_ducked];"
+                f"[orig_ducked][amb]amix=inputs=2:duration=first[bg_bed];"
+                f"[bg_bed][voice]amix=inputs=2:duration=first,loudnorm=I=-14:LRA=7:TP=-1.5[aout]"
+            )
+        else:
+            audio_filter = (
+                f"[0:a]volume=0.04[orig_quiet];"
+                f"[{dub_idx}:a]asplit=2[sc][voice];"
+                f"[orig_quiet][sc]sidechaincompress=threshold=0.02:ratio=20:attack=10:release=600[ducked];"
+                f"[ducked][voice]amix=inputs=2:duration=first,loudnorm=I=-14:LRA=7:TP=-1.5[aout]"
+            )
     else:
-        audio_filter = f"{bg_chain}{bg_ref}loudnorm=I=-14:LRA=7:TP=-1.5[aout]"
+        # Modo Subtítulos Estándar (Shorts Hormozi): Audio original intacto y limpio + ambient beat sutil (-22 dB)
+        if ambient_idx is not None:
+            audio_filter = (
+                f"[{ambient_idx}:a]volume=0.08[amb];"
+                f"[0:a][amb]amix=inputs=2:duration=first,loudnorm=I=-14:LRA=7:TP=-1.5[aout]"
+            )
+        else:
+            audio_filter = f"[0:a]loudnorm=I=-14:LRA=7:TP=-1.5[aout]"
 
     # Viñeta discreta
     cmd.extend(["-i", str(vignette_png)])
