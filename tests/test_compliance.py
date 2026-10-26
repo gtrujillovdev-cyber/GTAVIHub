@@ -57,5 +57,24 @@ class TestCompliance(unittest.TestCase):
         self.assertFalse(is_strictly_gta("Receta de cocina con Gordon Ramsay"))
         self.assertFalse(is_strictly_gta("Concierto de coro escolar"))
 
+    def test_to_unicode_bold(self):
+        from src.translator import to_unicode_bold
+        self.assertEqual(to_unicode_bold("GTA 6"), "𝗚𝗧𝗔 𝟲")
+        self.assertEqual(to_unicode_bold("DEBATE"), "𝗗𝗘𝗕𝗔𝗧𝗘")
+        self.assertEqual(to_unicode_bold("Test 123"), "𝗧𝗲𝘀𝘁 𝟭𝟮𝟯")
+
+    def test_channel_catalog_integrity(self):
+        from src.config import CHANNELS_FILE
+        import json
+        with open(CHANNELS_FILE, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        channels = data.get("channels", [])
+        self.assertGreaterEqual(len(channels), 40)
+        names = [c["name"] for c in channels]
+        self.assertIn("GTA VI O'Clock", names)
+        self.assertIn("ElAnalistaDeBits", names)
+        self.assertIn("Ray Snakeyes", names)
+        self.assertIn("Strange Man", names)
+
 if __name__ == "__main__":
     unittest.main()

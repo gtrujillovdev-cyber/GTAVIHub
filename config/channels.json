@@ -305,6 +305,150 @@
       "filter_keywords": true,
       "enabled": true,
       "description": "Mike York, ex-animador de Rockstar Games analizando tráilers oficiales"
+    },
+    {
+      "name": "GTA VI O'Clock",
+      "url": "https://www.youtube.com/@GTAVIoclock/videos",
+      "type": "gta_authority",
+      "lang": "en",
+      "filter_keywords": false,
+      "enabled": true,
+      "description": "Mayor programa y podcast de referencia global dedicado exclusivamente a GTA VI"
+    },
+    {
+      "name": "GTA VI O'Clock (Shorts)",
+      "url": "https://www.youtube.com/@GTAVIoclock/shorts",
+      "type": "gta_authority",
+      "lang": "en",
+      "filter_keywords": false,
+      "enabled": true,
+      "description": "Shorts rápidos de noticias y desgloses de GTA VI O'Clock"
+    },
+    {
+      "name": "ElAnalistaDeBits",
+      "url": "https://www.youtube.com/@ElAnalistaDeBits/videos",
+      "type": "technical_analysis",
+      "lang": "es",
+      "filter_keywords": true,
+      "enabled": true,
+      "description": "Comparativas técnicas punteras de GTA 6 vs Vida Real, PS5 Pro y motor RAGE"
+    },
+    {
+      "name": "ElAnalistaDeBits (Shorts)",
+      "url": "https://www.youtube.com/@ElAnalistaDeBits/shorts",
+      "type": "technical_analysis",
+      "lang": "es",
+      "filter_keywords": true,
+      "enabled": true,
+      "description": "Shorts de comparativas visuales y gráficos de GTA 6"
+    },
+    {
+      "name": "Ray Snakeyes",
+      "url": "https://www.youtube.com/@RaySnakeyes/videos",
+      "type": "gta_authority",
+      "lang": "es",
+      "filter_keywords": true,
+      "enabled": true,
+      "description": "Análisis profundos de físicas, mecánicas y novedades canónicas de GTA 6"
+    },
+    {
+      "name": "Ray Snakeyes (Shorts)",
+      "url": "https://www.youtube.com/@RaySnakeyes/shorts",
+      "type": "gta_authority",
+      "lang": "es",
+      "filter_keywords": true,
+      "enabled": true,
+      "description": "Shorts de detalles canónicos y curiosidades de GTA 6"
+    },
+    {
+      "name": "Strange Man",
+      "url": "https://www.youtube.com/@StrangeManChannel/videos",
+      "type": "lore_and_details",
+      "lang": "en",
+      "filter_keywords": true,
+      "enabled": true,
+      "description": "Documentales de élite sobre misterios, detalles y narrativa de Rockstar Games"
+    },
+    {
+      "name": "Strange Man (Shorts)",
+      "url": "https://www.youtube.com/@StrangeManChannel/shorts",
+      "type": "lore_and_details",
+      "lang": "en",
+      "filter_keywords": true,
+      "enabled": true,
+      "description": "Shorts de secretos y detalles del mundo de Rockstar Games"
+    },
+    {
+      "name": "Digital Foundry (Shorts)",
+      "url": "https://www.youtube.com/@DigitalFoundry/shorts",
+      "type": "technical_analysis",
+      "lang": "en",
+      "filter_keywords": true,
+      "enabled": true,
+      "description": "Shorts de análisis técnico y rendimiento gráfico de Rockstar"
+    },
+    {
+      "name": "SanInPlay",
+      "url": "https://www.youtube.com/@SanInPlay/videos",
+      "type": "insider_leaks",
+      "lang": "es",
+      "filter_keywords": true,
+      "enabled": true,
+      "description": "Actualidad contrastada, Take-Two earnings y reportes oficiales de GTA 6"
+    },
+    {
+      "name": "Danikyo",
+      "url": "https://www.youtube.com/@Danikyo/videos",
+      "type": "media_analysis",
+      "lang": "es",
+      "filter_keywords": true,
+      "enabled": true,
+      "description": "Análisis de la industria y expectativas sobre GTA 6"
+    },
+    {
+      "name": "IGN (Shorts)",
+      "url": "https://www.youtube.com/@IGN/shorts",
+      "type": "media_global",
+      "lang": "en",
+      "filter_keywords": true,
+      "enabled": true,
+      "description": "Shorts oficiales de noticias y tráilers de IGN"
+    },
+    {
+      "name": "GameSpot (Shorts)",
+      "url": "https://www.youtube.com/@GameSpot/shorts",
+      "type": "media_global",
+      "lang": "en",
+      "filter_keywords": true,
+      "enabled": true,
+      "description": "Shorts oficiales de análisis y novedades de GameSpot"
+    },
+    {
+      "name": "3DJuegos (Shorts)",
+      "url": "https://www.youtube.com/@3djuegos/shorts",
+      "type": "media_analysis",
+      "lang": "es",
+      "filter_keywords": true,
+      "enabled": true,
+      "description": "Shorts de noticias y debates en español de 3DJuegos"
+    },
+    {
+      "name": "Eurogamer España (Shorts)",
+      "url": "https://www.youtube.com/@eurogamerspain/shorts",
+      "type": "media_analysis",
+      "lang": "es",
+      "filter_keywords": true,
+      "enabled": true,
+      "description": "Shorts técnicos y de actualidad gaming en español"
+    },
+    {
+      "name": "Vandal (Shorts)",
+      "url": "https://www.youtube.com/@vandal/shorts",
+      "type": "media_analysis",
+      "lang": "es",
+      "filter_keywords": true,
+      "enabled": true,
+      "description": "Shorts de noticias y curiosidades de Vandal"
     }
   ],
   "search_queries": [

@@ -7,6 +7,25 @@ from .config import GEMINI_API_KEY, GEMINI_MODEL, BUSINESS_EMAIL, MONETIZATION_A
 
 _client = None
 
+def to_unicode_bold(text: str) -> str:
+    """
+    Convierte texto alfanumérico ASCII a caracteres Unicode Mathematical Sans-Serif Bold.
+    Permite resaltar títulos, preguntas de debate y llamadas a la acción directamente
+    en descripciones, comentarios de YouTube, TikTok y pies de foto de Instagram sin usar Markdown.
+    """
+    res = []
+    for ch in text:
+        code = ord(ch)
+        if 65 <= code <= 90:  # A-Z
+            res.append(chr(0x1D5D4 + (code - 65)))
+        elif 97 <= code <= 122:  # a-z
+            res.append(chr(0x1D5EE + (code - 97)))
+        elif 48 <= code <= 57:  # 0-9
+            res.append(chr(0x1D7EC + (code - 48)))
+        else:
+            res.append(ch)
+    return "".join(res)
+
 def get_gemini_client():
     global _client
     if _client is None:
@@ -197,35 +216,36 @@ Devuelve tu respuesta EXACTAMENTE en este formato JSON (sin texto extra):
 
     full_description = f"""{summary}
 
-💬 DEBATE DE LA COMUNIDAD:
+💬 {to_unicode_bold("DEBATE DE LA COMUNIDAD:")}
 {debate_question}
+👇 ¿Cuál es tu teoría? ¡Te leemos en los comentarios!
 
-🔔 ¡SUSCRÍBETE a GTA VI Hub España para no perderte ninguna noticia, tráiler y filtración del juego más esperado de la historia!
+🌴 {to_unicode_bold("GTA VI HUB ESPAÑA | REDES OFICIALES:")}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🌐 Hub Central & Enlaces: https://linktr.ee/gtavihubspain
+🎬 TikTok Oficial: https://tiktok.com/@gtavihubspain
+📸 Instagram Reels: https://instagram.com/gtavihubspain
+🔴 Suscríbete al Canal: https://youtube.com/@GTAVIHubSpain?sub_confirmation=1
 
-═══════════════════════════════════════
-🎮 RESERVA OFICIAL GTA VI & ACCESORIOS RECOMENDADOS:
-═══════════════════════════════════════
-👉 Consigue las mejores ofertas de consolas PS5/Xbox y reserva de GTA VI aquí:
+🎮 {to_unicode_bold("RESERVA OFICIAL GTA VI & ACCESORIOS:")}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+👉 Reserva oficial garantizada y mejores ofertas de consolas PS5 / Xbox:
 {MONETIZATION_AFFILIATE_URL}
 
-═══════════════════════════════════════
-📌 CRÉDITOS DEL CONTENIDO ORIGINAL:
-═══════════════════════════════════════
+📌 {to_unicode_bold("CRÉDITOS DEL AUTOR & FUENTE OFICIAL:")}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 {creator_line}{url_line}
-Todo el reconocimiento a los creadores originales por su gran trabajo. ¡Apoya el canal original en el enlace superior!
+Todo el reconocimiento al creador original por su excelente cobertura. ¡Apoya el canal original en el enlace superior!
 
-═══════════════════════════════════════
-💼 CONTACTO COMERCIAL Y RETIRADA DE CONTENIDO:
-═══════════════════════════════════════
+💼 {to_unicode_bold("CONTACTO COMERCIAL & COPYRIGHT:")}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 📩 Email de contacto / Business: {BUSINESS_EMAIL}
-🛡️ Retirada inmediata de contenido / Copyright inquiry:
-Si eres el autor o propietario de algún fragmento y deseas su retirada o modificación, por favor escríbenos al email arriba indicado y lo resolveremos inmediatamente de forma amistosa en menos de 2 horas.
+🛡️ Retirada inmediata o atribución personalizada: Si eres el autor o titular de derechos y deseas alguna modificación o retirada amistosa, contáctanos a nuestro email y atenderemos tu solicitud en menos de 2 horas.
 
-═══════════════════════════════════════
-{music_disclaimer}
-═══════════════════════════════════════
-⚖️ AVISO LEGAL Y USO LEGÍTIMO (FAIR USE):
-═══════════════════════════════════════
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+{music_disclaimer}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+⚖️ {to_unicode_bold("AVISO LEGAL & USO LEGÍTIMO (FAIR USE):")}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 Este vídeo contiene material transformado con fines estrictamente informativos, de divulgación comunitaria, comentario crítico y traducción para la comunidad hispanohablante.
 
 De conformidad con el Artículo 107 de la Ley de Propiedad Intelectual (Copyright Act de 1976 / Doctrina de 'Fair Use'), se autoriza el uso de material protegido por derechos de autor con fines de crítica, comentarios, noticias, enseñanza y análisis. 
@@ -236,9 +256,12 @@ Grand Theft Auto VI, GTA VI, Vice City y los logotipos asociados son marcas regi
 """
 
     pinned_comment = (
-        f"🌴 {debate_question}\n¡Déjanos tu teoría en los comentarios! 👇\n\n"
-        f"🎮 Reserva oficial de GTA VI y accesorios gaming recomendados 👉 {MONETIZATION_AFFILIATE_URL}\n"
-        f"📩 Contacto comercial / Colaboraciones: {BUSINESS_EMAIL}"
+        f"🌴 💬 {to_unicode_bold('DEBATE GTA 6:')}\n"
+        f"{debate_question}\n"
+        f"👇 ¡Déjanos tu teoría en los comentarios!\n\n"
+        f"🌐 𝗧𝗢𝗗𝗔𝗦 𝗡𝗨𝗘𝗦𝗧𝗥𝗔𝗦 𝗥𝗘𝗗𝗘𝗦 (TikTok, IG, Clips) 👉 https://linktr.ee/gtavihubspain\n"
+        f"🎮 𝗥𝗘𝗦𝗘𝗥𝗩𝗔 𝗢𝗙𝗜𝗖𝗜𝗔𝗟 𝗚𝗧𝗔 𝟲 & 𝗢𝗙𝗘𝗥𝗧𝗔𝗦 𝗣𝗦𝟱 👉 {MONETIZATION_AFFILIATE_URL}\n"
+        f"📩 𝗖𝗼𝗻𝘁𝗮𝗰𝘁𝗼 𝗖𝗼𝗺𝗲𝗿𝗰𝗶𝗮𝗹 / 𝗕𝘂𝘀𝗶𝗻𝗲𝘀𝘀: {BUSINESS_EMAIL}"
     )
 
     return {

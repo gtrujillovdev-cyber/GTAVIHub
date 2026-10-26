@@ -14,6 +14,7 @@ from .config import (
 )
 from .uploader import upload_to_youtube
 from .compliance_auditor import ComplianceAuditor
+from .translator import to_unicode_bold
 
 # Directorio persistente para la sesión del navegador (TikTok / Instagram)
 BROWSER_PROFILE_DIR = BASE_DIR / "assets" / ".browser_profiles"
@@ -177,13 +178,14 @@ class SocialPublisher:
             return None
 
         tags_str = " ".join([f"#{t.replace(' ', '')}" for t in tags[:4]])
+        bold_hook = to_unicode_bold("¡BOMBAZO GTA 6!")
         if debate_question:
             q_clean = debate_question.replace("¿", "").replace("?", "").strip()
-            caption = f"{title[:50]} {tags_str} 💬 ¿{q_clean[:45]}? 👇 | 📩 {BUSINESS_EMAIL}"
+            caption = f"🚨 {bold_hook} {title[:45]} {tags_str}\n💬 {to_unicode_bold('DEBATE')}: ¿{q_clean[:45]}? 👇\n👉 Síguenos @gtavihubspain | Bio: linktr.ee/gtavihubspain"
         elif ENABLE_AFFILIATE_CTAS:
-            caption = f"{title[:70]} {tags_str} {AFFILIATE_CTA_TIKTOK} | 📩 {BUSINESS_EMAIL}"
+            caption = f"🚨 {bold_hook} {title[:60]} {tags_str}\n{AFFILIATE_CTA_TIKTOK}\n👉 @gtavihubspain | Bio: linktr.ee/gtavihubspain"
         else:
-            caption = f"{title[:70]} {tags_str} 🎮 Link en bio para novedades de GTA 6 | 📩 {BUSINESS_EMAIL}"
+            caption = f"🚨 {bold_hook} {title[:60]} {tags_str}\n🎮 {to_unicode_bold('TODO GTA 6')} en la bio 👉 @gtavihubspain | linktr.ee/gtavihubspain"
         tiktok_profile = BROWSER_PROFILE_DIR / "tiktok_user_data"
 
         if self.dry_run:
@@ -601,9 +603,27 @@ class SocialPublisher:
                     self._notify_telegram("⚠️ *[2/3] TikTok:* Subido y guardado como borrador en TikTok Studio.")
             elif plat == "instagram":
                 debate_q = metadata.get("debate_question", "")
-                debate_block = f"💬 DEBATE COMUNIDAD:\n{debate_q}\n\n" if debate_q else ""
-                cta_block = AFFILIATE_CTA_INSTAGRAM if ENABLE_AFFILIATE_CTAS else "🎮 Reserva oficial de GTA VI y novedades en el LINK DE LA BIO."
-                caption = f"{title}\n\n{debate_block}{desc[:1300]}\n\n{cta_block}\n📩 Contacto / Business: {BUSINESS_EMAIL}\n\n#GTA6 #Gaming #Reels"
+                bold_debate = to_unicode_bold("DEBATE DE LA COMUNIDAD:")
+                bold_redes = to_unicode_bold("REDES & ENLACES (Link en Bio):")
+                bold_creditos = to_unicode_bold("CRÉDITOS & FUENTE:")
+                bold_contacto = to_unicode_bold("CONTACTO / BUSINESS:")
+
+                debate_block = f"💬 {bold_debate}\n{debate_q}\n👇 ¡Déjanos tu teoría en los comentarios!\n\n" if debate_q else ""
+                cta_block = AFFILIATE_CTA_INSTAGRAM if ENABLE_AFFILIATE_CTAS else "🎮 Reserva oficial de GTA VI y mejores ofertas de PS5 en el LINK DE LA BIO."
+
+                creator_clean = creator_name or "Rockstar Games"
+                caption = (
+                    f"{title}\n\n"
+                    f"{debate_block}"
+                    f"{desc[:900]}\n\n"
+                    f"🌐 {bold_redes}\n"
+                    f"👉 Hub Central: https://linktr.ee/gtavihubspain\n"
+                    f"👉 Síguenos en @gtavihubspain\n\n"
+                    f"{cta_block}\n\n"
+                    f"📌 {bold_creditos} Vía {creator_clean}. Todo el crédito al autor original.\n"
+                    f"📩 {bold_contacto} {BUSINESS_EMAIL}\n\n"
+                    f"#GTA6 #GrandTheftAutoVI #RockstarGames #Gaming #ViceCity #Reels #Videojuegos"
+                )
                 url = self.publish_to_instagram(video_path, caption, thumbnail_path=thumb)
                 results["instagram"] = url
                 if url:
