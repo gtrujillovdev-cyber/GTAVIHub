@@ -501,25 +501,27 @@ def render_final_video(
             input_idx += 1
             print(f"[*] Mezclando pista ambiental sutil: {chosen_ambient.name} (-22 dB)")
 
-    # Construcción de la cadena de mezcla de audio (Juego + Ambiente + Voz con Ducking)
+    # Construcción de la cadena de mezcla de audio (Voice-Over: Inglés atenuado de fondo + Doblaje en Español + Ambiente)
     if dub_idx is not None:
-        # Modo Doblaje: El audio original se atenúa drásticamente para silenciar la voz original en inglés
-        # y evitar cacofonía de idiomas simultáneos.
+        # Modo Voice-Over Profesional:
+        # 1. El audio original en inglés se baja a un nivel base suave (volume=0.12 / -18.4 dB).
+        # 2. Cuando habla la voz en español, el sidechain comprime agresivamente (ratio=8, threshold=0.02),
+        #    reduciendo la voz inglesa al ~3.5% (-29 dB) para que se perciba sutilmente de fondo sin competir ni molestar.
         if ambient_idx is not None:
             audio_filter = (
-                f"[{ambient_idx}:a]volume=0.12[amb];"
-                f"[0:a]volume=0.04[orig_quiet];"
+                f"[{ambient_idx}:a]volume=0.06[amb];"
+                f"[0:a]volume=0.12[orig_base];"
                 f"[{dub_idx}:a]asplit=2[sc][voice];"
-                f"[orig_quiet][sc]sidechaincompress=threshold=0.02:ratio=20:attack=10:release=600[orig_ducked];"
-                f"[orig_ducked][amb]amix=inputs=2:duration=first[bg_bed];"
-                f"[bg_bed][voice]amix=inputs=2:duration=first,loudnorm=I=-14:LRA=7:TP=-1.5[aout]"
+                f"[orig_base][sc]sidechaincompress=threshold=0.02:ratio=8:attack=15:release=300[orig_ducked];"
+                f"[orig_ducked][amb]amix=inputs=2:duration=first:normalize=false[bed];"
+                f"[bed][voice]amix=inputs=2:duration=first:normalize=false,loudnorm=I=-14:LRA=7:TP=-1.5[aout]"
             )
         else:
             audio_filter = (
-                f"[0:a]volume=0.04[orig_quiet];"
+                f"[0:a]volume=0.12[orig_base];"
                 f"[{dub_idx}:a]asplit=2[sc][voice];"
-                f"[orig_quiet][sc]sidechaincompress=threshold=0.02:ratio=20:attack=10:release=600[ducked];"
-                f"[ducked][voice]amix=inputs=2:duration=first,loudnorm=I=-14:LRA=7:TP=-1.5[aout]"
+                f"[orig_base][sc]sidechaincompress=threshold=0.02:ratio=8:attack=15:release=300[orig_ducked];"
+                f"[orig_ducked][voice]amix=inputs=2:duration=first:normalize=false,loudnorm=I=-14:LRA=7:TP=-1.5[aout]"
             )
     else:
         # Modo Subtítulos Estándar (Shorts Hormozi): Audio original intacto y limpio + ambient beat sutil (-22 dB)
