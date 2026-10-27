@@ -449,6 +449,456 @@
       "filter_keywords": true,
       "enabled": true,
       "description": "Shorts de noticias y curiosidades de Vandal"
+    },
+    {
+      "name": "Gameranx",
+      "url": "https://www.youtube.com/@gameranx/videos",
+      "lang": "en",
+      "filter_keywords": true,
+      "enabled": true,
+      "type": "gta_news",
+      "description": "Noticias semanales y análisis de novedades de GTA 6 por Jake Baldino y Falcon"
+    },
+    {
+      "name": "Gameranx (Shorts)",
+      "url": "https://www.youtube.com/@gameranx/shorts",
+      "lang": "en",
+      "filter_keywords": true,
+      "enabled": true,
+      "type": "gta_news",
+      "description": "Shorts de noticias rápidas y detalles de Gameranx"
+    },
+    {
+      "name": "Sonny Evans",
+      "url": "https://www.youtube.com/@SonnyEvans/videos",
+      "lang": "en",
+      "filter_keywords": true,
+      "enabled": true,
+      "type": "breakdowns",
+      "description": "Documentales de mapa, físicas y detalles de la saga GTA"
+    },
+    {
+      "name": "Sonny Evans (Shorts)",
+      "url": "https://www.youtube.com/@SonnyEvans/shorts",
+      "lang": "en",
+      "filter_keywords": true,
+      "enabled": true,
+      "type": "breakdowns",
+      "description": "Shorts de curiosidades y secretos de Sonny Evans"
+    },
+    {
+      "name": "The Professional",
+      "url": "https://www.youtube.com/@TheProfessional1994/videos",
+      "lang": "en",
+      "filter_keywords": true,
+      "enabled": true,
+      "type": "gta_creator",
+      "description": "Análisis metódico de economía, atracos y mecánicas de GTA 6"
+    },
+    {
+      "name": "The Professional (Shorts)",
+      "url": "https://www.youtube.com/@TheProfessional1994/shorts",
+      "lang": "en",
+      "filter_keywords": true,
+      "enabled": true,
+      "type": "gta_creator",
+      "description": "Shorts de análisis y consejos de The Professional"
+    },
+    {
+      "name": "CaptainEggcellent",
+      "url": "https://www.youtube.com/@CaptainEggcellent/videos",
+      "lang": "en",
+      "filter_keywords": true,
+      "enabled": true,
+      "type": "lore_and_details",
+      "description": "Mayor canal global de Easter Eggs y secretos ocultos de Rockstar"
+    },
+    {
+      "name": "CaptainEggcellent (Shorts)",
+      "url": "https://www.youtube.com/@CaptainEggcellent/shorts",
+      "lang": "en",
+      "filter_keywords": true,
+      "enabled": true,
+      "type": "lore_and_details",
+      "description": "Shorts de Easter Eggs y misterios de videojuegos"
+    },
+    {
+      "name": "GhillieMaster",
+      "url": "https://www.youtube.com/@GhillieMaster/videos",
+      "lang": "en",
+      "filter_keywords": true,
+      "enabled": true,
+      "type": "breakdowns",
+      "description": "Análisis técnico de vehículos, armas y físicas de Rockstar"
+    },
+    {
+      "name": "ENXGMA",
+      "url": "https://www.youtube.com/@ENXGMA/videos",
+      "lang": "en",
+      "filter_keywords": true,
+      "enabled": true,
+      "type": "breakdowns",
+      "description": "Documentales de diseño y detalles de mundo abierto"
+    },
+    {
+      "name": "WhatCulture Gaming",
+      "url": "https://www.youtube.com/@WhatCultureGaming/videos",
+      "lang": "en",
+      "filter_keywords": true,
+      "enabled": true,
+      "type": "media_global",
+      "description": "Rankings, teorías y cobertura de GTA 6"
+    },
+    {
+      "name": "WhatCulture Gaming (Shorts)",
+      "url": "https://www.youtube.com/@WhatCultureGaming/shorts",
+      "lang": "en",
+      "filter_keywords": true,
+      "enabled": true,
+      "type": "media_global",
+      "description": "Shorts de curiosidades y listas de WhatCulture"
+    },
+    {
+      "name": "Dexerto",
+      "url": "https://www.youtube.com/@Dexerto/videos",
+      "lang": "en",
+      "filter_keywords": true,
+      "enabled": true,
+      "type": "media_global",
+      "description": "Cobertura de actualidad y cultura de gaming y GTA 6"
+    },
+    {
+      "name": "Dexerto (Shorts)",
+      "url": "https://www.youtube.com/@Dexerto/shorts",
+      "lang": "en",
+      "filter_keywords": true,
+      "enabled": true,
+      "type": "media_global",
+      "description": "Shorts de noticias virales de Dexerto"
+    },
+    {
+      "name": "Hobby Consolas",
+      "url": "https://www.youtube.com/@HobbyConsolas/videos",
+      "lang": "es",
+      "filter_keywords": true,
+      "enabled": true,
+      "type": "media_analysis",
+      "description": "Decano de la prensa gaming en España y análisis de GTA 6"
+    },
+    {
+      "name": "Hobby Consolas (Shorts)",
+      "url": "https://www.youtube.com/@HobbyConsolas/shorts",
+      "lang": "es",
+      "filter_keywords": true,
+      "enabled": true,
+      "type": "media_analysis",
+      "description": "Shorts de actualidad y novedades de Hobby Consolas"
+    },
+    {
+      "name": "MeriStation",
+      "url": "https://www.youtube.com/@meristation/videos",
+      "lang": "es",
+      "filter_keywords": true,
+      "enabled": true,
+      "type": "media_analysis",
+      "description": "Reportajes y noticias especializadas de MeriStation"
+    },
+    {
+      "name": "MeriStation (Shorts)",
+      "url": "https://www.youtube.com/@meristation/shorts",
+      "lang": "es",
+      "filter_keywords": true,
+      "enabled": true,
+      "type": "media_analysis",
+      "description": "Shorts de actualidad y debates de MeriStation"
+    },
+    {
+      "name": "IGN España",
+      "url": "https://www.youtube.com/@IGNSpain/videos",
+      "lang": "es",
+      "filter_keywords": true,
+      "enabled": true,
+      "type": "media_global",
+      "description": "Tráilers y noticias oficiales de IGN España"
+    },
+    {
+      "name": "IGN España (Shorts)",
+      "url": "https://www.youtube.com/@IGNSpain/shorts",
+      "lang": "es",
+      "filter_keywords": true,
+      "enabled": true,
+      "type": "media_global",
+      "description": "Shorts de novedades y avances de IGN España"
+    },
+    {
+      "name": "Leyendas & Videojuegos",
+      "url": "https://www.youtube.com/@LeyendasVideojuegos/videos",
+      "lang": "es",
+      "filter_keywords": true,
+      "enabled": true,
+      "type": "media_analysis",
+      "description": "Análisis de diseño de mundos abiertos y detalles de Eric"
+    },
+    {
+      "name": "Leyendas & Videojuegos (Shorts)",
+      "url": "https://www.youtube.com/@LeyendasVideojuegos/shorts",
+      "lang": "es",
+      "filter_keywords": true,
+      "enabled": true,
+      "type": "media_analysis",
+      "description": "Shorts de secretos y curiosidades de videojuegos"
+    },
+    {
+      "name": "Menos Trece",
+      "url": "https://www.youtube.com/@MenosTrece/videos",
+      "lang": "es",
+      "filter_keywords": true,
+      "enabled": true,
+      "type": "streamer_reaction",
+      "description": "Opiniones y gameplays de Menos Trece"
+    },
+    {
+      "name": "Menos Trece (Shorts)",
+      "url": "https://www.youtube.com/@MenosTrece/shorts",
+      "lang": "es",
+      "filter_keywords": true,
+      "enabled": true,
+      "type": "streamer_reaction",
+      "description": "Shorts y momentos destacados de Menos Trece"
+    },
+    {
+      "name": "Zellendust",
+      "url": "https://www.youtube.com/@ZellenDust/videos",
+      "lang": "es",
+      "filter_keywords": true,
+      "enabled": true,
+      "type": "streamer_reaction",
+      "description": "Reacciones enérgicas de Zellen a novedades de GTA 6"
+    },
+    {
+      "name": "Chiclana & Friends",
+      "url": "https://www.youtube.com/@ChiclanayFriends/videos",
+      "lang": "es",
+      "filter_keywords": true,
+      "enabled": true,
+      "type": "media_analysis",
+      "description": "Debates en profundidad de la industria del videojuego"
+    },
+    {
+      "name": "GamesRadar+",
+      "url": "https://www.youtube.com/@gamesradar/videos",
+      "lang": "en",
+      "filter_keywords": true,
+      "enabled": true,
+      "type": "media_global",
+      "description": "Cobertura internacional y desgloses de GamesRadar"
+    },
+    {
+      "name": "GamesRadar+ (Shorts)",
+      "url": "https://www.youtube.com/@gamesradar/shorts",
+      "lang": "en",
+      "filter_keywords": true,
+      "enabled": true,
+      "type": "media_global",
+      "description": "Shorts de avances y análisis de GamesRadar"
+    },
+    {
+      "name": "PC Gamer",
+      "url": "https://www.youtube.com/@pcgamer/videos",
+      "lang": "en",
+      "filter_keywords": true,
+      "enabled": true,
+      "type": "media_global",
+      "description": "Actualidad de hardware, motor gráfico y fecha en PC de GTA 6"
+    },
+    {
+      "name": "PC Gamer (Shorts)",
+      "url": "https://www.youtube.com/@pcgamer/shorts",
+      "lang": "en",
+      "filter_keywords": true,
+      "enabled": true,
+      "type": "media_global",
+      "description": "Shorts de noticias de PC Gamer"
+    },
+    {
+      "name": "Eurogamer Global",
+      "url": "https://www.youtube.com/@eurogamer/videos",
+      "lang": "en",
+      "filter_keywords": true,
+      "enabled": true,
+      "type": "media_global",
+      "description": "Cobertura internacional de Eurogamer UK"
+    },
+    {
+      "name": "Eurogamer Global (Shorts)",
+      "url": "https://www.youtube.com/@eurogamer/shorts",
+      "lang": "en",
+      "filter_keywords": true,
+      "enabled": true,
+      "type": "media_global",
+      "description": "Shorts de noticias de Eurogamer Global"
+    },
+    {
+      "name": "DaniRep (Shorts)",
+      "url": "https://www.youtube.com/@TheDaniRep/shorts",
+      "lang": "es",
+      "filter_keywords": true,
+      "enabled": true,
+      "type": "gta_creator",
+      "description": "Shorts diarios de GTA de DaniRep"
+    },
+    {
+      "name": "Pelicanger (Shorts)",
+      "url": "https://www.youtube.com/@Pelicanger/shorts",
+      "lang": "es",
+      "filter_keywords": true,
+      "enabled": true,
+      "type": "streamer_reaction",
+      "description": "Shorts virales de Pelicanger"
+    },
+    {
+      "name": "Nexxuz HD (Shorts)",
+      "url": "https://www.youtube.com/@NexxuzHD/shorts",
+      "lang": "es",
+      "filter_keywords": true,
+      "enabled": true,
+      "type": "gta_creator",
+      "description": "Shorts de locuras y momentos de Nexxuz"
+    },
+    {
+      "name": "Rubius Z (Shorts)",
+      "url": "https://www.youtube.com/@elrubiusOMG/shorts",
+      "lang": "es",
+      "filter_keywords": true,
+      "enabled": true,
+      "type": "streamer_reaction",
+      "description": "Shorts de reacciones de Rubius"
+    },
+    {
+      "name": "Ibai (Shorts)",
+      "url": "https://www.youtube.com/@IbaiLlanos/shorts",
+      "lang": "es",
+      "filter_keywords": true,
+      "enabled": true,
+      "type": "streamer_reaction",
+      "description": "Shorts de directos y reacciones de Ibai"
+    },
+    {
+      "name": "AuronPlay (Shorts)",
+      "url": "https://www.youtube.com/@Auron/shorts",
+      "lang": "es",
+      "filter_keywords": true,
+      "enabled": true,
+      "type": "streamer_reaction",
+      "description": "Shorts de AuronPlay"
+    },
+    {
+      "name": "TheGrefg (Shorts)",
+      "url": "https://www.youtube.com/@TheGrefg/shorts",
+      "lang": "es",
+      "filter_keywords": true,
+      "enabled": true,
+      "type": "streamer_reaction",
+      "description": "Shorts de momentos destacados de TheGrefg"
+    },
+    {
+      "name": "DjMaRiiO (Shorts)",
+      "url": "https://www.youtube.com/@DjMaRiiO/shorts",
+      "lang": "es",
+      "filter_keywords": true,
+      "enabled": true,
+      "type": "streamer_reaction",
+      "description": "Shorts de DjMaRiiO"
+    },
+    {
+      "name": "Danikyo (Shorts)",
+      "url": "https://www.youtube.com/@Danikyo/shorts",
+      "lang": "es",
+      "filter_keywords": true,
+      "enabled": true,
+      "type": "media_analysis",
+      "description": "Shorts de análisis de la industria de Danikyo"
+    },
+    {
+      "name": "Mors Mutual (Shorts)",
+      "url": "https://www.youtube.com/@MorsMutual/shorts",
+      "lang": "en",
+      "filter_keywords": false,
+      "enabled": true,
+      "type": "shorts_memes",
+      "description": "Shorts virales de Mors Mutual"
+    },
+    {
+      "name": "LegacyKillaHD (Shorts)",
+      "url": "https://www.youtube.com/@LegacyKillaHD/shorts",
+      "lang": "en",
+      "filter_keywords": false,
+      "enabled": true,
+      "type": "insider_leaks",
+      "description": "Shorts de filtraciones e informes de LegacyKillaHD"
+    },
+    {
+      "name": "DarkViperAU (Shorts)",
+      "url": "https://www.youtube.com/@DarkViperAU/shorts",
+      "lang": "en",
+      "filter_keywords": true,
+      "enabled": true,
+      "type": "gta_creator",
+      "description": "Shorts de retos y curiosidades de DarkViperAU"
+    },
+    {
+      "name": "Moore s Law Is Dead",
+      "url": "https://www.youtube.com/@MooresLawIsDead/videos",
+      "lang": "en",
+      "filter_keywords": true,
+      "enabled": true,
+      "type": "technical_analysis",
+      "description": "Análisis técnico de CPU/GPU, PS5 Pro y optimización de GTA 6"
+    },
+    {
+      "name": "Badger Goodger (Shorts)",
+      "url": "https://www.youtube.com/@BadgerGoodger/shorts",
+      "lang": "en",
+      "filter_keywords": false,
+      "enabled": true,
+      "type": "breakdowns",
+      "description": "Shorts de misterios de Rockstar de Badger Goodger"
+    },
+    {
+      "name": "INTER (Shorts)",
+      "url": "https://www.youtube.com/@INTER_yt/shorts",
+      "lang": "en",
+      "filter_keywords": true,
+      "enabled": true,
+      "type": "breakdowns",
+      "description": "Shorts de comparativas gráficas y físicas de INTER"
+    },
+    {
+      "name": "SWEGTA (Shorts)",
+      "url": "https://www.youtube.com/@SWEGTA/shorts",
+      "lang": "en",
+      "filter_keywords": true,
+      "enabled": true,
+      "type": "insider_leaks",
+      "description": "Shorts de código e historia de Rockstar de SWEGTA"
+    },
+    {
+      "name": "Kinda Funny Games",
+      "url": "https://www.youtube.com/@KindaFunnyGames/videos",
+      "lang": "en",
+      "filter_keywords": true,
+      "enabled": true,
+      "type": "media_global",
+      "description": "Reacciones y debates de la industria de Kinda Funny Games"
+    },
+    {
+      "name": "MinnMax",
+      "url": "https://www.youtube.com/@minnmaxshow/videos",
+      "lang": "en",
+      "filter_keywords": true,
+      "enabled": true,
+      "type": "media_analysis",
+      "description": "Entrevistas a ex-desarrolladores y tertulias de MinnMax"
     }
   ],
   "search_queries": [

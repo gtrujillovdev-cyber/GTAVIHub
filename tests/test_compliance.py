@@ -69,12 +69,16 @@ class TestCompliance(unittest.TestCase):
         with open(CHANNELS_FILE, "r", encoding="utf-8") as f:
             data = json.load(f)
         channels = data.get("channels", [])
-        self.assertGreaterEqual(len(channels), 40)
+        self.assertGreaterEqual(len(channels), 100)
         names = [c["name"] for c in channels]
         self.assertIn("GTA VI O'Clock", names)
         self.assertIn("ElAnalistaDeBits", names)
         self.assertIn("Ray Snakeyes", names)
         self.assertIn("Strange Man", names)
+        self.assertIn("Gameranx", names)
+        self.assertIn("Sonny Evans", names)
+        self.assertIn("Hobby Consolas", names)
+        self.assertIn("CaptainEggcellent", names)
 
 if __name__ == "__main__":
     unittest.main()
