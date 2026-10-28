@@ -172,10 +172,10 @@ def find_viral_heatmap_segment(
         info = json.loads(res.stdout)
         duration = info.get("duration", 0)
 
-        # Si ya es un vídeo corto optimizado (<= 58 segundos), no necesita recorte:
-        # Se respeta íntegramente la duración orgánica del creador original.
-        if duration <= 58:
-            print(f"[*] Vídeo ya en formato Short orgánico ({duration:.1f}s <= 58s). Duración original preservada.")
+        # Si ya es un vídeo corto optimizado (<= 65 segundos), NUNCA recortar:
+        # Se respeta íntegramente la duración orgánica del creador para no cortar frases a la mitad.
+        if duration <= 65:
+            print(f"[*] Vídeo ya en formato Short orgánico ({duration:.1f}s <= 65s). Duración original preservada (cero cortes).")
             return None
 
         heatmap = info.get("heatmap")

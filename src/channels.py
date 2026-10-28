@@ -9,8 +9,7 @@ from .config import CHANNELS_FILE, PROCESSED_FILE
 GTA6_POSITIVE_KEYWORDS = [
     "gta 6", "gta6", "gta vi", "gtavi",
     "grand theft auto 6", "grand theft auto vi",
-    "vice city", "leonida", "lucia", "jason",
-    "port gellhorn", "mud girl", "rage 9"
+    "lucia", "jason", "leonida", "port gellhorn", "rage 9"
 ]
 
 def is_strictly_gta6(title: str, description: str = "") -> bool:
@@ -31,9 +30,8 @@ def is_strictly_gta6(title: str, description: str = "") -> bool:
 
     title_lower = title.lower()
 
-    # 2. Descalificadores absolutos: si menciona GTA 5, GTA V, GTA Online, GTA 4, etc.,
-    # se descarta tajantemente para evitar gameplays antiguos o clickbait de GTA 5.
-    # Usamos \b para que 'gta v' NO coincida por error con 'gta vi'.
+    # 2. Descalificadores absolutos: si menciona GTA 5, GTA V, GTA Online, GTA 4, Vice City retro, etc.,
+    # se descarta tajantemente para evitar gameplays antiguos o clickbait de entregas previas.
     old_game_regexes = [
         r"\bgta\s*5\b",
         r"\bgta\s*v\b",
@@ -42,7 +40,14 @@ def is_strictly_gta6(title: str, description: str = "") -> bool:
         r"\bgta\s*iv\b",
         r"\bgta\s*3\b",
         r"\bgta\s*iii\b",
-        r"\bsan andreas\b",
+        r"\bsan\s*andreas\b",
+        r"\bdefinitive\s*edition\b",
+        r"\bthe\s*definitive\s*edition\b",
+        r"\btrilogy\b",
+        r"\bremaster\b",
+        r"\bremastered\b",
+        r"\bvice\s*city\s*stories\b",
+        r"\bliberty\s*city\s*stories\b",
         r"\bweekly update\b",
         r"\bcareer progress\b",
         r"\bcara a cara\b",
@@ -54,6 +59,10 @@ def is_strictly_gta6(title: str, description: str = "") -> bool:
     for pattern in old_game_regexes:
         if re.search(pattern, title_lower):
             return False
+
+    # Si menciona 'vice city' pero no menciona explícitamente '6' o 'vi', es del juego antiguo
+    if re.search(r"\bvice\s*city\b", title_lower) and not re.search(r"\b(?:gta\s*6|gta6|gta\s*vi|gtavi)\b", title_lower):
+        return False
 
     # 3. Filtro Anti-Fake, Anti-IA y Anti-Conceptos (CERO CONTENIDO FALSO O FAN-MADE):
     # GTA 6 está lanzado; existe gameplay real. Se descarta solo contenido CGI/fan-made/IA generativa,
@@ -136,64 +145,79 @@ def fetch_channel_candidates(max_per_channel: int = 2) -> List[Dict[str, Any]]:
         if not ch.get("enabled", True):
             return []
         url = ch.get("url")
+        ch_name = ch.get("name", "Canal")
         results = []
-        try:
-            res = subprocess.run([
-                sys.executable, "-m", "yt_dlp",
-                "--impersonate", "chrome",
-                "--no-check-certificates",
-                "--flat-playlist",
-                "--print", "%(id)s\t%(title)s\t%(duration)s\t%(view_count)s\t%(url)s",
-                "-I", f"1:{max_per_channel}",
-                url
-            ], capture_output=True, text=True, check=True, timeout=25)
+        
+        # Si la URL de /shorts falla (muy común por cambios en YouTube), fallback a búsqueda directa de Shorts del creador
+        urls_to_try = [url]
+        if "/shorts" in url or ch.get("type") in ("streamer", "spanish_streamer", "analyst"):
+            urls_to_try.append(f"ytsearch5:{ch_name} GTA 6 #shorts")
 
-            for line in res.stdout.strip().split("\n"):
-                if not line.strip():
-                    continue
-                parts = line.split("\t")
-                if len(parts) >= 2:
-                    vid_id = parts[0].strip()
-                    title = parts[1].strip()
-                    duration = parts[2] if len(parts) > 2 else "0"
+        res_stdout = ""
+        for u in urls_to_try:
+            try:
+                res = subprocess.run([
+                    sys.executable, "-m", "yt_dlp",
+                    "--impersonate", "chrome",
+                    "--no-check-certificates",
+                    "--flat-playlist",
+                    "--print", "%(id)s\t%(title)s\t%(duration)s\t%(view_count)s\t%(url)s",
+                    "-I", f"1:{max_per_channel * 2}",
+                    u
+                ], capture_output=True, text=True, check=True, timeout=25)
+                res_stdout = res.stdout
+                if res_stdout.strip():
+                    break
+            except Exception:
+                continue
+
+        if not res_stdout.strip():
+            return []
+
+        for line in res_stdout.strip().split("\n"):
+            if not line.strip():
+                continue
+            parts = line.split("\t")
+            if len(parts) >= 2:
+                vid_id = parts[0].strip()
+                title = parts[1].strip()
+                duration = parts[2] if len(parts) > 2 else "0"
+                try:
+                    views = int(parts[3]) if len(parts) > 3 and parts[3] not in ("NA", "") else 0
+                except ValueError:
+                    views = 0
+                vid_url = parts[4] if len(parts) > 4 else f"https://www.youtube.com/watch?v={vid_id}"
+
+                if vid_id and vid_id not in processed_ids and vid_id != "NA":
+                    # FILTRO INNEGOCIABLE DE CONTENIDO EXCLUSIVO GTA 6:
+                    is_official = ("rockstargames" in url.lower() or ch.get("type") == "official")
+                    if not is_official and not is_strictly_gta6(title):
+                        continue
+
                     try:
-                        views = int(parts[3]) if len(parts) > 3 and parts[3] not in ("NA", "") else 0
+                        dur_secs = float(duration) if duration and duration != "NA" else 0.0
                     except ValueError:
-                        views = 0
-                    vid_url = parts[4] if len(parts) > 4 else f"https://www.youtube.com/watch?v={vid_id}"
+                        dur_secs = 0.0
 
-                    if vid_id and vid_id not in processed_ids and vid_id != "NA":
-                        # FILTRO INNEGOCIABLE DE CONTENIDO EXCLUSIVO GTA 6:
-                        is_official = ("rockstargames" in url.lower() or ch.get("type") == "official")
-                        if not is_official and not is_strictly_gta6(title):
-                            continue
+                    # FILTRO ESTRICTO DE SHORTS REALES (CERO VÍDEOS LARGOS RECORTADOS):
+                    # Salvo tráilers oficiales, solo se admiten clips concebidos como Shorts nativos (12s a 65s)
+                    if not is_official and (dur_secs > 65 or dur_secs < 12):
+                        continue
 
-                        try:
-                            dur_secs = float(duration) if duration and duration != "NA" else 0.0
-                        except ValueError:
-                            dur_secs = 0.0
+                    score_data = calculate_virality_score(title, dur_secs, views)
 
-                        # FILTRO ESTRICTO DE SHORTS REALES (CERO VÍDEOS LARGOS RECORTADOS):
-                        # Salvo tráilers oficiales, solo se admiten clips concebidos como Shorts nativos (<= 65s)
-                        if not is_official and (dur_secs > 65 or dur_secs <= 0):
-                            continue
-
-                        score_data = calculate_virality_score(title, dur_secs, views)
-
-                        results.append({
-                            "id": vid_id,
-                            "title": title,
-                            "url": vid_url,
-                            "duration": dur_secs,
-                            "views": views,
-                            "score": score_data["score"],
-                            "source_name": ch.get("name"),
-                            "source_type": ch.get("type", "general"),
-                            "lang": ch.get("lang", "en"),
-                            "is_short": (0 < dur_secs <= 60)
-                        })
-        except Exception as e:
-            print(f"[!] Error escaneando canal {ch.get('name', url)}: {e}")
+                    results.append({
+                        "id": vid_id,
+                        "title": title,
+                        "url": vid_url,
+                        "duration": dur_secs,
+                        "views": views,
+                        "score": score_data["score"],
+                        "source_name": ch_name,
+                        "source_type": ch.get("type", "general"),
+                        "lang": ch.get("lang", "es"),
+                        "is_short": (0 < dur_secs <= 60)
+                    })
         return results
 
     def _scan_query(q: Dict[str, Any]) -> List[Dict[str, Any]]:
@@ -233,8 +257,8 @@ def fetch_channel_candidates(max_per_channel: int = 2) -> List[Dict[str, Any]]:
                         except ValueError:
                             dur_secs = 0.0
 
-                        # Si la query exige solo formato Shorts, filtrar vídeos largos (>65s)
-                        if q.get("only_shorts", True) and (dur_secs > 65 or dur_secs <= 0):
+                        # Si la query exige solo formato Shorts, filtrar vídeos largos (>65s) o fragmentos diminutos (<12s)
+                        if q.get("only_shorts", True) and (dur_secs > 65 or dur_secs < 12):
                             continue
 
                         score_data = calculate_virality_score(title, dur_secs, views)

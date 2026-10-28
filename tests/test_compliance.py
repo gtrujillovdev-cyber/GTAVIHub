@@ -49,6 +49,9 @@ class TestCompliance(unittest.TestCase):
         self.assertFalse(is_strictly_gta("MI ÚLTIMO CARA A CARA EN GTA 5 ONLINE"))
         self.assertFalse(is_strictly_gta("GTA IV Enhanced Is Better Than I Expected - Final"))
         self.assertFalse(is_strictly_gta("GTA San Andreas Definitive Edition Gameplay"))
+        self.assertFalse(is_strictly_gta("GTA Vice City The definitive edition Easter egg #shorts"))
+        self.assertFalse(is_strictly_gta("GTA Vice City Definitive Edition Remaster"))
+        self.assertFalse(is_strictly_gta("Vice City Stories Gameplay Walkthrough"))
 
         # Vídeos no relacionados con videojuegos / ajenos
         self.assertFalse(is_strictly_gta("Senior Offering, May 3, 2007"))
