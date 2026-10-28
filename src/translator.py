@@ -45,20 +45,18 @@ def clean_srt_response(text: str) -> str:
 def translate_srt(
     input_srt_path: Path,
     output_srt_path: Path,
-    source_lang: str = "en",
-    enable_seamless_loop: bool = False
+    source_lang: str = "en"
 ) -> bool:
     """
     Traduce un archivo SRT al español si viene de inglés, o lo copia/limpia
     directamente si ya está en español (ahorrando tiempo y tokens).
-    Si enable_seamless_loop=True, formula la frase final para conectar con el inicio.
     """
     if not input_srt_path.exists():
         print(f"[!] No existe el archivo SRT: {input_srt_path}")
         return False
 
-    # Si ya está en español y no requiere bucle, copia directa
-    if source_lang == "es" and not enable_seamless_loop:
+    # Si ya está en español, copia directa intacta sin alterar nada
+    if source_lang == "es":
         print(f"[*] El contenido ya está en español. Saltando traducción...")
         shutil.copyfile(input_srt_path, output_srt_path)
         return True
@@ -72,13 +70,6 @@ def translate_srt(
 
     client = get_gemini_client()
 
-    loop_rule = ""
-    if enable_seamless_loop:
-        loop_rule = (
-            "6. BUCLE INFINITO (SEAMLESS LOOP): Adapta la última frase del subtítulo para que quede como una frase abierta "
-            "o intrigante que conecte de forma natural e imperceptible con la primera frase del vídeo al reiniciar la reproducción.\n"
-        )
-
     prompt = (
         "Eres un traductor y guionista experto en la saga Grand Theft Auto (GTA VI), videojuegos y viralidad en Shorts.\n"
         "Traduce y adapta el siguiente archivo de subtítulos en formato SRT al español.\n\n"
@@ -87,7 +78,6 @@ def translate_srt(
         "2. Traduce y sintetiza únicamente las líneas de texto hablado.\n"
         "3. Usa un español dinámico, fresco y actual (apto para YouTube Shorts / TikTok).\n"
         "4. Respeta nombres canónicos (Vice City, Lucia, Jason, Leonida, Rockstar Games, etc.).\n"
-        f"{loop_rule}"
         "5. Devuelve ÚNICAMENTE el texto SRT resultante, sin explicaciones ni bloques markdown extra."
     )
 
@@ -118,8 +108,7 @@ def generate_video_metadata(
     original_url: str = "",
     is_short: bool = False,
     creator_name: str = "",
-    source_lang: str = "en",
-    enable_seamless_loop: bool = False
+    source_lang: str = "en"
 ) -> Dict[str, str]:
     """
     Genera metadatos profesionales de alto impacto para YouTube siguiendo
@@ -127,31 +116,34 @@ def generate_video_metadata(
     - Título TODO EN MAYÚSCULAS con ganchos psicológicos (CTR alto).
     - Gancho superior de intriga (0-2.5s).
     - Pregunta polarizante de debate para multiplicar comentarios en los primeros 30 min.
-    - Soporte de Bucle Infinito (Seamless Loop) en 2 de cada 5 vídeos.
     - Descripción ensamblada programáticamente con créditos exactos y Fair Use.
     """
     client = get_gemini_client()
     tipo = "un YouTube Short vertical de máximo impacto" if is_short else "un vídeo de YouTube Gaming"
-    
-    loop_prompt_extra = ""
-    if enable_seamless_loop:
-        loop_prompt_extra = (
-            "\nIMPORTANTE BUCLE INFINITO: Como este vídeo está configurado para bucle continuo, "
-            "diseña el 'hook' inicial de modo que cuando el espectador llegue al final del vídeo y vuelva a empezar, "
-            "la transición sea un bucle de curiosidad invisible y adictivo."
-        )
+
+    from .config import is_gameplay_enabled
+    is_launched = is_gameplay_enabled()
+
+    context_phase = (
+        "FASE: LANZAMIENTO OFICIAL & GAMEPLAY REAL (GTA 6 ya está disponible). "
+        "Enfócate en jugabilidad real, misiones, mundo abierto de Vice City, persecuciones policiales, físicas extremas, "
+        "reacciones en directo de streamers y momentos graciosos o impactantes."
+        if is_launched else
+        "FASE: PRE-LANZAMIENTO. Enfócate en novedades, comparativas, filtraciones reales y anticipación de GTA 6."
+    )
 
     prompt = f"""Actúa como el mejor estratega de YouTube Gaming y viralidad en español.
 Estamos analizando contenido sobre Grand Theft Auto VI (GTA 6).
+{context_phase}
 Tipo de formato: {tipo}.
 Título original: "{original_title}"
-Creador/Fuente original: "{creator_name or 'Rockstar Games'}"{loop_prompt_extra}
+Creador/Fuente original: "{creator_name or 'Rockstar Games'}"
 
 Usa terminología del GLOSARIO OFICIAL Y VIRAL DE GTA 6 cuando sea pertinente:
 - Protagonistas: Lucía (primera protagonista femenina), Jason (pareja criminal), Stefanie (consejera), Mud Girl, Florida Joker.
 - Ubicaciones de Leonida: Vice City, Port Gellhorn, Ocean Drive, Grassrivers (Everglades), Los Cayos (Keys), Vice Beach.
 - Físicas & Jugabilidad: Físicas de agua realistas, IA de peatones/multitudes, motor RAGE 9, sistema de saqueo, animaciones al agacharse, interiores explorables, atracos a restaurantes, caimanes.
-- Expectación: Tráiler 1, Tráiler 2, Easter eggs, comparativa GTA 5 vs GTA 6, vida real vs Vice City.
+- Gameplay & Reacciones: Misiones, tiroteos, conducción, persecuciones 5 estrellas, easter eggs, streamers jugando en directo.
 
 Tu tarea es generar:
 1. "viral_title": Un título ULTRA LLAMATIVO completamente en MAYÚSCULAS con emojis gaming y etiqueta #GTA6 (máx 80 caracteres). Debe apelar a la curiosidad, misterio o impacto extremo (ej: "¡NO PUEDE SER! 😱 REVELAN SECRETOS DE GTA 6 [DETALLES BRUTALES] 🔥🌴 #GTA6"). REGLA DE ORO: Jamás uses palabras como 'CONCEPTO', 'CGI', 'FAN-MADE' o 'UNREAL ENGINE'. Enfócate en filtraciones, secretos, comparativas y jugabilidad real.
@@ -182,10 +174,11 @@ Devuelve tu respuesta EXACTAMENTE en este formato JSON (sin texto extra):
         debate_question = data.get("debate_question", "¿Qué opinas tú de esta filtración de GTA 6? ¡Te leemos abajo! 👇").strip()
     except Exception as e:
         print(f"[Warning] Error consultando IA para metadatos: {e}")
-        viral_title = f"¡BRUTAL! 🔥 REACCIÓN Y ANÁLISIS DE GTA 6: {original_title[:40].upper()} #GTA6"
-        summary = f"Análisis y cobertura exclusiva de las novedades y detalles de Grand Theft Auto VI a partir del material de {creator_name or 'la comunidad'}."
-        hook = "¡NUEVO LEAK!"
-        debate_question = "¿Crees que GTA 6 cumplirá todas las expectativas o habrá decepción? ¡Comenta abajo! 👇"
+        fallback_hook = "¡GAMEPLAY BRUTAL!" if is_launched else "¡DETALLE ÉPICO!"
+        viral_title = f"¡BRUTAL! 🔥 MOMENTO ÉPICO EN GTA 6: {original_title[:40].upper()} #GTA6" if is_launched else f"¡BRUTAL! 🔥 REACCIÓN Y ANÁLISIS DE GTA 6: {original_title[:40].upper()} #GTA6"
+        summary = f"Cobertura y mejores momentos de Grand Theft Auto VI a partir del contenido de {creator_name or 'la comunidad'}."
+        hook = fallback_hook
+        debate_question = "¿Qué os parece este gameplay de GTA 6? ¿Cumple con lo esperado? ¡Comenta abajo! 👇" if is_launched else "¿Crees que GTA 6 cumplirá todas las expectativas? ¡Comenta abajo! 👇"
 
     # Asegurar que el título siempre esté en mayúsculas y bien formateado
     if not viral_title:

@@ -1,7 +1,9 @@
 import os
+import re
 import sys
 import json
 import subprocess
+import concurrent.futures
 from datetime import datetime
 from pathlib import Path
 from typing import List, Dict, Any, Optional
@@ -12,27 +14,50 @@ from .channels import get_processed_ids, list_monitored_channels, add_monitored_
 DISCOVERED_CHANNELS_FILE = DATA_DIR / "discovered_channels.json"
 
 DEFAULT_VIRAL_QUERIES = [
-    # Búsquedas restringidas EXCLUSIVAMENTE a análisis de tráiler oficial, desgloses técnicos y desarrolladores
-    "ytsearch8:GTA 6 Rockstar Games official trailer #shorts",
-    "ytsearch8:GTA Series Videos GTA 6 secrets #shorts",
-    "ytsearch8:GTA 6 Digital Foundry graphics analysis #shorts",
-    "ytsearch8:GTA 6 TGG trailer breakdown #shorts",
-    "ytsearch8:GTA 6 ex developer reaction #shorts",
-    "ytsearch8:GTA 6 trailer 1 detalles ocultos #shorts"
+    # Gameplay y primeras impresiones post-lanzamiento (mayor volumen de búsqueda actual)
+    "ytsearch15:GTA 6 gameplay secrets easter eggs #shorts",
+    "ytsearch15:GTA 6 lucia jason funny moments #shorts",
+    "ytsearch15:GTA 6 vice city physics fails #shorts",
+    "ytsearch15:GTA 6 hidden details leonida #shorts",
+    # Análisis técnicos y comparativas — alta retención
+    "ytsearch15:GTA 6 graphics comparison real life #shorts",
+    "ytsearch15:GTA 6 rage engine water physics #shorts",
+    # Noticias, leaks y novedades — alto CTR
+    "ytsearch15:GTA 6 new update leak rockstar #shorts",
+    "ytsearch15:GTA 6 things you missed #shorts",
+    # Español / LatAm — audiencia principal del canal
+    "ytsearch15:GTA 6 secretos gameplay vice city #shorts",
+    "ytsearch15:GTA 6 detalles ocultos lucia jason #shorts",
+]
+
+# Consultas específicas de Gameplay Puro activas a partir del 19 de Noviembre
+GAMEPLAY_VIRAL_QUERIES = [
+    "ytsearch15:GTA 6 gameplay real mission #shorts",
+    "ytsearch15:GTA 6 gameplay espanol momentos #shorts",
+    "ytsearch15:GTA 6 gameplay conduccion disparos #shorts",
+    "ytsearch15:GTA 6 gameplay mundo abierto detalles #shorts",
+    "ytsearch15:GTA 6 gameplay tiroteo policia #shorts",
 ]
 
 VIRAL_KEYWORDS = [
-    # Protagonistas & Personajes
-    "lucia", "jason", "stefanie", "mud girl", "florida joker",
+    # Protagonistas & Personajes Canónicos
+    "lucia", "jason", "stefanie", "mud girl", "florida joker", "brian", "hank",
     # Geografía & Lugares de Leonida
-    "vice city", "leonida", "port gellhorn", "ocean drive", "keys", "vice beach", "grassrivers",
-    # Jugabilidad, Físicas & Motor
+    "vice city", "leonida", "port gellhorn", "ocean drive", "keys", "cayos", "vice beach",
+    "grassrivers", "everglades", "little haiti", "venetian islands", "starfish island", "escobar",
+    # Jugabilidad, Físicas & Motor RAGE 9
     "gameplay", "leak", "leaks", "filtracion", "filtración", "fisicas", "físicas", "physics",
     "graphics", "graficos", "gráficos", "rage 9", "water physics", "interiores", "ia npc",
-    "atraco", "armas", "weapon wheel", "saqueo", "animaciones",
+    "atraco", "armas", "weapon wheel", "saqueo", "animaciones", "rehenes", "gasolinera",
+    "deformacion", "deformación", "choque", "accidente", "tiroteo", "gunplay", "cobertura",
+    "policia", "policía", "swat", "persecucion", "persecución", "5 estrellas", "helicoptero",
+    "helicóptero", "striptease", "discoteca", "maletero",
+    # Fauna & Ecosistema Salvaje
+    "caiman", "caimán", "cocodrilo", "alligator", "tiburon", "tiburón", "shark", "flamenco",
     # Tráilers, Secretos & Novedades
-    "trailer", "trailer 1", "trailer 2", "tráiler", "mapa", "secretos", "secreto",
+    "trailer", "trailer 1", "tráiler", "mapa", "secretos", "secreto",
     "easter egg", "detalles", "details", "comparativa", "vida real", "oficial", "official",
+    "vercetti", "mansion", "mansión", "barco fantasma", "ovni",
     "fecha", "rockstar", "confirmado", "noticia", "exclusiva", "bombazo"
 ]
 
@@ -51,22 +76,26 @@ EXCLUDED_KEYWORDS = [
     "soundtrack", "ost", "full album", "vevo", "remix song", "cover song",
     "trap beat", "rap beat", "no commentary walkthrough", "full movie",
     "cancion oficial", "canción oficial", "tema musical",
-    # Conceptos abstractos / CGI / Fan-made / Unreal Engine / IA / Mods
+    # Conceptos abstractos / CGI / Fan-made / Unreal Engine / IA / Mods / Fakes / Bucles
     "concept", "concept trailer", "gameplay concept", "fan made", "fan trailer",
     "fan-made", "unreal engine", "ue5", "unreal engine 5", "ai trailer",
     "artificial intelligence", "blender render", "remake concept", "graphics showcase",
-    "mod", "mods", "modded", "cinematic edit", "tiktok edit", "edit", "fake", "simulated", "ai generated"
+    "mod", "mods", "modded", "cinematic edit", "tiktok edit", "fake", "simulated", "ai generated",
+    "trailer 2", "tráiler 2", "trailer2", "loop", "bucle"
 ]
 
-def calculate_virality_score(title: str, duration: float, views: int) -> Dict[str, Any]:
+def calculate_virality_score(
+    title: str, duration: float, views: int, days_old: Optional[int] = None
+) -> Dict[str, Any]:
     """
     Calcula una puntuación de virabilidad y potencial de engagement (0 a 100),
     asegurando cumplimiento estricto de directrices (Fair Use & Anti-Content-ID):
     1. Filtro de Exclusión de Copyright Musical / Contenido Abstracto Fan-Made
-    2. Volumen de Visualizaciones (0 - 40 pts)
-    3. Retención y Formato Vertical (0 - 30 pts): Primando Shorts (10s a 65s)
+    2. Volumen de Visualizaciones (0 - 50 pts) — incluye tiers mega-viral
+    3. Retención y Formato Vertical (0 - 35 pts): Primando Shorts (10s a 65s)
     4. Relevancia Semántica de Palabras Clave (0 - 20 pts)
-    5. Prioridad a Creadores y Streamers Reales (Bonus 0 - 10 pts)
+    5. Prioridad a Creadores y Streamers Reales (Bonus 0 - 15 pts)
+    6. Velocidad de Crecimiento / Velocity (Bonus 0 - 10 pts)
     """
     title_lower = title.lower()
 
@@ -79,13 +108,20 @@ def calculate_virality_score(title: str, duration: float, views: int) -> Dict[st
                 "format_score": 0,
                 "keyword_score": 0,
                 "bonus": 0,
+                "velocity_bonus": 0,
                 "matches": [],
                 "is_short": (0 < duration <= 65),
                 "excluded_reason": f"Filtro de exclusión activo: '{exc}' (evita música o conceptos abstractos no oficiales)"
             }
 
-    # 1. Puntos por visualizaciones (0 a 40)
-    if views >= 500_000:
+    # 1. Puntos por visualizaciones (0 a 50) — tiers mega-viral diferenciados
+    if views >= 10_000_000:
+        views_score = 50
+    elif views >= 5_000_000:
+        views_score = 48
+    elif views >= 2_000_000:
+        views_score = 45
+    elif views >= 500_000:
         views_score = 40
     elif views >= 200_000:
         views_score = 35
@@ -121,9 +157,9 @@ def calculate_virality_score(title: str, duration: float, views: int) -> Dict[st
     bonus = 0
     if "shorts" in title_lower or "#shorts" in title_lower:
         bonus += 5
-    
+
     high_value_gta6 = [
-        "trailer", "trailer 1", "trailer 2", "tráiler", "gameplay", "leak", "leaks", "filtracion", "filtración",
+        "trailer", "trailer 1", "tráiler", "gameplay", "leak", "leaks", "filtracion", "filtración",
         "graphics", "graficos", "gráficos", "fisicas", "físicas", "physics", "secreto", "secret", "secretos",
         "easter egg", "lucia", "jason", "stefanie", "mud girl", "florida joker",
         "vice city", "leonida", "port gellhorn", "comparativa", "mapa", "detalles", "details",
@@ -136,7 +172,36 @@ def calculate_virality_score(title: str, duration: float, views: int) -> Dict[st
     if creator_matches:
         bonus = min(15, bonus + 5)
 
-    total_score = min(100, views_score + format_score + keyword_score + bonus)
+    from .config import is_gameplay_enabled
+    if is_gameplay_enabled() and "gameplay" in title_lower:
+        bonus = min(20, bonus + 5)
+
+    # 5. Algoritmo de Anticipación y Velocidad (Breakout Detection):
+    # Premia desproporcionadamente vídeos recién subidos (<24-48h) con tracción explosiva
+    velocity_bonus = 0
+    if days_old is not None and views > 0:
+        if days_old <= 1:
+            # Subido hoy (Día 0/1): Indicativo de viralidad y tendencia inmediata
+            if views >= 10_000:
+                velocity_bonus = 15  # Breakout inmediato
+            elif views >= 2_000:
+                velocity_bonus = 10
+            elif views >= 500:
+                velocity_bonus = 5
+        elif days_old > 0:
+            vpd = views / days_old
+            if vpd >= 100_000:
+                velocity_bonus = 12
+            elif vpd >= 50_000:
+                velocity_bonus = 9
+            elif vpd >= 10_000:
+                velocity_bonus = 6
+            elif vpd >= 1_000:
+                velocity_bonus = 4
+            elif vpd >= 100:
+                velocity_bonus = 2
+
+    total_score = min(100, views_score + format_score + keyword_score + bonus + velocity_bonus)
 
     return {
         "score": total_score,
@@ -144,6 +209,7 @@ def calculate_virality_score(title: str, duration: float, views: int) -> Dict[st
         "format_score": format_score,
         "keyword_score": keyword_score,
         "bonus": bonus,
+        "velocity_bonus": velocity_bonus,
         "matches": list(set(matches + creator_matches)),
         "is_short": (0 < duration <= 65),
         "excluded_reason": None
@@ -156,106 +222,127 @@ def scan_viral_radar(
     only_shorts: bool = True
 ) -> List[Dict[str, Any]]:
     """
-    Escanea dinámicamente YouTube con múltiples queries de alta tendencia,
+    Escanea dinámicamente YouTube con múltiples queries de alta tendencia en paralelo,
     descubre nuevos creadores y clasifica los vídeos por puntuación de engagement.
+    Incluye velocity score (vistas/día) para priorizar contenido emergente.
     Por defecto prioriza y filtra exclusivamente vídeos en formato Shorts (<= 65s).
     """
     from .channels import is_strictly_gta6
 
     if queries is None:
-        queries = DEFAULT_VIRAL_QUERIES
+        from .config import is_gameplay_enabled
+        queries = list(DEFAULT_VIRAL_QUERIES)
+        if is_gameplay_enabled():
+            queries.extend(GAMEPLAY_VIRAL_QUERIES)
 
     processed_ids = get_processed_ids()
     existing_channels = list_monitored_channels()
     existing_urls = {ch.get("url", "").rstrip("/").lower() for ch in existing_channels}
     existing_names = {ch.get("name", "").lower() for ch in existing_channels}
 
-    candidates_by_id: Dict[str, Dict[str, Any]] = {}
-
-    for query in queries:
+    def _fetch_single_query(query: str) -> List[Dict[str, Any]]:
+        """Ejecuta una query yt-dlp y devuelve candidatos ya filtrados y puntuados."""
+        results = []
         try:
             res = subprocess.run([
                 sys.executable, "-m", "yt_dlp",
                 "--impersonate", "chrome",
                 "--no-check-certificates",
                 "--flat-playlist",
-                "--print", "%(id)s\t%(title)s\t%(duration)s\t%(view_count)s\t%(uploader)s\t%(channel_url)s\t%(webpage_url)s",
+                "--print", "%(id)s\t%(title)s\t%(duration)s\t%(view_count)s\t%(uploader)s\t%(channel_url)s\t%(webpage_url)s\t%(upload_date)s",
                 query
-            ], capture_output=True, text=True, timeout=25)
+            ], capture_output=True, text=True, timeout=30)
 
-            lines = res.stdout.strip().split("\n")
-            for line in lines:
+            for line in res.stdout.strip().split("\n"):
                 if not line.strip():
                     continue
                 parts = line.split("\t")
-                if len(parts) >= 2:
-                    vid_id = parts[0].strip()
-                    title = parts[1].strip()
-                    if not vid_id or vid_id in processed_ids or vid_id == "NA":
-                        continue
+                if len(parts) < 2:
+                    continue
+                vid_id = parts[0].strip()
+                title = parts[1].strip()
+                if not vid_id or vid_id in processed_ids or vid_id == "NA":
+                    continue
 
-                    # FILTRO INNEGOCIABLE DE EXCLUSIVIDAD GTA 6
-                    if not is_strictly_gta6(title):
-                        continue
+                # FILTRO INNEGOCIABLE DE EXCLUSIVIDAD GTA 6
+                if not is_strictly_gta6(title):
+                    continue
 
-                    # Parsing de duración
+                try:
+                    duration = float(parts[2]) if len(parts) > 2 and parts[2] not in ("NA", "") else 0.0
+                except ValueError:
+                    duration = 0.0
+
+                if only_shorts and (duration > 65 or duration <= 0):
+                    continue
+
+                try:
+                    views = int(parts[3]) if len(parts) > 3 and parts[3] not in ("NA", "") else 0
+                except ValueError:
+                    views = 0
+
+                uploader = parts[4].strip() if len(parts) > 4 and parts[4] not in ("NA", "") else ""
+                channel_url = parts[5].strip() if len(parts) > 5 and parts[5] not in ("NA", "") else ""
+                webpage_url = parts[6].strip() if len(parts) > 6 and parts[6] not in ("NA", "") else f"https://www.youtube.com/watch?v={vid_id}"
+
+                # Calcular antigüedad del vídeo para velocity score
+                days_old = None
+                raw_date = parts[7].strip() if len(parts) > 7 and parts[7] not in ("NA", "") else ""
+                if raw_date and len(raw_date) == 8:
                     try:
-                        duration = float(parts[2]) if len(parts) > 2 and parts[2] != "NA" else 0.0
+                        upload_dt = datetime.strptime(raw_date, "%Y%m%d")
+                        days_old = max(1, (datetime.now() - upload_dt).days)
                     except ValueError:
-                        duration = 0.0
+                        pass
 
-                    # Filtro estricto de formato Shorts (máx 65s)
-                    if only_shorts and (duration > 65 or duration <= 0):
-                        continue
+                if not uploader:
+                    uploader = "Creador YouTube"
+                if not channel_url and uploader:
+                    clean_handle = re.sub(r'[^\w.-]', '', uploader.replace(' ', ''))
+                    channel_url = f"https://www.youtube.com/@{clean_handle}"
 
-                    # Parsing de vistas
-                    try:
-                        views = int(parts[3]) if len(parts) > 3 and parts[3] != "NA" else 0
-                    except ValueError:
-                        views = 0
+                score_data = calculate_virality_score(title, duration, views, days_old=days_old)
+                if score_data["score"] < min_score:
+                    continue
 
-                    uploader = parts[4].strip() if len(parts) > 4 and parts[4] != "NA" else ""
-                    channel_url = parts[5].strip() if len(parts) > 5 and parts[5] != "NA" else ""
-                    webpage_url = parts[6].strip() if len(parts) > 6 and parts[6] != "NA" else f"https://www.youtube.com/watch?v={vid_id}"
+                clean_ch_url = channel_url.rstrip("/").lower()
+                is_new_channel = (
+                    clean_ch_url not in existing_urls
+                    and uploader.lower() not in existing_names
+                )
 
-                    # Si el uploader o el canal no vinieron, estimar o preservar
-                    if not uploader:
-                        uploader = "Creador YouTube"
-                    if not channel_url and uploader:
-                        clean_handle = uploader.replace(" ", "")
-                        channel_url = f"https://www.youtube.com/@{clean_handle}/videos"
+                velocity = round(views / days_old, 1) if days_old and days_old > 0 else None
 
-                    score_data = calculate_virality_score(title, duration, views)
-                    if score_data["score"] < min_score:
-                        continue
-
-                    # Determinar si es un canal nuevo nunca antes monitorizado
-                    clean_ch_url = channel_url.rstrip("/").lower()
-                    is_new_channel = (
-                        clean_ch_url not in existing_urls
-                        and uploader.lower() not in existing_names
-                    )
-
-                    candidate = {
-                        "id": vid_id,
-                        "title": title,
-                        "url": webpage_url,
-                        "duration": duration,
-                        "views": views,
-                        "uploader": uploader,
-                        "channel_url": channel_url,
-                        "score": score_data["score"],
-                        "is_short": score_data["is_short"],
-                        "keywords": score_data["matches"],
-                        "is_new_channel": is_new_channel,
-                        "query_source": query
-                    }
-
-                    if vid_id not in candidates_by_id or score_data["score"] > candidates_by_id[vid_id]["score"]:
-                        candidates_by_id[vid_id] = candidate
-
+                results.append({
+                    "id": vid_id,
+                    "title": title,
+                    "url": webpage_url,
+                    "duration": duration,
+                    "views": views,
+                    "uploader": uploader,
+                    "channel_url": channel_url,
+                    "score": score_data["score"],
+                    "is_short": score_data["is_short"],
+                    "keywords": score_data["matches"],
+                    "is_new_channel": is_new_channel,
+                    "query_source": query,
+                    "days_old": days_old,
+                    "velocity": velocity,
+                })
         except Exception as e:
             print(f"[Viral Discovery] Error escaneando query '{query}': {e}")
+        return results
+
+    candidates_by_id: Dict[str, Dict[str, Any]] = {}
+
+    # Ejecutar todas las queries en paralelo (máx 3 workers para respetar CPU/GaTDSEQ)
+    with concurrent.futures.ThreadPoolExecutor(max_workers=3) as executor:
+        futures = {executor.submit(_fetch_single_query, q): q for q in queries}
+        for future in concurrent.futures.as_completed(futures):
+            for candidate in future.result():
+                vid_id = candidate["id"]
+                if vid_id not in candidates_by_id or candidate["score"] > candidates_by_id[vid_id]["score"]:
+                    candidates_by_id[vid_id] = candidate
 
     ranked = sorted(candidates_by_id.values(), key=lambda x: x["score"], reverse=True)
     top_candidates = ranked[:max_candidates]
@@ -308,7 +395,7 @@ def track_discovered_channels(candidates: List[Dict[str, Any]]) -> List[Dict[str
 
     return list(discovered.values())
 
-def auto_register_top_channels(min_score: int = 80, min_occurrences: int = 1) -> List[Dict[str, Any]]:
+def auto_register_top_channels(min_score: int = 80, min_occurrences: int = 2) -> List[Dict[str, Any]]:
     """
     Añade automáticamente a channels.json los canales descubiertos que superan
     un listón alto de viralidad y engagement.
@@ -373,10 +460,12 @@ def get_viral_radar_summary(top_candidates: Optional[List[Dict[str, Any]]] = Non
         new_tag = " ⭐ *[NUEVO CREADOR]*" if item.get("is_new_channel") else ""
 
         ch_url = item.get("channel_url") or item.get("url")
+        velocity = item.get("velocity")
+        vpd_str = f" | ⚡ `{velocity:,.0f} v/día`" if velocity and velocity >= 100 else ""
         summary += (
             f"{medal} *[{short_title}]({item['url']})*\n"
             f"   👤 *Canal:* [{item['uploader']}]({ch_url}){new_tag}\n"
-            f"   📊 *Score:* `{item['score']}/100` | 👁️ `{views_str}` vistas | ⏱️ `{dur_str}`\n\n"
+            f"   📊 *Score:* `{item['score']}/100` | 👁️ `{views_str}` vistas | ⏱️ `{dur_str}`{vpd_str}\n\n"
         )
 
     summary += (
@@ -394,6 +483,7 @@ def print_viral_leaderboard(candidates: List[Dict[str, Any]]):
         tag = "[NUEVO CANAL]" if c.get("is_new_channel") else "[MONITORIZADO]"
         dur = f"{int(c.get('duration', 0))}s" if c.get("is_short") else f"{int(c.get('duration', 0))//60}m"
         print(f" {idx:2d}. [{c['score']:3d}/100] {tag:14s} {c['title'][:42]}")
-        print(f"     -> Creador: {c['uploader']} | Vistas: {c.get('views', 0):,} | Duración: {dur}")
+        vpd = f" | {c['velocity']:,.0f} v/día" if c.get("velocity") else ""
+        print(f"     -> Creador: {c['uploader']} | Vistas: {c.get('views', 0):,} | Duración: {dur}{vpd}")
         print(f"     -> URL: {c['url']}")
     print("=" * 70 + "\n")

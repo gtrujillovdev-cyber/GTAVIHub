@@ -59,18 +59,41 @@ def parse_time(t_str: str) -> float:
         return 0.0
 
 def clean_text_no_emoji(text: str) -> str:
-    """Elimina emojis y símbolos raros que provocan cajas rotas '[]' en Pillow."""
+    """
+    Limpia texto de subtítulos garantizando legibilidad total:
+    1. Reemplaza tags HTML/VTT (<c>, </c>, <font>, etc.) por espacio para evitar palabras fusionadas.
+    2. Reemplaza entidades HTML (&nbsp;, etc.) por espacio.
+    3. Separa palabras fusionadas por camelCase o mayúsculas adyacentes.
+    4. Elimina emojis y símbolos raros que provocan cajas rotas '[]' en Pillow.
+    5. Normaliza espacios múltiples.
+    """
+    if not text:
+        return ""
+    # 1. Tags HTML/VTT reemplazados por espacio (evita "filtrado<c>un" -> "filtradoun")
+    text = re.sub(r'<[^>]+>', ' ', text)
+    # 2. Entidades HTML
+    text = re.sub(r'&[a-zA-Z0-9#]+;', ' ', text)
+    # 3. Separar palabras pegadas (minúscula seguida de mayúscula: "filtradoUn" -> "filtrado Un")
+    text = re.sub(r'([a-zñáéíóú])([A-ZÑÁÉÍÓÚ])', r'\1 \2', text)
+    # 4. Limpieza de caracteres no deseados
     cleaned = re.sub(r'[^\w\s\d¡!¿?,\.:\'-áéíóúÁÉÍÓÚñÑüÜ]', '', text)
     return " ".join(cleaned.split()).strip()
 
 def split_cue_into_micro_bursts(text: str, start: float, end: float, max_words: int = 3) -> List[Dict[str, Any]]:
     """
     Divide frases en ráfagas dinámicas de 2-3 palabras (ritmo viral TikTok / Shorts).
-    Garantiza que nunca se solapen en el tiempo.
+    Garantiza que nunca se solapen en el tiempo y que NUNCA queden colgadas en pantalla.
     """
     words = text.split()
+    if not words:
+        return []
+
+    # Limitar la duración máxima de cualquier frase para evitar que se quede 'pillada' en pantalla
+    max_total_dur = max(0.8, min(end - start, len(words) * 0.55 + 0.4))
+    effective_end = start + max_total_dur
+
     if len(words) <= max_words:
-        return [{"start": start, "end": end, "text": text}]
+        return [{"start": start, "end": round(effective_end, 2), "text": text}]
 
     chunks = []
     i = 0
@@ -87,16 +110,16 @@ def split_cue_into_micro_bursts(text: str, start: float, end: float, max_words: 
             chunks.append(words[i:i + max_words])
             i += max_words
 
-    total_dur = max(0.5, end - start)
     total_words = len(words)
     res = []
     cur_t = start
     for c in chunks:
-        c_dur = total_dur * (len(c) / total_words)
+        c_dur = max_total_dur * (len(c) / total_words)
+        c_dur = min(max(c_dur, 0.75), 1.8)
         next_t = cur_t + c_dur
         res.append({
             "start": round(cur_t, 2),
-            "end": round(next_t - 0.02, 2),
+            "end": round(next_t, 2),
             "text": " ".join(c)
         })
         cur_t = next_t
@@ -105,7 +128,7 @@ def split_cue_into_micro_bursts(text: str, start: float, end: float, max_words: 
 def calculate_word_timing(words: List[str], start_t: float, end_t: float) -> List[Dict[str, Any]]:
     """
     Calcula los intervalos de tiempo palabra por palabra ponderados fonéticamente.
-    Garantiza una separación estricta de 0.02s para que NUNCA se pisen.
+    Garantiza continuidad fluida sin micro-parpadeos entre palabras contiguas.
     """
     total_dur = max(0.3, end_t - start_t)
     weights = [len(w) + 1 for w in words]
@@ -122,7 +145,7 @@ def calculate_word_timing(words: List[str], start_t: float, end_t: float) -> Lis
             "word_idx": idx,
             "word": w,
             "start": round(cur_t, 2),
-            "end": round(next_t - 0.02, 2)
+            "end": round(next_t, 2)
         })
         cur_t = next_t
     return timings
@@ -187,11 +210,16 @@ def parse_srt_file(srt_path: Path) -> List[Dict[str, Any]]:
     last_end = 0.0
     for c in raw_cues:
         start = max(c["start"], last_end + 0.03)
-        end = max(c["end"], start + 0.6)
+        # Una frase hablada jamás debe exceder los 3.0s para evitar que subtítulos queden colgados
+        clamped_dur = min(max(0.6, c["end"] - c["start"]), 3.0)
+        end = start + clamped_dur
         bursts = split_cue_into_micro_bursts(c["text"], start, end, max_words=3)
         for b in bursts:
             if b["start"] < last_end:
                 b["start"] = round(last_end + 0.02, 2)
+            # Garantizar que ninguna micro-ráfaga dure más de 1.8s
+            if (b["end"] - b["start"]) > 1.8:
+                b["end"] = round(b["start"] + 1.8, 2)
             if b["end"] <= b["start"]:
                 b["end"] = round(b["start"] + 0.45, 2)
             all_bursts.append(b)
@@ -312,92 +340,118 @@ def render_top_hook_headline(hook_text: str, output_path: Path) -> bool:
 def render_karaoke_subtitle_state(words: List[str], active_idx: int, is_vertical: bool, output_path: Path) -> bool:
     """
     Renderiza un estado Karaoke palabra por palabra nivel Broadcast Viral:
-    - La línea permanece 100% fija y estable horizontalmente.
-    - La palabra activa se ilumina con halo dorado / rosa neón y efecto de escala (Pop-up).
-    - Inyección automática de emoji contextual flotante sobre palabras clave (ej: 🗺️, 🚨, 🤯, 😂).
-    - Las palabras inactivas permanecen en Blanco Puro (#FFFFFF).
-    - CERO cajas oscuras ni marcos toscos en los subtítulos.
+    - Píldora de contraste con fondo oscuro sutil (100% de legibilidad en cualquier fondo).
+    - Cubre limpiamente subtítulos preexistentes en inglés si los hubiera.
+    - La frase permanece 100% fija y estable horizontalmente (cero temblores/jitter).
+    - La palabra activa se resalta en Amarillo (#FFE600) o Rosa Neón (#FF2D87).
+    - Las palabras inactivas de la frase permanecen en Blanco Puro (#FFFFFF).
+    - Espaciado amplio (space_w = 26px) para evitar palabras apelotonadas.
     """
     if not words:
         return False
 
-    max_w = 720 if is_vertical else 1100
-    font_size = 56 if is_vertical else 42
+    max_w = 760 if is_vertical else 1000
+    font_size = 52 if is_vertical else 42
     font = get_best_font(size=font_size)
 
     temp_img = Image.new("RGBA", (1, 1))
     d_temp = ImageDraw.Draw(temp_img)
 
-    # Ajustar si supera ancho máximo seguro
-    while font_size > 34:
+    space_w = 26
+
+    # Ajustar tamaño de fuente dinámicamente si supera el ancho máximo seguro
+    while font_size > 32:
         test_w = sum(d_temp.textbbox((0, 0), w, font=font)[2] - d_temp.textbbox((0, 0), w, font=font)[0] for w in words)
-        test_w += 18 * (len(words) - 1)
+        test_w += space_w * (len(words) - 1)
         if test_w <= max_w:
             break
         font_size -= 4
         font = get_best_font(size=font_size)
 
-    # Tipografía de Pop para palabra activa (+4px)
     pop_font = get_best_font(size=font_size + 4)
-    emoji_font = get_emoji_font(size=40) if is_vertical else None
+    emoji_font = get_emoji_font(size=38) if is_vertical else None
 
-    space_w = 18
     word_widths = [d_temp.textbbox((0, 0), w, font=font)[2] - d_temp.textbbox((0, 0), w, font=font)[0] for w in words]
     total_w = sum(word_widths) + space_w * (len(words) - 1)
     sample_bb = font.getbbox("AY")
-    line_h = (sample_bb[3] - sample_bb[1]) + 20
+    text_h = (sample_bb[3] - sample_bb[1])
 
-    # Altura adicional para permitir el emoji flotante superior si aplica
-    emoji_room = 50 if is_vertical else 0
-    box_w = int(total_w + 70)
-    box_h = int(line_h + emoji_room + 30)
+    # Altura adicional para emoji si aplica
+    emoji_room = 42 if (is_vertical and emoji_font) else 0
+
+    pad_x = 28
+    pad_y = 14
+    box_w = int(total_w + pad_x * 2)
+    box_h = int(text_h + pad_y * 2 + emoji_room + 8)
 
     img = Image.new("RGBA", (box_w, box_h), (0, 0, 0, 0))
+    d = ImageDraw.Draw(img)
 
-    # Detectar si la palabra activa tiene emoji contextual o color especial
+    # 1. Píldora de Contraste Traslúcida (Dark Pill Backdrop)
+    pill_top = emoji_room
+    d.rounded_rectangle(
+        [(0, pill_top), (box_w - 1, box_h - 1)],
+        radius=18,
+        fill=(8, 8, 14, 195),
+        outline=(255, 255, 255, 40),
+        width=2
+    )
+
+    # Detectar palabra activa y sus propiedades
     raw_active_word = words[active_idx] if 0 <= active_idx < len(words) else ""
     clean_active = re.sub(r'[^a-zA-ZáéíóúñÁÉÍÓÚÑ]', '', raw_active_word).lower()
     active_emoji = EMOJI_KEYWORDS.get(clean_active) if emoji_font else None
     is_hot_pink = clean_active in HOT_PINK_KEYWORDS
 
     active_color = (255, 45, 135, 255) if is_hot_pink else (255, 230, 0, 255)
-    glow_color = (255, 45, 135, 140) if is_hot_pink else (255, 230, 0, 140)
+    glow_color = (255, 45, 135, 130) if is_hot_pink else (255, 230, 0, 130)
 
-    base_y = 15 + emoji_room
+    base_y = pill_top + pad_y
 
-    # 1. Capa de halo / resplandor neón sutil para la palabra activa
+    # 2. Resplandor sutil (glow) para la palabra activa
     glow = Image.new("RGBA", (box_w, box_h), (0, 0, 0, 0))
     d_glow = ImageDraw.Draw(glow)
-    cur_x = 35
+    cur_x = pad_x
     for idx, w in enumerate(words):
         ww = word_widths[idx]
         if idx == active_idx:
-            d_glow.text((cur_x - 1, base_y - 2), w, font=pop_font, fill=glow_color, stroke_width=10, stroke_fill=glow_color)
+            # Centrar sutilmente el pop de la palabra activa en su casilla fija
+            ww_pop = d_temp.textbbox((0, 0), w, font=pop_font)[2] - d_temp.textbbox((0, 0), w, font=pop_font)[0]
+            draw_x = cur_x + (ww - ww_pop) / 2
+            d_glow.text((draw_x, base_y - 2), w, font=pop_font, fill=glow_color, stroke_width=8, stroke_fill=glow_color)
         cur_x += ww + space_w
 
-    glow = glow.filter(ImageFilter.GaussianBlur(6))
+    glow = glow.filter(ImageFilter.GaussianBlur(5))
     img = Image.alpha_composite(img, glow)
     d = ImageDraw.Draw(img)
 
-    # 2. Dibujar texto palabra por palabra con alineación estable
-    cur_x = 35
+    # 3. Dibujar las palabras de la frase (la frase entera se lee, la activa se resalta)
+    cur_x = pad_x
     for idx, w in enumerate(words):
         ww = word_widths[idx]
         is_active = (idx == active_idx)
         current_font = pop_font if is_active else font
         text_color = active_color if is_active else (255, 255, 255, 255)
         stroke_w = 4 if is_active else 3
-        draw_y = base_y - 2 if is_active else base_y
+
+        # Si es activa, centrar en la casilla fija asignada para no desplazar las demás palabras
+        if is_active:
+            ww_pop = d_temp.textbbox((0, 0), w, font=pop_font)[2] - d_temp.textbbox((0, 0), w, font=pop_font)[0]
+            draw_x = cur_x + (ww - ww_pop) / 2
+            draw_y = base_y - 2
+        else:
+            draw_x = cur_x
+            draw_y = base_y
 
         # Sombra de profundidad 3D
-        d.text((cur_x + 3, draw_y + 4), w, font=current_font, fill=(0, 0, 0, 220))
-        # Trazo negro nítido + Relleno
-        d.text((cur_x, draw_y), w, font=current_font, fill=text_color, stroke_width=stroke_w, stroke_fill=(0, 0, 0, 255))
-        
-        # Emoji flotante encima de la palabra activa
+        d.text((draw_x + 2, draw_y + 3), w, font=current_font, fill=(0, 0, 0, 240))
+        # Trazo negro nítido + Relleno de color
+        d.text((draw_x, draw_y), w, font=current_font, fill=text_color, stroke_width=stroke_w, stroke_fill=(0, 0, 0, 255))
+
+        # Emoji contextual flotante encima si aplica
         if is_active and active_emoji and emoji_font:
-            emoji_x = int(cur_x + (ww - 40) / 2)
-            emoji_y = max(4, base_y - 48)
+            emoji_x = int(cur_x + (ww - 38) / 2)
+            emoji_y = max(2, pill_top - 38)
             try:
                 d.text((emoji_x, emoji_y), active_emoji, font=emoji_font, embedded_color=True)
             except Exception:
@@ -522,7 +576,7 @@ def render_final_video(
 
     # 3. Generación de estados de Karaoke palabra por palabra
     cues = parse_srt_file(srt_subtitles) if srt_subtitles else []
-    sub_cues = cues[:45]
+    sub_cues = cues[:120]
     sub_pngs = []
     global_sub_idx = 0
 
@@ -659,8 +713,9 @@ def render_final_video(
         current_v = "v_hooked"
 
     # D) Superponer Subtítulos Karaoke palabra por palabra
-    # En modo Cinema (16:9), los subtítulos se colocan abajo a y=1360 para no tapar el gameplay
-    sub_y = "1360" if is_cinema_layout else ("1280" if is_vertical else "H-h-90")
+    # Safe Zone vertical (Instagram Reels / TikTok): y=1200 en 9:16 para quedar por encima de descripción/audio
+    # y debajo del gancho y foco central. En modo Cinema (16:9), y=1140 justo debajo del vídeo panorámico.
+    sub_y = "1140" if is_cinema_layout else ("1200" if is_vertical else "H-h-90")
     for s_idx, (_, start_s, end_s) in enumerate(sub_pngs):
         in_id = sub_inputs_start + s_idx
         next_v = f"v_sub_{s_idx}"

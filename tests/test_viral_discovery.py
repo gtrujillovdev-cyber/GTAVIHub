@@ -12,9 +12,9 @@ from src.telegram_bot import get_viral_radar_inline_keyboard
 
 class TestViralDiscovery(unittest.TestCase):
     def test_virality_score_high_engagement_short(self):
-        # Vídeo vertical corto (Short) con muchas vistas y palabras clave
+        # Vídeo vertical corto (Short) con muchas vistas y palabras clave reales de streamer / filtración
         res = calculate_virality_score(
-            title="NUEVO TRAILER 2 GTA 6 FILTRACION MAPA VICE CITY",
+            title="REACCION IBAI NUEVO GAMEPLAY GTA 6 FILTRACION MAPA VICE CITY",
             duration=35.0,
             views=350_000
         )
@@ -23,6 +23,15 @@ class TestViralDiscovery(unittest.TestCase):
         self.assertEqual(res["format_score"], 35)
         self.assertGreaterEqual(res["views_score"], 35)
         self.assertGreaterEqual(len(res["matches"]), 3)
+
+    def test_virality_score_excludes_fake_trailer2(self):
+        # Vídeo que vende humo con Trailer 2 o bucle debe recibir score 0 (excluido)
+        res = calculate_virality_score(
+            title="NUEVO TRAILER 2 GTA 6 OFICIAL BUCLE HD",
+            duration=45.0,
+            views=500_000
+        )
+        self.assertEqual(res["score"], 0)
 
     def test_virality_score_low_engagement_long(self):
         # Vídeo largo, sin palabras clave y pocas vistas

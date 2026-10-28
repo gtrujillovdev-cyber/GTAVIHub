@@ -8,7 +8,7 @@ from pathlib import Path
 # Asegurar path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from src.config import MAX_VIDEOS_PER_RUN, CHANNELS_FILE, is_quant_busy
+from src.config import MAX_VIDEOS_PER_RUN, CHANNELS_FILE, is_quant_busy, get_max_videos_per_run
 from src.channels import fetch_channel_candidates
 from src.pipeline import process_single_video
 
@@ -264,7 +264,8 @@ def main():
     # Modo 2: Modo autónomo (canales)
     if args.auto:
         print("[*] Iniciando escaneo autónomo de canales...")
-        candidates = fetch_channel_candidates(max_per_channel=args.max_videos)
+        effective_limit = args.max_videos if args.max_videos != MAX_VIDEOS_PER_RUN else get_max_videos_per_run()
+        candidates = fetch_channel_candidates(max_per_channel=effective_limit)
         
         if not candidates:
             print("[✓] No hay vídeos nuevos pendientes de procesar en ningún canal.")
@@ -273,8 +274,8 @@ def main():
         print(f"[!] Se encontraron {len(candidates)} vídeos nuevos.")
         count = 0
         for item in candidates:
-            if count >= args.max_videos:
-                print(f"[*] Límite de {args.max_videos} vídeos alcanzado en esta tanda.")
+            if count >= effective_limit:
+                print(f"[*] Límite de {effective_limit} vídeos alcanzado en esta tanda.")
                 break
             
             res = process_single_video(

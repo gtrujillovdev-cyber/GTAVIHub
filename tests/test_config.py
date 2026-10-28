@@ -58,5 +58,17 @@ class TestConfig(unittest.TestCase):
             if test_srt.exists():
                 test_srt.unlink()
 
+    def test_gameplay_release_date_toggle(self):
+        from src.config import is_gameplay_enabled, GAMEPLAY_RELEASE_DATE
+        import src.config as cfg
+        self.assertEqual(GAMEPLAY_RELEASE_DATE, "2026-11-19")
+        # En la fecha actual de octubre 2026 debe ser False
+        cfg.FORCE_ENABLE_GAMEPLAY = False
+        self.assertFalse(is_gameplay_enabled())
+        # Con override manual debe ser True
+        cfg.FORCE_ENABLE_GAMEPLAY = True
+        self.assertTrue(is_gameplay_enabled())
+        cfg.FORCE_ENABLE_GAMEPLAY = False
+
 if __name__ == "__main__":
     unittest.main()

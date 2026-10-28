@@ -100,23 +100,16 @@ def process_single_video(
     # Detectar dimensiones y formato
     width, height = get_video_dimensions(video_path)
     is_vertical = (height > width)
-    # Si publish_all está activo o force_short=True, OBLIGATORIO formato vertical 9:16 (Shorts/TikTok/Reels)
-    if publish_all and force_short is not False:
-        is_short = True
-    elif force_short is not None:
-        is_short = force_short
+    # En este canal TODO vídeo debe salir obligatoriamente en formato Vertical 9:16 (Shorts/TikTok/Reels),
+    # salvo que se indique de forma estricta force_short=False.
+    if force_short is False:
+        is_short = False
     else:
-        is_short = is_vertical
+        is_short = True
 
     print(f"    Formato Final: {'Vertical 9:16 (Shorts/TikTok/Reels)' if is_short else 'Horizontal 16:9'}")
 
-    # 2. Configuración de Bucle Infinito (Seamless Loop) en 2 de cada 5 vídeos (40% de rotación)
-    processed_count = len(get_processed_ids())
-    enable_seamless_loop = (is_short and (processed_count % 5 in (1, 3)))
-    if enable_seamless_loop:
-        print("[🔁 Seamless Loop] Activado para este vídeo (cadencia 2/5). Conectando remate con gancho inicial...")
-
-    # 3. Procesar/Traducir subtítulos si existen
+    # 2. Procesar/Traducir subtítulos si existen (sin inventar bucles artificiales)
     report_stage("🤖 [2/5] Analizando con Gemini Flash y generando metadatos virales...")
     es_srt_path = None
     if srt_path and srt_path.exists():
@@ -124,16 +117,15 @@ def process_single_video(
         success_trans = translate_srt(
             srt_path,
             es_srt_path,
-            source_lang=lang_to_use,
-            enable_seamless_loop=enable_seamless_loop
+            source_lang=lang_to_use
         )
         if not success_trans:
             print("[Warning] No se pudieron traducir subtítulos, se continuará sin subtítulos quemados.")
             es_srt_path = None
 
-    # 4. Doblaje de voz neural en español (estilo voice-over documental: inglés de fondo atenuado + doblaje español)
+    # 4. Doblaje de voz neural en español (solo si el usuario lo solicita explícitamente con mode='dub'/'voice')
     dub_audio_path = None
-    should_dub = (mode in ["dub", "voice"]) or (AUTO_DUB_ENGLISH and lang_to_use != "es")
+    should_dub = (mode in ["dub", "voice"]) or (mode != "short" and AUTO_DUB_ENGLISH and lang_to_use != "es")
     if should_dub and lang_to_use != "es" and es_srt_path:
         dub_audio_path = TEMP_DIR / f"{video_id}_es_voice.mp3"
         print(f"[*] Modo voz activa ({lang_to_use.upper()} -> ES). Generando locución neural en español...")
@@ -149,8 +141,7 @@ def process_single_video(
         original_url=url,
         is_short=is_short,
         creator_name=creator_name,
-        source_lang=lang_to_use,
-        enable_seamless_loop=enable_seamless_loop
+        source_lang=lang_to_use
     )
     hook_text = metadata.get("hook", "¡ANÁLISIS AL DETALLE!")
 

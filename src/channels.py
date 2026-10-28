@@ -2,6 +2,7 @@ import sys
 import re
 import json
 import subprocess
+import concurrent.futures
 from typing import List, Dict, Any, Optional
 from .config import CHANNELS_FILE, PROCESSED_FILE
 
@@ -9,7 +10,7 @@ GTA6_POSITIVE_KEYWORDS = [
     "gta 6", "gta6", "gta vi", "gtavi",
     "grand theft auto 6", "grand theft auto vi",
     "vice city", "leonida", "lucia", "jason",
-    "port gellhorn", "mud girl", "rage 9", "trailer 2", "tráiler 2"
+    "port gellhorn", "mud girl", "rage 9"
 ]
 
 def is_strictly_gta6(title: str, description: str = "") -> bool:
@@ -55,8 +56,8 @@ def is_strictly_gta6(title: str, description: str = "") -> bool:
             return False
 
     # 3. Filtro Anti-Fake, Anti-IA y Anti-Conceptos (CERO CONTENIDO FALSO O FAN-MADE):
-    # El juego sale oficialmente a finales de 2025; no existe gameplay real fuera de los tráilers oficiales.
-    # Se descarta tajantemente cualquier clip generado por IA, mods de GTA 5, renders o conceptos.
+    # GTA 6 está lanzado; existe gameplay real. Se descarta solo contenido CGI/fan-made/IA generativa,
+    # no términos técnicos legítimos como "AI NPC", "IA del juego" o "render distance".
     fake_ai_regexes = [
         r"\bconcept\b",
         r"\bconcept\s*trailer\b",
@@ -66,8 +67,11 @@ def is_strictly_gta6(title: str, description: str = "") -> bool:
         r"\bunreal\b",
         r"\bue5\b",
         r"\bunreal\s*engine\b",
-        r"\bai\b",
-        r"\bia\b",
+        r"\bai\s+generated\b",
+        r"\bai\s+trailer\b",
+        r"\bai\s+concept\b",
+        r"\bia\s+generada\b",
+        r"\btrailer\s+de\s+ia\b",
         r"\bmod\b",
         r"\bmods\b",
         r"\bmodded\b",
@@ -76,9 +80,13 @@ def is_strictly_gta6(title: str, description: str = "") -> bool:
         r"\btiktok\s*edit\b",
         r"\bcgi\b",
         r"\bblender\b",
-        r"\brender\b",
+        r"\b(?:3d|blender|cgi)\s*render\b",
         r"\bfake\b",
-        r"\bsimulated\b"
+        r"\bsimulated\b",
+        r"\btrailer\s*2\b",
+        r"\btráiler\s*2\b",
+        r"\bloop\b",
+        r"\bbucle\b"
     ]
     for pattern in fake_ai_regexes:
         if re.search(pattern, title_lower):
@@ -113,6 +121,8 @@ def mark_video_processed(entry: Dict[str, Any]):
         json.dump(processed, f, indent=2, ensure_ascii=False)
 
 def fetch_channel_candidates(max_per_channel: int = 2) -> List[Dict[str, Any]]:
+    from .viral_discovery import calculate_virality_score
+
     if not CHANNELS_FILE.exists():
         return []
 
@@ -120,91 +130,103 @@ def fetch_channel_candidates(max_per_channel: int = 2) -> List[Dict[str, Any]]:
         config = json.load(f)
 
     processed_ids = get_processed_ids()
-    candidates = []
+    candidates_by_id: Dict[str, Dict[str, Any]] = {}
 
-    # 1. Target Channels
-    for ch in config.get("channels", []):
+    def _scan_channel(ch: Dict[str, Any]) -> List[Dict[str, Any]]:
         if not ch.get("enabled", True):
-            continue
+            return []
         url = ch.get("url")
-        print(f"[*] Escaneando canal: {ch.get('name')} ({url})")
+        results = []
         try:
             res = subprocess.run([
                 sys.executable, "-m", "yt_dlp",
                 "--impersonate", "chrome",
                 "--no-check-certificates",
                 "--flat-playlist",
-                "--print", "%(id)s\t%(title)s\t%(duration)s\t%(url)s",
+                "--print", "%(id)s\t%(title)s\t%(duration)s\t%(view_count)s\t%(url)s",
                 "-I", f"1:{max_per_channel}",
                 url
-            ], capture_output=True, text=True, check=True)
-
-            lines = res.stdout.strip().split("\n")
-            for line in lines:
-                if not line.strip():
-                    continue
-                parts = line.split("\t")
-                if len(parts) >= 2:
-                    vid_id = parts[0]
-                    title = parts[1]
-                    duration = parts[2] if len(parts) > 2 else "0"
-                    vid_url = parts[3] if len(parts) > 3 else f"https://www.youtube.com/watch?v={vid_id}"
-
-                    if vid_id not in processed_ids and vid_id != "NA":
-                        # FILTRO INNEGOCIABLE DE CONTENIDO EXCLUSIVO GTA 6:
-                        # Salvo el canal oficial de Rockstar Games, TODO vídeo debe tratar EXCLUSIVAMENTE sobre GTA 6
-                        is_official = ("rockstargames" in url.lower() or ch.get("type") == "official")
-                        if not is_official and not is_strictly_gta6(title):
-                            print(f"[🛡️ GTA Guardian] Descartado vídeo no relacionado con GTA 6: '{title[:60]}'")
-                            continue
-
-                        try:
-                            dur_secs = float(duration) if duration and duration != "NA" else 0.0
-                        except ValueError:
-                            dur_secs = 0.0
-                        
-                        candidates.append({
-                            "id": vid_id,
-                            "title": title,
-                            "url": vid_url,
-                            "duration": dur_secs,
-                            "source_name": ch.get("name"),
-                            "source_type": ch.get("type", "general"),
-                            "lang": ch.get("lang", "en"),
-                            "is_short": (0 < dur_secs <= 60)
-                        })
-        except subprocess.CalledProcessError as e:
-            print(f"[!] Error escaneando canal {url}: {e.stderr.strip() if e.stderr else e}")
-
-    # 2. Search queries
-    for q in config.get("search_queries", []):
-        if not q.get("enabled", False):
-            continue
-        query = q.get("query")
-        print(f"[*] Buscando por query: {query}")
-        try:
-            res = subprocess.run([
-                sys.executable, "-m", "yt_dlp",
-                "--impersonate", "chrome",
-                "--no-check-certificates",
-                "--flat-playlist",
-                "--print", "%(id)s\t%(title)s\t%(duration)s\t%(url)s",
-                query
-            ], capture_output=True, text=True, check=True)
+            ], capture_output=True, text=True, check=True, timeout=25)
 
             for line in res.stdout.strip().split("\n"):
                 if not line.strip():
                     continue
                 parts = line.split("\t")
                 if len(parts) >= 2:
-                    vid_id = parts[0]
-                    title = parts[1]
+                    vid_id = parts[0].strip()
+                    title = parts[1].strip()
                     duration = parts[2] if len(parts) > 2 else "0"
-                    vid_url = parts[3] if len(parts) > 3 else f"https://www.youtube.com/watch?v={vid_id}"
+                    try:
+                        views = int(parts[3]) if len(parts) > 3 and parts[3] not in ("NA", "") else 0
+                    except ValueError:
+                        views = 0
+                    vid_url = parts[4] if len(parts) > 4 else f"https://www.youtube.com/watch?v={vid_id}"
 
-                    if vid_id not in processed_ids and vid_id != "NA":
+                    if vid_id and vid_id not in processed_ids and vid_id != "NA":
+                        # FILTRO INNEGOCIABLE DE CONTENIDO EXCLUSIVO GTA 6:
+                        is_official = ("rockstargames" in url.lower() or ch.get("type") == "official")
+                        if not is_official and not is_strictly_gta6(title):
+                            continue
+
+                        try:
+                            dur_secs = float(duration) if duration and duration != "NA" else 0.0
+                        except ValueError:
+                            dur_secs = 0.0
+
+                        # FILTRO ESTRICTO DE SHORTS REALES (CERO VÍDEOS LARGOS RECORTADOS):
+                        # Salvo tráilers oficiales, solo se admiten clips concebidos como Shorts nativos (<= 65s)
+                        if not is_official and (dur_secs > 65 or dur_secs <= 0):
+                            continue
+
+                        score_data = calculate_virality_score(title, dur_secs, views)
+
+                        results.append({
+                            "id": vid_id,
+                            "title": title,
+                            "url": vid_url,
+                            "duration": dur_secs,
+                            "views": views,
+                            "score": score_data["score"],
+                            "source_name": ch.get("name"),
+                            "source_type": ch.get("type", "general"),
+                            "lang": ch.get("lang", "en"),
+                            "is_short": (0 < dur_secs <= 60)
+                        })
+        except Exception as e:
+            print(f"[!] Error escaneando canal {ch.get('name', url)}: {e}")
+        return results
+
+    def _scan_query(q: Dict[str, Any]) -> List[Dict[str, Any]]:
+        if not q.get("enabled", False):
+            return []
+        query = q.get("query")
+        results = []
+        try:
+            res = subprocess.run([
+                sys.executable, "-m", "yt_dlp",
+                "--impersonate", "chrome",
+                "--no-check-certificates",
+                "--flat-playlist",
+                "--print", "%(id)s\t%(title)s\t%(duration)s\t%(view_count)s\t%(url)s",
+                query
+            ], capture_output=True, text=True, check=True, timeout=25)
+
+            for line in res.stdout.strip().split("\n"):
+                if not line.strip():
+                    continue
+                parts = line.split("\t")
+                if len(parts) >= 2:
+                    vid_id = parts[0].strip()
+                    title = parts[1].strip()
+                    duration = parts[2] if len(parts) > 2 else "0"
+                    try:
+                        views = int(parts[3]) if len(parts) > 3 and parts[3] not in ("NA", "") else 0
+                    except ValueError:
+                        views = 0
+                    vid_url = parts[4] if len(parts) > 4 else f"https://www.youtube.com/watch?v={vid_id}"
+
+                    if vid_id and vid_id not in processed_ids and vid_id != "NA":
                         if not is_strictly_gta6(title):
-                            print(f"[🛡️ GTA Guardian] Descartado vídeo no relacionado con GTA 6: '{title[:60]}'")
                             continue
                         try:
                             dur_secs = float(duration) if duration and duration != "NA" else 0.0
@@ -215,11 +237,15 @@ def fetch_channel_candidates(max_per_channel: int = 2) -> List[Dict[str, Any]]:
                         if q.get("only_shorts", True) and (dur_secs > 65 or dur_secs <= 0):
                             continue
 
-                        candidates.append({
+                        score_data = calculate_virality_score(title, dur_secs, views)
+
+                        results.append({
                             "id": vid_id,
                             "title": title,
                             "url": vid_url,
                             "duration": dur_secs,
+                            "views": views,
+                            "score": score_data["score"],
                             "source_name": f"Search: {query.split(':')[1] if ':' in query else query}",
                             "source_type": "viral_search",
                             "lang": q.get("lang", "es"),
@@ -227,9 +253,48 @@ def fetch_channel_candidates(max_per_channel: int = 2) -> List[Dict[str, Any]]:
                         })
         except Exception as e:
             print(f"[!] Error en query {query}: {e}")
+        return results
 
-    # Priorizar fuertemente candidatos en formato Shorts (duración <= 60s)
-    candidates.sort(key=lambda x: (not x.get("is_short", False), x.get("duration", 9999)))
+    # 1. Target Channels en paralelo (máx 3 workers para no saturar GaTDSEQ)
+    target_channels = [ch for ch in config.get("channels", []) if ch.get("enabled", True)]
+    with concurrent.futures.ThreadPoolExecutor(max_workers=3) as executor:
+        futures = {executor.submit(_scan_channel, ch): ch for ch in target_channels}
+        for future in concurrent.futures.as_completed(futures):
+            for cand in future.result():
+                vid_id = cand["id"]
+                if vid_id not in candidates_by_id or cand["score"] > candidates_by_id[vid_id]["score"]:
+                    candidates_by_id[vid_id] = cand
+
+    # 2. Search queries en paralelo (máx 3 workers)
+    from .config import is_gameplay_enabled
+    from datetime import datetime
+
+    def _is_query_active(q: Dict[str, Any]) -> bool:
+        active_after = q.get("active_after")
+        if active_after:
+            if is_gameplay_enabled():
+                return True
+            try:
+                if datetime.now() >= datetime.fromisoformat(active_after):
+                    return True
+            except Exception:
+                pass
+            return False
+        return q.get("enabled", False)
+
+    active_queries = [q for q in config.get("search_queries", []) if _is_query_active(q)]
+    if active_queries:
+        with concurrent.futures.ThreadPoolExecutor(max_workers=3) as executor:
+            futures = {executor.submit(_scan_query, q): q for q in active_queries}
+            for future in concurrent.futures.as_completed(futures):
+                for cand in future.result():
+                    vid_id = cand["id"]
+                    if vid_id not in candidates_by_id or cand["score"] > candidates_by_id[vid_id]["score"]:
+                        candidates_by_id[vid_id] = cand
+
+    candidates = list(candidates_by_id.values())
+    # Ordenar por score descendente; Shorts tienen prioridad en caso de empate
+    candidates.sort(key=lambda x: (-x.get("score", 0), not x.get("is_short", False)))
 
     return candidates
 

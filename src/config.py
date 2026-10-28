@@ -38,7 +38,7 @@ GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
 # Defaults & Duración Dinámica Orgánica (Anti-Fingerprinting)
 MAX_VIDEOS_PER_RUN = int(os.getenv("MAX_VIDEOS_PER_RUN", "2"))
 DEFAULT_TTS_VOICE = os.getenv("DEFAULT_TTS_VOICE", "es-ES-AlvaroNeural")
-AUTO_DUB_ENGLISH = os.getenv("AUTO_DUB_ENGLISH", "true").lower() in ("1", "true", "yes")
+AUTO_DUB_ENGLISH = os.getenv("AUTO_DUB_ENGLISH", "false").lower() in ("1", "true", "yes")
 SHORT_MIN_DURATION = int(os.getenv("SHORT_MIN_DURATION", "26"))
 SHORT_MAX_DURATION = int(os.getenv("SHORT_MAX_DURATION", "52"))
 SHORT_TARGET_DURATION = int(os.getenv("SHORT_TARGET_DURATION", "38"))
@@ -50,6 +50,30 @@ FFMPEG_BITRATE = os.getenv("FFMPEG_BITRATE", "10M")
 # Protocolo de Coexistencia de Hardware (GaTDSEQ & Background Friendliness)
 FFMPEG_THREADS = int(os.getenv("FFMPEG_THREADS", "2"))
 CHECK_QUANT_BUSY = os.getenv("CHECK_QUANT_BUSY", "true").lower() in ("1", "true", "yes")
+
+# Fase de Shorts de Gameplay (Apertura automática a partir del 19 de Noviembre)
+GAMEPLAY_RELEASE_DATE = os.getenv("GAMEPLAY_RELEASE_DATE", "2026-11-19")
+FORCE_ENABLE_GAMEPLAY = os.getenv("FORCE_ENABLE_GAMEPLAY", "false").lower() in ("1", "true", "yes")
+
+# Modo Ametralladora (Launch Day Engine: Máxima cadencia y aprovechamiento al límite)
+LAUNCH_MAX_VIDEOS_PER_RUN = int(os.getenv("LAUNCH_MAX_VIDEOS_PER_RUN", "3"))
+
+def is_gameplay_enabled() -> bool:
+    """Verifica si la fase de Shorts de Gameplay está activa (automáticamente desde el 19 de Noviembre o vía override)."""
+    if FORCE_ENABLE_GAMEPLAY:
+        return True
+    try:
+        from datetime import datetime
+        target = datetime.fromisoformat(GAMEPLAY_RELEASE_DATE)
+        return datetime.now() >= target
+    except Exception:
+        return False
+
+def get_max_videos_per_run() -> int:
+    """En fase de lanzamiento pasa a Modo Ametralladora (3 vídeos por tanda en vez de 1-2)."""
+    if is_gameplay_enabled():
+        return LAUNCH_MAX_VIDEOS_PER_RUN
+    return MAX_VIDEOS_PER_RUN
 
 def get_ffmpeg_threads() -> int:
     """Hilos de FFmpeg: 1 si GaTDSEQ esta activo (Modo Cortesia), si no FFMPEG_THREADS (2)."""
