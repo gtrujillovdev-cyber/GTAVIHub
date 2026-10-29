@@ -91,6 +91,7 @@ def process_single_video(
     video_path, srt_path, detected_lang = download_video_and_subtitles(url, video_id)
     if not video_path:
         print(f"[!] Falló la descarga del vídeo {video_id}. Abortando.")
+        report_stage("⚠️ *Descarga omitida:* El vídeo no está disponible, tiene restricción de edad en YouTube o excedió el tiempo límite.")
         clean_temp_directory(video_id)
         gc.collect()  # Liberar buffers para GaTDSEQ
         return None

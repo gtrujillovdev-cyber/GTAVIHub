@@ -149,10 +149,10 @@ def fetch_channel_candidates(max_per_channel: int = 2) -> List[Dict[str, Any]]:
         ch_name = ch.get("name", "Canal")
         results = []
         
-        # Si la URL de /shorts falla, fallback a búsqueda cronológica de los vídeos más recientes del creador
+        # Si la URL de /shorts falla, fallback a búsqueda de los vídeos del creador
         urls_to_try = [url]
         if "/shorts" in url or ch.get("type") in ("streamer", "spanish_streamer", "analyst"):
-            urls_to_try.append(f"ytsearchdate5:{ch_name} GTA 6 #shorts")
+            urls_to_try.append(f"ytsearch5:{ch_name} GTA 6 #shorts")
 
         res_stdout = ""
         for u in urls_to_try:
@@ -234,8 +234,6 @@ def fetch_channel_candidates(max_per_channel: int = 2) -> List[Dict[str, Any]]:
         if not q.get("enabled", False):
             return []
         query = q.get("query", "")
-        # Forzar búsqueda cronológica para obtener vídeos recientes y no contenido antiguo
-        actual_query = query.replace("ytsearch", "ytsearchdate") if "ytsearch" in query and "ytsearchdate" not in query else query
         results = []
         try:
             res = subprocess.run([
@@ -244,7 +242,7 @@ def fetch_channel_candidates(max_per_channel: int = 2) -> List[Dict[str, Any]]:
                 "--no-check-certificates",
                 "--flat-playlist",
                 "--print", "%(id)s\t%(title)s\t%(duration)s\t%(view_count)s\t%(url)s\t%(upload_date)s",
-                actual_query
+                query
             ], capture_output=True, text=True, check=True, timeout=25)
 
             for line in res.stdout.strip().split("\n"):

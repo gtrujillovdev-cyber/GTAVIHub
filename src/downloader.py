@@ -239,9 +239,15 @@ def download_video_and_subtitles(url: str, video_id: str) -> Tuple[Optional[Path
 
     print(f"[*] Descargando vídeo de {url}...")
     try:
-        subprocess.run(cmd_video, check=True, capture_output=True, text=True)
+        subprocess.run(cmd_video, check=True, capture_output=True, text=True, timeout=90)
+    except subprocess.TimeoutExpired:
+        print(f"[!] Timeout de 90s descargando vídeo {url}. Abortando para no bloquear el pipeline.")
+        return None, None, "unknown"
     except subprocess.CalledProcessError as e:
         print(f"[!] Error al descargar vídeo {url}: {e.stderr.strip() if e.stderr else e}")
+        return None, None, "unknown"
+    except Exception as e:
+        print(f"[!] Error inesperado descargando vídeo {url}: {e}")
         return None, None, "unknown"
 
     # Encontrar archivo de video
@@ -281,7 +287,7 @@ def download_video_and_subtitles(url: str, video_id: str) -> Tuple[Optional[Path
                 url
             ]
             try:
-                subprocess.run(cmd_subs, capture_output=True, text=True)
+                subprocess.run(cmd_subs, capture_output=True, text=True, timeout=30)
                 found_subs = list(TEMP_DIR.glob(f"{video_id}*.srt")) + list(TEMP_DIR.glob(f"{video_id}*.vtt"))
                 if found_subs:
                     chosen = found_subs[0]
