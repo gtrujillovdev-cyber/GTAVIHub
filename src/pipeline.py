@@ -347,17 +347,40 @@ def process_single_video(
 
     # Notificación remota push en Telegram (si está configurado)
     try:
-        from .telegram_bot import send_telegram_notification
-        notif_sent = send_telegram_notification(
-            title=metadata.get("title", original_title),
-            creator=creator_name or "Rockstar Games",
-            multiplatform_urls=multiplatform_results if publish_all else {"youtube": full_info.get("uploaded_youtube_url")},
-            thumbnail_path=thumb_path if thumb_path.exists() else None
-        )
-        if notif_sent:
-            print("[Pipeline] [✓] Notificación de resumen multiplataforma entregada a Telegram.")
+        from .telegram_bot import send_telegram_notification, send_telegram_alert, send_telegram_photo
+        has_real_uploads = bool(uploaded_yt_id or (publish_all and any(multiplatform_results.values())))
+
+        if has_real_uploads:
+            notif_sent = send_telegram_notification(
+                title=metadata.get("title", original_title),
+                creator=creator_name or "Rockstar Games",
+                multiplatform_urls=multiplatform_results if publish_all else {"youtube": full_info.get("uploaded_youtube_url")},
+                thumbnail_path=thumb_path if thumb_path.exists() else None
+            )
+            if notif_sent:
+                print("[Pipeline] [✓] Notificación de resumen multiplataforma entregada a Telegram.")
+            else:
+                print("[Pipeline] [!] No se pudo entregar la notificación resumen a Telegram.")
         else:
-            print("[Pipeline] [!] No se pudo entregar la notificación resumen a Telegram.")
+            upload_reason = (
+                "⚠️ *Fallo en subida automática:* El token de YouTube expiró o las cookies no están activas."
+                if (auto_upload or publish_all)
+                else "💡 *Modo local:* Vídeo generado listo para revisión o publicación manual."
+            )
+            local_report = (
+                "🎬 *VÍDEO RENDERIZADO EN DISCO (LOCAL)*\n"
+                + ("═" * 36) + "\n\n"
+                f"• *Título:* `{metadata.get('title', original_title)}`\n"
+                f"• *Autor:* `{creator_name or 'Rockstar Games'}`\n"
+                f"• *Archivo:* `{Path(output_path).name}`\n\n"
+                f"{upload_reason}\n\n"
+                "Para publicarlo ejecuta:\n"
+                f"`./run.sh --url \"{url}\" --upload`"
+            )
+            if thumb_path and thumb_path.exists():
+                send_telegram_photo(thumb_path, local_report)
+            else:
+                send_telegram_alert(local_report)
     except Exception as e:
         print(f"[Pipeline] Info Telegram: {e}")
 

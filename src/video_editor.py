@@ -81,19 +81,19 @@ def clean_text_no_emoji(text: str) -> str:
 
 def split_cue_into_micro_bursts(text: str, start: float, end: float, max_words: int = 3) -> List[Dict[str, Any]]:
     """
-    Divide frases en ráfagas dinámicas de 2-3 palabras (ritmo viral TikTok / Shorts).
-    Garantiza que nunca se solapen en el tiempo y que NUNCA queden colgadas en pantalla.
+    Divide frases en micro-ráfagas de 2-3 palabras estilo Hormozi / MrBeast,
+    garantizando SINCRONIZACIÓN PERFECTA (cero desfase temporal con la voz):
+    La suma de duraciones de las ráfagas coincide exactamente con el intervalo de habla real [start, end].
     """
     words = text.split()
     if not words:
         return []
 
-    # Limitar la duración máxima de cualquier frase para evitar que se quede 'pillada' en pantalla
-    max_total_dur = max(0.8, min(end - start, len(words) * 0.55 + 0.4))
-    effective_end = start + max_total_dur
+    # Duración real limitada para evitar que glitches de subtítulos automáticos (ej. 30s) cuelguen en pantalla
+    cue_duration = max(0.4, min(end - start, max(1.2, len(words) * 0.55)))
 
     if len(words) <= max_words:
-        return [{"start": start, "end": round(effective_end, 2), "text": text}]
+        return [{"start": round(start, 2), "end": round(start + cue_duration, 2), "text": text}]
 
     chunks = []
     i = 0
@@ -110,19 +110,25 @@ def split_cue_into_micro_bursts(text: str, start: float, end: float, max_words: 
             chunks.append(words[i:i + max_words])
             i += max_words
 
-    total_words = len(words)
+    chunk_weights = [sum(len(w) for w in c) + len(c) for c in chunks]
+    total_weight = sum(chunk_weights)
+
     res = []
     cur_t = start
-    for c in chunks:
-        c_dur = max_total_dur * (len(c) / total_words)
-        c_dur = min(max(c_dur, 0.75), 1.8)
-        next_t = cur_t + c_dur
+    for idx, (c, wt) in enumerate(zip(chunks, chunk_weights)):
+        if idx == len(chunks) - 1:
+            next_t = end
+        else:
+            c_dur = cue_duration * (wt / total_weight)
+            next_t = cur_t + c_dur
+
         res.append({
             "start": round(cur_t, 2),
             "end": round(next_t, 2),
             "text": " ".join(c)
         })
         cur_t = next_t
+
     return res
 
 def calculate_word_timing(words: List[str], start_t: float, end_t: float) -> List[Dict[str, Any]]:
@@ -205,25 +211,22 @@ def parse_srt_file(srt_path: Path) -> List[Dict[str, Any]]:
                 "text": final_text
             })
 
-    # Asegurar orden estrictamente secuencial y sin solapamiento
+    # Asegurar orden estrictamente secuencial y sincronización fija al habla real
     all_bursts = []
-    last_end = 0.0
     for c in raw_cues:
-        start = max(c["start"], last_end + 0.03)
-        # Una frase hablada jamás debe exceder los 3.0s para evitar que subtítulos queden colgados
-        clamped_dur = min(max(0.6, c["end"] - c["start"]), 3.0)
-        end = start + clamped_dur
-        bursts = split_cue_into_micro_bursts(c["text"], start, end, max_words=3)
+        c_start = c["start"]
+        c_end = c["end"]
+        if c_end <= c_start:
+            continue
+
+        # Si el bloque previo aún está en pantalla al empezar este cue, truncar el previo
+        if all_bursts and all_bursts[-1]["end"] > c_start:
+            all_bursts[-1]["end"] = max(all_bursts[-1]["start"] + 0.1, round(c_start - 0.02, 2))
+
+        bursts = split_cue_into_micro_bursts(c["text"], c_start, c_end, max_words=3)
         for b in bursts:
-            if b["start"] < last_end:
-                b["start"] = round(last_end + 0.02, 2)
-            # Garantizar que ninguna micro-ráfaga dure más de 1.8s
-            if (b["end"] - b["start"]) > 1.8:
-                b["end"] = round(b["start"] + 1.8, 2)
-            if b["end"] <= b["start"]:
-                b["end"] = round(b["start"] + 0.45, 2)
-            all_bursts.append(b)
-            last_end = b["end"]
+            if b["end"] > b["start"]:
+                all_bursts.append(b)
 
     return all_bursts
 
