@@ -938,13 +938,6 @@
       "description": "Opiniones y reacciones sinceras de Knekro"
     },
     {
-      "query": "ytsearch15:GTA 6 IlloJuan secretos mapa #shorts",
-      "lang": "es",
-      "only_shorts": true,
-      "enabled": true,
-      "description": "Momentos de IlloJuan analizando GTA 6"
-    },
-    {
       "query": "ytsearch15:GTA 6 ElXokas analisis teoria #shorts",
       "lang": "es",
       "only_shorts": true,

@@ -67,7 +67,7 @@ Evita que el clip empiece o acabe a media frase.
 
 | Transformación | Especificación | Justificación |
 |---------------|----------------|---------------|
-| Reencuadre centrado | 1080×1920 (9:16) con zoom al 83.3% | Formato Shorts/TikTok/Reels |
+| Reencuadre adaptativo | Nativo 9:16 / Cinema Full-Frame (1080×608 0% corte) / Dynamic Smart Crop (1080×1080) | Adaptado al arquetipo |
 | Gancho superior | 0.0s–2.5s, 2 líneas contrastadas | Blanco + Amarillo Neón |
 | Subtítulos Karaoke | Pop Bounce, glow dinámico por palabra | Retención activa |
 | Audio Ducking | ~18% durante voz en off (modo dub) | Claridad del mensaje |

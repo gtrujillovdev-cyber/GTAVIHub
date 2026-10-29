@@ -24,7 +24,7 @@ class TestConfig(unittest.TestCase):
         self.assertIsInstance(busy, bool)
 
     def test_dynamic_duration_settings(self):
-        self.assertGreaterEqual(SHORT_MIN_DURATION, 20)
+        self.assertGreaterEqual(SHORT_MIN_DURATION, 10)
         self.assertLessEqual(SHORT_MAX_DURATION, 58)
         self.assertLessEqual(SHORT_MIN_DURATION, SHORT_TARGET_DURATION)
         self.assertLessEqual(SHORT_TARGET_DURATION, SHORT_MAX_DURATION)

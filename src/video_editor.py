@@ -588,18 +588,26 @@ def render_final_video(
     is_vertical = force_short_format or is_already_vertical
 
     if is_vertical and not is_already_vertical:
-        # Modo Encuadre Dinámico Inteligente (Dynamic Smart Crop):
-        # En lugar de una franja estrecha de 608px o un recorte excesivo del 65%:
-        # Recortamos moderadamente los laterales (~18-20% por banda) para que el vídeo
-        # llene con fuerza el área central a 960px de altura (50% de la pantalla vertical),
-        # preservando el 100% de la acción y caras en el centro y dejando márgenes generosos
-        # arriba para el gancho (y=120) y abajo para los subtítulos en zona segura (y=1440).
-        fg_w = 1080
-        fg_h = 960
-        fg_y = 400
-        fg_bottom = fg_y + fg_h
-        is_cinema_layout = True
-        print(f"[*] Modo Encuadre Dinámico Inteligente: Vídeo adaptado a {fg_w}x{fg_h} @ y={fg_y} (recorte lateral moderado del ~18%).")
+        if is_official_content:
+            # Modo Cinema Full-Frame (0% Recorte Lateral):
+            # Preserva exactamente el 100% del plano horizontal original (1080x608 a 16:9) centrado a y=656
+            # con Ambient Blur reactivo para trailers oficiales, comparativas y análisis técnicos.
+            fg_w = 1080
+            fg_h = 608
+            fg_y = 656
+            fg_bottom = fg_y + fg_h
+            is_cinema_layout = True
+            print(f"[*] Modo Cinema Full-Frame (0% recorte lateral): {fg_w}x{fg_h} @ y={fg_y} con Ambient Canvas.")
+        else:
+            # Modo Encuadre Dinámico Inteligente (Dynamic Smart Crop para gameplay y streamers):
+            # Llena con fuerza el área central a 1080x1080, preservando el foco de acción y dejando
+            # zonas seguras arriba para el gancho (y=120) y abajo para subtítulos (y=1520).
+            fg_w = 1080
+            fg_h = 1080
+            fg_y = 420
+            fg_bottom = fg_y + fg_h
+            is_cinema_layout = True
+            print(f"[*] Modo Encuadre Dinámico Inteligente: Vídeo adaptado a {fg_w}x{fg_h} @ y={fg_y} (recorte moderado).")
     else:
         # Formato C (Vertical Nativo 9:16):
         fg_w = 1080
@@ -726,13 +734,22 @@ def render_final_video(
 
     # A) Base de vídeo:
     if is_vertical and not is_already_vertical:
-        # Vídeo horizontal con encuadre dinámico: escala a altura 960 y recorte centrado moderado (~18%)
-        v_base = (
-            "[0:v]split[v1][v2];"
-            "[v1]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,boxblur=28:5,eq=brightness=-0.12:contrast=1.05:saturation=1.15[bg];"
-            f"[v2]scale=-2:{fg_h},crop=1080:{fg_h}:(iw-1080)/2:0,unsharp=3:3:0.6:3:3:0.0,eq=contrast=1.06:saturation=1.12[fg];"
-            f"[bg][fg]overlay=0:{fg_y}[v_framed]"
-        )
+        if is_official_content:
+            # Cinema Full-Frame (0% recorte horizontal): escala preservando 16:9 con ambient glow
+            v_base = (
+                "[0:v]split[v1][v2];"
+                "[v1]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,boxblur=28:5,eq=brightness=-0.15:contrast=1.05:saturation=1.2[bg];"
+                f"[v2]scale=1080:-2,unsharp=3:3:0.6:3:3:0.0,eq=contrast=1.06:saturation=1.12[fg];"
+                f"[bg][fg]overlay=0:{fg_y}[v_framed]"
+            )
+        else:
+            # Encuadre dinámico inteligente para gameplay y streamer
+            v_base = (
+                "[0:v]split[v1][v2];"
+                "[v1]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,boxblur=28:5,eq=brightness=-0.12:contrast=1.05:saturation=1.15[bg];"
+                f"[v2]scale=-2:{fg_h},crop=1080:{fg_h}:(iw-1080)/2:0,unsharp=3:3:0.6:3:3:0.0,eq=contrast=1.06:saturation=1.12[fg];"
+                f"[bg][fg]overlay=0:{fg_y}[v_framed]"
+            )
     elif is_vertical:
         # Formato C (Nativo Vertical 9:16): Pantalla completa sin bandas
         v_base = "[0:v]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,unsharp=3:3:0.6:3:3:0.0,eq=contrast=1.06:saturation=1.12[v_framed]"

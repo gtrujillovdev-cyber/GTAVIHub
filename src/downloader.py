@@ -172,17 +172,16 @@ def find_viral_heatmap_segment(
         info = json.loads(res.stdout)
         duration = info.get("duration", 0)
 
-        # Si ya es un vídeo corto optimizado (<= 65 segundos), NUNCA recortar:
+        # Si ya es un vídeo corto optimizado (<= 60 segundos), NUNCA recortar:
         # Se respeta íntegramente la duración orgánica del creador para no cortar frases a la mitad.
-        if duration <= 65:
-            print(f"[*] Vídeo ya en formato Short orgánico ({duration:.1f}s <= 65s). Duración original preservada (cero cortes).")
+        if duration <= 60:
+            print(f"[*] Vídeo ya en formato Short orgánico ({duration:.1f}s <= 60s). Duración original preservada (cero cortes).")
             return None
 
         heatmap = info.get("heatmap")
         if heatmap and isinstance(heatmap, list) and len(heatmap) > 5:
-            # Duraciones candidatas alineadas con Playbook: sweet spot 20-28s primero
-            # (18-28s = mayor loop rate en Shorts según learning_engine)
-            candidate_durations = [20, 24, 28, 34, 40]
+            # Duraciones candidatas adaptativas alineadas con el arco narrativo (16s a 42s)
+            candidate_durations = [16, 20, 24, 28, 34, 42]
             best_score = -1.0
             best_start = 15.0
             best_dur = target_duration
@@ -200,9 +199,8 @@ def find_viral_heatmap_segment(
                         continue
                     avg_val = sum(window_pts) / len(window_pts)
                     peak_val = max(window_pts)
-                    # Score ponderado: premia ventanas con picos intensos y penaliza duraciones largas
-                    # para favorecer clips cortos con máxima retención sobre mesetas mediocres largas
-                    window_score = avg_val * (1 + peak_val * 0.4) * (28 / max(c_dur, 20))
+                    # Score ponderado adaptativo: premia picos y modula según retención orgánica
+                    window_score = avg_val * (1 + peak_val * 0.4) * (24 / max(c_dur, 16))
                     if window_score > best_score:
                         best_score = window_score
                         best_start = start_t
@@ -222,9 +220,13 @@ def find_viral_heatmap_segment(
         print(f"[!] Info detector: {e}")
         return None
 
-def download_video_and_subtitles(url: str, video_id: str) -> Tuple[Optional[Path], Optional[Path], str]:
+def download_video_and_subtitles(
+    url: str,
+    video_id: str,
+    source_lang: str = "es"
+) -> Tuple[Optional[Path], Optional[Path], str]:
     """
-    Descarga el video (limitado a 1080p), detecta picos virales si es largo (>85s)
+    Descarga el video (limitado a 1080p), detecta picos virales si es largo (>60s)
     y extrae los subtítulos disponibles sincronizados con el clip recortado.
     Retorna: (video_path, srt_path, detected_lang)
     """
@@ -271,7 +273,7 @@ def download_video_and_subtitles(url: str, video_id: str) -> Tuple[Optional[Path
         ("en", ["en-orig", "en"])
     ]
 
-    detected_lang = "en"
+    detected_lang = source_lang
     srt_path = None
 
     for lang_code, lang_candidates in sub_langs_to_try:

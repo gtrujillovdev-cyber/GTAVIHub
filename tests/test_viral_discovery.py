@@ -12,16 +12,19 @@ from src.telegram_bot import get_viral_radar_inline_keyboard
 
 class TestViralDiscovery(unittest.TestCase):
     def test_virality_score_high_engagement_short(self):
-        # Vídeo vertical corto (Short) con muchas vistas y palabras clave reales de streamer / filtración
+        # Vídeo vertical corto (Short) con muchas vistas, velocidad y engagement de streamer
         res = calculate_virality_score(
             title="REACCION IBAI NUEVO GAMEPLAY GTA 6 FILTRACION MAPA VICE CITY",
-            duration=35.0,
-            views=350_000
+            duration=24.0,
+            views=350_000,
+            days_old=1,
+            like_count=25_000
         )
         self.assertGreaterEqual(res["score"], 80)
         self.assertTrue(res["is_short"])
-        self.assertEqual(res["format_score"], 35)
-        self.assertGreaterEqual(res["views_score"], 35)
+        self.assertEqual(res["format_score"], 20)
+        self.assertGreaterEqual(res["views_score"], 17)
+        self.assertGreaterEqual(res["velocity_score"], 25)
         self.assertGreaterEqual(len(res["matches"]), 3)
 
     def test_virality_score_excludes_fake_trailer2(self):
@@ -43,7 +46,7 @@ class TestViralDiscovery(unittest.TestCase):
         self.assertLess(res["score"], 30)
         self.assertFalse(res["is_short"])
         self.assertEqual(res["format_score"], 0)
-        self.assertEqual(res["views_score"], 5)
+        self.assertEqual(res["views_score"], 2)
 
     def test_monitored_channels_expanded(self):
         channels = list_monitored_channels()

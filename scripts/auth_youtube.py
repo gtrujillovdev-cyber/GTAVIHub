@@ -52,15 +52,19 @@ def authenticate_youtube():
 
     if not creds or not creds.valid:
         if creds and creds.expired and creds.refresh_token:
-            print("[*] Renovando token existente...")
-            creds.refresh(Request())
-        else:
-            print("[*] Iniciando nuevo flujo de autorización...")
+            print("[*] Intentando renovar token existente...")
+            try:
+                creds.refresh(Request())
+            except Exception as e:
+                print(f"[!] Token revocado o expirado ({e}). Abriendo navegador...")
+                creds = None
+
+        if not creds or not creds.valid:
+            print("[*] Iniciando nuevo flujo de autorización en el navegador...")
             flow = InstalledAppFlow.from_client_secrets_file(
                 str(CLIENT_SECRETS_FILE),
                 scopes=SCOPES
             )
-            # Intentar abrir el navegador local en macOS
             try:
                 creds = flow.run_local_server(port=8080, prompt='consent')
             except Exception as e:

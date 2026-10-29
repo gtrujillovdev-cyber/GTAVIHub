@@ -132,7 +132,11 @@ def approve_and_publish_video(video_id: str) -> Optional[Dict[str, Any]]:
             metadata={
                 "title": metadata.get("title", f"GTA 6 - {data.get('original_title')}").upper(),
                 "description": metadata.get("description", ""),
-                "thumbnail_path": thumb_path if thumb_path and thumb_path.exists() else None
+                "thumbnail_path": thumb_path if thumb_path and thumb_path.exists() else None,
+                "pinned_comment": metadata.get("pinned_comment"),
+                "debate_question": metadata.get("debate_question", ""),
+                "original_url": data.get("original_url", ""),
+                "privacy": privacy_status
             },
             creator_name=creator,
             stagger_delay_minutes=stagger_delay
@@ -147,7 +151,8 @@ def approve_and_publish_video(video_id: str) -> Optional[Dict[str, Any]]:
             description=metadata.get("description", ""),
             privacy_status=privacy_status,
             is_short=is_short,
-            thumbnail_path=thumb_path if thumb_path and thumb_path.exists() else None
+            thumbnail_path=thumb_path if thumb_path and thumb_path.exists() else None,
+            pinned_comment=metadata.get("pinned_comment")
         )
 
     # Registro en processed.json

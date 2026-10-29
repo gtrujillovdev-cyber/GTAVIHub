@@ -39,9 +39,9 @@ GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
 MAX_VIDEOS_PER_RUN = int(os.getenv("MAX_VIDEOS_PER_RUN", "2"))
 DEFAULT_TTS_VOICE = os.getenv("DEFAULT_TTS_VOICE", "es-ES-AlvaroNeural")
 AUTO_DUB_ENGLISH = os.getenv("AUTO_DUB_ENGLISH", "false").lower() in ("1", "true", "yes")
-SHORT_MIN_DURATION = int(os.getenv("SHORT_MIN_DURATION", "26"))
-SHORT_MAX_DURATION = int(os.getenv("SHORT_MAX_DURATION", "52"))
-SHORT_TARGET_DURATION = int(os.getenv("SHORT_TARGET_DURATION", "38"))
+SHORT_MIN_DURATION = int(os.getenv("SHORT_MIN_DURATION", "12"))
+SHORT_MAX_DURATION = int(os.getenv("SHORT_MAX_DURATION", "58"))
+SHORT_TARGET_DURATION = int(os.getenv("SHORT_TARGET_DURATION", "24"))
 
 # FFmpeg Hardware Acceleration (VideoToolbox para Apple Silicon e Intel)
 FFMPEG_VIDEO_CODEC = "h264_videotoolbox"

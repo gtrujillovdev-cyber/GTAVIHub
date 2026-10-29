@@ -84,9 +84,9 @@ El playbook se inyecta automáticamente en el prompt del selector IA y en el gen
 
 | Parámetro | Valor actual | Archivo |
 |-----------|-------------|---------|
-| `SHORT_MIN_DURATION` | 10s | `src/config.py` |
-| `SHORT_MAX_DURATION` | 52s | `src/config.py` |
-| `SHORT_TARGET_DURATION` | 24s | `src/config.py` |
+| `SHORT_MIN_DURATION` | 12s (adaptativo a memes/humor) | `src/config.py` |
+| `SHORT_MAX_DURATION` | 58s (límite orgánico Shorts) | `src/config.py` |
+| `SHORT_TARGET_DURATION` | 24s (sweet spot Playbook) | `src/config.py` |
 | `min_score` en `scan_viral_radar` | 60 pts | `src/viral_discovery.py` |
 | Pool AI Selector | 15 candidatos | `src/ai_selector.py` |
 

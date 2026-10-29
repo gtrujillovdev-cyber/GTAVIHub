@@ -89,7 +89,7 @@ def process_single_video(
 
     # 1. Descarga limpia
     report_stage("📥 [1/5] Descargando vídeo y pistas originales (1080p)...")
-    video_path, srt_path, detected_lang = download_video_and_subtitles(url, video_id)
+    video_path, srt_path, detected_lang = download_video_and_subtitles(url, video_id, source_lang=source_lang)
     if not video_path:
         print(f"[!] Falló la descarga del vídeo {video_id}. Abortando.")
         report_stage("⚠️ *Descarga omitida:* El vídeo no está disponible, tiene restricción de edad en YouTube o excedió el tiempo límite.")
@@ -154,8 +154,10 @@ def process_single_video(
     # Comprobar si es contenido oficial de Rockstar o análisis técnico de la industria (para Full Frame Cinema)
     creator_lower = (creator_name or "").lower()
     title_lower = (original_title or "").lower()
+    archetype = metadata.get("archetype", "")
     is_official_content = (
-        any(k in creator_lower for k in ["rockstar", "gta series", "take-two", "digital foundry", "york reaction"])
+        archetype in ["noticia_oficial", "analisis_tecnico"]
+        or any(k in creator_lower for k in ["rockstar", "gta series", "take-two", "digital foundry", "york reaction"])
         or any(k in title_lower for k in ["official trailer", "tráiler oficial", "trailer 1", "trailer 2", "rockstar games"])
     )
 
@@ -296,6 +298,9 @@ def process_single_video(
                 "description": metadata.get("description", ""),
                 "thumbnail_path": thumb_path if thumb_path.exists() else None,
                 "pinned_comment": metadata.get("pinned_comment"),
+                "debate_question": metadata.get("debate_question", ""),
+                "hook": hook_text,
+                "tags": metadata.get("tags", ["GTA6", "GrandTheftAutoVI", "Gaming", "Shorts"]),
                 "original_url": url,
                 "privacy": effective_privacy
             },

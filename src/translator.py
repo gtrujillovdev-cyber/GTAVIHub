@@ -153,14 +153,22 @@ Usa terminología del GLOSARIO OFICIAL Y VIRAL DE GTA 6 cuando sea pertinente:
 - Físicas & Jugabilidad: Físicas de agua realistas, IA de peatones/multitudes, motor RAGE 9, sistema de saqueo, animaciones al agacharse, interiores explorables, atracos a restaurantes, caimanes.
 - Gameplay & Reacciones: Misiones, tiroteos, conducción, persecuciones 5 estrellas, easter eggs, streamers jugando en directo.
 
-Tu tarea es generar:
-1. "viral_title": Un título ULTRA LLAMATIVO completamente en MAYÚSCULAS con emojis gaming y etiqueta #GTA6 (máx 80 caracteres). Debe apelar a la curiosidad, misterio o impacto extremo (ej: "¡NO PUEDE SER! 😱 REVELAN SECRETOS DE GTA 6 [DETALLES BRUTALES] 🔥🌴 #GTA6"). REGLA DE ORO: Jamás uses palabras como 'CONCEPTO', 'CGI', 'FAN-MADE' o 'UNREAL ENGINE'. Enfócate en filtraciones, secretos, comparativas y jugabilidad real.
-2. "summary": Un resumen apasionante de 2 párrafos en español explicando qué ocurre en el vídeo, teorías y por qué la comunidad de GTA está impactada.
-3. "hook": Una frase o pregunta corta de MÁXIMA INTRIGA O POLÉMICA para los primeros 2 segundos (máx 4-5 palabras en MAYÚSCULAS) para evitar que deslicen la pantalla (ej: "¿NOTASTE ESTE SECRETO? 🤯", "¿POR QUÉ OCULTARON ESTO? 🚨", "¡ESTO CAMBIA TODO! 🔥", "EL DETALLE QUE NADIE VIO 😱").
-4. "debate_question": Una pregunta directa, polarizante y picante para la comunidad que genere un aluvión de comentarios inmediatos (ej: "¿Creéis que Lucía traicionará a Jason al final del juego o será al revés?", "¿Preferís 60 FPS estables o gráficos ultra a 30 FPS en PS5?").
+Tu tarea es ADAPTAR EL TONO Y FORMATO AL CONTENIDO REAL:
+1. "archetype": Clasifica el contenido exactamente en uno de estos 6 arquetipos:
+   - "humor_parodia" (parodias como South Park, sketches, memes, risas, situaciones absurdas)
+   - "analisis_tecnico" (físicas de agua/vehículos, motor RAGE 9, gráficos, comparativas de frames/resolución)
+   - "filtracion_misterio" (secretos del mapa, easter eggs, patentes, archivos ocultos)
+   - "noticia_oficial" (comunicados de Rockstar, trailers, fechas oficiales, novedades de Take-Two)
+   - "reaccion_streamer" (momentos de streamers, hype, sorpresa o incredulidad en directo)
+   - "gameplay_puro" (misiones, persecuciones policiales, tiroteos, mundo abierto)
+2. "viral_title": Un título ULTRA LLAMATIVO completamente en MAYÚSCULAS con emojis acordes al arquetipo y etiqueta #GTA6 (máx 80 caracteres). El tono debe adaptarse: cómico para parodias, riguroso/asombro para técnica, misterio para filtraciones, épico para noticias. REGLA DE ORO: Jamás uses palabras como 'CONCEPTO', 'CGI', 'FAN-MADE' o 'UNREAL ENGINE'.
+3. "summary": Un resumen apasionante de 2 párrafos en español explicando qué ocurre en el clip y por qué la comunidad de GTA 6 está reaccionando.
+4. "hook": Una frase o pregunta corta de MÁXIMA INTRIGA O SINTONÍA CON EL ARQUETIPO para los primeros 2 segundos (máx 4-5 palabras en MAYÚSCULAS, máx 24 caracteres) para la píldora superior.
+5. "debate_question": Una pregunta directa, polarizante y picante para la comunidad adaptada al arquetipo que genere aluvión de comentarios en los primeros minutos.
 
 Devuelve tu respuesta EXACTAMENTE en este formato JSON (sin texto extra):
 {{
+  "archetype": "humor_parodia | analisis_tecnico | filtracion_misterio | noticia_oficial | reaccion_streamer | gameplay_puro",
   "viral_title": "TITULO EN MAYUSCULAS CON EMOJIS Y #GTA6",
   "summary": "Resumen en español...",
   "hook": "GANCHO EN MAYUSCULAS",
@@ -176,13 +184,30 @@ Devuelve tu respuesta EXACTAMENTE en este formato JSON (sin texto extra):
         cleaned = clean_srt_response(response.text)
         import json
         data = json.loads(cleaned)
+        archetype = data.get("archetype", "filtracion_misterio").strip().lower()
         viral_title = data.get("viral_title", "").strip().upper()
         summary = data.get("summary", "").strip()
         hook = data.get("hook", "¡INCREÍBLE!").strip().upper()
         debate_question = data.get("debate_question", "¿Qué opinas tú de esta filtración de GTA 6? ¡Te leemos abajo! 👇").strip()
     except Exception as e:
         print(f"[Warning] Error consultando IA para metadatos: {e}")
-        fallback_hook = "¡GAMEPLAY BRUTAL!" if is_launched else "¡DETALLE ÉPICO!"
+        # Inferencia heurística de arquetipo si falla la IA
+        orig_lower = (original_title or "").lower()
+        if any(k in orig_lower for k in ["south park", "parodia", "meme", "sketch", "fails", "humor"]):
+            archetype = "humor_parodia"
+            fallback_hook = "¡NO PUEDE SER! 😂"
+        elif any(k in orig_lower for k in ["físicas", "fisicas", "motor", "rage", "gráfico", "grafico", "digital foundry"]):
+            archetype = "analisis_tecnico"
+            fallback_hook = "¡FÍSICAS NUNCA VISTAS! 🌊"
+        elif any(k in orig_lower for k in ["trailer", "tráiler", "oficial", "rockstar", "comunicado"]):
+            archetype = "noticia_oficial"
+            fallback_hook = "¡ANUNCIO OFICIAL! 🔥"
+        elif any(k in orig_lower for k in ["ibai", "xokas", "rubius", "knekro", "reaccion", "reacción"]):
+            archetype = "reaccion_streamer"
+            fallback_hook = "¡REACCIÓN BRUTAL! 😱"
+        else:
+            archetype = "gameplay_puro" if is_launched else "filtracion_misterio"
+            fallback_hook = "¡GAMEPLAY BRUTAL!" if is_launched else "¡DETALLE ÉPICO!"
         viral_title = f"¡BRUTAL! 🔥 MOMENTO ÉPICO EN GTA 6: {original_title[:40].upper()} #GTA6" if is_launched else f"¡BRUTAL! 🔥 REACCIÓN Y ANÁLISIS DE GTA 6: {original_title[:40].upper()} #GTA6"
         summary = f"Cobertura y mejores momentos de Grand Theft Auto VI a partir del contenido de {creator_name or 'la comunidad'}."
         hook = fallback_hook
@@ -270,5 +295,6 @@ Grand Theft Auto VI, GTA VI, Vice City y los logotipos asociados son marcas regi
         "description": full_description[:5000],
         "hook": hook,
         "debate_question": debate_question,
-        "pinned_comment": pinned_comment
+        "pinned_comment": pinned_comment,
+        "archetype": archetype
     }

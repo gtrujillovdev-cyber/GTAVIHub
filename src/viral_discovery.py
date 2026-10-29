@@ -155,7 +155,22 @@ def calculate_virality_score(
     # 1. Velocity Score (0 a 30) — eje central: vistas/día detecta breakouts emergentes
     velocity_score = 0
     velocity_vpd = None
-    if days_old is not None and days_old > 0 and views > 0:
+    if days_old == 1 and views > 0:
+        # Subido hoy (Día 1): Breakout inmediato
+        velocity_vpd = round(float(views), 1)
+        if views >= 50_000:
+            velocity_score = 30
+        elif views >= 10_000:
+            velocity_score = 28
+        elif views >= 2_000:
+            velocity_score = 20
+        elif views >= 500:
+            velocity_score = 14
+        elif views >= 100:
+            velocity_score = 8
+        else:
+            velocity_score = 5
+    elif days_old is not None and days_old > 1 and views > 0:
         vpd = views / days_old
         velocity_vpd = round(vpd, 1)
         if vpd >= 500_000:
@@ -176,16 +191,6 @@ def calculate_virality_score(
             velocity_score = 5
         elif vpd >= 50:
             velocity_score = 3
-    elif days_old == 1 and views > 0:
-        # Subido hoy: breakout inmediato (days_old=1 pero vpd no calculable aún)
-        if views >= 10_000:
-            velocity_score = 28
-        elif views >= 2_000:
-            velocity_score = 20
-        elif views >= 500:
-            velocity_score = 12
-        else:
-            velocity_score = 5
 
     # 2. Puntos por visualizaciones absolutas (0 a 25) — rebajado, complementa velocity
     if views >= 10_000_000:
