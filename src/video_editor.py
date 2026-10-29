@@ -313,25 +313,25 @@ def render_top_hook_headline(hook_text: str, output_path: Path) -> bool:
     if not clean_hook:
         return False
     
-    font_size = 40 if len(clean_hook) < 26 else (33 if len(clean_hook) < 40 else 26)
+    font_size = 38 if len(clean_hook) < 26 else (32 if len(clean_hook) < 40 else 26)
     font = get_best_font(size=font_size)
     d_temp = ImageDraw.Draw(Image.new("RGBA", (1, 1)))
     bb = d_temp.textbbox((0, 0), clean_hook, font=font)
     w = bb[2] - bb[0]
     h = bb[3] - bb[1]
 
-    pad_x = 28
-    pad_y = 12
+    pad_x = 40
+    pad_y = 16
     box_w = int(w + pad_x * 2)
     box_h = int(h + pad_y * 2)
 
     img = Image.new("RGBA", (box_w, box_h), (0, 0, 0, 0))
     d = ImageDraw.Draw(img)
 
-    # Fondo píldora translúcido estilo Apple/Shorts con borde dorado
-    d.rounded_rectangle([(0, 0), (box_w - 1, box_h - 1)], radius=14, fill=(12, 12, 16, 210), outline=(255, 230, 0, 180), width=2)
+    # Fondo píldora translúcido estilo Apple/Shorts con borde cristalino sutil (no compite con el texto)
+    d.rounded_rectangle([(0, 0), (box_w - 1, box_h - 1)], radius=18, fill=(10, 10, 16, 220), outline=(255, 255, 255, 55), width=2)
     # Sombra del texto
-    d.text((pad_x + 2, pad_y + 2), clean_hook, font=font, fill=(0, 0, 0, 220))
+    d.text((pad_x + 2, pad_y + 2), clean_hook, font=font, fill=(0, 0, 0, 240))
     # Texto Amarillo Neón de alta legibilidad
     d.text((pad_x, pad_y), clean_hook, font=font, fill=(255, 235, 20, 255), stroke_width=2, stroke_fill=(0, 0, 0, 255))
     img.save(output_path, "PNG")
@@ -345,13 +345,19 @@ def render_karaoke_subtitle_state(words: List[str], active_idx: int, is_vertical
     - La frase permanece 100% fija y estable horizontalmente (cero temblores/jitter).
     - La palabra activa se resalta en Amarillo (#FFE600) o Rosa Neón (#FF2D87).
     - Las palabras inactivas de la frase permanecen en Blanco Puro (#FFFFFF).
-    - Espaciado amplio (space_w = 26px) para evitar palabras apelotonadas.
+    - Espaciado amplio y márgenes laterales generosos (pad_x=44) para que ninguna letra toque los bordes.
     """
     if not words:
         return False
 
+    # Limpiar puntuación residual colgante (puntos, comas) para estética moderna de subtítulos
+    display_words = [re.sub(r'[.,;:]+$', '', w).strip() for w in words]
+    display_words = [w for w in display_words if w]
+    if not display_words:
+        return False
+
     max_w = 760 if is_vertical else 1000
-    font_size = 52 if is_vertical else 42
+    font_size = 50 if is_vertical else 42
     font = get_best_font(size=font_size)
 
     temp_img = Image.new("RGBA", (1, 1))
@@ -361,8 +367,8 @@ def render_karaoke_subtitle_state(words: List[str], active_idx: int, is_vertical
 
     # Ajustar tamaño de fuente dinámicamente si supera el ancho máximo seguro
     while font_size > 32:
-        test_w = sum(d_temp.textbbox((0, 0), w, font=font)[2] - d_temp.textbbox((0, 0), w, font=font)[0] for w in words)
-        test_w += space_w * (len(words) - 1)
+        test_w = sum(d_temp.textbbox((0, 0), w, font=font)[2] - d_temp.textbbox((0, 0), w, font=font)[0] for w in display_words)
+        test_w += space_w * (len(display_words) - 1)
         if test_w <= max_w:
             break
         font_size -= 4
@@ -371,34 +377,42 @@ def render_karaoke_subtitle_state(words: List[str], active_idx: int, is_vertical
     pop_font = get_best_font(size=font_size + 4)
     emoji_font = get_emoji_font(size=38) if is_vertical else None
 
-    word_widths = [d_temp.textbbox((0, 0), w, font=font)[2] - d_temp.textbbox((0, 0), w, font=font)[0] for w in words]
-    total_w = sum(word_widths) + space_w * (len(words) - 1)
+    # Asignar casilla fija a cada palabra con el ancho máximo (normal o pop) para cero jitter y cero colisiones
+    cell_widths = []
+    for w in display_words:
+        bb_normal = d_temp.textbbox((0, 0), w, font=font)
+        w_norm = bb_normal[2] - bb_normal[0]
+        bb_pop = d_temp.textbbox((0, 0), w, font=pop_font)
+        w_pop = bb_pop[2] - bb_pop[0]
+        cell_widths.append(max(w_norm, w_pop) + 4)
+
+    total_w = sum(cell_widths) + space_w * (len(display_words) - 1)
     sample_bb = font.getbbox("AY")
     text_h = (sample_bb[3] - sample_bb[1])
 
     # Altura adicional para emoji si aplica
     emoji_room = 42 if (is_vertical and emoji_font) else 0
 
-    pad_x = 28
-    pad_y = 14
+    pad_x = 44
+    pad_y = 18
     box_w = int(total_w + pad_x * 2)
-    box_h = int(text_h + pad_y * 2 + emoji_room + 8)
+    box_h = int(text_h + pad_y * 2 + emoji_room + 10)
 
     img = Image.new("RGBA", (box_w, box_h), (0, 0, 0, 0))
     d = ImageDraw.Draw(img)
 
-    # 1. Píldora de Contraste Traslúcida (Dark Pill Backdrop)
+    # 1. Píldora de Contraste Traslúcida (Dark Pill Backdrop con borde suave)
     pill_top = emoji_room
     d.rounded_rectangle(
         [(0, pill_top), (box_w - 1, box_h - 1)],
-        radius=18,
-        fill=(8, 8, 14, 195),
-        outline=(255, 255, 255, 40),
+        radius=20,
+        fill=(10, 10, 16, 215),
+        outline=(255, 255, 255, 45),
         width=2
     )
 
     # Detectar palabra activa y sus propiedades
-    raw_active_word = words[active_idx] if 0 <= active_idx < len(words) else ""
+    raw_active_word = display_words[active_idx] if 0 <= active_idx < len(display_words) else ""
     clean_active = re.sub(r'[^a-zA-ZáéíóúñÁÉÍÓÚÑ]', '', raw_active_word).lower()
     active_emoji = EMOJI_KEYWORDS.get(clean_active) if emoji_font else None
     is_hot_pink = clean_active in HOT_PINK_KEYWORDS
@@ -412,36 +426,32 @@ def render_karaoke_subtitle_state(words: List[str], active_idx: int, is_vertical
     glow = Image.new("RGBA", (box_w, box_h), (0, 0, 0, 0))
     d_glow = ImageDraw.Draw(glow)
     cur_x = pad_x
-    for idx, w in enumerate(words):
-        ww = word_widths[idx]
+    for idx, w in enumerate(display_words):
+        cw = cell_widths[idx]
         if idx == active_idx:
-            # Centrar sutilmente el pop de la palabra activa en su casilla fija
-            ww_pop = d_temp.textbbox((0, 0), w, font=pop_font)[2] - d_temp.textbbox((0, 0), w, font=pop_font)[0]
-            draw_x = cur_x + (ww - ww_pop) / 2
+            bb_pop = d_temp.textbbox((0, 0), w, font=pop_font)
+            ww_pop = bb_pop[2] - bb_pop[0]
+            draw_x = cur_x + (cw - ww_pop) / 2
             d_glow.text((draw_x, base_y - 2), w, font=pop_font, fill=glow_color, stroke_width=8, stroke_fill=glow_color)
-        cur_x += ww + space_w
+        cur_x += cw + space_w
 
     glow = glow.filter(ImageFilter.GaussianBlur(5))
     img = Image.alpha_composite(img, glow)
     d = ImageDraw.Draw(img)
 
-    # 3. Dibujar las palabras de la frase (la frase entera se lee, la activa se resalta)
+    # 3. Dibujar las palabras de la frase perfectamente centradas en su casilla fija
     cur_x = pad_x
-    for idx, w in enumerate(words):
-        ww = word_widths[idx]
+    for idx, w in enumerate(display_words):
+        cw = cell_widths[idx]
         is_active = (idx == active_idx)
         current_font = pop_font if is_active else font
         text_color = active_color if is_active else (255, 255, 255, 255)
         stroke_w = 4 if is_active else 3
 
-        # Si es activa, centrar en la casilla fija asignada para no desplazar las demás palabras
-        if is_active:
-            ww_pop = d_temp.textbbox((0, 0), w, font=pop_font)[2] - d_temp.textbbox((0, 0), w, font=pop_font)[0]
-            draw_x = cur_x + (ww - ww_pop) / 2
-            draw_y = base_y - 2
-        else:
-            draw_x = cur_x
-            draw_y = base_y
+        bb_w = d_temp.textbbox((0, 0), w, font=current_font)
+        ww_act = bb_w[2] - bb_w[0]
+        draw_x = cur_x + (cw - ww_act) / 2
+        draw_y = base_y - (2 if is_active else 0)
 
         # Sombra de profundidad 3D
         d.text((draw_x + 2, draw_y + 3), w, font=current_font, fill=(0, 0, 0, 240))
@@ -450,14 +460,14 @@ def render_karaoke_subtitle_state(words: List[str], active_idx: int, is_vertical
 
         # Emoji contextual flotante encima si aplica
         if is_active and active_emoji and emoji_font:
-            emoji_x = int(cur_x + (ww - 38) / 2)
+            emoji_x = int(cur_x + (cw - 38) / 2)
             emoji_y = max(2, pill_top - 38)
             try:
                 d.text((emoji_x, emoji_y), active_emoji, font=emoji_font, embedded_color=True)
             except Exception:
                 pass
 
-        cur_x += ww + space_w
+        cur_x += cw + space_w
 
     img.save(output_path, "PNG")
     return True
@@ -533,26 +543,19 @@ def render_final_video(
     is_already_vertical = (height > width)
     is_vertical = force_short_format or is_already_vertical
 
-    if is_vertical and not is_already_vertical and is_official_content:
-        # Formato B (Full Frame Cinema - 0% recorte horizontal):
-        # Exclusivo para contenido oficial de Rockstar o análisis técnicos de alta prioridad
-        aspect = (width / height) if (width and height and height > 0) else (16 / 9)
+    if is_vertical and not is_already_vertical:
+        # Modo Encuadre Dinámico Inteligente (Dynamic Smart Crop):
+        # En lugar de una franja estrecha de 608px o un recorte excesivo del 65%:
+        # Recortamos moderadamente los laterales (~18-20% por banda) para que el vídeo
+        # llene con fuerza el área central a 960px de altura (50% de la pantalla vertical),
+        # preservando el 100% de la acción y caras en el centro y dejando márgenes generosos
+        # arriba para el gancho (y=120) y abajo para los subtítulos en zona segura (y=1440).
         fg_w = 1080
-        fg_h = int(fg_w / aspect)
-        if fg_h % 2 != 0:
-            fg_h += 1
-        fg_y = 480  # Espacio superior para gancho (y=85) e inferior para subtítulos (y=1360)
+        fg_h = 960
+        fg_y = 400
         fg_bottom = fg_y + fg_h
         is_cinema_layout = True
-        print(f"[*] [OFICIAL ROCKSTAR] Modo Full Frame Cinema: Vídeo 16:9 a ancho completo ({fg_w}x{fg_h} @ y={fg_y}) con 0% de recorte.")
-    elif is_vertical and not is_already_vertical:
-        # Vídeo horizontal no oficial: reencuadre centrado 83.3% para llenar formato vertical nativo
-        fg_w = 1080
-        fg_h = 1600
-        fg_y = 160
-        fg_bottom = fg_y + fg_h
-        is_cinema_layout = False
-        print(f"[*] Modo Reencuadre Vertical 83.3%: Adaptando vídeo horizontal no oficial a formato Short...")
+        print(f"[*] Modo Encuadre Dinámico Inteligente: Vídeo adaptado a {fg_w}x{fg_h} @ y={fg_y} (recorte lateral moderado del ~18%).")
     else:
         # Formato C (Vertical Nativo 9:16):
         fg_w = 1080
@@ -678,19 +681,11 @@ def render_final_video(
     filter_chains = []
 
     # A) Base de vídeo:
-    if is_vertical and not is_already_vertical and is_cinema_layout:
-        # Formato B (Full Frame Cinema Oficial): 0% recorte horizontal, tráiler oficial 16:9 completo sin cortar los laterales
+    if is_vertical and not is_already_vertical:
+        # Vídeo horizontal con encuadre dinámico: escala a altura 960 y recorte centrado moderado (~18%)
         v_base = (
             "[0:v]split[v1][v2];"
-            "[v1]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,boxblur=30:5,eq=brightness=-0.15:contrast=1.05:saturation=1.2[bg];"
-            f"[v2]scale=1080:{fg_h}:force_original_aspect_ratio=decrease,unsharp=3:3:0.6:3:3:0.0,eq=contrast=1.06:saturation=1.12[fg];"
-            f"[bg][fg]overlay=0:{fg_y}[v_framed]"
-        )
-    elif is_vertical and not is_already_vertical:
-        # Vídeo horizontal no oficial: reencuadre centrado al 83.3% para formato vertical nativo
-        v_base = (
-            "[0:v]split[v1][v2];"
-            "[v1]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,boxblur=25:5,eq=brightness=-0.06:contrast=1.05:saturation=1.2[bg];"
+            "[v1]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,boxblur=28:5,eq=brightness=-0.12:contrast=1.05:saturation=1.15[bg];"
             f"[v2]scale=-2:{fg_h},crop=1080:{fg_h}:(iw-1080)/2:0,unsharp=3:3:0.6:3:3:0.0,eq=contrast=1.06:saturation=1.12[fg];"
             f"[bg][fg]overlay=0:{fg_y}[v_framed]"
         )
@@ -709,13 +704,14 @@ def render_final_video(
 
     # C) Superponer Gancho Superior (0.0 a 2.5s)
     if hook_idx is not None:
-        filter_chains.append(f"[{current_v}][{hook_idx}:v]overlay=(W-w)/2:85:enable='between(t,0,2.5)'[v_hooked]")
+        filter_chains.append(f"[{current_v}][{hook_idx}:v]overlay=(W-w)/2:120:enable='between(t,0,2.5)'[v_hooked]")
         current_v = "v_hooked"
 
     # D) Superponer Subtítulos Karaoke palabra por palabra
-    # Safe Zone vertical (Instagram Reels / TikTok): y=1200 en 9:16 para quedar por encima de descripción/audio
-    # y debajo del gancho y foco central. En modo Cinema (16:9), y=1140 justo debajo del vídeo panorámico.
-    sub_y = "1140" if is_cinema_layout else ("1200" if is_vertical else "H-h-90")
+    # Safe Zone vertical (Instagram Reels / TikTok / YouTube Shorts):
+    # En vídeos horizontales adaptados: y=1440 (centrado en el tercio inferior libre, sin tapar interfaz).
+    # En vídeos verticales nativos: y=1200.
+    sub_y = "1440" if (is_vertical and not is_already_vertical) else ("1200" if is_vertical else "H-h-90")
     for s_idx, (_, start_s, end_s) in enumerate(sub_pngs):
         in_id = sub_inputs_start + s_idx
         next_v = f"v_sub_{s_idx}"
