@@ -196,7 +196,7 @@ def fetch_channel_candidates(max_per_channel: int = 2) -> List[Dict[str, Any]]:
                     "--impersonate", "chrome",
                     "--no-check-certificates",
                     "--flat-playlist",
-                    "--print", "%(id)s\t%(title)s\t%(duration)s\t%(view_count)s\t%(url)s\t%(upload_date)s",
+                    "--print", "%(id)s\t%(title)s\t%(duration)s\t%(view_count)s\t%(like_count)s\t%(url)s\t%(upload_date)s",
                     "-I", f"1:{max_per_channel * 2}",
                     u
                 ], capture_output=True, text=True, check=True, timeout=25)
@@ -221,16 +221,22 @@ def fetch_channel_candidates(max_per_channel: int = 2) -> List[Dict[str, Any]]:
                     views = int(parts[3]) if len(parts) > 3 and parts[3] not in ("NA", "") else 0
                 except ValueError:
                     views = 0
-                vid_url = parts[4] if len(parts) > 4 else f"https://www.youtube.com/watch?v={vid_id}"
-                up_date = parts[5].strip() if len(parts) > 5 else ""
+                try:
+                    like_count = int(parts[4]) if len(parts) > 4 and parts[4] not in ("NA", "") else None
+                except ValueError:
+                    like_count = None
+                vid_url = parts[5] if len(parts) > 5 else f"https://www.youtube.com/watch?v={vid_id}"
+                up_date = parts[6].strip() if len(parts) > 6 else ""
 
                 if vid_id and vid_id not in processed_ids and vid_id != "NA":
                     # FILTRO DE FRESCURA TEMPORAL: Descartar vídeos con más de 30 días de antigüedad
+                    days_old = None
                     if up_date and up_date.isdigit() and len(up_date) == 8:
                         try:
                             age_days = (datetime.now() - datetime.strptime(up_date, "%Y%m%d")).days
                             if age_days > 30:
                                 continue
+                            days_old = max(1, age_days)
                         except Exception:
                             pass
                     # FILTRO INNEGOCIABLE DE CONTENIDO EXCLUSIVO GTA 6:
@@ -249,7 +255,8 @@ def fetch_channel_candidates(max_per_channel: int = 2) -> List[Dict[str, Any]]:
                     if not is_official and (dur_secs > 65 or dur_secs < 12):
                         continue
 
-                    score_data = calculate_virality_score(title, dur_secs, views)
+                    score_data = calculate_virality_score(title, dur_secs, views, days_old=days_old, like_count=like_count)
+                    velocity = score_data.get("velocity_vpd")
 
                     results.append({
                         "id": vid_id,
@@ -257,11 +264,15 @@ def fetch_channel_candidates(max_per_channel: int = 2) -> List[Dict[str, Any]]:
                         "url": vid_url,
                         "duration": dur_secs,
                         "views": views,
+                        "like_count": like_count,
+                        "days_old": days_old,
+                        "velocity": velocity,
                         "score": score_data["score"],
                         "source_name": ch_name,
                         "source_type": ch.get("type", "general"),
                         "lang": ch.get("lang", "es"),
-                        "is_short": (0 < dur_secs <= 60)
+                        "is_short": (0 < dur_secs <= 60),
+                        "source_count": 1,
                     })
         return results
 
@@ -276,7 +287,7 @@ def fetch_channel_candidates(max_per_channel: int = 2) -> List[Dict[str, Any]]:
                 "--impersonate", "chrome",
                 "--no-check-certificates",
                 "--flat-playlist",
-                "--print", "%(id)s\t%(title)s\t%(duration)s\t%(view_count)s\t%(url)s\t%(upload_date)s",
+                "--print", "%(id)s\t%(title)s\t%(duration)s\t%(view_count)s\t%(like_count)s\t%(url)s\t%(upload_date)s",
                 query
             ], capture_output=True, text=True, check=True, timeout=25)
 
@@ -292,16 +303,22 @@ def fetch_channel_candidates(max_per_channel: int = 2) -> List[Dict[str, Any]]:
                         views = int(parts[3]) if len(parts) > 3 and parts[3] not in ("NA", "") else 0
                     except ValueError:
                         views = 0
-                    vid_url = parts[4] if len(parts) > 4 else f"https://www.youtube.com/watch?v={vid_id}"
-                    up_date = parts[5].strip() if len(parts) > 5 else ""
+                    try:
+                        like_count = int(parts[4]) if len(parts) > 4 and parts[4] not in ("NA", "") else None
+                    except ValueError:
+                        like_count = None
+                    vid_url = parts[5] if len(parts) > 5 else f"https://www.youtube.com/watch?v={vid_id}"
+                    up_date = parts[6].strip() if len(parts) > 6 else ""
 
                     if vid_id and vid_id not in processed_ids and vid_id != "NA":
                         # FILTRO DE FRESCURA TEMPORAL: Descartar vídeos con más de 30 días de antigüedad
+                        days_old = None
                         if up_date and up_date.isdigit() and len(up_date) == 8:
                             try:
                                 age_days = (datetime.now() - datetime.strptime(up_date, "%Y%m%d")).days
                                 if age_days > 30:
                                     continue
+                                days_old = max(1, age_days)
                             except Exception:
                                 pass
 
@@ -316,7 +333,8 @@ def fetch_channel_candidates(max_per_channel: int = 2) -> List[Dict[str, Any]]:
                         if q.get("only_shorts", True) and (dur_secs > 65 or dur_secs < 12):
                             continue
 
-                        score_data = calculate_virality_score(title, dur_secs, views)
+                        score_data = calculate_virality_score(title, dur_secs, views, days_old=days_old, like_count=like_count)
+                        velocity = score_data.get("velocity_vpd")
 
                         results.append({
                             "id": vid_id,
@@ -324,15 +342,33 @@ def fetch_channel_candidates(max_per_channel: int = 2) -> List[Dict[str, Any]]:
                             "url": vid_url,
                             "duration": dur_secs,
                             "views": views,
+                            "like_count": like_count,
+                            "days_old": days_old,
+                            "velocity": velocity,
                             "score": score_data["score"],
                             "source_name": f"Search: {query.split(':')[1] if ':' in query else query}",
                             "source_type": "viral_search",
                             "lang": q.get("lang", "es"),
-                            "is_short": (0 < dur_secs <= 60)
+                            "is_short": (0 < dur_secs <= 60),
+                            "source_count": 1,
                         })
         except Exception as e:
             print(f"[!] Error en query {query}: {e}")
         return results
+
+    def _merge_candidate(cand: Dict[str, Any]):
+        """Inserta o actualiza un candidato aplicando cross-source bonus si aparece en múltiples fuentes."""
+        vid_id = cand["id"]
+        if vid_id not in candidates_by_id:
+            cand["source_count"] = 1
+            candidates_by_id[vid_id] = cand
+        else:
+            existing = candidates_by_id[vid_id]
+            existing["source_count"] = existing.get("source_count", 1) + 1
+            existing["score"] = min(100, existing["score"] + 5)  # +5 pts por cada fuente extra
+            if cand["score"] > existing["score"]:
+                cand["source_count"] = existing["source_count"]
+                candidates_by_id[vid_id] = cand
 
     # 1. Target Channels en paralelo (máx 3 workers para no saturar GaTDSEQ)
     target_channels = [ch for ch in config.get("channels", []) if ch.get("enabled", True)]
@@ -340,9 +376,7 @@ def fetch_channel_candidates(max_per_channel: int = 2) -> List[Dict[str, Any]]:
         futures = {executor.submit(_scan_channel, ch): ch for ch in target_channels}
         for future in concurrent.futures.as_completed(futures):
             for cand in future.result():
-                vid_id = cand["id"]
-                if vid_id not in candidates_by_id or cand["score"] > candidates_by_id[vid_id]["score"]:
-                    candidates_by_id[vid_id] = cand
+                _merge_candidate(cand)
 
     # 2. Search queries en paralelo (máx 3 workers)
     from .config import is_gameplay_enabled
@@ -367,9 +401,7 @@ def fetch_channel_candidates(max_per_channel: int = 2) -> List[Dict[str, Any]]:
             futures = {executor.submit(_scan_query, q): q for q in active_queries}
             for future in concurrent.futures.as_completed(futures):
                 for cand in future.result():
-                    vid_id = cand["id"]
-                    if vid_id not in candidates_by_id or cand["score"] > candidates_by_id[vid_id]["score"]:
-                        candidates_by_id[vid_id] = cand
+                    _merge_candidate(cand)
 
     candidates = list(candidates_by_id.values())
     # Ordenar por score descendente; Shorts tienen prioridad en caso de empate

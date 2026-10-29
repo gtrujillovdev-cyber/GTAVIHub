@@ -44,8 +44,8 @@ def select_best_candidate_ai(
         chosen["hook_line2"] = l2
         return chosen
 
-    # Limitar a los 10 mejores según virality_score para la IA
-    pool = candidates[:10]
+    # Limitar a los 15 mejores según virality_score para la IA
+    pool = candidates[:15]
 
     # Cargar playbook si no se suministró
     if playbook is None:
@@ -65,14 +65,19 @@ def select_best_candidate_ai(
     # Preparar resumen de candidatos para el prompt
     candidates_summary = []
     for idx, c in enumerate(pool):
+        views = c.get("views") or 0
+        like_count = c.get("like_count") or 0
+        engagement_rate = round(like_count / views, 4) if views > 0 and like_count > 0 else None
         candidates_summary.append({
             "index": idx,
             "id": c.get("id"),
             "title": c.get("title"),
             "duration": c.get("duration"),
-            "views": c.get("views"),
-            "velocity": c.get("velocity"),
+            "views": views,
+            "velocity_vpd": c.get("velocity_vpd") or c.get("velocity"),
             "days_old": c.get("days_old"),
+            "engagement_rate": engagement_rate,
+            "source_count": c.get("source_count", 1),
             "uploader": c.get("uploader") or c.get("source_name", "Desconocido"),
             "base_score": c.get("score")
         })
@@ -92,7 +97,7 @@ def select_best_candidate_ai(
 {mode_context}
 
 OBJETIVO:
-Analiza los siguientes 10 vídeos candidatos pre-filtrados y SELECCIONA EL MEJOR CLIP ABSOLUTO para procesar y publicar ahora mismo.
+Analiza los siguientes 15 vídeos candidatos pre-filtrados y SELECCIONA EL MEJOR CLIP ABSOLUTO para procesar y publicar ahora mismo.
 
 CANDIDATOS:
 {json.dumps(candidates_summary, indent=2, ensure_ascii=False)}
@@ -101,10 +106,13 @@ VÍDEOS RECIENTES YA PUBLICADOS (EVITA REPETIR ESTAS TEMÁTICAS):
 {json.dumps(recent_titles, indent=2, ensure_ascii=False)}
 
 CRITERIOS EDITORIALES DE VICTORIA (PLAYBOOK VIRAL):
-1. ENGAGEMENT Y CURIOSIDAD: El vídeo debe provocar el deseo irrefrenable de comentar o ver hasta el final.
-2. CERO CLICKBAIT FALSO: Descarta conceptos abstractos o mods antiguos. Solo contenido real y de impacto.
-3. CULTURA POP & VIRALIDAD: Las parodias virales (como la de South Park) y las demostraciones técnicas de físicas tienen altísima retención.
-4. GANCHO DE 2 LÍNEAS: Redacta dos líneas de gancho superiores (Línea 1 en blanco max 26 caracteres, Línea 2 en amarillo neón max 22 caracteres).
+1. VELOCIDAD VIRAL (velocity_vpd): Prioriza vídeos con alta velocidad de crecimiento (vistas/día). El algoritmo de YouTube distribuye activamente el contenido en ascenso explosivo.
+2. MULTI-FUENTE (source_count > 1): Un vídeo detectado por múltiples fuentes/queries simultáneamente es una señal inequívoca de momento viral. Priorizarlo sobre candidatos únicos.
+3. ENGAGEMENT REAL (engagement_rate): Ratio likes/vistas como proxy de distribución activa por el algoritmo. Un ratio > 0.02 indica audiencia comprometida.
+4. ENGAGEMENT Y CURIOSIDAD: El vídeo debe provocar el deseo irrefrenable de comentar o ver hasta el final.
+5. CERO CLICKBAIT FALSO: Descarta conceptos abstractos o mods antiguos. Solo contenido real y de impacto.
+6. CULTURA POP & VIRALIDAD: Las parodias virales (como la de South Park) y las demostraciones técnicas de físicas tienen altísima retención.
+7. GANCHO DE 2 LÍNEAS: Redacta dos líneas de gancho superiores (Línea 1 en blanco max 26 caracteres, Línea 2 en amarillo neón max 22 caracteres).
 
 RESPONDE EXCLUSIVAMENTE CON UN OBJETO JSON VÁLIDO:
 {{

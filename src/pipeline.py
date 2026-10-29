@@ -3,6 +3,7 @@ import os
 import re
 import json
 import shutil
+import subprocess
 from datetime import datetime
 from pathlib import Path
 from typing import Optional, Dict, Any
@@ -188,6 +189,24 @@ def process_single_video(
         gc.collect()  # Liberar buffers para GaTDSEQ
         return None
 
+    # 5b. Validación post-render con ffprobe (detecta archivos corruptos o truncados)
+    try:
+        probe = subprocess.run(
+            ["ffprobe", "-v", "quiet", "-show_entries", "format=duration",
+             "-of", "csv=p=0", str(output_path)],
+            capture_output=True, text=True, timeout=10
+        )
+        rendered_duration = float(probe.stdout.strip()) if probe.stdout.strip() else 0.0
+        if rendered_duration < 5.0:
+            print(f"[!] Validación post-render FALLIDA: duración {rendered_duration:.1f}s < 5s. Vídeo descartado.")
+            output_path.unlink(missing_ok=True)
+            clean_temp_directory(video_id)
+            gc.collect()
+            return None
+        print(f"[✓] Validación post-render OK: {rendered_duration:.1f}s")
+    except Exception as e:
+        print(f"[Pipeline] Aviso validación ffprobe: {e}")
+
     # 6. Generación de Miniatura de alto CTR
     report_stage("📸 [4/5] Generando miniatura personalizada de alto impacto...")
     create_video_thumbnail(
@@ -320,6 +339,21 @@ def process_single_video(
         "multiplatform": multiplatform_results if publish_all else None,
         "date": datetime.now().isoformat()
     })
+
+    # 8b. Registro en performance_tracker para el bucle de feedback de 24h
+    try:
+        from .performance_tracker import record_published_video
+        record_published_video(
+            video_id=video_id,
+            title=original_title,
+            youtube_url=full_info.get("uploaded_youtube_url", ""),
+            base_score=0,
+            velocity_vpd=0.0,
+            days_old=0,
+            is_short=is_short
+        )
+    except Exception as e:
+        print(f"[Pipeline] Info performance_tracker: {e}")
 
     # 9. REGLAS ESTRICTAS DE LIMPIEZA
     # Limpiar todos los archivos de trabajo en temp/

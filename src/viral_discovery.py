@@ -110,79 +110,138 @@ EXCLUDED_KEYWORDS = [
     "trailer 2", "tráiler 2", "trailer2", "loop", "bucle"
 ]
 
+# Términos cortos que necesitan word-boundary para evitar falsos positivos por substring
+_EXCLUDED_WHOLE_WORDS = {"mod", "mods", "fake", "loop", "cgi"}
+
 def calculate_virality_score(
-    title: str, duration: float, views: int, days_old: Optional[int] = None
+    title: str, duration: float, views: int, days_old: Optional[int] = None,
+    like_count: Optional[int] = None
 ) -> Dict[str, Any]:
     """
-    Calcula una puntuación de virabilidad y potencial de engagement (0 a 100),
-    asegurando cumplimiento estricto de directrices (Fair Use & Anti-Content-ID):
-    1. Filtro de Exclusión de Copyright Musical / Contenido Abstracto Fan-Made
-    2. Volumen de Visualizaciones (0 - 50 pts) — incluye tiers mega-viral
-    3. Retención y Formato Vertical (0 - 35 pts): Primando Shorts (10s a 65s)
-    4. Relevancia Semántica de Palabras Clave (0 - 20 pts)
-    5. Prioridad a Creadores y Streamers Reales (Bonus 0 - 15 pts)
-    6. Velocidad de Crecimiento / Velocity (Bonus 0 - 10 pts)
+    Calcula una puntuación de virabilidad y potencial de engagement (0 a 100).
+    Scoring v2 — Velocity como eje central (contenido emergente > contenido antiguo):
+    1. Filtro de Exclusión: Copyright Musical / Contenido Abstracto Fan-Made
+    2. Velocity Score (0 - 30 pts)  — PRIMARIO: vistas/día detecta breakouts reales
+    3. Vistas Absolutas (0 - 25 pts) — complementa velocity para vídeos sin days_old
+    4. Duración Óptima / Formato (0 - 20 pts) — sweet spot 18-28s del Playbook
+    5. Relevancia Semántica Keywords (0 - 15 pts)
+    6. Tasa de Engagement likes/vistas (0 - 10 pts) — señal de distribución activa
+    7. Bonus Creadores / Cultura Pop / Gameplay (0 - 10 pts)
+    8. Freshness Decay: penalización si >14 días (-5 pts)
     """
     title_lower = title.lower()
 
     # Filtro de seguridad: excluir música comercial, gameplays crudos y conceptos abstractos CGI
+    # Términos cortos usan word-boundary para evitar falsos positivos (ej. "mod" en "modo")
     for exc in EXCLUDED_KEYWORDS:
-        if exc in title_lower:
+        if exc in _EXCLUDED_WHOLE_WORDS:
+            if re.search(r'\b' + re.escape(exc) + r'\b', title_lower):
+                return {
+                    "score": 0, "velocity_score": 0, "views_score": 0,
+                    "format_score": 0, "keyword_score": 0, "engagement_score": 0,
+                    "bonus": 0, "freshness_penalty": 0, "velocity_vpd": None,
+                    "matches": [], "is_short": (0 < duration <= 65),
+                    "excluded_reason": f"Filtro (word-boundary): '{exc}'"
+                }
+        elif exc in title_lower:
             return {
-                "score": 0,
-                "views_score": 0,
-                "format_score": 0,
-                "keyword_score": 0,
-                "bonus": 0,
-                "velocity_bonus": 0,
-                "matches": [],
-                "is_short": (0 < duration <= 65),
+                "score": 0, "velocity_score": 0, "views_score": 0,
+                "format_score": 0, "keyword_score": 0, "engagement_score": 0,
+                "bonus": 0, "freshness_penalty": 0, "velocity_vpd": None,
+                "matches": [], "is_short": (0 < duration <= 65),
                 "excluded_reason": f"Filtro de exclusión activo: '{exc}' (evita música o conceptos abstractos no oficiales)"
             }
 
-    # 1. Puntos por visualizaciones (0 a 50) — tiers mega-viral diferenciados
-    if views >= 10_000_000:
-        views_score = 50
-    elif views >= 5_000_000:
-        views_score = 48
-    elif views >= 2_000_000:
-        views_score = 45
-    elif views >= 500_000:
-        views_score = 40
-    elif views >= 200_000:
-        views_score = 35
-    elif views >= 100_000:
-        views_score = 30
-    elif views >= 50_000:
-        views_score = 25
-    elif views >= 20_000:
-        views_score = 20
-    elif views >= 5_000:
-        views_score = 15
-    elif views >= 1_000:
-        views_score = 10
-    else:
-        views_score = 5
+    # 1. Velocity Score (0 a 30) — eje central: vistas/día detecta breakouts emergentes
+    velocity_score = 0
+    velocity_vpd = None
+    if days_old is not None and days_old > 0 and views > 0:
+        vpd = views / days_old
+        velocity_vpd = round(vpd, 1)
+        if vpd >= 500_000:
+            velocity_score = 30
+        elif vpd >= 100_000:
+            velocity_score = 27
+        elif vpd >= 50_000:
+            velocity_score = 24
+        elif vpd >= 20_000:
+            velocity_score = 20
+        elif vpd >= 10_000:
+            velocity_score = 16
+        elif vpd >= 5_000:
+            velocity_score = 12
+        elif vpd >= 1_000:
+            velocity_score = 8
+        elif vpd >= 200:
+            velocity_score = 5
+        elif vpd >= 50:
+            velocity_score = 3
+    elif days_old == 1 and views > 0:
+        # Subido hoy: breakout inmediato (days_old=1 pero vpd no calculable aún)
+        if views >= 10_000:
+            velocity_score = 28
+        elif views >= 2_000:
+            velocity_score = 20
+        elif views >= 500:
+            velocity_score = 12
+        else:
+            velocity_score = 5
 
-    # 2. Puntos por formato Shorts y retención óptima (0 a 35)
-    # Formato Shorts nativo (10s a 60s): máxima prioridad editorial en feeds verticales
-    if 10 <= duration <= 60:
-        format_score = 35
+    # 2. Puntos por visualizaciones absolutas (0 a 25) — rebajado, complementa velocity
+    if views >= 10_000_000:
+        views_score = 25
+    elif views >= 2_000_000:
+        views_score = 22
+    elif views >= 500_000:
+        views_score = 20
+    elif views >= 100_000:
+        views_score = 17
+    elif views >= 50_000:
+        views_score = 14
+    elif views >= 20_000:
+        views_score = 11
+    elif views >= 5_000:
+        views_score = 8
+    elif views >= 1_000:
+        views_score = 5
+    else:
+        views_score = 2
+
+    # 3. Duración Óptima / Formato Shorts (0 a 20) — sweet spot 18-28s del Playbook
+    if 18 <= duration <= 28:
+        format_score = 20  # Sweet spot máximo: loop continuo garantizado
+    elif 12 <= duration <= 35:
+        format_score = 16  # Muy buen Short
+    elif 10 <= duration <= 60:
+        format_score = 12  # Short estándar
     elif 60 < duration <= 80:
-        format_score = 15
-    elif 80 < duration <= 180:
         format_score = 5
+    elif 80 < duration <= 180:
+        format_score = 2
     else:
         format_score = 0
 
-    # 3. Puntos por palabras clave virales en título (0 a 20)
+    # 4. Relevancia semántica de palabras clave (0 a 15)
     matches = [kw for kw in VIRAL_KEYWORDS if kw in title_lower]
-    keyword_score = min(20, len(matches) * 5)
+    keyword_score = min(15, len(matches) * 4)
 
-    # 4. Factor de impulso extra: Shorts nativos + Contenido jugoso (Trailer, Gameplay, Leaks, Comparativas)
+    # 5. Tasa de Engagement (likes/vistas) — señal de que el algoritmo distribuye activamente (0 a 10)
+    engagement_score = 0
+    if like_count is not None and like_count > 0 and views > 0:
+        er = like_count / views
+        if er >= 0.10:
+            engagement_score = 10
+        elif er >= 0.05:
+            engagement_score = 7
+        elif er >= 0.02:
+            engagement_score = 4
+        elif er >= 0.01:
+            engagement_score = 2
+
+    # 6. Bonus Creadores, Cultura Pop y Gameplay (0 a 10)
     bonus = 0
     if "shorts" in title_lower or "#shorts" in title_lower:
-        bonus += 5
+        bonus += 2
 
     high_value_gta6 = [
         "trailer", "trailer 1", "tráiler", "gameplay", "leak", "leaks", "filtracion", "filtración",
@@ -193,60 +252,43 @@ def calculate_virality_score(
         "south park", "southpark", "parodia", "parody", "satira", "sátira"
     ]
     if any(k in title_lower for k in high_value_gta6):
-        bonus += 10
+        bonus += 5
 
-    # Bonus especial de impacto cultural y parodia pop (South Park, humor viral)
     pop_culture_crossovers = [
         "south park", "southpark", "parodia", "parody", "satira", "sátira", "sketch",
         "meme", "memes", "fails", "risas"
     ]
     if any(k in title_lower for k in pop_culture_crossovers):
-        bonus = min(20, bonus + 5)
+        bonus = min(10, bonus + 3)
 
     creator_matches = [ck for ck in CREATOR_KEYWORDS if ck in title_lower]
     if creator_matches:
-        bonus = min(20, bonus + 5)
+        bonus = min(10, bonus + 3)
 
     from .config import is_gameplay_enabled
     if is_gameplay_enabled() and "gameplay" in title_lower:
-        bonus = min(20, bonus + 5)
+        bonus = min(10, bonus + 3)
 
-    # 5. Algoritmo de Anticipación y Velocidad (Breakout Detection):
-    # Premia desproporcionadamente vídeos recién subidos (<24-48h) con tracción explosiva
-    velocity_bonus = 0
-    if days_old is not None and views > 0:
-        if days_old <= 1:
-            # Subido hoy (Día 0/1): Indicativo de viralidad y tendencia inmediata
-            if views >= 10_000:
-                velocity_bonus = 20  # Breakout inmediato
-            elif views >= 2_000:
-                velocity_bonus = 15
-            elif views >= 500:
-                velocity_bonus = 10
-            else:
-                velocity_bonus = 5
-        elif days_old > 0:
-            vpd = views / days_old
-            if vpd >= 100_000:
-                velocity_bonus = 12
-            elif vpd >= 50_000:
-                velocity_bonus = 9
-            elif vpd >= 10_000:
-                velocity_bonus = 6
-            elif vpd >= 1_000:
-                velocity_bonus = 4
-            elif vpd >= 100:
-                velocity_bonus = 2
+    # 7. Freshness Decay: penalización por antigüedad excesiva (>14 días = -5 pts)
+    freshness_penalty = 0
+    if days_old is not None and days_old > 14:
+        freshness_penalty = -5
 
-    total_score = min(100, views_score + format_score + keyword_score + bonus + velocity_bonus)
+    total_score = min(100, max(0,
+        velocity_score + views_score + format_score + keyword_score +
+        engagement_score + bonus + freshness_penalty
+    ))
 
     return {
         "score": total_score,
+        "velocity_score": velocity_score,
         "views_score": views_score,
         "format_score": format_score,
         "keyword_score": keyword_score,
+        "engagement_score": engagement_score,
         "bonus": bonus,
-        "velocity_bonus": velocity_bonus,
+        "freshness_penalty": freshness_penalty,
+        "velocity_vpd": velocity_vpd,
         "matches": list(set(matches + creator_matches)),
         "is_short": (0 < duration <= 65),
         "excluded_reason": None
@@ -255,7 +297,7 @@ def calculate_virality_score(
 def scan_viral_radar(
     queries: Optional[List[str]] = None,
     max_candidates: int = 10,
-    min_score: int = 55,
+    min_score: int = 60,
     only_shorts: bool = True
 ) -> List[Dict[str, Any]]:
     """
@@ -359,12 +401,14 @@ def scan_viral_radar(
                     "uploader": uploader,
                     "channel_url": channel_url,
                     "score": score_data["score"],
+                    "velocity_score": score_data.get("velocity_score", 0),
                     "is_short": score_data["is_short"],
                     "keywords": score_data["matches"],
                     "is_new_channel": is_new_channel,
                     "query_source": query,
                     "days_old": days_old,
-                    "velocity": velocity,
+                    "velocity": score_data.get("velocity_vpd") or velocity,
+                    "source_count": 1,
                 })
         except Exception as e:
             print(f"[Viral Discovery] Error escaneando query '{query}': {e}")
@@ -378,8 +422,17 @@ def scan_viral_radar(
         for future in concurrent.futures.as_completed(futures):
             for candidate in future.result():
                 vid_id = candidate["id"]
-                if vid_id not in candidates_by_id or candidate["score"] > candidates_by_id[vid_id]["score"]:
+                if vid_id not in candidates_by_id:
+                    candidate["source_count"] = 1
                     candidates_by_id[vid_id] = candidate
+                else:
+                    # Vídeo detectado por múltiples queries: señal de viralidad cruzada (+5 pts)
+                    existing = candidates_by_id[vid_id]
+                    existing["source_count"] = existing.get("source_count", 1) + 1
+                    existing["score"] = min(100, existing["score"] + 5)
+                    if candidate["score"] > existing.get("score", 0):
+                        candidate["source_count"] = existing["source_count"]
+                        candidates_by_id[vid_id] = candidate
 
     ranked = sorted(candidates_by_id.values(), key=lambda x: x["score"], reverse=True)
     top_candidates = ranked[:max_candidates]

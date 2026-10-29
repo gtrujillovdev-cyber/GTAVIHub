@@ -180,8 +180,9 @@ def find_viral_heatmap_segment(
 
         heatmap = info.get("heatmap")
         if heatmap and isinstance(heatmap, list) and len(heatmap) > 5:
-            # Evaluar distintas duraciones candidatas dinámicas para encontrar la meseta de máxima densidad
-            candidate_durations = [28, 34, 40, 46, 50]
+            # Duraciones candidatas alineadas con Playbook: sweet spot 20-28s primero
+            # (18-28s = mayor loop rate en Shorts según learning_engine)
+            candidate_durations = [20, 24, 28, 34, 40]
             best_score = -1.0
             best_start = 15.0
             best_dur = target_duration
@@ -198,12 +199,16 @@ def find_viral_heatmap_segment(
                     if not window_pts:
                         continue
                     avg_val = sum(window_pts) / len(window_pts)
-                    if avg_val > best_score:
-                        best_score = avg_val
+                    peak_val = max(window_pts)
+                    # Score ponderado: premia ventanas con picos intensos y penaliza duraciones largas
+                    # para favorecer clips cortos con máxima retención sobre mesetas mediocres largas
+                    window_score = avg_val * (1 + peak_val * 0.4) * (28 / max(c_dur, 20))
+                    if window_score > best_score:
+                        best_score = window_score
                         best_start = start_t
                         best_dur = c_dur
 
-            print(f"[⚡ Heatmap Detector] Meseta viral detectada: {best_start:.1f}s a {best_start + best_dur:.1f}s (Duración dinámica: {best_dur}s, Score: {best_score:.2f})")
+            print(f"[⚡ Heatmap Detector] Pico viral detectado: {best_start:.1f}s a {best_start + best_dur:.1f}s (Duración: {best_dur}s, Score ponderado: {best_score:.3f})")
             return (best_start, best_start + best_dur)
         else:
             # Vídeo largo sin heatmap: saltar intro y aplicar duración orgánica determinista anti-robot
