@@ -3,6 +3,7 @@ import re
 import json
 import subprocess
 import concurrent.futures
+from datetime import datetime
 from typing import List, Dict, Any, Optional
 from .config import CHANNELS_FILE, PROCESSED_FILE
 
@@ -148,10 +149,10 @@ def fetch_channel_candidates(max_per_channel: int = 2) -> List[Dict[str, Any]]:
         ch_name = ch.get("name", "Canal")
         results = []
         
-        # Si la URL de /shorts falla (muy común por cambios en YouTube), fallback a búsqueda directa de Shorts del creador
+        # Si la URL de /shorts falla, fallback a búsqueda cronológica de los vídeos más recientes del creador
         urls_to_try = [url]
         if "/shorts" in url or ch.get("type") in ("streamer", "spanish_streamer", "analyst"):
-            urls_to_try.append(f"ytsearch5:{ch_name} GTA 6 #shorts")
+            urls_to_try.append(f"ytsearchdate5:{ch_name} GTA 6 #shorts")
 
         res_stdout = ""
         for u in urls_to_try:
@@ -161,7 +162,7 @@ def fetch_channel_candidates(max_per_channel: int = 2) -> List[Dict[str, Any]]:
                     "--impersonate", "chrome",
                     "--no-check-certificates",
                     "--flat-playlist",
-                    "--print", "%(id)s\t%(title)s\t%(duration)s\t%(view_count)s\t%(url)s",
+                    "--print", "%(id)s\t%(title)s\t%(duration)s\t%(view_count)s\t%(url)s\t%(upload_date)s",
                     "-I", f"1:{max_per_channel * 2}",
                     u
                 ], capture_output=True, text=True, check=True, timeout=25)
@@ -187,8 +188,17 @@ def fetch_channel_candidates(max_per_channel: int = 2) -> List[Dict[str, Any]]:
                 except ValueError:
                     views = 0
                 vid_url = parts[4] if len(parts) > 4 else f"https://www.youtube.com/watch?v={vid_id}"
+                up_date = parts[5].strip() if len(parts) > 5 else ""
 
                 if vid_id and vid_id not in processed_ids and vid_id != "NA":
+                    # FILTRO DE FRESCURA TEMPORAL: Descartar vídeos con más de 30 días de antigüedad
+                    if up_date and up_date.isdigit() and len(up_date) == 8:
+                        try:
+                            age_days = (datetime.now() - datetime.strptime(up_date, "%Y%m%d")).days
+                            if age_days > 30:
+                                continue
+                        except Exception:
+                            pass
                     # FILTRO INNEGOCIABLE DE CONTENIDO EXCLUSIVO GTA 6:
                     is_official = ("rockstargames" in url.lower() or ch.get("type") == "official")
                     if not is_official and not is_strictly_gta6(title):
@@ -223,7 +233,9 @@ def fetch_channel_candidates(max_per_channel: int = 2) -> List[Dict[str, Any]]:
     def _scan_query(q: Dict[str, Any]) -> List[Dict[str, Any]]:
         if not q.get("enabled", False):
             return []
-        query = q.get("query")
+        query = q.get("query", "")
+        # Forzar búsqueda cronológica para obtener vídeos recientes y no contenido antiguo
+        actual_query = query.replace("ytsearch", "ytsearchdate") if "ytsearch" in query and "ytsearchdate" not in query else query
         results = []
         try:
             res = subprocess.run([
@@ -231,8 +243,8 @@ def fetch_channel_candidates(max_per_channel: int = 2) -> List[Dict[str, Any]]:
                 "--impersonate", "chrome",
                 "--no-check-certificates",
                 "--flat-playlist",
-                "--print", "%(id)s\t%(title)s\t%(duration)s\t%(view_count)s\t%(url)s",
-                query
+                "--print", "%(id)s\t%(title)s\t%(duration)s\t%(view_count)s\t%(url)s\t%(upload_date)s",
+                actual_query
             ], capture_output=True, text=True, check=True, timeout=25)
 
             for line in res.stdout.strip().split("\n"):
@@ -248,8 +260,18 @@ def fetch_channel_candidates(max_per_channel: int = 2) -> List[Dict[str, Any]]:
                     except ValueError:
                         views = 0
                     vid_url = parts[4] if len(parts) > 4 else f"https://www.youtube.com/watch?v={vid_id}"
+                    up_date = parts[5].strip() if len(parts) > 5 else ""
 
                     if vid_id and vid_id not in processed_ids and vid_id != "NA":
+                        # FILTRO DE FRESCURA TEMPORAL: Descartar vídeos con más de 30 días de antigüedad
+                        if up_date and up_date.isdigit() and len(up_date) == 8:
+                            try:
+                                age_days = (datetime.now() - datetime.strptime(up_date, "%Y%m%d")).days
+                                if age_days > 30:
+                                    continue
+                            except Exception:
+                                pass
+
                         if not is_strictly_gta6(title):
                             continue
                         try:
