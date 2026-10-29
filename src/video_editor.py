@@ -308,32 +308,72 @@ HOT_PINK_KEYWORDS = {
 }
 
 def render_top_hook_headline(hook_text: str, output_path: Path) -> bool:
-    """Renderiza una elegante píldora de gancho superior en cristal oscuro (0.0 a 2.5s)."""
+    """Renderiza una potente y espectacular tarjeta de gancho superior estilo Broadcast Viral (0.0 a 2.5s)."""
     clean_hook = clean_text_no_emoji(hook_text).upper()
     if not clean_hook:
         return False
     
-    font_size = 38 if len(clean_hook) < 26 else (32 if len(clean_hook) < 40 else 26)
-    font = get_best_font(size=font_size)
-    d_temp = ImageDraw.Draw(Image.new("RGBA", (1, 1)))
-    bb = d_temp.textbbox((0, 0), clean_hook, font=font)
-    w = bb[2] - bb[0]
-    h = bb[3] - bb[1]
+    words = clean_hook.split()
+    if len(words) >= 4:
+        mid = len(words) // 2
+        line1 = " ".join(words[:mid])
+        line2 = " ".join(words[mid:])
+    elif len(words) == 3:
+        line1 = words[0]
+        line2 = " ".join(words[1:])
+    else:
+        line1 = ""
+        line2 = clean_hook
 
-    pad_x = 40
-    pad_y = 16
-    box_w = int(w + pad_x * 2)
-    box_h = int(h + pad_y * 2)
+    font1 = get_best_font(size=46)
+    font2 = get_best_font(size=60)
+    d_temp = ImageDraw.Draw(Image.new("RGBA", (1, 1)))
+
+    if line1:
+        bb1 = d_temp.textbbox((0, 0), line1, font=font1)
+        w1 = bb1[2] - bb1[0]
+        h1 = bb1[3] - bb1[1]
+    else:
+        w1, h1 = 0, 0
+
+    bb2 = d_temp.textbbox((0, 0), line2, font=font2)
+    w2 = bb2[2] - bb2[0]
+    h2 = bb2[3] - bb2[1]
+
+    content_w = max(w1, w2)
+    pad_x = 52
+    pad_y = 20
+    spacing = 14 if line1 else 0
+    box_w = int(content_w + pad_x * 2)
+    box_h = int(h1 + h2 + spacing + pad_y * 2)
 
     img = Image.new("RGBA", (box_w, box_h), (0, 0, 0, 0))
     d = ImageDraw.Draw(img)
 
-    # Fondo píldora translúcido estilo Apple/Shorts con borde cristalino sutil (no compite con el texto)
-    d.rounded_rectangle([(0, 0), (box_w - 1, box_h - 1)], radius=18, fill=(10, 10, 16, 220), outline=(255, 255, 255, 55), width=2)
-    # Sombra del texto
-    d.text((pad_x + 2, pad_y + 2), clean_hook, font=font, fill=(0, 0, 0, 240))
-    # Texto Amarillo Neón de alta legibilidad
-    d.text((pad_x, pad_y), clean_hook, font=font, fill=(255, 235, 20, 255), stroke_width=2, stroke_fill=(0, 0, 0, 255))
+    # Tarjeta de cristal ahumado estilo eSports / YouTube Gaming con resplandor dorado
+    d.rounded_rectangle(
+        [(0, 0), (box_w - 1, box_h - 1)],
+        radius=24,
+        fill=(8, 8, 14, 230),
+        outline=(255, 230, 0, 160),
+        width=3
+    )
+
+    cur_y = pad_y
+    if line1:
+        x1 = pad_x + (content_w - w1) / 2
+        # Sombra profunda
+        d.text((x1 + 3, cur_y + 3), line1, font=font1, fill=(0, 0, 0, 240))
+        # Línea 1: Blanco Puro con trazo negro
+        d.text((x1, cur_y), line1, font=font1, fill=(255, 255, 255, 255), stroke_width=3, stroke_fill=(0, 0, 0, 255))
+        cur_y += h1 + spacing
+
+    x2 = pad_x + (content_w - w2) / 2
+    # Sombra profunda
+    d.text((x2 + 3, cur_y + 4), line2, font=font2, fill=(0, 0, 0, 240))
+    # Línea 2: Amarillo Eléctrico Neón (#FFE600) con trazo negro de impacto
+    d.text((x2, cur_y), line2, font=font2, fill=(255, 230, 0, 255), stroke_width=4, stroke_fill=(0, 0, 0, 255))
+
     img.save(output_path, "PNG")
     return True
 
@@ -343,9 +383,10 @@ def render_karaoke_subtitle_state(words: List[str], active_idx: int, is_vertical
     - Píldora de contraste con fondo oscuro sutil (100% de legibilidad en cualquier fondo).
     - Cubre limpiamente subtítulos preexistentes en inglés si los hubiera.
     - La frase permanece 100% fija y estable horizontalmente (cero temblores/jitter).
+    - Tipografía grande y de impacto (font_size=64, pop=72) para lectura instantánea en móvil.
     - La palabra activa se resalta en Amarillo (#FFE600) o Rosa Neón (#FF2D87).
     - Las palabras inactivas de la frase permanecen en Blanco Puro (#FFFFFF).
-    - Espaciado amplio y márgenes laterales generosos (pad_x=44) para que ninguna letra toque los bordes.
+    - Espaciado amplio y márgenes laterales generosos (pad_x=48) para que ninguna letra toque los bordes.
     """
     if not words:
         return False
@@ -356,17 +397,17 @@ def render_karaoke_subtitle_state(words: List[str], active_idx: int, is_vertical
     if not display_words:
         return False
 
-    max_w = 760 if is_vertical else 1000
-    font_size = 50 if is_vertical else 42
+    max_w = 900 if is_vertical else 1000
+    font_size = 64 if is_vertical else 48
     font = get_best_font(size=font_size)
 
     temp_img = Image.new("RGBA", (1, 1))
     d_temp = ImageDraw.Draw(temp_img)
 
-    space_w = 26
+    space_w = 28
 
     # Ajustar tamaño de fuente dinámicamente si supera el ancho máximo seguro
-    while font_size > 32:
+    while font_size > 38:
         test_w = sum(d_temp.textbbox((0, 0), w, font=font)[2] - d_temp.textbbox((0, 0), w, font=font)[0] for w in display_words)
         test_w += space_w * (len(display_words) - 1)
         if test_w <= max_w:
@@ -374,8 +415,8 @@ def render_karaoke_subtitle_state(words: List[str], active_idx: int, is_vertical
         font_size -= 4
         font = get_best_font(size=font_size)
 
-    pop_font = get_best_font(size=font_size + 4)
-    emoji_font = get_emoji_font(size=38) if is_vertical else None
+    pop_font = get_best_font(size=font_size + 6)
+    emoji_font = get_emoji_font(size=44) if is_vertical else None
 
     # Asignar casilla fija a cada palabra con el ancho máximo (normal o pop) para cero jitter y cero colisiones
     cell_widths = []
@@ -384,17 +425,17 @@ def render_karaoke_subtitle_state(words: List[str], active_idx: int, is_vertical
         w_norm = bb_normal[2] - bb_normal[0]
         bb_pop = d_temp.textbbox((0, 0), w, font=pop_font)
         w_pop = bb_pop[2] - bb_pop[0]
-        cell_widths.append(max(w_norm, w_pop) + 4)
+        cell_widths.append(max(w_norm, w_pop) + 6)
 
     total_w = sum(cell_widths) + space_w * (len(display_words) - 1)
     sample_bb = font.getbbox("AY")
     text_h = (sample_bb[3] - sample_bb[1])
 
     # Altura adicional para emoji si aplica
-    emoji_room = 42 if (is_vertical and emoji_font) else 0
+    emoji_room = 46 if (is_vertical and emoji_font) else 0
 
-    pad_x = 44
-    pad_y = 18
+    pad_x = 48
+    pad_y = 20
     box_w = int(total_w + pad_x * 2)
     box_h = int(text_h + pad_y * 2 + emoji_room + 10)
 
@@ -405,9 +446,9 @@ def render_karaoke_subtitle_state(words: List[str], active_idx: int, is_vertical
     pill_top = emoji_room
     d.rounded_rectangle(
         [(0, pill_top), (box_w - 1, box_h - 1)],
-        radius=20,
-        fill=(10, 10, 16, 215),
-        outline=(255, 255, 255, 45),
+        radius=22,
+        fill=(10, 10, 16, 220),
+        outline=(255, 255, 255, 50),
         width=2
     )
 
@@ -418,7 +459,7 @@ def render_karaoke_subtitle_state(words: List[str], active_idx: int, is_vertical
     is_hot_pink = clean_active in HOT_PINK_KEYWORDS
 
     active_color = (255, 45, 135, 255) if is_hot_pink else (255, 230, 0, 255)
-    glow_color = (255, 45, 135, 130) if is_hot_pink else (255, 230, 0, 130)
+    glow_color = (255, 45, 135, 140) if is_hot_pink else (255, 230, 0, 140)
 
     base_y = pill_top + pad_y
 
@@ -432,10 +473,10 @@ def render_karaoke_subtitle_state(words: List[str], active_idx: int, is_vertical
             bb_pop = d_temp.textbbox((0, 0), w, font=pop_font)
             ww_pop = bb_pop[2] - bb_pop[0]
             draw_x = cur_x + (cw - ww_pop) / 2
-            d_glow.text((draw_x, base_y - 2), w, font=pop_font, fill=glow_color, stroke_width=8, stroke_fill=glow_color)
+            d_glow.text((draw_x, base_y - 2), w, font=pop_font, fill=glow_color, stroke_width=10, stroke_fill=glow_color)
         cur_x += cw + space_w
 
-    glow = glow.filter(ImageFilter.GaussianBlur(5))
+    glow = glow.filter(ImageFilter.GaussianBlur(6))
     img = Image.alpha_composite(img, glow)
     d = ImageDraw.Draw(img)
 
@@ -446,7 +487,7 @@ def render_karaoke_subtitle_state(words: List[str], active_idx: int, is_vertical
         is_active = (idx == active_idx)
         current_font = pop_font if is_active else font
         text_color = active_color if is_active else (255, 255, 255, 255)
-        stroke_w = 4 if is_active else 3
+        stroke_w = 5 if is_active else 4
 
         bb_w = d_temp.textbbox((0, 0), w, font=current_font)
         ww_act = bb_w[2] - bb_w[0]
@@ -454,14 +495,14 @@ def render_karaoke_subtitle_state(words: List[str], active_idx: int, is_vertical
         draw_y = base_y - (2 if is_active else 0)
 
         # Sombra de profundidad 3D
-        d.text((draw_x + 2, draw_y + 3), w, font=current_font, fill=(0, 0, 0, 240))
+        d.text((draw_x + 3, draw_y + 4), w, font=current_font, fill=(0, 0, 0, 240))
         # Trazo negro nítido + Relleno de color
         d.text((draw_x, draw_y), w, font=current_font, fill=text_color, stroke_width=stroke_w, stroke_fill=(0, 0, 0, 255))
 
         # Emoji contextual flotante encima si aplica
         if is_active and active_emoji and emoji_font:
-            emoji_x = int(cur_x + (cw - 38) / 2)
-            emoji_y = max(2, pill_top - 38)
+            emoji_x = int(cur_x + (cw - 44) / 2)
+            emoji_y = max(2, pill_top - 42)
             try:
                 d.text((emoji_x, emoji_y), active_emoji, font=emoji_font, embedded_color=True)
             except Exception:
@@ -709,9 +750,9 @@ def render_final_video(
 
     # D) Superponer Subtítulos Karaoke palabra por palabra
     # Safe Zone vertical (Instagram Reels / TikTok / YouTube Shorts):
-    # En vídeos horizontales adaptados: y=1440 (centrado en el tercio inferior libre, sin tapar interfaz).
+    # En vídeos horizontales adaptados: y=1460 (centrado en el tercio inferior libre, sin tapar interfaz).
     # En vídeos verticales nativos: y=1200.
-    sub_y = "1440" if (is_vertical and not is_already_vertical) else ("1200" if is_vertical else "H-h-90")
+    sub_y = "1460" if (is_vertical and not is_already_vertical) else ("1200" if is_vertical else "H-h-90")
     for s_idx, (_, start_s, end_s) in enumerate(sub_pngs):
         in_id = sub_inputs_start + s_idx
         next_v = f"v_sub_{s_idx}"
