@@ -67,8 +67,9 @@ def get_persistent_menu_keyboard() -> Dict[str, Any]:
             [{"text": "🚀 Forzar Escaneo"}, {"text": "📊 Dashboard"}],
             [{"text": "🎬 Último Clip"}, {"text": "🖥️ Estado Host / GaTDSEQ"}],
             [{"text": "📈 Métricas YouTube"}, {"text": "⚙️ Canales"}],
-            [{"text": "🔥 Radar Viral"}, {"text": "🛡️ Modo Co-Pilot"}],
-            [{"text": "🌐 Mis Canales"}, {"text": "🧹 Limpiar Temp"}]
+            [{"text": "🔥 Radar Viral"}, {"text": "🧠 Auto-Perfeccionar"}],
+            [{"text": "🛡️ Modo Co-Pilot"}, {"text": "🌐 Mis Canales"}],
+            [{"text": "🧹 Limpiar Temp"}]
         ],
         "resize_keyboard": True,
         "persistent": True
@@ -1106,6 +1107,18 @@ def start_telegram_bot_daemon():
                     else:
                         t = threading.Thread(target=run_viral_radar_in_background, args=(allowed_chat_id,), daemon=True)
                         t.start()
+
+                elif cmd in ["/optimize", "/aprender", "/learning", "🧠"] or text == "🧠 Auto-Perfeccionar":
+                    send_telegram_alert("🧠 *Iniciando ciclo de auto-perfeccionamiento y benchmark...*\nAuditando vídeos de nuestro canal y extrayendo patrones ganadores de los líderes.")
+                    def _run_opt():
+                        try:
+                            from .learning_engine import run_self_learning_cycle, generate_learning_telegram_report
+                            pb = run_self_learning_cycle()
+                            report = generate_learning_telegram_report(pb)
+                            send_telegram_alert(report, reply_markup=get_persistent_menu_keyboard())
+                        except Exception as e:
+                            send_telegram_alert(f"⚠️ Error durante la optimización: {e}")
+                    threading.Thread(target=_run_opt, daemon=True).start()
 
                 elif cmd == "/addchannel":
                     parts = text.split(maxsplit=2)

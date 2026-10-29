@@ -124,6 +124,12 @@ def generate_video_metadata(
     from .config import is_gameplay_enabled
     is_launched = is_gameplay_enabled()
 
+    try:
+        from .learning_engine import get_playbook_context_for_prompt
+        playbook_rules = get_playbook_context_for_prompt()
+    except Exception:
+        playbook_rules = ""
+
     context_phase = (
         "FASE: LANZAMIENTO OFICIAL & GAMEPLAY REAL (GTA 6 ya está disponible). "
         "Enfócate en jugabilidad real, misiones, mundo abierto de Vice City, persecuciones policiales, físicas extremas, "
@@ -138,6 +144,8 @@ Estamos analizando contenido sobre Grand Theft Auto VI (GTA 6).
 Tipo de formato: {tipo}.
 Título original: "{original_title}"
 Creador/Fuente original: "{creator_name or 'Rockstar Games'}"
+
+{playbook_rules}
 
 Usa terminología del GLOSARIO OFICIAL Y VIRAL DE GTA 6 cuando sea pertinente:
 - Protagonistas: Lucía (primera protagonista femenina), Jason (pareja criminal), Stefanie (consejera), Mud Girl, Florida Joker.
