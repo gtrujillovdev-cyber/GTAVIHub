@@ -110,6 +110,35 @@ def get_playbook_context_for_prompt() -> str:
     lines.append("-----------------------------------------------------------------")
     return "\n".join(lines)
 
+def generate_hook_card_texts(title: str, topic: str = "") -> tuple:
+    """
+    Genera dos líneas de texto de gancho superior (Línea 1 en blanco, Línea 2 en amarillo neón)
+    basado en las heurísticas activas del playbook.
+    """
+    t_lower = title.lower()
+
+    if any(k in t_lower for k in ["south park", "southpark"]):
+        return ("SOUTH PARK LO HIZO", "¡PARODIA A GTA 6! 💀")
+    elif any(k in t_lower for k in ["fisica", "física", "water", "agua", "rage"]):
+        return ("FÍSICAS HIPERREALISTAS", "¡RAGE 9 AL LÍMITE! 🌊")
+    elif any(k in t_lower for k in ["secreto", "secret", "easter egg"]):
+        return ("EL SECRETO QUE NADIE VIO", "¡DESCUBIERTO EN EL MAPA! 🔍")
+    elif any(k in t_lower for k in ["mision", "misión", "gameplay", "prologo"]):
+        return ("GAMEPLAY EXCLUSIVO", "¡PRIMERA MISIÓN REAL! 🔥")
+    elif any(k in t_lower for k in ["policia", "policía", "5 estrellas"]):
+        return ("NIVEL 5 ESTRELLAS", "¡PERSECUCIÓN EXTREMA! 🚨")
+    elif any(k in t_lower for k in ["comparativa", "gta 5", "versus"]):
+        return ("COMPARATIVA DIRECTA", "¿CUÁL ES MEJOR? ⚔️")
+    
+    # Fallback general
+    clean = re.sub(r"[#\[\].\-:!¡?¿]", "", title).strip()
+    words = clean.split()
+    if len(words) >= 4:
+        l1 = " ".join(words[:2]).upper()[:24]
+        l2 = " ".join(words[2:5]).upper()[:22]
+        return (l1, l2)
+    return ("¿SABÍAS ESTO?", "¡DETALLE OCULTO! 😱")
+
 def fetch_own_channel_insights(limit: int = 8) -> List[Dict[str, Any]]:
     """
     Rastrea las métricas públicas de nuestros vídeos subidos a YouTube.

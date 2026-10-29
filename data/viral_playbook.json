@@ -1,0 +1,47 @@
+{
+  "version": 1,
+  "last_updated": "2026-10-29T16:19:22.342547",
+  "channel_diagnosis": {
+    "identified_flaws": [
+      "Títulos saturados de clichés repetitivos ('¡FILTRACIÓN ÉPICA!', '¡BRUTAL!').",
+      "Duración uniforme excesiva (~51s) que reduce la tasa de retención y finalización.",
+      "Contenido centrado en GTA Online en lugar de novedades exclusivas de GTA 6."
+    ],
+    "average_views": 1.0,
+    "completion_rate_estimate": "Baja (< 45%)"
+  },
+  "competitor_benchmarks": {
+    "winning_duration_range": [
+      18,
+      28
+    ],
+    "key_growth_drivers": [
+      "Curiosidades insólitas de físicas y mapa (ej. físicas de agua, colisiones, IA de NPCs).",
+      "Cruces virales de cultura pop y streamers (ej. parodia South Park, IlloJuan, Xokas).",
+      "Ganchos en 2 líneas contrastadas (Blanco + Amarillo Neón) con lectura instantánea."
+    ]
+  },
+  "active_heuristics": {
+    "winning_title_templates": [
+      "¿SABÍAS ESTO DE {TOPIC}? 😱 [DETALLE OCULTO] #GTA6",
+      "{ENTITY} RECREA EL GAMEPLAY DE {TOPIC} 💀 #GTA6",
+      "¡EL SECRETO MEJOR GUARDADO DE {TOPIC}! 🔍🔥 #GTA6",
+      "LAS FÍSICAS DE {TOPIC} NO TIENEN NINGÚN SENTIDO 🤯 #GTA6",
+      "¿POR QUÉ ROCKSTAR OCULTÓ ESTO EN {TOPIC}? 🚨 #GTA6"
+    ],
+    "winning_hook_templates": [
+      "Line 1: SUJETO O CONTEXTO | Line 2: IMPACTO O REVELACIÓN",
+      "¿TE DIJISTE CUENTA DE ESTO? 🤯",
+      "ESTO CAMBIA TODO EN GTA 6 💀",
+      "EL DETALLE QUE NADIE VIO 🔍"
+    ],
+    "optimal_duration_seconds": 24,
+    "forbidden_cliches": [
+      "FILTRACIÓN ÉPICA",
+      "FILTRACIÓN MORTAL",
+      "BRUTAL",
+      "ALERTA MUNDIAL",
+      "CASAS DE GTA ONLINE"
+    ]
+  }
+}

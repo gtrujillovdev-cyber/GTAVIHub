@@ -34,7 +34,8 @@ def process_single_video(
     publish_all: bool = False,
     dry_run: bool = False,
     stagger_delay: int = 12,
-    copilot_mode: Optional[bool] = None
+    copilot_mode: Optional[bool] = None,
+    hook_override: Optional[str] = None
 ) -> Optional[Dict[str, Any]]:
     """
     Ejecuta el ciclo de vida completo de un vídeo con transformación editorial real:
@@ -144,7 +145,7 @@ def process_single_video(
         creator_name=creator_name,
         source_lang=lang_to_use
     )
-    hook_text = metadata.get("hook", "¡ANÁLISIS AL DETALLE!")
+    hook_text = hook_override if hook_override else metadata.get("hook", "¡ANÁLISIS AL DETALLE!")
 
     # 5. Renderizado final transformado
     stage_msg = "⚙️ [3/5] Renderizando vídeo 9:16 con Doblaje Neural y Subtítulos Dinámicos..." if dub_audio_path else "⚙️ [3/5] Renderizando vídeo 9:16 con VideoToolbox (Subtítulos Hormozi Pop Bounce)..."

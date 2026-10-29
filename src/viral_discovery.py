@@ -14,20 +14,43 @@ from .channels import get_processed_ids, list_monitored_channels, add_monitored_
 DISCOVERED_CHANNELS_FILE = DATA_DIR / "discovered_channels.json"
 
 DEFAULT_VIRAL_QUERIES = [
-    # Gameplay y primeras impresiones post-lanzamiento (mayor volumen de búsqueda actual)
+    # Parodias, Cultura Pop & Momentos Virales Globales
+    "ytsearch15:GTA 6 South Park parodia #shorts",
+    "ytsearch15:GTA 6 South Park parody #shorts",
+    "ytsearch15:GTA 6 parodia viral risas #shorts",
+    "ytsearch15:GTA 6 meme viral tiktok #shorts",
+    "ytsearch15:GTA 6 funny moments fails #shorts",
+    "ytsearch15:GTA 6 referencias peliculas series #shorts",
+    # Secretos y Easter Eggs
     "ytsearch15:GTA 6 gameplay secrets easter eggs #shorts",
-    "ytsearch15:GTA 6 lucia jason funny moments #shorts",
-    "ytsearch15:GTA 6 vice city physics fails #shorts",
     "ytsearch15:GTA 6 hidden details leonida #shorts",
-    # Análisis técnicos y comparativas — alta retención
+    "ytsearch15:GTA 6 mapa Leonida comparativa miami #shorts",
+    "ytsearch15:GTA 6 secretos ocultos vice city #shorts",
+    "ytsearch15:GTA 6 cosas ocultas que no viste #shorts",
+    # Físicas de Nueva Generación y RAGE 9
     "ytsearch15:GTA 6 graphics comparison real life #shorts",
     "ytsearch15:GTA 6 rage engine water physics #shorts",
-    # Noticias, leaks y novedades — alto CTR
+    "ytsearch15:GTA 6 fisicas coches deformacion #shorts",
+    "ytsearch15:GTA 6 inteligencia artificial npcs reacciones #shorts",
+    "ytsearch15:GTA 6 comparativa gta 5 diferencias #shorts",
+    # Noticias, Leaks e Insiders
     "ytsearch15:GTA 6 new update leak rockstar #shorts",
     "ytsearch15:GTA 6 things you missed #shorts",
-    # Español / LatAm — audiencia principal del canal
+    "ytsearch15:GTA 6 fecha lanzamiento noticias #shorts",
+    "ytsearch15:GTA 6 nueva informacion filtrada mapa #shorts",
+    # Comunidad Hispanohablante & Streamers
     "ytsearch15:GTA 6 secretos gameplay vice city #shorts",
     "ytsearch15:GTA 6 detalles ocultos lucia jason #shorts",
+    "ytsearch15:GTA 6 Jordi Maquiavello analisis #shorts",
+    "ytsearch15:GTA 6 BaityBait analisis #shorts",
+    "ytsearch15:GTA 6 Puerta al Sotano secretos #shorts",
+    "ytsearch15:GTA 6 Eurogamer Espana detalles #shorts",
+    "ytsearch15:GTA 6 Vandal curiosidades #shorts",
+    "ytsearch15:GTA 6 3DJuegos detalles #shorts",
+    # Global Virality (English)
+    "ytsearch15:GTA 6 viral breakdown secrets #shorts",
+    "ytsearch15:GTA 6 crazy realistic details #shorts",
+    "ytsearch15:GTA 6 mind blowing physics rage engine #shorts",
 ]
 
 # Consultas específicas de Gameplay Puro activas a partir del 19 de Noviembre
@@ -58,7 +81,10 @@ VIRAL_KEYWORDS = [
     "trailer", "trailer 1", "tráiler", "mapa", "secretos", "secreto",
     "easter egg", "detalles", "details", "comparativa", "vida real", "oficial", "official",
     "vercetti", "mansion", "mansión", "barco fantasma", "ovni",
-    "fecha", "rockstar", "confirmado", "noticia", "exclusiva", "bombazo"
+    "fecha", "rockstar", "confirmado", "noticia", "exclusiva", "bombazo",
+    # Parodias, Cultura Pop & Fenómenos Virales
+    "south park", "southpark", "parodia", "parody", "satira", "sátira", "sketch",
+    "meme", "memes", "tiktok", "humor", "risas", "fails", "broma", "tendencia", "trending", "viral"
 ]
 
 # Palabras clave de creadores y momentos reales (reciben bonus de puntuación)
@@ -163,14 +189,23 @@ def calculate_virality_score(
         "graphics", "graficos", "gráficos", "fisicas", "físicas", "physics", "secreto", "secret", "secretos",
         "easter egg", "lucia", "jason", "stefanie", "mud girl", "florida joker",
         "vice city", "leonida", "port gellhorn", "comparativa", "mapa", "detalles", "details",
-        "rage 9", "atraco", "caimán", "cocodrilo", "vida real", "interiores", "ia npc"
+        "rage 9", "atraco", "caimán", "cocodrilo", "vida real", "interiores", "ia npc",
+        "south park", "southpark", "parodia", "parody", "satira", "sátira"
     ]
     if any(k in title_lower for k in high_value_gta6):
         bonus += 10
 
+    # Bonus especial de impacto cultural y parodia pop (South Park, humor viral)
+    pop_culture_crossovers = [
+        "south park", "southpark", "parodia", "parody", "satira", "sátira", "sketch",
+        "meme", "memes", "fails", "risas"
+    ]
+    if any(k in title_lower for k in pop_culture_crossovers):
+        bonus = min(20, bonus + 5)
+
     creator_matches = [ck for ck in CREATOR_KEYWORDS if ck in title_lower]
     if creator_matches:
-        bonus = min(15, bonus + 5)
+        bonus = min(20, bonus + 5)
 
     from .config import is_gameplay_enabled
     if is_gameplay_enabled() and "gameplay" in title_lower:
@@ -183,10 +218,12 @@ def calculate_virality_score(
         if days_old <= 1:
             # Subido hoy (Día 0/1): Indicativo de viralidad y tendencia inmediata
             if views >= 10_000:
-                velocity_bonus = 15  # Breakout inmediato
+                velocity_bonus = 20  # Breakout inmediato
             elif views >= 2_000:
-                velocity_bonus = 10
+                velocity_bonus = 15
             elif views >= 500:
+                velocity_bonus = 10
+            else:
                 velocity_bonus = 5
         elif days_old > 0:
             vpd = views / days_old

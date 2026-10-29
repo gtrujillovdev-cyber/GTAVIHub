@@ -485,152 +485,628 @@
       "filter_keywords": true,
       "enabled": true,
       "description": "Shorts globales de GameSpot"
+    },
+    {
+      "name": "Synth Potato (Shorts)",
+      "url": "https://www.youtube.com/@SynthPotato/shorts",
+      "type": "gta_authority",
+      "lang": "en",
+      "filter_keywords": true,
+      "enabled": true,
+      "description": "Shorts de noticias, filtraciones y opiniones de Synth Potato"
+    },
+    {
+      "name": "Dan Allen Gaming (Shorts)",
+      "url": "https://www.youtube.com/@DanAllenGaming/shorts",
+      "type": "lore_and_details",
+      "lang": "en",
+      "filter_keywords": true,
+      "enabled": true,
+      "description": "Entrevistas a actores y secretos de GTA 6 en Dan Allen Gaming"
+    },
+    {
+      "name": "Rockstar Universe (Shorts)",
+      "url": "https://www.youtube.com/@RockstarUniverse/shorts",
+      "type": "gta_authority",
+      "lang": "en",
+      "filter_keywords": true,
+      "enabled": true,
+      "description": "Noticias comunitarias oficiales de Rockstar Universe"
+    },
+    {
+      "name": "GTA 6 Countdown (Shorts)",
+      "url": "https://www.youtube.com/@GTA6Countdown/shorts",
+      "type": "countdown_news",
+      "lang": "en",
+      "filter_keywords": true,
+      "enabled": true,
+      "description": "Cuenta atrás y novedades de GTA 6 Countdown"
+    },
+    {
+      "name": "Jordi Maquiavello (Shorts)",
+      "url": "https://www.youtube.com/@JordiMaquiavello/shorts",
+      "type": "cinematics_analysis",
+      "lang": "es",
+      "filter_keywords": true,
+      "enabled": true,
+      "description": "Análisis narrativo y cinematográfico de Jordi Maquiavello"
+    },
+    {
+      "name": "BaityBait (Shorts)",
+      "url": "https://www.youtube.com/@BaityBait/shorts",
+      "type": "gaming_culture",
+      "lang": "es",
+      "filter_keywords": true,
+      "enabled": true,
+      "description": "Humor y análisis de la industria gaming con BaityBait"
+    },
+    {
+      "name": "Puerta al Sótano (Shorts)",
+      "url": "https://www.youtube.com/@PuertaAlSotano/shorts",
+      "type": "retro_secrets",
+      "lang": "es",
+      "filter_keywords": true,
+      "enabled": true,
+      "description": "Secretos y curiosidades de Rockstar en Puerta al Sótano"
+    },
+    {
+      "name": "Ray Snakeet (Shorts)",
+      "url": "https://www.youtube.com/@RaySnakeet/shorts",
+      "type": "gta_lore",
+      "lang": "es",
+      "filter_keywords": true,
+      "enabled": true,
+      "description": "Secretos e historia de GTA con Ray Snakeet"
+    },
+    {
+      "name": "AlphaSniper97 (Shorts)",
+      "url": "https://www.youtube.com/@AlphaSniper97/shorts",
+      "type": "streamer",
+      "lang": "es",
+      "filter_keywords": true,
+      "enabled": true,
+      "description": "Reacciones y momentos de hype de AlphaSniper97"
+    },
+    {
+      "name": "Alexelcapo (Shorts)",
+      "url": "https://www.youtube.com/@alexelcapo/shorts",
+      "type": "streamer",
+      "lang": "es",
+      "filter_keywords": true,
+      "enabled": true,
+      "description": "Reflexiones y opiniones sinceras de Alexelcapo"
+    },
+    {
+      "name": "Folagor03 (Shorts)",
+      "url": "https://www.youtube.com/@Folagor03/shorts",
+      "type": "streamer",
+      "lang": "es",
+      "filter_keywords": true,
+      "enabled": true,
+      "description": "Reacciones virales y directos de Folagor"
+    },
+    {
+      "name": "Guías Paso a Paso (Shorts)",
+      "url": "https://www.youtube.com/@GuiasPasoaPaso/shorts",
+      "type": "guides",
+      "lang": "es",
+      "filter_keywords": true,
+      "enabled": true,
+      "description": "Guías de misiones y secretos de Guías Paso a Paso"
+    },
+    {
+      "name": "PowerPyx (Shorts)",
+      "url": "https://www.youtube.com/@PowerPyx/shorts",
+      "type": "gameplay_guides",
+      "lang": "en",
+      "filter_keywords": true,
+      "enabled": true,
+      "description": "Guías de trofeos y ubicaciones secretas de PowerPyx"
+    },
+    {
+      "name": "GameRant (Shorts)",
+      "url": "https://www.youtube.com/@GameRant/shorts",
+      "type": "industry_press",
+      "lang": "en",
+      "filter_keywords": true,
+      "enabled": true,
+      "description": "Novedades y artículos de prensa de GameRant"
+    },
+    {
+      "name": "Kotaku (Shorts)",
+      "url": "https://www.youtube.com/@Kotaku/shorts",
+      "type": "gaming_culture",
+      "lang": "en",
+      "filter_keywords": true,
+      "enabled": true,
+      "description": "Cultura pop y tendencias de GTA en Kotaku"
+    },
+    {
+      "name": "Polygon (Shorts)",
+      "url": "https://www.youtube.com/@Polygon/shorts",
+      "type": "industry_press",
+      "lang": "en",
+      "filter_keywords": true,
+      "enabled": true,
+      "description": "Artículos y análisis de Polygon"
+    },
+    {
+      "name": "VGC (Shorts)",
+      "url": "https://www.youtube.com/@VGC_News/shorts",
+      "type": "industry_press",
+      "lang": "en",
+      "filter_keywords": true,
+      "enabled": true,
+      "description": "Primicias de la industria de Video Games Chronicle"
+    },
+    {
+      "name": "GamingBible (Shorts)",
+      "url": "https://www.youtube.com/@GamingBible/shorts",
+      "type": "viral_gaming",
+      "lang": "en",
+      "filter_keywords": true,
+      "enabled": true,
+      "description": "Clips virales y momentos destacados en GamingBible"
     }
   ],
   "search_queries": [
     {
-      "query": "ytsearch10:IlloJuan GTA 6 #shorts",
+      "query": "ytsearch15:GTA 6 South Park parodia #shorts",
       "lang": "es",
       "only_shorts": true,
       "enabled": true,
-      "description": "Shorts virales y reacciones de IlloJuan sobre GTA 6"
+      "description": "Parodias y menciones de South Park a GTA 6 en formato vertical"
     },
     {
-      "query": "ytsearch10:ElXokas GTA 6 #shorts",
+      "query": "ytsearch15:GTA 6 South Park parody #shorts",
+      "lang": "en",
+      "only_shorts": true,
+      "enabled": true,
+      "description": "South Park GTA 6 parody and pop culture crossovers"
+    },
+    {
+      "query": "ytsearch15:GTA 6 parodia viral risas #shorts",
       "lang": "es",
       "only_shorts": true,
       "enabled": true,
-      "description": "Shorts virales y momentos de ElXokas hablando de GTA 6"
+      "description": "Parodias virales y sketches de humor sobre GTA 6"
     },
     {
-      "query": "ytsearch10:AuronPlay GTA 6 #shorts",
+      "query": "ytsearch15:GTA 6 meme viral tiktok #shorts",
       "lang": "es",
       "only_shorts": true,
       "enabled": true,
-      "description": "Shorts de AuronPlay sobre filtraciones y novedades de GTA 6"
+      "description": "Memes virales de TikTok sobre GTA 6"
     },
     {
-      "query": "ytsearch10:Ibai GTA 6 #shorts",
+      "query": "ytsearch15:GTA 6 funny moments fails #shorts",
+      "lang": "en",
+      "only_shorts": true,
+      "enabled": true,
+      "description": "Viral funny moments and fails in GTA 6"
+    },
+    {
+      "query": "ytsearch15:GTA 6 referencias peliculas series #shorts",
       "lang": "es",
       "only_shorts": true,
       "enabled": true,
-      "description": "Shorts de Ibai Llanos reaccionando a novedades de GTA 6"
+      "description": "Referencias a películas y series en GTA 6"
     },
     {
-      "query": "ytsearch10:TheGrefg GTA 6 #shorts",
+      "query": "ytsearch15:GTA 6 humor momentos comedia #shorts",
       "lang": "es",
       "only_shorts": true,
       "enabled": true,
-      "description": "Reacciones y momentos de TheGrefg con GTA 6"
+      "description": "Momentos de humor y comedia en GTA 6"
     },
     {
-      "query": "ytsearch10:Rubius GTA 6 #shorts",
+      "query": "ytsearch15:GTA 6 graficos rage 9 realismo agua #shorts",
       "lang": "es",
       "only_shorts": true,
       "enabled": true,
-      "description": "Clips de Rubius hablando del tráiler y filtraciones de GTA 6"
+      "description": "Físicas hiperrealistas de agua y motor RAGE 9"
     },
     {
-      "query": "ytsearch10:DaniRep GTA 6 #shorts",
+      "query": "ytsearch15:GTA 6 fisicas agua olas densidad #shorts",
       "lang": "es",
       "only_shorts": true,
       "enabled": true,
-      "description": "Noticias, mapa y análisis de DaniRep sobre GTA 6"
+      "description": "Detalles de olas, densidad y físicas acuáticas"
     },
     {
-      "query": "ytsearch10:Knekro GTA 6 #shorts",
+      "query": "ytsearch15:GTA 6 fisicas coches accidentes colision #shorts",
       "lang": "es",
       "only_shorts": true,
       "enabled": true,
-      "description": "Reacciones y opiniones de Knekro sobre GTA 6"
+      "description": "Deformación de vehículos y físicas de colisiones"
     },
     {
-      "query": "ytsearch10:DjMaRiiO GTA 6 #shorts",
+      "query": "ytsearch15:GTA 6 comparativa gta 5 diferencias #shorts",
       "lang": "es",
       "only_shorts": true,
       "enabled": true,
-      "description": "Shorts de DjMaRiiO sobre coches y mapa de GTA 6"
+      "description": "Comparativa técnica directa entre GTA 5 y GTA 6"
     },
     {
-      "query": "ytsearch10:Jordi Wild GTA 6 #shorts",
+      "query": "ytsearch15:GTA 6 detalles realistas que flipas #shorts",
       "lang": "es",
       "only_shorts": true,
       "enabled": true,
-      "description": "Debates y tertulias de The Wild Project sobre GTA 6"
+      "description": "Detalles ultra realistas de Rockstar en GTA 6"
     },
     {
-      "query": "ytsearch10:Menos Trece GTA 6 #shorts",
+      "query": "ytsearch15:GTA 6 inteligencia artificial npcs reacciones #shorts",
       "lang": "es",
       "only_shorts": true,
       "enabled": true,
-      "description": "Opiniones y análisis de Menos Trece sobre GTA 6"
+      "description": "Comportamiento e IA avanzada de peatones y multitudes"
     },
     {
-      "query": "ytsearch10:streamers reaccionan GTA 6 #shorts",
+      "query": "ytsearch15:GTA 6 iluminacion ray tracing noche #shorts",
       "lang": "es",
       "only_shorts": true,
       "enabled": true,
-      "description": "Recopilaciones virales de streamers hispanos ante GTA 6"
+      "description": "Ray tracing e iluminación nocturna en Vice City"
     },
     {
-      "query": "ytsearch10:GTA 6 filtracion real espanol #shorts",
+      "query": "ytsearch15:GTA 6 animales ecosistema caimanes #shorts",
       "lang": "es",
       "only_shorts": true,
       "enabled": true,
-      "description": "Shorts de filtraciones reales analizadas en español"
+      "description": "Ecosistema salvaje de Leonida: caimanes y fauna"
     },
     {
-      "query": "ytsearch10:GTA 6 trailer detalles secretos #shorts",
+      "query": "ytsearch15:GTA 6 destruccion edificios fisicas #shorts",
       "lang": "es",
       "only_shorts": true,
       "enabled": true,
-      "description": "Detalles ocultos del tráiler oficial en formato vertical"
+      "description": "Físicas de destrucción de entornos e interiores"
     },
     {
-      "query": "ytsearch10:GTA 6 fisicas coches realismo #shorts",
+      "query": "ytsearch15:GTA 6 mapa Leonida comparativa miami #shorts",
       "lang": "es",
       "only_shorts": true,
       "enabled": true,
-      "description": "Físicas y realismo RAGE 9 en formato vertical"
+      "description": "Mapa de Leonida comparado con Miami real"
     },
     {
-      "query": "ytsearch10:GTA 6 comparativa mapa vida real #shorts",
+      "query": "ytsearch15:GTA 6 secretos ocultos vice city #shorts",
       "lang": "es",
       "only_shorts": true,
       "enabled": true,
-      "description": "Comparativas del mapa de Leonida con Miami en vertical"
+      "description": "Secretos y misterios ocultos en Vice City"
     },
     {
-      "query": "ytsearch10:GTA 6 gameplay real mission #shorts",
+      "query": "ytsearch15:GTA 6 easter eggs misterios mapa #shorts",
+      "lang": "es",
+      "only_shorts": true,
+      "enabled": true,
+      "description": "Easter eggs ocultos y mitos en el mapa de GTA 6"
+    },
+    {
+      "query": "ytsearch15:GTA 6 detalles que no viste trailer #shorts",
+      "lang": "es",
+      "only_shorts": true,
+      "enabled": true,
+      "description": "Detalles imperceptibles a simple vista del tráiler"
+    },
+    {
+      "query": "ytsearch15:GTA 6 localizaciones reales leonida #shorts",
+      "lang": "es",
+      "only_shorts": true,
+      "enabled": true,
+      "description": "Lugares reales de Florida recreados en Leonida"
+    },
+    {
+      "query": "ytsearch15:GTA 6 edificios que puedes entrar interiores #shorts",
+      "lang": "es",
+      "only_shorts": true,
+      "enabled": true,
+      "description": "Interiores explorables y accesibles en GTA 6"
+    },
+    {
+      "query": "ytsearch15:GTA 6 mansiones barcos exploracion #shorts",
+      "lang": "es",
+      "only_shorts": true,
+      "enabled": true,
+      "description": "Mansiones de lujo y yates en Vice City"
+    },
+    {
+      "query": "ytsearch15:GTA 6 curiosidades ocultas rockstar #shorts",
+      "lang": "es",
+      "only_shorts": true,
+      "enabled": true,
+      "description": "Curiosidades y homenajes ocultos de Rockstar Games"
+    },
+    {
+      "query": "ytsearch15:GTA 6 rockstar comunicado oficial noticias #shorts",
+      "lang": "es",
+      "only_shorts": true,
+      "enabled": true,
+      "description": "Última hora y comunicados de Rockstar Games"
+    },
+    {
+      "query": "ytsearch15:GTA 6 fecha lanzamiento novedades #shorts",
+      "lang": "es",
+      "only_shorts": true,
+      "enabled": true,
+      "description": "Confirmaciones oficiales de fecha y lanzamiento"
+    },
+    {
+      "query": "ytsearch15:GTA 6 nueva informacion filtrada mapa #shorts",
+      "lang": "es",
+      "only_shorts": true,
+      "enabled": true,
+      "description": "Filtraciones verificadas de nuevos distritos del mapa"
+    },
+    {
+      "query": "ytsearch15:GTA 6 precio ps5 pro rendimiento #shorts",
+      "lang": "es",
+      "only_shorts": true,
+      "enabled": true,
+      "description": "Rendimiento en PS5 Pro y precios de edición coleccionista"
+    },
+    {
+      "query": "ytsearch15:GTA 6 armas tiroteos mecanicas #shorts",
+      "lang": "es",
+      "only_shorts": true,
+      "enabled": true,
+      "description": "Mecánicas de disparo, rueda de armas y tiroteos"
+    },
+    {
+      "query": "ytsearch15:GTA 6 personalizacion coches tuning #shorts",
+      "lang": "es",
+      "only_shorts": true,
+      "enabled": true,
+      "description": "Tuning de vehículos y personalización en GTA 6"
+    },
+    {
+      "query": "ytsearch15:GTA 6 lucia jason historia lore #shorts",
+      "lang": "es",
+      "only_shorts": true,
+      "enabled": true,
+      "description": "Historia y trasfondo de Lucía y Jason"
+    },
+    {
+      "query": "ytsearch15:GTA 6 florida joker entrevista rockstar #shorts",
+      "lang": "es",
+      "only_shorts": true,
+      "enabled": true,
+      "description": "Polémicas y declaraciones del Joker de Florida"
+    },
+    {
+      "query": "ytsearch15:GTA 6 Jordi Maquiavello analisis #shorts",
+      "lang": "es",
+      "only_shorts": true,
+      "enabled": true,
+      "description": "Análisis cinematográfico de Jordi Maquiavello"
+    },
+    {
+      "query": "ytsearch15:GTA 6 BaityBait analisis #shorts",
+      "lang": "es",
+      "only_shorts": true,
+      "enabled": true,
+      "description": "Análisis y opiniones de BaityBait sobre GTA 6"
+    },
+    {
+      "query": "ytsearch15:GTA 6 Puerta al Sotano secretos #shorts",
+      "lang": "es",
+      "only_shorts": true,
+      "enabled": true,
+      "description": "Secretos y comparativas de Puerta al Sótano"
+    },
+    {
+      "query": "ytsearch15:GTA 6 Ray Snakeet secretos #shorts",
+      "lang": "es",
+      "only_shorts": true,
+      "enabled": true,
+      "description": "Secretos del universo GTA con Ray Snakeet"
+    },
+    {
+      "query": "ytsearch15:GTA 6 Eurogamer Espana detalles #shorts",
+      "lang": "es",
+      "only_shorts": true,
+      "enabled": true,
+      "description": "Análisis y noticias de Eurogamer España"
+    },
+    {
+      "query": "ytsearch15:GTA 6 Vandal analisis detalles #shorts",
+      "lang": "es",
+      "only_shorts": true,
+      "enabled": true,
+      "description": "Detalles y avances de la revista Vandal"
+    },
+    {
+      "query": "ytsearch15:GTA 6 3DJuegos curiosidades #shorts",
+      "lang": "es",
+      "only_shorts": true,
+      "enabled": true,
+      "description": "Curiosidades y análisis técnico de 3DJuegos"
+    },
+    {
+      "query": "ytsearch15:GTA 6 Leyendas Videojuegos secretos #shorts",
+      "lang": "es",
+      "only_shorts": true,
+      "enabled": true,
+      "description": "Secretos y misterios en Leyendas & Videojuegos"
+    },
+    {
+      "query": "ytsearch15:GTA 6 Knekro detalles reaccion #shorts",
+      "lang": "es",
+      "only_shorts": true,
+      "enabled": true,
+      "description": "Opiniones y reacciones sinceras de Knekro"
+    },
+    {
+      "query": "ytsearch15:GTA 6 IlloJuan secretos mapa #shorts",
+      "lang": "es",
+      "only_shorts": true,
+      "enabled": true,
+      "description": "Momentos de IlloJuan analizando GTA 6"
+    },
+    {
+      "query": "ytsearch15:GTA 6 ElXokas analisis teoria #shorts",
+      "lang": "es",
+      "only_shorts": true,
+      "enabled": true,
+      "description": "Teorías y reflexiones de ElXokas sobre GTA 6"
+    },
+    {
+      "query": "ytsearch15:GTA 6 Rubius trailer reaccion momentos #shorts",
+      "lang": "es",
+      "only_shorts": true,
+      "enabled": true,
+      "description": "Reacciones de Rubius al mundo de GTA 6"
+    },
+    {
+      "query": "ytsearch15:GTA 6 Ibai novedades risas #shorts",
+      "lang": "es",
+      "only_shorts": true,
+      "enabled": true,
+      "description": "Comentarios y risas de Ibai sobre GTA 6"
+    },
+    {
+      "query": "ytsearch15:GTA 6 TheGrefg filtracion reaccion #shorts",
+      "lang": "es",
+      "only_shorts": true,
+      "enabled": true,
+      "description": "Reacciones épicas de TheGrefg a GTA 6"
+    },
+    {
+      "query": "ytsearch15:GTA 6 AuronPlay momentos trailer #shorts",
+      "lang": "es",
+      "only_shorts": true,
+      "enabled": true,
+      "description": "Momentos divertidos de AuronPlay comentando GTA 6"
+    },
+    {
+      "query": "ytsearch15:GTA 6 viral breakdown secrets #shorts",
+      "lang": "en",
+      "only_shorts": true,
+      "enabled": true,
+      "description": "Viral breakdown of secrets in English"
+    },
+    {
+      "query": "ytsearch15:GTA 6 crazy realistic details #shorts",
+      "lang": "en",
+      "only_shorts": true,
+      "enabled": true,
+      "description": "Crazy realistic details going viral worldwide"
+    },
+    {
+      "query": "ytsearch15:GTA 6 mind blowing physics rage engine #shorts",
+      "lang": "en",
+      "only_shorts": true,
+      "enabled": true,
+      "description": "Mind blowing physics in the RAGE engine"
+    },
+    {
+      "query": "ytsearch15:GTA 6 biggest easter eggs leonida #shorts",
+      "lang": "en",
+      "only_shorts": true,
+      "enabled": true,
+      "description": "Biggest easter eggs hidden across Leonida"
+    },
+    {
+      "query": "ytsearch15:GTA 6 new leaks rockstar games #shorts",
+      "lang": "en",
+      "only_shorts": true,
+      "enabled": true,
+      "description": "New verified leaks from Rockstar Games"
+    },
+    {
+      "query": "ytsearch15:GTA 6 things you missed in trailer #shorts",
+      "lang": "en",
+      "only_shorts": true,
+      "enabled": true,
+      "description": "Hidden things you missed in GTA 6 footage"
+    },
+    {
+      "query": "ytsearch15:GTA 6 insane police ai wanted level #shorts",
+      "lang": "en",
+      "only_shorts": true,
+      "enabled": true,
+      "description": "Insane police AI tactics and wanted system"
+    },
+    {
+      "query": "ytsearch15:GTA 6 primera mision gameplay espanol #shorts",
       "lang": "es",
       "only_shorts": true,
       "enabled": true,
       "active_after": "2026-11-19",
-      "description": "Shorts de gameplay real y misiones a partir del 19 de Noviembre"
+      "description": "Primera misión y prólogo de GTA 6 en español"
     },
     {
-      "query": "ytsearch10:GTA 6 gameplay primera mision espanol #shorts",
+      "query": "ytsearch15:GTA 6 gameplay conduccion disparos atraco #shorts",
       "lang": "es",
       "only_shorts": true,
       "enabled": true,
       "active_after": "2026-11-19",
-      "description": "El arranque de la historia de GTA 6 en español"
+      "description": "Atracos y persecuciones en gameplay real"
     },
     {
-      "query": "ytsearch10:GTA 6 gameplay mundo abierto conduccion #shorts",
+      "query": "ytsearch15:GTA 6 nivel 5 estrellas persecucion swat #shorts",
       "lang": "es",
       "only_shorts": true,
       "enabled": true,
       "active_after": "2026-11-19",
-      "description": "Shorts de conducción libre y exploración de Leonida"
+      "description": "Máximo nivel de búsqueda policial en gameplay"
     },
     {
-      "query": "ytsearch10:GTA 6 gameplay tiroteos armas #shorts",
+      "query": "ytsearch15:GTA 6 final explicado gameplay #shorts",
       "lang": "es",
       "only_shorts": true,
       "enabled": true,
       "active_after": "2026-11-19",
-      "description": "Combates armados intensos y balística en GTA 6"
+      "description": "Final de la historia y revelaciones de GTA 6"
+    },
+    {
+      "query": "ytsearch15:GTA 6 secretos mapa gameplay libre #shorts",
+      "lang": "es",
+      "only_shorts": true,
+      "enabled": true,
+      "active_after": "2026-11-19",
+      "description": "Exploración libre de secretos por Leonida"
+    },
+    {
+      "query": "ytsearch15:GTA 6 todos los vehiculos gameplay #shorts",
+      "lang": "es",
+      "only_shorts": true,
+      "enabled": true,
+      "active_after": "2026-11-19",
+      "description": "Showcase de todos los coches y aviones en gameplay"
+    },
+    {
+      "query": "ytsearch15:GTA 6 armas tiendas tiroteo gameplay #shorts",
+      "lang": "es",
+      "only_shorts": true,
+      "enabled": true,
+      "active_after": "2026-11-19",
+      "description": "Ammu-Nation y personalización de armas en acción"
+    },
+    {
+      "query": "ytsearch15:GTA 6 bugs momentos divertidos gameplay #shorts",
+      "lang": "es",
+      "only_shorts": true,
+      "enabled": true,
+      "active_after": "2026-11-19",
+      "description": "Fails y físicas hilarantes de los primeros días"
+    },
+    {
+      "query": "ytsearch15:GTA 6 ps5 pro vs series x gameplay comparativa #shorts",
+      "lang": "es",
+      "only_shorts": true,
+      "enabled": true,
+      "active_after": "2026-11-19",
+      "description": "Comparativa de frames y gráficos en consolas next-gen"
+    },
+    {
+      "query": "ytsearch15:GTA 6 mundo abierto actividades minijuegos #shorts",
+      "lang": "es",
+      "only_shorts": true,
+      "enabled": true,
+      "active_after": "2026-11-19",
+      "description": "Minijuegos y actividades secundarias en Leonida"
     }
   ]
 }

@@ -133,6 +133,11 @@ def main():
         help="Iniciar el bot de control remoto y notificaciones de Telegram."
     )
     parser.add_argument(
+        "--launch-mode",
+        action="store_true",
+        help="Modo de Alta Frecuencia para el Día del Estreno (priorización hiper-agresiva por velocidad de vistas y frescura en tiempo real)."
+    )
+    parser.add_argument(
         "--radar", "--viral-radar",
         dest="viral_radar",
         action="store_true",
@@ -261,9 +266,11 @@ def main():
                 subprocess.run(["open", str(vid_path)])
         return
 
-    # Modo 2: Modo autónomo (canales)
-    if args.auto:
-        print("[*] Iniciando escaneo autónomo de canales...")
+    # Modo 2: Modo autónomo (canales) & Modo Día del Estreno (Launch Mode)
+    if args.auto or args.launch_mode:
+        launch_active = args.launch_mode or (datetime.now() >= datetime.fromisoformat("2026-11-19"))
+        tag = "🚀 [MODO DÍA DEL ESTRENO]" if launch_active else "[*]"
+        print(f"{tag} Iniciando escaneo autónomo multi-fuente (72 canales + 64 queries)...")
         effective_limit = args.max_videos if args.max_videos != MAX_VIDEOS_PER_RUN else get_max_videos_per_run()
         candidates = fetch_channel_candidates(max_per_channel=effective_limit)
         
@@ -271,28 +278,42 @@ def main():
             print("[✓] No hay vídeos nuevos pendientes de procesar en ningún canal.")
             return
 
-        print(f"[!] Se encontraron {len(candidates)} vídeos nuevos.")
+        print(f"[!] Se encontraron {len(candidates)} vídeos candidatos.")
+        
+        from src.ai_selector import select_best_candidate_ai
+        
         count = 0
-        for item in candidates:
-            if count >= effective_limit:
-                print(f"[*] Límite de {effective_limit} vídeos alcanzado en esta tanda.")
+        remaining = list(candidates)
+        while remaining and count < effective_limit:
+            chosen = select_best_candidate_ai(remaining, launch_mode=launch_active)
+            if not chosen:
                 break
             
+            # Quitar de la lista de pendientes para la siguiente iteración
+            chosen_id = chosen.get("id")
+            remaining = [c for c in remaining if c.get("id") != chosen_id]
+            
+            # Construir gancho de 2 líneas si la IA o el Playbook generaron líneas específicas
+            custom_hook = None
+            if chosen.get("hook_line1") and chosen.get("hook_line2"):
+                custom_hook = f"{chosen['hook_line1']}\n{chosen['hook_line2']}"
+
             res = process_single_video(
-                url=item["url"],
-                video_id=item["id"],
-                original_title=item["title"],
-                creator_name=item.get("source_name", ""),
-                source_lang=item.get("lang", "en"),
+                url=chosen["url"],
+                video_id=chosen["id"],
+                original_title=chosen.get("recommended_title") or chosen["title"],
+                creator_name=chosen.get("source_name") or chosen.get("uploader", ""),
+                source_lang=chosen.get("lang", "en"),
                 mode=args.mode,
-                force_short=True if (args.publish_all or item.get("is_short") or force_short) else force_short,
+                force_short=True if (args.publish_all or chosen.get("is_short") or force_short) else force_short,
                 auto_upload=args.upload,
                 privacy_status=args.privacy,
                 keep_local_video=args.keep_local_video,
                 publish_all=args.publish_all,
                 dry_run=args.dry_run,
                 stagger_delay=args.stagger_delay,
-                copilot_mode=False if args.no_copilot else None
+                copilot_mode=False if args.no_copilot else None,
+                hook_override=custom_hook
             )
             if res:
                 count += 1

@@ -1101,6 +1101,44 @@ def start_telegram_bot_daemon():
                         reply_markup=get_my_channels_inline_keyboard()
                     )
 
+                elif cmd in ["/aiselect", "/ai_select", "/seleccion_ia", "🤖"]:
+                    send_telegram_alert("🤖 *Consultando al Motor de Selección con IA (Gemini Flash)...*\nEvaluando candidatos en tiempo real entre 72 canales y 64 queries...")
+                    def _run_ai_sel():
+                        try:
+                            from .channels import fetch_channel_candidates
+                            from .ai_selector import select_best_candidate_ai
+                            candidates = fetch_channel_candidates(max_per_channel=2)
+                            if not candidates:
+                                send_telegram_alert("ℹ️ No hay vídeos nuevos pendientes en los canales para evaluar.")
+                                return
+                            best = select_best_candidate_ai(candidates, launch_mode=False)
+                            msg = (
+                                "🤖 *ELECCIÓN ESTRATÉGICA DE LA IA*\n"
+                                + ("═" * 36) + "\n\n"
+                                f"🎬 *Vídeo Ganador:* {best.get('title')}\n"
+                                f"👤 *Creador:* `{best.get('source_name') or best.get('uploader')}`\n"
+                                f"🔥 *Score:* `{best.get('score')}/100` | 👁️ *Vistas:* `{best.get('views', 0):,}`\n\n"
+                                f"💡 *Justificación IA:*\n_{best.get('ai_justification')}_\n\n"
+                                f"🏷️ *Título Sugerido:* `{best.get('recommended_title')}`\n"
+                                f"⚡ *Gancho Superior:* `{best.get('hook_line1')} | {best.get('hook_line2')}`\n\n"
+                                f"🔗 [Ver Original]({best.get('url')})"
+                            )
+                            send_telegram_alert(msg, reply_markup=get_persistent_menu_keyboard())
+                        except Exception as e:
+                            send_telegram_alert(f"⚠️ Error en selección con IA: {e}")
+                    threading.Thread(target=_run_ai_sel, daemon=True).start()
+
+                elif cmd in ["/launch", "/launchmode", "/launch_mode", "🚀"]:
+                    send_telegram_alert(
+                        "🚀 *MODO DÍA DEL ESTRENO (LAUNCH DAY 2026)*\n"
+                        + ("═" * 36) + "\n\n"
+                        "• Cobertura: *72 Canales de Autoridad + 64 Queries de Tendencia*\n"
+                        "• Algoritmo: *Velocity Burst x2 + Freshness Boost (<12h)*\n"
+                        "• Selector: *IA Gemini Flash evaluando gameplay y secretos de primer día*\n\n"
+                        "Para lanzar una tanda en modo estreno ejecuta:\n"
+                        "`./run.sh --launch-mode --auto`"
+                    )
+
                 elif cmd in ["/radar", "/viral", "🔥"] or text == "🔥 Radar Viral":
                     if ACTIVE_TASK:
                         send_telegram_alert(f"⚠️ *Tarea activa en curso:* `{ACTIVE_TASK}`. Por favor espera a que finalice.")
