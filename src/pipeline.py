@@ -63,8 +63,7 @@ def process_single_video(
 
     # 0. PROTOCOLO INNEGOCIABLE DE VALIDACIÓN EXCLUSIVA GTA 6 (Fail-Safe Defense-in-Depth)
     from .channels import is_strictly_gta6
-    is_official_rockstar = "rockstar" in (creator_name or "").lower() or "rockstargames" in url.lower()
-    if not is_official_rockstar and not is_strictly_gta6(original_title):
+    if not is_strictly_gta6(original_title):
         err_msg = f"❌ [BLOQUEO DE SEGURIDAD GTA 6] El vídeo '{original_title}' NO trata exclusivamente sobre GTA 6. Abortando inmediatamente."
         print(f"\n{err_msg}")
         try:

@@ -60,6 +60,24 @@ class TestCompliance(unittest.TestCase):
         self.assertFalse(is_strictly_gta("Receta de cocina con Gordon Ramsay"))
         self.assertFalse(is_strictly_gta("Concierto de coro escolar"))
 
+        # OTROS VIDEOJUEGOS O NOTICIAS AJENAS (DEBEN SER ESTRICTAMENTE DESCARTADOS)
+        self.assertFalse(is_strictly_gta("Red Dead Redemption 2 Secret Easter Egg in 2026"))
+        self.assertFalse(is_strictly_gta("Circoloco Records Presents Anyma"))
+        self.assertFalse(is_strictly_gta("Fortnite Chapter 5 Season 2 Battle Pass"))
+        self.assertFalse(is_strictly_gta("Call of Duty Warzone Season 2 Patch Notes"))
+        self.assertFalse(is_strictly_gta("Elden Ring Shadow of the Erdtree Gameplay"))
+        self.assertFalse(is_strictly_gta("Cyberpunk 2077 Phantom Liberty Ending"))
+        self.assertFalse(is_strictly_gta("Jason Schreier talks about PS6 launch window"))
+        self.assertFalse(is_strictly_gta("Lucia de la Puerta reacciona a su nuevo video"))
+        self.assertFalse(is_strictly_gta("Bully 2 cancellation story explained"))
+        self.assertFalse(is_strictly_gta("Max Payne 1 and 2 Remake update"))
+
+        # Casos válidos de GTA 6 con crossovers y comparativas técnicas
+        self.assertTrue(is_strictly_gta("South Park GTA 6 Parody Scene"))
+        self.assertTrue(is_strictly_gta("GTA 5 vs GTA 6 Water Physics Comparison"))
+        self.assertTrue(is_strictly_gta("Lucia and Jason criminal duo explained in GTA 6"))
+        self.assertTrue(is_strictly_gta("Jason Schreier reveals GTA 6 internal release date"))
+
     def test_to_unicode_bold(self):
         from src.translator import to_unicode_bold
         self.assertEqual(to_unicode_bold("GTA 6"), "𝗚𝗧𝗔 𝟲")

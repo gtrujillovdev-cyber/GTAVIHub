@@ -10,29 +10,59 @@ from .config import CHANNELS_FILE, PROCESSED_FILE
 GTA6_POSITIVE_KEYWORDS = [
     "gta 6", "gta6", "gta vi", "gtavi",
     "grand theft auto 6", "grand theft auto vi",
-    "lucia", "jason", "leonida", "port gellhorn", "rage 9"
+    "leonida", "port gellhorn", "vice beach", "rage 9", "mud girl", "florida joker"
 ]
 
 def is_strictly_gta6(title: str, description: str = "") -> bool:
     """
-    Verifica de forma estricta e innegociable que el contenido trata EXCLUSIVAMENTE
+    Verifica de forma estricta, matemática e innegociable que el contenido trata EXCLUSIVAMENTE
     sobre Grand Theft Auto VI (GTA 6).
-    Rechaza tajantemente GTA 5, GTA Online, GTA 4 o cualquier contenido que no sea de GTA 6.
+    Rechaza tajantemente GTA 5, GTA Online, GTA 4, Red Dead Redemption, Fortnite,
+    Call of Duty o cualquier otro juego o noticia que no sea estrictamente de GTA 6.
     """
     combined = f" {title} {description} ".lower()
+    title_lower = title.lower()
 
     # 1. Requiere mención explícita a GTA 6 / GTA VI o sus elementos canónicos exclusivos
     has_gta6 = any(
         re.search(r"(?:\b|_)" + re.escape(term) + r"(?:\b|_)", combined)
         for term in GTA6_POSITIVE_KEYWORDS
     )
+
+    # Soporte para protagonistas duales canónicos (Lucía & Jason juntos)
+    if not has_gta6:
+        if re.search(r"\b(?:lucia\s+(?:y|and|&)\s+jason|jason\s+(?:y|and|&)\s+lucia)\b", combined):
+            has_gta6 = True
+
+    # Soporte para protagonista individual (Lucía o Jason) ÚNICAMENTE con contexto explícito de GTA/Rockstar/Vice City
+    if not has_gta6:
+        has_protagonist = bool(re.search(r"\b(?:lucia|jason)\b", combined))
+        has_gta_context = bool(re.search(r"\b(?:gta|rockstar|vice\s*city|trailer|leak|filtraci[oó]n)\b", combined))
+        is_non_gta_person = bool(re.search(r"\b(?:jason\s*schreier|jason\s*blum|jason\s*voorhees|lucia\s*de\s*la\s*puerta|lucia\s*bellido)\b", combined))
+        if has_protagonist and has_gta_context and not is_non_gta_person:
+            has_gta6 = True
+
     if not has_gta6:
         return False
 
-    title_lower = title.lower()
+    # 2. Descalificadores absolutos de otras franquicias ajenas a GTA 6
+    unrelated_franchises = [
+        r"\bred\s*dead\b", r"\brdr\b", r"\brdr2\b", r"\brdr1\b", r"\bbully\b", r"\bmax\s*payne\b",
+        r"\bmidnight\s*club\b", r"\bcircoloco\b", r"\bla\s*noire\b", r"\bmanhunt\b",
+        r"\bfortnite\b", r"\bcall\s*of\s*duty\b", r"\bwarzone\b", r"\bminecraft\b",
+        r"\bcyberpunk\b", r"\belden\s*ring\b", r"\broblox\b", r"\beafc\b", r"\bfifa\b",
+        r"\bvalorant\b", r"\bleague\s*of\s*legends\b", r"\bassassin'?s\s*creed\b",
+        r"\bspider-?man\b", r"\bwolverine\b", r"\bstar\s*field\b", r"\bhalo\b",
+        r"\bresident\s*evil\b", r"\bsilent\s*hill\b", r"\bblack\s*myth\b", r"\bwukong\b",
+        r"\bmonster\s*hunter\b", r"\bzelda\b", r"\bmario\b", r"\bpokemon\b", r"\bpokémon\b"
+    ]
+    for pattern in unrelated_franchises:
+        if re.search(pattern, title_lower):
+            # Solo permitir si es una comparación técnica explícita con GTA 6
+            if not re.search(r"\b(?:vs|versus|comparativa|comparison|diferencias)\b", title_lower):
+                return False
 
-    # 2. Descalificadores absolutos: si menciona GTA 5, GTA V, GTA Online, GTA 4, Vice City retro, etc.,
-    # se descarta tajantemente para evitar gameplays antiguos o clickbait de entregas previas.
+    # 3. Descalificadores absolutos de entregas anteriores de GTA (GTA 5, GTA Online, GTA 4, San Andreas, etc.)
     old_game_regexes = [
         r"\bgta\s*5\b",
         r"\bgta\s*v\b",
@@ -59,15 +89,19 @@ def is_strictly_gta6(title: str, description: str = "") -> bool:
     ]
     for pattern in old_game_regexes:
         if re.search(pattern, title_lower):
-            return False
+            # Permitir únicamente comparaciones explícitas de evolución gráfica/físicas con GTA 6
+            is_comparison = bool(
+                re.search(r"\b(?:vs|versus|comparativa|comparison|diferencias|evolucion|evolution)\b", title_lower)
+                and re.search(r"\b(?:gta\s*6|gta6|gta\s*vi|gtavi)\b", title_lower)
+            )
+            if not is_comparison:
+                return False
 
     # Si menciona 'vice city' pero no menciona explícitamente '6' o 'vi', es del juego antiguo
     if re.search(r"\bvice\s*city\b", title_lower) and not re.search(r"\b(?:gta\s*6|gta6|gta\s*vi|gtavi)\b", title_lower):
         return False
 
-    # 3. Filtro Anti-Fake, Anti-IA y Anti-Conceptos (CERO CONTENIDO FALSO O FAN-MADE):
-    # GTA 6 está lanzado; existe gameplay real. Se descarta solo contenido CGI/fan-made/IA generativa,
-    # no términos técnicos legítimos como "AI NPC", "IA del juego" o "render distance".
+    # 4. Filtro Anti-Fake, Anti-IA y Anti-Conceptos (CERO CONTENIDO FALSO O FAN-MADE):
     fake_ai_regexes = [
         r"\bconcept\b",
         r"\bconcept\s*trailer\b",
@@ -200,9 +234,10 @@ def fetch_channel_candidates(max_per_channel: int = 2) -> List[Dict[str, Any]]:
                         except Exception:
                             pass
                     # FILTRO INNEGOCIABLE DE CONTENIDO EXCLUSIVO GTA 6:
-                    is_official = ("rockstargames" in url.lower() or ch.get("type") == "official")
-                    if not is_official and not is_strictly_gta6(title):
+                    # Ni siquiera los canales oficiales pueden colar contenido ajeno (como RDR o GTA Online).
+                    if not is_strictly_gta6(title):
                         continue
+                    is_official = ("rockstargames" in url.lower() or ch.get("type") == "official")
 
                     try:
                         dur_secs = float(duration) if duration and duration != "NA" else 0.0

@@ -28,6 +28,12 @@ def select_best_candidate_ai(
     if not candidates:
         return {}
 
+    from .channels import is_strictly_gta6
+    candidates = [c for c in candidates if is_strictly_gta6(c.get("title", ""))]
+    if not candidates:
+        print("[AI Selector] Todos los candidatos fueron descartados por no ser estrictamente de GTA 6.")
+        return {}
+
     # Si solo hay un candidato, enriquecerlo y retornarlo
     if len(candidates) == 1:
         chosen = dict(candidates[0])
