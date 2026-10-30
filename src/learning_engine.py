@@ -267,6 +267,8 @@ def run_self_learning_cycle() -> Dict[str, Any]:
     except Exception:
         pass
 
+    perf_section = f"RENDIMIENTO REAL DE NUESTROS ÚLTIMOS VÍDEOS PUBLICADOS (FEEDBACK 24H):\n{performance_context}\n" if performance_context else ""
+
     client = get_gemini_client()
 
     prompt = f"""Actúa como el Director de Analítica de Retención Algorítmica en YouTube Shorts y TikTok especializado en Gaming y GTA 6.
@@ -281,8 +283,7 @@ DATOS DE NUESTRO CANAL (VÍDEOS SUBIDOS Y VISUALIZACIONES):
 DATOS DE LOS COMPETIDORES VIRALES (>10K - 500K VISTAS):
 {json.dumps(competitors, indent=2, ensure_ascii=False) if competitors else "Competidores con vídeos de 18-28s basados en detalles específicos de físicas, IlloJuan y parodias."}
 
-{f"RENDIMIENTO REAL DE NUESTROS ÚLTIMOS VÍDEOS PUBLICADOS (FEEDBACK 24H):\n{performance_context}" if performance_context else ""}
-
+{perf_section}
 REGLAS DE ANÁLISIS:
 1. Autocrítica: Señala por qué nuestros títulos y duraciones no están consiguiendo retención (ej. clichés repetitivos '¡FILTRACIÓN ÉPICA!', duraciones de 51s demasiado largas para bucle, falta de misterio específico).
 2. Benchmarking: Extrae exactamente qué hace que los vídeos de los competidores funcionen (duraciones de 18-28s, títulos de intriga que no revelan todo de golpe, humor/streamers).
