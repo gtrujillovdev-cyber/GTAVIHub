@@ -335,12 +335,12 @@ def download_video_and_subtitles(
             trimmed_video = TEMP_DIR / f"{video_id}_viral.mp4"
             print(f"[*] Recortando clip dinámico ({v_start:.1f}s a {v_end:.1f}s, duración: {v_end - v_start:.1f}s)...")
             
-            # Recorte preciso con aceleración VideoToolbox
+            # Recorte preciso frame-accurate con aceleración VideoToolbox (input antes de seek para evitar desync de keyframe con SRT)
             cmd_trim = [
                 "ffmpeg", "-y",
+                "-i", str(video_path),
                 "-ss", str(v_start),
                 "-to", str(v_end),
-                "-i", str(video_path),
                 "-threads", str(get_ffmpeg_threads()),
                 "-c:v", "h264_videotoolbox",
                 "-b:v", "8M",

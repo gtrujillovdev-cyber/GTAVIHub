@@ -47,6 +47,9 @@ SHORT_TARGET_DURATION = int(os.getenv("SHORT_TARGET_DURATION", "24"))
 FFMPEG_VIDEO_CODEC = "h264_videotoolbox"
 FFMPEG_BITRATE = os.getenv("FFMPEG_BITRATE", "10M")
 
+# Sincronización y calibración de subtítulos (offset negativo para compensar el retardo intrínseco de YouTube ASR captions)
+SUBTITLE_OFFSET = float(os.getenv("SUBTITLE_OFFSET", "-0.45"))
+
 # Protocolo de Coexistencia de Hardware (GaTDSEQ & Background Friendliness)
 FFMPEG_THREADS = int(os.getenv("FFMPEG_THREADS", "2"))
 CHECK_QUANT_BUSY = os.getenv("CHECK_QUANT_BUSY", "true").lower() in ("1", "true", "yes")

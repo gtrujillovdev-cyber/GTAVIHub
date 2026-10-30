@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Optional, Tuple, List, Dict, Any
 from PIL import Image, ImageDraw, ImageFont, ImageFilter
 
-from .config import BASE_DIR, FFMPEG_VIDEO_CODEC, FFMPEG_BITRATE, FFMPEG_THREADS, is_quant_busy
+from .config import BASE_DIR, FFMPEG_VIDEO_CODEC, FFMPEG_BITRATE, FFMPEG_THREADS, SUBTITLE_OFFSET, is_quant_busy
 
 def get_video_dimensions(video_path: Path) -> Tuple[int, int]:
     """Obtiene ancho y alto del vídeo usando ffprobe."""
@@ -83,17 +83,19 @@ def split_cue_into_micro_bursts(text: str, start: float, end: float, max_words: 
     """
     Divide frases en micro-ráfagas de 2-3 palabras estilo Hormozi / MrBeast,
     garantizando SINCRONIZACIÓN PERFECTA (cero desfase temporal con la voz):
-    La suma de duraciones de las ráfagas coincide exactamente con el intervalo de habla real [start, end].
+    La suma de duraciones de las ráfagas coincide proporcionalmente con el habla real [start, end].
     """
     words = text.split()
     if not words:
         return []
 
-    # Duración real limitada para evitar que glitches de subtítulos automáticos (ej. 30s) cuelguen en pantalla
-    cue_duration = max(0.4, min(end - start, max(1.2, len(words) * 0.55)))
+    actual_dur = max(0.4, end - start)
+    # Acotar a duración razonable de locución si el caption se extiende artificialmente en pausas
+    max_reasonable = max(0.9, len(words) * 0.58)
+    effective_dur = min(actual_dur, max_reasonable)
 
     if len(words) <= max_words:
-        return [{"start": round(start, 2), "end": round(start + cue_duration, 2), "text": text}]
+        return [{"start": round(start, 2), "end": round(start + effective_dur, 2), "text": text}]
 
     chunks = []
     i = 0
@@ -117,11 +119,10 @@ def split_cue_into_micro_bursts(text: str, start: float, end: float, max_words: 
     cur_t = start
     for idx, (c, wt) in enumerate(zip(chunks, chunk_weights)):
         if idx == len(chunks) - 1:
-            next_t = end
+            next_t = start + effective_dur
         else:
-            c_dur = cue_duration * (wt / total_weight)
+            c_dur = effective_dur * (wt / total_weight)
             next_t = cur_t + c_dur
-
         res.append({
             "start": round(cur_t, 2),
             "end": round(next_t, 2),
@@ -156,17 +157,21 @@ def calculate_word_timing(words: List[str], start_t: float, end_t: float) -> Lis
         cur_t = next_t
     return timings
 
-def parse_srt_file(srt_path: Path) -> List[Dict[str, Any]]:
+def parse_srt_file(srt_path: Path, offset_seconds: Optional[float] = None) -> List[Dict[str, Any]]:
     """
-    Parsea y desduplica subtítulos SRT eliminando el 'rolling buffer' de YouTube:
-    1. Filtra micro-bloques de transición (< 0.25s).
-    2. Elimina líneas repetidas del bloque anterior.
-    3. Asegura estricta monotonicidad temporal (cero solapamientos entre frases).
-    4. Devuelve micro-ráfagas limpias de 2-3 palabras.
+    Parsea y desduplica subtítulos SRT eliminando el 'rolling buffer' de YouTube
+    y calibrando al milisegundo el retardo de ASR captions:
+    1. Aplica compensación temporal negativa (SUBTITLE_OFFSET) para sincronizar con fonemas.
+    2. Filtra micro-bloques de transición (< 0.25s).
+    3. Desduplica repeticiones rodantes de YouTube sin amputar palabras válidas.
+    4. Asegura estricta monotonicidad temporal (cero solapamientos entre frases).
+    5. Devuelve micro-ráfagas limpias de 2-3 palabras perfectamente sincronizadas.
     """
     if not srt_path.exists():
         return []
-    
+
+    effective_offset = SUBTITLE_OFFSET if offset_seconds is None else offset_seconds
+
     with open(srt_path, "r", encoding="utf-8", errors="ignore") as f:
         content = f.read().replace("\r\n", "\n")
 
@@ -178,23 +183,33 @@ def parse_srt_file(srt_path: Path) -> List[Dict[str, Any]]:
         lines = [line.strip() for line in b.split("\n") if line.strip()]
         if len(lines) >= 3 and "-->" in lines[1]:
             start_str, end_str = lines[1].split("-->")
-            start_sec = parse_time(start_str)
-            end_sec = parse_time(end_str)
-            
+            raw_start = parse_time(start_str)
+            raw_end = parse_time(end_str)
+
             # Descartar micro-glitches de 10-100ms
-            if (end_sec - start_sec) < 0.25:
+            if (raw_end - raw_start) < 0.25:
                 continue
+
+            # Calibración milimétrica: compensar retraso de YouTube ASR captions
+            start_sec = max(0.0, raw_start + effective_offset)
+            end_sec = max(start_sec + 0.35, raw_end + effective_offset)
 
             text_lines = [clean_text_no_emoji(l) for l in lines[2:] if clean_text_no_emoji(l)]
             if not text_lines:
                 continue
 
-            # Desduplicar el buffer rodante de YouTube
-            new_lines = [tl for tl in text_lines if tl not in last_text]
+            # Desduplicar el buffer rodante de YouTube de forma segura
+            last_clean = last_text.strip().lower()
+            new_lines = []
+            for tl in text_lines:
+                tl_clean = tl.strip().lower()
+                if tl_clean and tl_clean != last_clean:
+                    new_lines.append(tl)
+
             if not new_lines:
-                full_t = " ".join(text_lines)
-                if full_t.startswith(last_text) and len(full_t) > len(last_text):
-                    added = full_t[len(last_text):].strip()
+                full_t = " ".join(text_lines).strip()
+                if full_t.lower().startswith(last_clean) and len(full_t) > len(last_clean):
+                    added = full_t[len(last_clean):].strip()
                     if added:
                         new_lines = [added]
                 else:
@@ -219,9 +234,15 @@ def parse_srt_file(srt_path: Path) -> List[Dict[str, Any]]:
         if c_end <= c_start:
             continue
 
-        # Si el bloque previo aún está en pantalla al empezar este cue, truncar el previo
+        # Evitar solapamientos con la ráfaga anterior
         if all_bursts and all_bursts[-1]["end"] > c_start:
-            all_bursts[-1]["end"] = max(all_bursts[-1]["start"] + 0.1, round(c_start - 0.02, 2))
+            prev_start = all_bursts[-1]["start"]
+            if c_start > prev_start + 0.2:
+                all_bursts[-1]["end"] = round(c_start - 0.02, 2)
+            else:
+                c_start = round(all_bursts[-1]["end"] + 0.02, 2)
+                if c_end <= c_start:
+                    continue
 
         bursts = split_cue_into_micro_bursts(c["text"], c_start, c_end, max_words=3)
         for b in bursts:
@@ -776,8 +797,9 @@ def render_final_video(
     for s_idx, (_, start_s, end_s) in enumerate(sub_pngs):
         in_id = sub_inputs_start + s_idx
         next_v = f"v_sub_{s_idx}"
+        # Transición limpia al frame gte*lt (evita parpadeo y solapamiento entre estados consecutivos)
         filter_chains.append(
-            f"[{current_v}][{in_id}:v]overlay=(W-w)/2:{sub_y}:enable='between(t,{start_s:.2f},{end_s:.2f})'[{next_v}]"
+            f"[{current_v}][{in_id}:v]overlay=(W-w)/2:{sub_y}:enable='gte(t,{start_s:.2f})*lt(t,{end_s:.2f})'[{next_v}]"
         )
         current_v = next_v
 

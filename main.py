@@ -149,6 +149,11 @@ def main():
         action="store_true",
         help="Ingesta y procesa automáticamente el clip #1 más viral del Radar."
     )
+    parser.add_argument(
+        "--update-deals",
+        action="store_true",
+        help="Sincroniza y actualiza las ofertas de hardware y periféricos de Amazon para GTA VI (ciclo de 3 días)."
+    )
 
     args = parser.parse_args()
 
@@ -163,6 +168,14 @@ def main():
     if args.telegram:
         from src.telegram_bot import start_telegram_bot_daemon
         start_telegram_bot_daemon()
+        return
+
+    if args.update_deals:
+        from src.deal_scanner import scan_and_update_deals
+        print("\n[*] Ejecutando escáner y sincronización de ofertas de Amazon (ciclo 3 días)...")
+        res = scan_and_update_deals(force=True, notify_telegram=True)
+        print(f"[✓] {res['message']} (Total ofertas: {res.get('total_deals', 0)})")
+        print(res.get("report", ""))
         return
 
     if args.viral_radar:

@@ -5,7 +5,8 @@
   "products": {
     "gta6_game_ps5": {
       "title": "Grand Theft Auto VI - Reserva Oficial (PS5)",
-      "badge": "🔥 IMPRESCINDIBLE",
+      "badge": "🔥 RESERVA OFICIAL",
+      "category": "juegos",
       "search_query": "gta 6 playstation 5",
       "direct_url": "https://www.amazon.es/s?k=gta+6+playstation+5"
     },
@@ -18,7 +19,7 @@
     "ps5_pro": {
       "title": "PlayStation 5 Pro (Modo 4K 60 FPS Leonida)",
       "badge": "⚡ MÁXIMO RENDIMIENTO",
-      "asin": "B0DG4RFZMB",
+      "category": "consolas",
       "search_query": "playstation 5 pro consola",
       "direct_url": "https://www.amazon.es/s?k=playstation+5+pro+consola"
     },
@@ -36,29 +37,46 @@
       "direct_url": "https://www.amazon.es/s?k=xbox+series+x+consola"
     },
     "ssd_ps5_2tb": {
-      "title": "WD_BLACK SN850X 2TB SSD M.2 con Disipador (Para los +200GB de GTA 6)",
+      "title": "WD_BLACK SN850X 2TB SSD M.2 con Disipador (+200GB GTA 6)",
       "badge": "💾 EXPANSIÓN OBLIGATORIA",
-      "asin": "B0BPH88GN3",
+      "category": "almacenamiento",
       "search_query": "wd black sn850x 2tb ps5 con disipador",
       "direct_url": "https://www.amazon.es/s?k=wd+black+sn850x+2tb+ps5"
     },
     "pulse_headset": {
-      "title": "Auriculares Sony Pulse Elite / Pulse 3D (Audio 3D Vice City)",
+      "title": "Auriculares Pulse Elite / Pulse 3D (Audio 3D Tempest)",
       "badge": "🎧 INMERSIÓN TOTAL",
-      "search_query": "pulse elite wireless headset ps5",
+      "category": "audio",
+      "search_query": "pulse elite ps5",
       "direct_url": "https://www.amazon.es/s?k=pulse+elite+ps5"
     },
     "dualsense_controller": {
-      "title": "Mando Inalámbrico DualSense / DualSense Edge",
+      "title": "Mando Inalámbrico DualSense (Colores Especiales / Edge)",
       "badge": "🕹️ GATILLOS HÁPTICOS",
+      "category": "perifericos",
       "search_query": "mando dualsense ps5",
       "direct_url": "https://www.amazon.es/s?k=mando+dualsense+ps5"
     },
     "psn_card_50": {
-      "title": "Tarjeta Prepago PlayStation Network 50€ / 100€ (Saldo Digital)",
+      "title": "Tarjeta Saldo PlayStation Store 50€ / 100€ (Monedero Digital)",
       "badge": "💳 RESERVA DIGITAL",
+      "category": "tarjetas",
       "search_query": "tarjeta playstation network 50 euros",
       "direct_url": "https://www.amazon.es/s?k=tarjeta+playstation+network"
+    },
+    "volante_logitech_g29": {
+      "title": "Logitech G29 / G923 Driving Force (Volante + Pedales Leonida)",
+      "badge": "🏎️ CONDUCCIÓN VICE CITY",
+      "category": "perifericos",
+      "search_query": "logitech g29 driving force ps5",
+      "direct_url": "https://www.amazon.es/s?k=logitech+g29+ps5"
+    },
+    "monitor_gaming_4k": {
+      "title": "Monitor Gaming 4K 144Hz HDMI 2.1 (Para PS5 Pro y Modo Fidelidad)",
+      "badge": "🖥️ 4K 144HZ HDR",
+      "category": "monitores",
+      "search_query": "monitor gaming 4k 144hz hdmi 2.1 ps5",
+      "direct_url": "https://www.amazon.es/s?k=monitor+gaming+4k+144hz+ps5"
     }
   }
 }

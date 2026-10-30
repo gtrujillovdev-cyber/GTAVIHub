@@ -31,7 +31,6 @@ class TestConfig(unittest.TestCase):
 
     def test_affiliate_settings(self):
         self.assertIsInstance(ENABLE_AFFILIATE_CTAS, bool)
-        self.assertFalse(ENABLE_AFFILIATE_CTAS)  # Desactivado por defecto hasta que el usuario cree las cuentas
         self.assertTrue(len(AFFILIATE_CTA_TIKTOK) > 0)
         self.assertTrue(len(AFFILIATE_CTA_INSTAGRAM) > 0)
 

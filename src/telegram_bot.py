@@ -67,9 +67,9 @@ def get_persistent_menu_keyboard() -> Dict[str, Any]:
             [{"text": "🚀 Forzar Escaneo"}, {"text": "📊 Dashboard"}],
             [{"text": "🎬 Último Clip"}, {"text": "🖥️ Estado Host / GaTDSEQ"}],
             [{"text": "📈 Métricas YouTube"}, {"text": "⚙️ Canales"}],
-            [{"text": "🔥 Radar Viral"}, {"text": "🧠 Auto-Perfeccionar"}],
-            [{"text": "🛡️ Modo Co-Pilot"}, {"text": "🌐 Mis Canales"}],
-            [{"text": "🧹 Limpiar Temp"}]
+            [{"text": "🔥 Radar Viral"}, {"text": "🛒 Ofertas Amazon"}],
+            [{"text": "🛡️ Modo Co-Pilot"}, {"text": "🧠 Auto-Perfeccionar"}],
+            [{"text": "🌐 Mis Canales"}, {"text": "🧹 Limpiar Temp"}]
         ],
         "resize_keyboard": True,
         "persistent": True
@@ -914,6 +914,23 @@ def handle_callback_query(cq: Dict[str, Any]):
         )
         return
 
+    if data == "deals_force_update":
+        answer_callback_query(cq_id, "Actualizando ofertas...")
+        edit_telegram_message(msg_id, "🔄 *Sincronizando y actualizando ofertas en Amazon...*")
+        try:
+            from .deal_scanner import scan_and_update_deals
+            res = scan_and_update_deals(force=True, notify_telegram=False)
+            keyboard = {
+                "inline_keyboard": [
+                    [{"text": "🔄 Forzar Actualización Ahora", "callback_data": "deals_force_update"}],
+                    [{"text": "🌐 Ver Linktree Oficial", "url": "https://linktr.ee/gtavihubspain"}]
+                ]
+            }
+            edit_telegram_message(msg_id, res["report"], reply_markup=keyboard)
+        except Exception as e:
+            edit_telegram_message(msg_id, f"⚠️ Error actualizando ofertas: {e}")
+        return
+
     answer_callback_query(cq_id)
 
 # ═══════════════════════════════════════════════════════════════════
@@ -967,6 +984,19 @@ def start_telegram_bot_daemon():
                 check_and_auto_approve_expired_videos()
             except Exception:
                 pass
+
+            # Revisión periódica de ofertas de Amazon (cada ~1h en el loop, ciclo real de 3 días)
+            if not hasattr(start_telegram_bot_daemon, '_last_deals_check'):
+                start_telegram_bot_daemon._last_deals_check = 0
+            _now_ts = time.time()
+            if _now_ts - start_telegram_bot_daemon._last_deals_check > 3600:
+                start_telegram_bot_daemon._last_deals_check = _now_ts
+                try:
+                    from .deal_scanner import should_update_deals, scan_and_update_deals
+                    if should_update_deals():
+                        scan_and_update_deals(notify_telegram=True)
+                except Exception as e:
+                    print(f"[DealScanner] Error en chequeo automático: {e}")
 
             params = {"offset": last_update_id + 1, "timeout": 10}
             res = requests.get(url_updates, params=params, timeout=15)
@@ -1145,6 +1175,26 @@ def start_telegram_bot_daemon():
                     else:
                         t = threading.Thread(target=run_viral_radar_in_background, args=(allowed_chat_id,), daemon=True)
                         t.start()
+
+                elif cmd in ["/deals", "/ofertas", "🛒"] or text == "🛒 Ofertas Amazon":
+                    try:
+                        from .deal_scanner import scan_and_update_deals, load_deals_state, format_deals_report
+                        if "--update" in text or "actualizar" in text.lower() or "forzar" in text.lower():
+                            send_telegram_alert("🔄 *Sincronizando y forzando actualización de ofertas en Amazon...*")
+                            res = scan_and_update_deals(force=True, notify_telegram=False)
+                            send_telegram_alert(res["report"], reply_markup=get_persistent_menu_keyboard())
+                        else:
+                            state = load_deals_state()
+                            report = format_deals_report(state)
+                            keyboard = {
+                                "inline_keyboard": [
+                                    [{"text": "🔄 Forzar Actualización Ahora", "callback_data": "deals_force_update"}],
+                                    [{"text": "🌐 Ver Linktree Oficial", "url": "https://linktr.ee/gtavihubspain"}]
+                                ]
+                            }
+                            send_telegram_alert(report, reply_markup=keyboard)
+                    except Exception as e:
+                        send_telegram_alert(f"⚠️ Error consultando ofertas: {e}", reply_markup=get_persistent_menu_keyboard())
 
                 elif cmd in ["/optimize", "/aprender", "/learning", "🧠"] or text == "🧠 Auto-Perfeccionar":
                     send_telegram_alert("🧠 *Iniciando ciclo de auto-perfeccionamiento y benchmark...*\nAuditando vídeos de nuestro canal y extrayendo patrones ganadores de los líderes.")

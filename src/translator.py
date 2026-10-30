@@ -75,7 +75,7 @@ def translate_srt(
         "Traduce y adapta el siguiente archivo de subtítulos en formato SRT al español.\n\n"
         "REGLAS OBLIGATORIAS:\n"
         "1. Conserva EXACTAMENTE la estructura de bloques numéricos y marcas de tiempo (ej. 00:00:01,200 --> 00:00:03,500).\n"
-        "2. Traduce y sintetiza únicamente las líneas de texto hablado.\n"
+        "2. Traduce y sintetiza de forma muy concisa y directa las líneas habladas para que encajen con el ritmo de locución original (evita rodeos que alarguen artificialmente la frase).\n"
         "3. Usa un español dinámico, fresco y actual (apto para YouTube Shorts / TikTok).\n"
         "4. Respeta nombres canónicos (Vice City, Lucia, Jason, Leonida, Rockstar Games, etc.).\n"
         "5. Devuelve ÚNICAMENTE el texto SRT resultante, sin explicaciones ni bloques markdown extra."
