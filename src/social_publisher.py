@@ -181,11 +181,15 @@ class SocialPublisher:
         bold_hook = to_unicode_bold("¡BOMBAZO GTA 6!")
         if debate_question:
             q_clean = debate_question.replace("¿", "").replace("?", "").strip()
-            caption = f"🚨 {bold_hook} {title[:45]} {tags_str}\n💬 {to_unicode_bold('DEBATE')}: ¿{q_clean[:45]}? 👇\n👉 Síguenos @gtavihubspain | Bio: linktr.ee/gtavihubspain"
+            caption = (
+                f"🚨 {bold_hook} {title[:40]} {tags_str}\n"
+                f"💬 {to_unicode_bold('DEBATE')}: ¿{q_clean[:40]}? 👇\n"
+                f"🎮 Reserva GTA 6 & Hardware en bio 👉 @gtavihubspain"
+            )
         elif ENABLE_AFFILIATE_CTAS:
-            caption = f"🚨 {bold_hook} {title[:60]} {tags_str}\n{AFFILIATE_CTA_TIKTOK}\n👉 @gtavihubspain | Bio: linktr.ee/gtavihubspain"
+            caption = f"🚨 {bold_hook} {title[:55]} {tags_str}\n{AFFILIATE_CTA_TIKTOK}\n👉 @gtavihubspain | Bio: linktr.ee/gtavihubspain"
         else:
-            caption = f"🚨 {bold_hook} {title[:60]} {tags_str}\n🎮 {to_unicode_bold('TODO GTA 6')} en la bio 👉 @gtavihubspain | linktr.ee/gtavihubspain"
+            caption = f"🚨 {bold_hook} {title[:55]} {tags_str}\n🎮 {to_unicode_bold('RESERVA GTA 6')} en la bio 👉 @gtavihubspain | linktr.ee/gtavihubspain"
         tiktok_profile = BROWSER_PROFILE_DIR / "tiktok_user_data"
 
         if self.dry_run:

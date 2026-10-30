@@ -240,6 +240,26 @@ Devuelve tu respuesta EXACTAMENTE en este formato JSON (sin texto extra):
             "Pistas musicales y efectos pertenecen a sus respectivos autores y licenciatarios de YouTube Audio Library / Take-Two Interactive.\n"
         )
 
+    try:
+        from .affiliates import format_description_affiliate_block, format_pinned_comment_affiliates
+        affiliate_block = format_description_affiliate_block()
+        pinned_comment = format_pinned_comment_affiliates(debate_question)
+    except Exception as e:
+        affiliate_block = (
+            f"🎮 {to_unicode_bold('RESERVA OFICIAL GTA VI & ACCESORIOS:')}\n"
+            f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+            f"👉 Reserva oficial garantizada y mejores ofertas de consolas PS5 / Xbox:\n"
+            f"{MONETIZATION_AFFILIATE_URL}"
+        )
+        pinned_comment = (
+            f"🌴 💬 {to_unicode_bold('DEBATE GTA 6:')}\n"
+            f"{debate_question}\n"
+            f"👇 ¡Déjanos tu teoría en los comentarios!\n\n"
+            f"🌐 𝗧𝗢𝗗𝗔𝗦 𝗡𝗨𝗘𝗦𝗧𝗥𝗔𝗦 𝗥𝗘𝗗𝗘𝗦 👉 https://linktr.ee/gtavihubspain\n"
+            f"🎮 𝗥𝗘𝗦𝗘𝗥𝗩𝗔 𝗢𝗙𝗜𝗖𝗜𝗔𝗟 𝗚𝗧𝗔 𝟲 👉 {MONETIZATION_AFFILIATE_URL}\n"
+            f"📩 Contacto Business: {BUSINESS_EMAIL}"
+        )
+
     full_description = f"""{summary}
 
 💬 {to_unicode_bold("DEBATE DE LA COMUNIDAD:")}
@@ -253,10 +273,7 @@ Devuelve tu respuesta EXACTAMENTE en este formato JSON (sin texto extra):
 📸 Instagram Reels: https://instagram.com/gtavihubspain
 🔴 Suscríbete al Canal: https://youtube.com/@GTAVIHubSpain?sub_confirmation=1
 
-🎮 {to_unicode_bold("RESERVA OFICIAL GTA VI & ACCESORIOS:")}
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-👉 Reserva oficial garantizada y mejores ofertas de consolas PS5 / Xbox:
-{MONETIZATION_AFFILIATE_URL}
+{affiliate_block}
 
 📌 {to_unicode_bold("CRÉDITOS DEL AUTOR & FUENTE OFICIAL:")}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -280,15 +297,6 @@ Grand Theft Auto VI, GTA VI, Vice City y los logotipos asociados son marcas regi
 
 #GTA6 #GrandTheftAutoVI #RockstarGames #GTAVI #ViceCity #Gaming #Shorts #Videojuegos
 """
-
-    pinned_comment = (
-        f"🌴 💬 {to_unicode_bold('DEBATE GTA 6:')}\n"
-        f"{debate_question}\n"
-        f"👇 ¡Déjanos tu teoría en los comentarios!\n\n"
-        f"🌐 𝗧𝗢𝗗𝗔𝗦 𝗡𝗨𝗘𝗦𝗧𝗥𝗔𝗦 𝗥𝗘𝗗𝗘𝗦 (TikTok, IG, Clips) 👉 https://linktr.ee/gtavihubspain\n"
-        f"🎮 𝗥𝗘𝗦𝗘𝗥𝗩𝗔 𝗢𝗙𝗜𝗖𝗜𝗔𝗟 𝗚𝗧𝗔 𝟲 & 𝗢𝗙𝗘𝗥𝗧𝗔𝗦 𝗣𝗦𝟱 👉 {MONETIZATION_AFFILIATE_URL}\n"
-        f"📩 𝗖𝗼𝗻𝘁𝗮𝗰𝘁𝗼 𝗖𝗼𝗺𝗲𝗿𝗰𝗶𝗮𝗹 / 𝗕𝘂𝘀𝗶𝗻𝗲𝘀𝘀: {BUSINESS_EMAIL}"
-    )
 
     return {
         "title": viral_title[:100],

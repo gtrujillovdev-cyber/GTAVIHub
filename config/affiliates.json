@@ -1,0 +1,64 @@
+{
+  "amazon_associate_tag": "gtavihub-21",
+  "disclaimer": "En calidad de Afiliado de Amazon, obtengo ingresos por las compras adscritas que cumplen los requisitos aplicables.",
+  "hub_linktree": "https://linktr.ee/gtavihubspain",
+  "products": {
+    "gta6_game_ps5": {
+      "title": "Grand Theft Auto VI - Reserva Oficial (PS5)",
+      "badge": "🔥 IMPRESCINDIBLE",
+      "search_query": "gta 6 playstation 5",
+      "direct_url": "https://www.amazon.es/s?k=gta+6+playstation+5"
+    },
+    "gta6_game_xbox": {
+      "title": "Grand Theft Auto VI - Reserva Oficial (Xbox Series X)",
+      "badge": "🔥 IMPRESCINDIBLE",
+      "search_query": "gta 6 xbox series x",
+      "direct_url": "https://www.amazon.es/s?k=gta+6+xbox+series+x"
+    },
+    "ps5_pro": {
+      "title": "PlayStation 5 Pro (Modo 4K 60 FPS Leonida)",
+      "badge": "⚡ MÁXIMO RENDIMIENTO",
+      "asin": "B0DG4RFZMB",
+      "search_query": "playstation 5 pro consola",
+      "direct_url": "https://www.amazon.es/s?k=playstation+5+pro+consola"
+    },
+    "ps5_slim": {
+      "title": "PlayStation 5 Slim (Chasis D con Lector / Digital)",
+      "badge": "🎮 LA CONSOLA ESTÁNDAR",
+      "asin": "B0CL5J6T9N",
+      "search_query": "playstation 5 slim",
+      "direct_url": "https://www.amazon.es/s?k=playstation+5+slim"
+    },
+    "xbox_series_x": {
+      "title": "Xbox Series X (1TB SSD)",
+      "badge": "💚 12 TFLOPS POTENCIA",
+      "search_query": "xbox series x consola",
+      "direct_url": "https://www.amazon.es/s?k=xbox+series+x+consola"
+    },
+    "ssd_ps5_2tb": {
+      "title": "WD_BLACK SN850X 2TB SSD M.2 con Disipador (Para los +200GB de GTA 6)",
+      "badge": "💾 EXPANSIÓN OBLIGATORIA",
+      "asin": "B0BPH88GN3",
+      "search_query": "wd black sn850x 2tb ps5 con disipador",
+      "direct_url": "https://www.amazon.es/s?k=wd+black+sn850x+2tb+ps5"
+    },
+    "pulse_headset": {
+      "title": "Auriculares Sony Pulse Elite / Pulse 3D (Audio 3D Vice City)",
+      "badge": "🎧 INMERSIÓN TOTAL",
+      "search_query": "pulse elite wireless headset ps5",
+      "direct_url": "https://www.amazon.es/s?k=pulse+elite+ps5"
+    },
+    "dualsense_controller": {
+      "title": "Mando Inalámbrico DualSense / DualSense Edge",
+      "badge": "🕹️ GATILLOS HÁPTICOS",
+      "search_query": "mando dualsense ps5",
+      "direct_url": "https://www.amazon.es/s?k=mando+dualsense+ps5"
+    },
+    "psn_card_50": {
+      "title": "Tarjeta Prepago PlayStation Network 50€ / 100€ (Saldo Digital)",
+      "badge": "💳 RESERVA DIGITAL",
+      "search_query": "tarjeta playstation network 50 euros",
+      "direct_url": "https://www.amazon.es/s?k=tarjeta+playstation+network"
+    }
+  }
+}
