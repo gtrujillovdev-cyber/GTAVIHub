@@ -147,6 +147,43 @@ def process_single_video(
     )
     hook_text = hook_override if hook_override else metadata.get("hook", "¡ANÁLISIS AL DETALLE!")
 
+    # 5a. Filtro adaptativo anti-cliché: solo purga clichés genéricos que no encajan con el arquetipo real
+    # Si el contenido genuinamente trata sobre algo "brutal" (gameplay_puro, reaccion_streamer), se respeta.
+    # Solo se filtran clichés en arquetipos donde son clickbait vacío (filtracion_misterio, noticia_oficial).
+    try:
+        from .learning_engine import load_viral_playbook
+        _pb = load_viral_playbook()
+        _forbidden = [c.lower() for c in _pb.get("active_heuristics", {}).get("forbidden_cliches", [])]
+        _archetype = metadata.get("archetype", "")
+        _archetypes_strict_filter = {"filtracion_misterio", "noticia_oficial", "analisis_tecnico"}
+        if _archetype in _archetypes_strict_filter:
+            _gen_title = metadata.get("title", "")
+            _changed = False
+            for cliche in _forbidden:
+                if cliche.lower() in _gen_title.lower():
+                    _gen_title = re.sub(re.escape(cliche), "", _gen_title, flags=re.IGNORECASE).strip()
+                    _gen_title = re.sub(r'\s{2,}', ' ', _gen_title).strip(" !¡")
+                    _changed = True
+                    print(f"[Playbook] Cliché '{cliche}' eliminado (arquetipo {_archetype} no lo justifica)")
+            if _changed and _gen_title:
+                metadata["title"] = _gen_title
+        elif _forbidden:
+            _gen_title = metadata.get("title", "")
+            _hits = [c for c in _forbidden if c.lower() in _gen_title.lower()]
+            if _hits:
+                print(f"[Playbook] Clichés detectados {_hits} pero respetados: el arquetipo '{_archetype}' puede justificarlos.")
+    except Exception:
+        pass
+
+    # 5b. Inyectar pinned comment con debate_question + enlaces de afiliado
+    debate_q = metadata.get("debate_question", "")
+    if debate_q and not metadata.get("pinned_comment"):
+        try:
+            from .affiliates import format_pinned_comment_affiliates
+            metadata["pinned_comment"] = format_pinned_comment_affiliates(debate_q)
+        except Exception:
+            pass
+
     # 5. Renderizado final transformado
     stage_msg = "⚙️ [3/5] Renderizando vídeo 9:16 con Doblaje Neural y Subtítulos Dinámicos..." if dub_audio_path else "⚙️ [3/5] Renderizando vídeo 9:16 con VideoToolbox (Subtítulos Hormozi Pop Bounce)..."
     report_stage(stage_msg)
@@ -182,7 +219,8 @@ def process_single_video(
         dub_audio=dub_audio_path,
         force_short_format=is_short,
         hook_text=hook_text,
-        is_official_content=is_official_content
+        is_official_content=is_official_content,
+        archetype=archetype
     )
 
     if not success_render or not output_path.exists():
@@ -206,6 +244,19 @@ def process_single_video(
             gc.collect()
             return None
         print(f"[✓] Validación post-render OK: {rendered_duration:.1f}s")
+        # Warning adaptativo de sweet spot — los umbrales dependen del tipo de contenido
+        # Análisis técnicos y noticias oficiales toleran más duración; humor y gameplay deben ser cortos
+        if is_short:
+            _sweet_max = {"humor_parodia": 28, "gameplay_puro": 32, "reaccion_streamer": 35,
+                          "filtracion_misterio": 35, "analisis_tecnico": 50, "noticia_oficial": 55}
+            _threshold = _sweet_max.get(archetype, 35)
+            if rendered_duration > _threshold:
+                print(f"[⚠ Sweet Spot] {rendered_duration:.1f}s > {_threshold}s (umbral para '{archetype or 'genérico'}'). Puede afectar completion rate.")
+                try:
+                    from .telegram_bot import send_telegram_alert
+                    send_telegram_alert(f"⚠️ *Duración {rendered_duration:.0f}s* > umbral {_threshold}s para _{archetype or 'short'}_. Considerar recorte.")
+                except Exception:
+                    pass
     except Exception as e:
         print(f"[Pipeline] Aviso validación ffprobe: {e}")
 

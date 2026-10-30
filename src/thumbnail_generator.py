@@ -125,8 +125,46 @@ def create_video_thumbnail(
 
     temp_frame = output_thumb_path.with_suffix(".tmp_frame.jpg")
 
-    extracted = extract_keyframe(video_path, temp_frame, timestamp_sec=3.0)
-    if not extracted or not temp_frame.exists():
+    # Multi-keyframe: extraer varios candidatos y elegir el de mayor energía visual
+    best_frame = None
+    best_energy = -1
+    candidate_timestamps = [3.0, 6.0, 10.0]
+
+    # Obtener duración total para añadir un candidato a mitad del vídeo
+    try:
+        dur_probe = subprocess.run(
+            ["ffprobe", "-v", "quiet", "-show_entries", "format=duration", "-of", "csv=p=0", str(video_path)],
+            capture_output=True, text=True, timeout=10
+        )
+        total_dur = float(dur_probe.stdout.strip()) if dur_probe.stdout.strip() else 0
+        if total_dur > 14:
+            candidate_timestamps.append(total_dur / 2)
+    except Exception:
+        pass
+
+    for ts in candidate_timestamps:
+        cand_frame = output_thumb_path.with_suffix(f".cand_{ts:.0f}.jpg")
+        if extract_keyframe(video_path, cand_frame, timestamp_sec=ts) and cand_frame.exists():
+            try:
+                cand_img = Image.open(cand_frame).convert("RGB").resize((320, 180), Image.Resampling.LANCZOS)
+                import numpy as np
+                arr = np.array(cand_img, dtype=float)
+                # Energía visual = varianza de luminancia + saturación media
+                lum = 0.299 * arr[:,:,0] + 0.587 * arr[:,:,1] + 0.114 * arr[:,:,2]
+                energy = float(lum.var()) + float(arr.std()) * 2
+                if energy > best_energy:
+                    best_energy = energy
+                    if best_frame and best_frame.exists():
+                        best_frame.unlink(missing_ok=True)
+                    best_frame = cand_frame
+                else:
+                    cand_frame.unlink(missing_ok=True)
+            except Exception:
+                cand_frame.unlink(missing_ok=True)
+
+    if best_frame and best_frame.exists():
+        best_frame.rename(temp_frame)
+    elif not temp_frame.exists():
         extract_keyframe(video_path, temp_frame, timestamp_sec=1.0)
 
     target_w, target_h = (1080, 1920) if is_short else (1280, 720)

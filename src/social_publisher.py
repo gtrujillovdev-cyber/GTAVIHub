@@ -560,6 +560,25 @@ class SocialPublisher:
         tags = metadata.get("tags", ["GTA6", "Shorts", "Gaming"])
         thumb = metadata.get("thumbnail_path")
 
+        # 0. Diagnóstico de duración por plataforma
+        try:
+            _dur_probe = subprocess.run(
+                ["ffprobe", "-v", "quiet", "-show_entries", "format=duration", "-of", "csv=p=0", str(video_path)],
+                capture_output=True, text=True, timeout=10
+            )
+            _vid_dur = float(_dur_probe.stdout.strip()) if _dur_probe.stdout.strip() else 0
+            _platform_notes = {
+                "youtube": f"{'OK' if 18 <= _vid_dur <= 58 else 'WARN'} ({_vid_dur:.0f}s, óptimo 18-28s)",
+                "tiktok": f"{'OK' if _vid_dur <= 34 else 'WARN largo'} ({_vid_dur:.0f}s, óptimo <21s)",
+                "instagram": f"{'OK' if _vid_dur <= 60 else 'WARN'} ({_vid_dur:.0f}s, óptimo 15-30s)"
+            }
+            print(f"[*] Duración del clip: {_vid_dur:.1f}s")
+            for _p, _note in _platform_notes.items():
+                if _p in (platforms or []):
+                    print(f"    {_p.upper()}: {_note}")
+        except Exception:
+            pass
+
         # 1. Comprobación estricta de directrices Anti-Ban y respeto al autor
         print("\n" + "=" * 65)
         print("🛡️  AUDITORÍA DE SEGURIDAD PREVIA A PUBLICACIÓN MULTIPLATAFORMA")

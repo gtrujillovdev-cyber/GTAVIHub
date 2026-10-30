@@ -988,6 +988,8 @@ def start_telegram_bot_daemon():
             # Revisión periódica de ofertas de Amazon (cada ~1h en el loop, ciclo real de 3 días)
             if not hasattr(start_telegram_bot_daemon, '_last_deals_check'):
                 start_telegram_bot_daemon._last_deals_check = 0
+            if not hasattr(start_telegram_bot_daemon, '_last_metrics_check'):
+                start_telegram_bot_daemon._last_metrics_check = 0
             _now_ts = time.time()
             if _now_ts - start_telegram_bot_daemon._last_deals_check > 3600:
                 start_telegram_bot_daemon._last_deals_check = _now_ts
@@ -997,6 +999,17 @@ def start_telegram_bot_daemon():
                         scan_and_update_deals(notify_telegram=True)
                 except Exception as e:
                     print(f"[DealScanner] Error en chequeo automático: {e}")
+
+            # Feedback loop: obtener métricas reales de vídeos publicados (cada ~6h)
+            if _now_ts - start_telegram_bot_daemon._last_metrics_check > 21600:
+                start_telegram_bot_daemon._last_metrics_check = _now_ts
+                try:
+                    from .performance_tracker import fetch_pending_metrics
+                    fetched = fetch_pending_metrics(max_fetch=5)
+                    if fetched > 0:
+                        print(f"[PerformanceTracker] Métricas actualizadas para {fetched} vídeo(s).")
+                except Exception as e:
+                    print(f"[PerformanceTracker] Error obteniendo métricas: {e}")
 
             params = {"offset": last_update_id + 1, "timeout": 10}
             res = requests.get(url_updates, params=params, timeout=15)

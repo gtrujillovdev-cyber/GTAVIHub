@@ -401,6 +401,40 @@ def render_top_hook_headline(hook_text: str, output_path: Path) -> bool:
     img.save(output_path, "PNG")
     return True
 
+def render_retention_hook(output_path: Path, text: str = "ESPERA A VER ESTO") -> bool:
+    """
+    Renderiza una micro-tarjeta de retención (segundo gancho) para mostrar entre 5.0-7.0s.
+    Más pequeña y sutil que el hook principal, diseñada para frenar el swipe a mitad de Short.
+    """
+    clean = clean_text_no_emoji(text).upper()
+    if not clean:
+        return False
+
+    font = get_best_font(size=38)
+    d_temp = ImageDraw.Draw(Image.new("RGBA", (1, 1)))
+    bb = d_temp.textbbox((0, 0), clean, font=font)
+    tw = bb[2] - bb[0]
+    th = bb[3] - bb[1]
+
+    pad_x, pad_y = 36, 14
+    box_w = tw + pad_x * 2
+    box_h = th + pad_y * 2
+
+    img = Image.new("RGBA", (box_w, box_h), (0, 0, 0, 0))
+    d = ImageDraw.Draw(img)
+
+    d.rounded_rectangle(
+        [(0, 0), (box_w - 1, box_h - 1)],
+        radius=18,
+        fill=(8, 8, 14, 200),
+        outline=(0, 240, 255, 180),
+        width=2
+    )
+    d.text((pad_x, pad_y), clean, font=font, fill=(0, 240, 255, 255), stroke_width=2, stroke_fill=(0, 0, 0, 255))
+
+    img.save(output_path, "PNG")
+    return True
+
 def render_karaoke_subtitle_state(words: List[str], active_idx: int, is_vertical: bool, output_path: Path) -> bool:
     """
     Renderiza un estado Karaoke palabra por palabra nivel Broadcast Viral:
@@ -588,7 +622,8 @@ def render_final_video(
     dub_audio: Optional[Path] = None,
     force_short_format: bool = False,
     hook_text: str = "",
-    is_official_content: bool = False
+    is_official_content: bool = False,
+    archetype: str = ""
 ) -> bool:
     """
     Ensamblaje viral definitivo con KARAOKE GLOW, GANCHO SUPERIOR (0-2.5s) y ENCUADRE INTELIGENTE:
@@ -649,6 +684,23 @@ def render_final_video(
         rendered_hook = render_top_hook_headline(hook_text, hook_png)
         if not rendered_hook:
             hook_png = None
+
+    # 2b. Segundo gancho de retención (5.0 a 7.0s) — adaptativo al arquetipo del contenido
+    # Solo se aplica en arquetipos donde el viewer necesita un empujón extra para quedarse.
+    # En humor/parodia y reacciones el ritmo natural ya retiene; insertar texto lo rompe.
+    retention_png = None
+    _archetypes_need_retention = {"filtracion_misterio", "analisis_tecnico", "noticia_oficial"}
+    if hook_text and is_vertical and archetype in _archetypes_need_retention:
+        retention_png = temp_dir / f"{base_name}_retention.png"
+        _retention_by_archetype = {
+            "filtracion_misterio": ["OJO CON ESTO", "MIRA BIEN", "EL DETALLE CLAVE"],
+            "analisis_tecnico": ["ATENCION A ESTO", "COMPARA BIEN", "FIJATE AQUI"],
+            "noticia_oficial": ["ESTO ES OFICIAL", "CONFIRMADO", "ATENCION"],
+        }
+        _phrases = _retention_by_archetype.get(archetype, ["MIRA ESTO"])
+        rendered_ret = render_retention_hook(retention_png, text=random.choice(_phrases))
+        if not rendered_ret:
+            retention_png = None
 
     # 3. Generación de estados de Karaoke palabra por palabra
     cues = parse_srt_file(srt_subtitles) if srt_subtitles else []
@@ -745,6 +797,13 @@ def render_final_video(
         hook_idx = input_idx
         input_idx += 1
 
+    # Segundo gancho de retención si existe
+    retention_idx = None
+    if retention_png and retention_png.exists():
+        cmd.extend(["-i", str(retention_png)])
+        retention_idx = input_idx
+        input_idx += 1
+
     # Subtítulos Karaoke como inputs
     sub_inputs_start = input_idx
     for sp, _, _ in sub_pngs:
@@ -788,6 +847,11 @@ def render_final_video(
     if hook_idx is not None:
         filter_chains.append(f"[{current_v}][{hook_idx}:v]overlay=(W-w)/2:120:enable='between(t,0,2.5)'[v_hooked]")
         current_v = "v_hooked"
+
+    # C2) Superponer segundo gancho de retención (5.0 a 7.0s) — frena el swipe mid-scroll
+    if retention_idx is not None:
+        filter_chains.append(f"[{current_v}][{retention_idx}:v]overlay=(W-w)/2:220:enable='between(t,5.0,7.0)'[v_retained]")
+        current_v = "v_retained"
 
     # D) Superponer Subtítulos Karaoke palabra por palabra
     # Safe Zone vertical (Instagram Reels / TikTok / YouTube Shorts):
