@@ -3,9 +3,28 @@ import shutil
 from pathlib import Path
 from typing import Optional, Dict
 from google import genai
-from .config import GEMINI_API_KEY, GEMINI_MODEL
+from .config import GEMINI_API_KEY, GEMINI_MODEL, BUSINESS_EMAIL, MONETIZATION_AFFILIATE_URL
 
 _client = None
+
+def to_unicode_bold(text: str) -> str:
+    """
+    Convierte texto alfanumérico ASCII a caracteres Unicode Mathematical Sans-Serif Bold.
+    Permite resaltar títulos, preguntas de debate y llamadas a la acción directamente
+    en descripciones, comentarios de YouTube, TikTok y pies de foto de Instagram sin usar Markdown.
+    """
+    res = []
+    for ch in text:
+        code = ord(ch)
+        if 65 <= code <= 90:  # A-Z
+            res.append(chr(0x1D5D4 + (code - 65)))
+        elif 97 <= code <= 122:  # a-z
+            res.append(chr(0x1D5EE + (code - 97)))
+        elif 48 <= code <= 57:  # 0-9
+            res.append(chr(0x1D7EC + (code - 48)))
+        else:
+            res.append(ch)
+    return "".join(res)
 
 def get_gemini_client():
     global _client
@@ -23,7 +42,11 @@ def clean_srt_response(text: str) -> str:
         text = re.sub(r"\n```$", "", text)
     return text.strip()
 
-def translate_srt(input_srt_path: Path, output_srt_path: Path, source_lang: str = "en") -> bool:
+def translate_srt(
+    input_srt_path: Path,
+    output_srt_path: Path,
+    source_lang: str = "en"
+) -> bool:
     """
     Traduce un archivo SRT al español si viene de inglés, o lo copia/limpia
     directamente si ya está en español (ahorrando tiempo y tokens).
@@ -32,7 +55,7 @@ def translate_srt(input_srt_path: Path, output_srt_path: Path, source_lang: str 
         print(f"[!] No existe el archivo SRT: {input_srt_path}")
         return False
 
-    # Si ya está en español, no hace falta traducirlo: copia directa
+    # Si ya está en español, copia directa intacta sin alterar nada
     if source_lang == "es":
         print(f"[*] El contenido ya está en español. Saltando traducción...")
         shutil.copyfile(input_srt_path, output_srt_path)
@@ -48,14 +71,14 @@ def translate_srt(input_srt_path: Path, output_srt_path: Path, source_lang: str 
     client = get_gemini_client()
 
     prompt = (
-        "Eres un traductor experto en la saga Grand Theft Auto (GTA VI), videojuegos y cultura gaming. "
-        "Traduce el siguiente archivo de subtítulos en formato SRT del inglés al español.\n\n"
+        "Eres un traductor y guionista experto en la saga Grand Theft Auto (GTA VI), videojuegos y viralidad en Shorts.\n"
+        "Traduce y adapta el siguiente archivo de subtítulos en formato SRT al español.\n\n"
         "REGLAS OBLIGATORIAS:\n"
         "1. Conserva EXACTAMENTE la estructura de bloques numéricos y marcas de tiempo (ej. 00:00:01,200 --> 00:00:03,500).\n"
-        "2. Traduce únicamente las líneas de texto hablado.\n"
-        "3. Usa un español natural, dinámico y actual (apto para YouTube/Shorts de videojuegos).\n"
-        "4. Respeta nombres propios y términos clave (Vice City, Lucia, Jason, Rockstar Games, leaks, tráiler, mapa, etc.).\n"
-        "5. Devuelve ÚNICAMENTE el texto SRT resultante, sin explicaciones ni markdown."
+        "2. Traduce y sintetiza de forma muy concisa y directa las líneas habladas para que encajen con el ritmo de locución original (evita rodeos que alarguen artificialmente la frase).\n"
+        "3. Usa un español dinámico, fresco y actual (apto para YouTube Shorts / TikTok).\n"
+        "4. Respeta nombres canónicos (Vice City, Lucia, Jason, Leonida, Rockstar Games, etc.).\n"
+        "5. Devuelve ÚNICAMENTE el texto SRT resultante, sin explicaciones ni bloques markdown extra."
     )
 
     try:
@@ -91,30 +114,65 @@ def generate_video_metadata(
     Genera metadatos profesionales de alto impacto para YouTube siguiendo
     las últimas tendencias de YouTube Gaming / GTA 6:
     - Título TODO EN MAYÚSCULAS con ganchos psicológicos (CTR alto).
-    - Descripción ensamblada programáticamente (SIN placeholders).
-    - Créditos exactos con el enlace real del vídeo original.
-    - Reconocimiento de copyright de música (Tom Petty / UMG).
-    - Descargo legal exhaustivo de Fair Use (Uso Legítimo).
+    - Gancho superior de intriga (0-2.5s).
+    - Pregunta polarizante de debate para multiplicar comentarios en los primeros 30 min.
+    - Descripción ensamblada programáticamente con créditos exactos y Fair Use.
     """
     client = get_gemini_client()
     tipo = "un YouTube Short vertical de máximo impacto" if is_short else "un vídeo de YouTube Gaming"
-    
+
+    from .config import is_gameplay_enabled
+    is_launched = is_gameplay_enabled()
+
+    try:
+        from .learning_engine import get_playbook_context_for_prompt
+        playbook_rules = get_playbook_context_for_prompt()
+    except Exception:
+        playbook_rules = ""
+
+    context_phase = (
+        "FASE: LANZAMIENTO OFICIAL & GAMEPLAY REAL (GTA 6 ya está disponible). "
+        "Enfócate en jugabilidad real, misiones, mundo abierto de Vice City, persecuciones policiales, físicas extremas, "
+        "reacciones en directo de streamers y momentos graciosos o impactantes."
+        if is_launched else
+        "FASE: PRE-LANZAMIENTO. Enfócate en novedades, comparativas, filtraciones reales y anticipación de GTA 6."
+    )
+
     prompt = f"""Actúa como el mejor estratega de YouTube Gaming y viralidad en español.
 Estamos analizando contenido sobre Grand Theft Auto VI (GTA 6).
+{context_phase}
 Tipo de formato: {tipo}.
 Título original: "{original_title}"
 Creador/Fuente original: "{creator_name or 'Rockstar Games'}"
 
-Tu tarea es generar:
-1. "viral_title": Un título ULTRA LLAMATIVO completamente en MAYÚSCULAS con emojis gaming y etiqueta #GTA6 (máx 80 caracteres). Debe apelar a la curiosidad, misterio o impacto extremo (ej: "¡NO PUEDE SER! 😱 REACCIÓN BRUTAL A GTA 6 [SECRETOS OCULTOS] 🔥🌴 #GTA6").
-2. "summary": Un resumen apasionante de 2 párrafos en español explicando qué ocurre en el vídeo, teorías y por qué los fans están alucinando.
-3. "hook": 2 o 3 palabras MUY IMPACTANTES en MAYÚSCULAS para la miniatura y pantalla de intro (ej: "¡DETALLE OCULTO!", "¡INCREÍBLE!", "¡NO PUEDE SER!", "¡BRUTAL!").
+{playbook_rules}
+
+Usa terminología del GLOSARIO OFICIAL Y VIRAL DE GTA 6 cuando sea pertinente:
+- Protagonistas: Lucía (primera protagonista femenina), Jason (pareja criminal), Stefanie (consejera), Mud Girl, Florida Joker.
+- Ubicaciones de Leonida: Vice City, Port Gellhorn, Ocean Drive, Grassrivers (Everglades), Los Cayos (Keys), Vice Beach.
+- Físicas & Jugabilidad: Físicas de agua realistas, IA de peatones/multitudes, motor RAGE 9, sistema de saqueo, animaciones al agacharse, interiores explorables, atracos a restaurantes, caimanes.
+- Gameplay & Reacciones: Misiones, tiroteos, conducción, persecuciones 5 estrellas, easter eggs, streamers jugando en directo.
+
+Tu tarea es ADAPTAR EL TONO Y FORMATO AL CONTENIDO REAL:
+1. "archetype": Clasifica el contenido exactamente en uno de estos 6 arquetipos:
+   - "humor_parodia" (parodias como South Park, sketches, memes, risas, situaciones absurdas)
+   - "analisis_tecnico" (físicas de agua/vehículos, motor RAGE 9, gráficos, comparativas de frames/resolución)
+   - "filtracion_misterio" (secretos del mapa, easter eggs, patentes, archivos ocultos)
+   - "noticia_oficial" (comunicados de Rockstar, trailers, fechas oficiales, novedades de Take-Two)
+   - "reaccion_streamer" (momentos de streamers, hype, sorpresa o incredulidad en directo)
+   - "gameplay_puro" (misiones, persecuciones policiales, tiroteos, mundo abierto)
+2. "viral_title": Un título ULTRA LLAMATIVO completamente en MAYÚSCULAS con emojis acordes al arquetipo y etiqueta #GTA6 (máx 80 caracteres). El tono debe adaptarse: cómico para parodias, riguroso/asombro para técnica, misterio para filtraciones, épico para noticias. REGLA DE ORO: Jamás uses palabras como 'CONCEPTO', 'CGI', 'FAN-MADE' o 'UNREAL ENGINE'.
+3. "summary": Un resumen apasionante de 2 párrafos en español explicando qué ocurre en el clip y por qué la comunidad de GTA 6 está reaccionando.
+4. "hook": Una frase o pregunta corta de MÁXIMA INTRIGA O SINTONÍA CON EL ARQUETIPO para los primeros 2 segundos (máx 4-5 palabras en MAYÚSCULAS, máx 24 caracteres) para la píldora superior.
+5. "debate_question": Una pregunta directa, polarizante y picante para la comunidad adaptada al arquetipo que genere aluvión de comentarios en los primeros minutos.
 
 Devuelve tu respuesta EXACTAMENTE en este formato JSON (sin texto extra):
 {{
+  "archetype": "humor_parodia | analisis_tecnico | filtracion_misterio | noticia_oficial | reaccion_streamer | gameplay_puro",
   "viral_title": "TITULO EN MAYUSCULAS CON EMOJIS Y #GTA6",
   "summary": "Resumen en español...",
-  "hook": "GANCHO EN MAYUSCULAS"
+  "hook": "GANCHO EN MAYUSCULAS",
+  "debate_question": "¿Pregunta de debate polarizante para comentarios? 👇"
 }}
 """
     try:
@@ -126,14 +184,34 @@ Devuelve tu respuesta EXACTAMENTE en este formato JSON (sin texto extra):
         cleaned = clean_srt_response(response.text)
         import json
         data = json.loads(cleaned)
+        archetype = data.get("archetype", "filtracion_misterio").strip().lower()
         viral_title = data.get("viral_title", "").strip().upper()
         summary = data.get("summary", "").strip()
         hook = data.get("hook", "¡INCREÍBLE!").strip().upper()
+        debate_question = data.get("debate_question", "¿Qué opinas tú de esta filtración de GTA 6? ¡Te leemos abajo! 👇").strip()
     except Exception as e:
         print(f"[Warning] Error consultando IA para metadatos: {e}")
-        viral_title = f"¡BRUTAL! 🔥 REACCIÓN Y ANÁLISIS DE GTA 6: {original_title[:40].upper()} #GTA6"
-        summary = f"Análisis y cobertura exclusiva de las novedades y detalles de Grand Theft Auto VI a partir del material de {creator_name or 'la comunidad'}."
-        hook = "¡NUEVO LEAK!"
+        # Inferencia heurística de arquetipo si falla la IA
+        orig_lower = (original_title or "").lower()
+        if any(k in orig_lower for k in ["south park", "parodia", "meme", "sketch", "fails", "humor"]):
+            archetype = "humor_parodia"
+            fallback_hook = "¡NO PUEDE SER! 😂"
+        elif any(k in orig_lower for k in ["físicas", "fisicas", "motor", "rage", "gráfico", "grafico", "digital foundry"]):
+            archetype = "analisis_tecnico"
+            fallback_hook = "¡FÍSICAS NUNCA VISTAS! 🌊"
+        elif any(k in orig_lower for k in ["trailer", "tráiler", "oficial", "rockstar", "comunicado"]):
+            archetype = "noticia_oficial"
+            fallback_hook = "¡ANUNCIO OFICIAL! 🔥"
+        elif any(k in orig_lower for k in ["ibai", "xokas", "rubius", "knekro", "reaccion", "reacción"]):
+            archetype = "reaccion_streamer"
+            fallback_hook = "¡REACCIÓN BRUTAL! 😱"
+        else:
+            archetype = "gameplay_puro" if is_launched else "filtracion_misterio"
+            fallback_hook = "¡GAMEPLAY BRUTAL!" if is_launched else "¡DETALLE ÉPICO!"
+        viral_title = f"¡BRUTAL! 🔥 MOMENTO ÉPICO EN GTA 6: {original_title[:40].upper()} #GTA6" if is_launched else f"¡BRUTAL! 🔥 REACCIÓN Y ANÁLISIS DE GTA 6: {original_title[:40].upper()} #GTA6"
+        summary = f"Cobertura y mejores momentos de Grand Theft Auto VI a partir del contenido de {creator_name or 'la comunidad'}."
+        hook = fallback_hook
+        debate_question = "¿Qué os parece este gameplay de GTA 6? ¿Cumple con lo esperado? ¡Comenta abajo! 👇" if is_launched else "¿Crees que GTA 6 cumplirá todas las expectativas? ¡Comenta abajo! 👇"
 
     # Asegurar que el título siempre esté en mayúsculas y bien formateado
     if not viral_title:
@@ -162,21 +240,55 @@ Devuelve tu respuesta EXACTAMENTE en este formato JSON (sin texto extra):
             "Pistas musicales y efectos pertenecen a sus respectivos autores y licenciatarios de YouTube Audio Library / Take-Two Interactive.\n"
         )
 
+    try:
+        from .affiliates import format_description_affiliate_block, format_pinned_comment_affiliates
+        affiliate_block = format_description_affiliate_block()
+        pinned_comment = format_pinned_comment_affiliates(debate_question)
+    except Exception as e:
+        affiliate_block = (
+            f"🎮 {to_unicode_bold('RESERVA OFICIAL GTA VI & ACCESORIOS:')}\n"
+            f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+            f"👉 Reserva oficial garantizada y mejores ofertas de consolas PS5 / Xbox:\n"
+            f"{MONETIZATION_AFFILIATE_URL}"
+        )
+        pinned_comment = (
+            f"🌴 💬 {to_unicode_bold('DEBATE GTA 6:')}\n"
+            f"{debate_question}\n"
+            f"👇 ¡Déjanos tu teoría en los comentarios!\n\n"
+            f"🌐 𝗧𝗢𝗗𝗔𝗦 𝗡𝗨𝗘𝗦𝗧𝗥𝗔𝗦 𝗥𝗘𝗗𝗘𝗦 👉 https://linktr.ee/gtavihubspain\n"
+            f"🎮 𝗥𝗘𝗦𝗘𝗥𝗩𝗔 𝗢𝗙𝗜𝗖𝗜𝗔𝗟 𝗚𝗧𝗔 𝟲 👉 {MONETIZATION_AFFILIATE_URL}\n"
+            f"📩 Contacto Business: {BUSINESS_EMAIL}"
+        )
+
     full_description = f"""{summary}
 
-🔔 ¡SUSCRÍBETE a GTA VI Hub España para no perderte ninguna noticia, tráiler y filtración del juego más esperado de la historia!
+💬 {to_unicode_bold("DEBATE DE LA COMUNIDAD:")}
+{debate_question}
+👇 ¿Cuál es tu teoría? ¡Te leemos en los comentarios!
 
-═══════════════════════════════════════
-📌 CRÉDITOS DEL CONTENIDO ORIGINAL:
-═══════════════════════════════════════
+🌴 {to_unicode_bold("GTA VI HUB ESPAÑA | REDES OFICIALES:")}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🌐 Hub Central & Enlaces: https://linktr.ee/gtavihubspain
+🎬 TikTok Oficial: https://tiktok.com/@gtavihubspain
+📸 Instagram Reels: https://instagram.com/gtavihubspain
+🔴 Suscríbete al Canal: https://youtube.com/@GTAVIHubSpain?sub_confirmation=1
+
+{affiliate_block}
+
+📌 {to_unicode_bold("CRÉDITOS DEL AUTOR & FUENTE OFICIAL:")}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 {creator_line}{url_line}
-Todo el reconocimiento a los creadores originales por su gran trabajo. ¡Apoya el canal original en el enlace superior!
+Todo el reconocimiento al creador original por su excelente cobertura. ¡Apoya el canal original en el enlace superior!
 
-═══════════════════════════════════════
-{music_disclaimer}
-═══════════════════════════════════════
-⚖️ AVISO LEGAL Y USO LEGÍTIMO (FAIR USE):
-═══════════════════════════════════════
+💼 {to_unicode_bold("CONTACTO COMERCIAL & COPYRIGHT:")}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📩 Email de contacto / Business: {BUSINESS_EMAIL}
+🛡️ Retirada inmediata o atribución personalizada: Si eres el autor o titular de derechos y deseas alguna modificación o retirada amistosa, contáctanos a nuestro email y atenderemos tu solicitud en menos de 2 horas.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+{music_disclaimer}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+⚖️ {to_unicode_bold("AVISO LEGAL & USO LEGÍTIMO (FAIR USE):")}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 Este vídeo contiene material transformado con fines estrictamente informativos, de divulgación comunitaria, comentario crítico y traducción para la comunidad hispanohablante.
 
 De conformidad con el Artículo 107 de la Ley de Propiedad Intelectual (Copyright Act de 1976 / Doctrina de 'Fair Use'), se autoriza el uso de material protegido por derechos de autor con fines de crítica, comentarios, noticias, enseñanza y análisis. 
@@ -189,5 +301,8 @@ Grand Theft Auto VI, GTA VI, Vice City y los logotipos asociados son marcas regi
     return {
         "title": viral_title[:100],
         "description": full_description[:5000],
-        "hook": hook
+        "hook": hook,
+        "debate_question": debate_question,
+        "pinned_comment": pinned_comment,
+        "archetype": archetype
     }

@@ -12,17 +12,29 @@ from src.telegram_bot import get_viral_radar_inline_keyboard
 
 class TestViralDiscovery(unittest.TestCase):
     def test_virality_score_high_engagement_short(self):
-        # Vídeo vertical corto (Short) con muchas vistas y palabras clave
+        # Vídeo vertical corto (Short) con muchas vistas, velocidad y engagement de streamer
         res = calculate_virality_score(
-            title="NUEVO TRAILER 2 GTA 6 FILTRACION MAPA VICE CITY",
-            duration=35.0,
-            views=350_000
+            title="REACCION IBAI NUEVO GAMEPLAY GTA 6 FILTRACION MAPA VICE CITY",
+            duration=24.0,
+            views=350_000,
+            days_old=1,
+            like_count=25_000
         )
         self.assertGreaterEqual(res["score"], 80)
         self.assertTrue(res["is_short"])
-        self.assertEqual(res["format_score"], 30)
-        self.assertGreaterEqual(res["views_score"], 35)
+        self.assertEqual(res["format_score"], 20)
+        self.assertGreaterEqual(res["views_score"], 17)
+        self.assertGreaterEqual(res["velocity_score"], 25)
         self.assertGreaterEqual(len(res["matches"]), 3)
+
+    def test_virality_score_excludes_fake_trailer2(self):
+        # Vídeo que vende humo con Trailer 2 o bucle debe recibir score 0 (excluido)
+        res = calculate_virality_score(
+            title="NUEVO TRAILER 2 GTA 6 OFICIAL BUCLE HD",
+            duration=45.0,
+            views=500_000
+        )
+        self.assertEqual(res["score"], 0)
 
     def test_virality_score_low_engagement_long(self):
         # Vídeo largo, sin palabras clave y pocas vistas
@@ -33,8 +45,8 @@ class TestViralDiscovery(unittest.TestCase):
         )
         self.assertLess(res["score"], 30)
         self.assertFalse(res["is_short"])
-        self.assertEqual(res["format_score"], 5)
-        self.assertEqual(res["views_score"], 5)
+        self.assertEqual(res["format_score"], 0)
+        self.assertEqual(res["views_score"], 2)
 
     def test_monitored_channels_expanded(self):
         channels = list_monitored_channels()

@@ -67,7 +67,8 @@ def get_persistent_menu_keyboard() -> Dict[str, Any]:
             [{"text": "🚀 Forzar Escaneo"}, {"text": "📊 Dashboard"}],
             [{"text": "🎬 Último Clip"}, {"text": "🖥️ Estado Host / GaTDSEQ"}],
             [{"text": "📈 Métricas YouTube"}, {"text": "⚙️ Canales"}],
-            [{"text": "🔥 Radar Viral"}, {"text": "🛡️ Modo Co-Pilot"}],
+            [{"text": "🔥 Radar Viral"}, {"text": "🛒 Ofertas Amazon"}],
+            [{"text": "🛡️ Modo Co-Pilot"}, {"text": "🧠 Auto-Perfeccionar"}],
             [{"text": "🌐 Mis Canales"}, {"text": "🧹 Limpiar Temp"}]
         ],
         "resize_keyboard": True,
@@ -99,15 +100,19 @@ def send_telegram_alert(
     elif include_menu:
         payload["reply_markup"] = get_persistent_menu_keyboard()
 
-    try:
-        res = requests.post(url, json=payload, timeout=12)
-        if res.status_code != 200 and parse_mode:
-            payload.pop("parse_mode", None)
+    for attempt in range(3):
+        try:
             res = requests.post(url, json=payload, timeout=12)
-        return res.status_code == 200
-    except Exception as e:
-        print(f"[Telegram] Error enviando mensaje: {e}")
-        return False
+            if res.status_code != 200 and parse_mode:
+                payload.pop("parse_mode", None)
+                res = requests.post(url, json=payload, timeout=12)
+            if res.status_code == 200:
+                return True
+            print(f"[Telegram] Error {res.status_code} enviando mensaje: {res.text}")
+        except Exception as e:
+            print(f"[Telegram] Intento {attempt + 1}/3 enviando mensaje falló: {e}")
+            time.sleep(2)
+    return False
 
 def edit_telegram_message(
     message_id: int,
@@ -170,21 +175,32 @@ def send_telegram_photo(
         return False
 
     url = get_api_url("sendPhoto")
-    try:
-        with open(photo_path, "rb") as photo:
-            files = {"photo": photo}
-            data: Dict[str, Any] = {
-                "chat_id": chat_id,
-                "caption": caption[:1024],
-                "parse_mode": "Markdown"
-            }
-            if reply_markup:
-                data["reply_markup"] = json.dumps(reply_markup)
-            res = requests.post(url, data=data, files=files, timeout=20)
-            return res.status_code == 200
-    except Exception as e:
-        print(f"[Telegram] Error enviando foto: {e}")
-        return False
+    for attempt in range(3):
+        try:
+            with open(photo_path, "rb") as photo:
+                files = {"photo": photo}
+                data: Dict[str, Any] = {
+                    "chat_id": chat_id,
+                    "caption": caption[:1024],
+                    "parse_mode": "Markdown"
+                }
+                if reply_markup:
+                    data["reply_markup"] = json.dumps(reply_markup)
+                res = requests.post(url, data=data, files=files, timeout=20)
+                if res.status_code == 200:
+                    return True
+                # Si falló por formato Markdown, reintentar de inmediato sin parse_mode
+                if res.status_code != 200 and "parse_mode" in data:
+                    data.pop("parse_mode", None)
+                    photo.seek(0)
+                    res2 = requests.post(url, data=data, files={"photo": photo}, timeout=20)
+                    if res2.status_code == 200:
+                        return True
+                print(f"[Telegram] Error {res.status_code} enviando foto: {res.text}")
+        except Exception as e:
+            print(f"[Telegram] Intento {attempt + 1}/3 enviando foto falló: {e}")
+            time.sleep(2)
+    return False
 
 def send_telegram_video(
     video_path: Path,
@@ -451,6 +467,7 @@ def send_copilot_approval_request(
         + f"🎙️ *Modo:* `{'Doblaje IA + Subs' if mode == 'dub' else 'Subtítulos Hormozi'}`\n"
         + f"🎯 *Gancho Inicial:* `{hook_text or 'EXCLUSIVA GTA 6'}`\n"
         + "⚖️ *Compliance:* `[✓ Fair Use y Atribución Listos]`\n\n"
+        + "⏱️ *Temporizador:* Si no respondes en 15 min, se auto-aprobará y publicará solo.\n\n"
         + "👇 *Pulsa una opción para proceder:*"
     )
     keyboard = get_copilot_approval_keyboard(video_id, original_url=original_url)
@@ -897,6 +914,23 @@ def handle_callback_query(cq: Dict[str, Any]):
         )
         return
 
+    if data == "deals_force_update":
+        answer_callback_query(cq_id, "Actualizando ofertas...")
+        edit_telegram_message(msg_id, "🔄 *Sincronizando y actualizando ofertas en Amazon...*")
+        try:
+            from .deal_scanner import scan_and_update_deals
+            res = scan_and_update_deals(force=True, notify_telegram=False)
+            keyboard = {
+                "inline_keyboard": [
+                    [{"text": "🔄 Forzar Actualización Ahora", "callback_data": "deals_force_update"}],
+                    [{"text": "🌐 Ver Linktree Oficial", "url": "https://linktr.ee/gtavihubspain"}]
+                ]
+            }
+            edit_telegram_message(msg_id, res["report"], reply_markup=keyboard)
+        except Exception as e:
+            edit_telegram_message(msg_id, f"⚠️ Error actualizando ofertas: {e}")
+        return
+
     answer_callback_query(cq_id)
 
 # ═══════════════════════════════════════════════════════════════════
@@ -943,6 +977,40 @@ def start_telegram_bot_daemon():
     while True:
         try:
             update_heartbeat()
+
+            # Revisar auto-aprobación por tiempo de cortesía de Co-Pilot (15 min)
+            try:
+                from .copilot import check_and_auto_approve_expired_videos
+                check_and_auto_approve_expired_videos()
+            except Exception:
+                pass
+
+            # Revisión periódica de ofertas de Amazon (cada ~1h en el loop, ciclo real de 3 días)
+            if not hasattr(start_telegram_bot_daemon, '_last_deals_check'):
+                start_telegram_bot_daemon._last_deals_check = 0
+            if not hasattr(start_telegram_bot_daemon, '_last_metrics_check'):
+                start_telegram_bot_daemon._last_metrics_check = 0
+            _now_ts = time.time()
+            if _now_ts - start_telegram_bot_daemon._last_deals_check > 3600:
+                start_telegram_bot_daemon._last_deals_check = _now_ts
+                try:
+                    from .deal_scanner import should_update_deals, scan_and_update_deals
+                    if should_update_deals():
+                        scan_and_update_deals(notify_telegram=True)
+                except Exception as e:
+                    print(f"[DealScanner] Error en chequeo automático: {e}")
+
+            # Feedback loop: obtener métricas reales de vídeos publicados (cada ~6h)
+            if _now_ts - start_telegram_bot_daemon._last_metrics_check > 21600:
+                start_telegram_bot_daemon._last_metrics_check = _now_ts
+                try:
+                    from .performance_tracker import fetch_pending_metrics
+                    fetched = fetch_pending_metrics(max_fetch=5)
+                    if fetched > 0:
+                        print(f"[PerformanceTracker] Métricas actualizadas para {fetched} vídeo(s).")
+                except Exception as e:
+                    print(f"[PerformanceTracker] Error obteniendo métricas: {e}")
+
             params = {"offset": last_update_id + 1, "timeout": 10}
             res = requests.get(url_updates, params=params, timeout=15)
             if res.status_code != 200:
@@ -1076,12 +1144,82 @@ def start_telegram_bot_daemon():
                         reply_markup=get_my_channels_inline_keyboard()
                     )
 
+                elif cmd in ["/aiselect", "/ai_select", "/seleccion_ia", "🤖"]:
+                    send_telegram_alert("🤖 *Consultando al Motor de Selección con IA (Gemini Flash)...*\nEvaluando candidatos en tiempo real entre 72 canales y 64 queries...")
+                    def _run_ai_sel():
+                        try:
+                            from .channels import fetch_channel_candidates
+                            from .ai_selector import select_best_candidate_ai
+                            candidates = fetch_channel_candidates(max_per_channel=2)
+                            if not candidates:
+                                send_telegram_alert("ℹ️ No hay vídeos nuevos pendientes en los canales para evaluar.")
+                                return
+                            best = select_best_candidate_ai(candidates, launch_mode=False)
+                            msg = (
+                                "🤖 *ELECCIÓN ESTRATÉGICA DE LA IA*\n"
+                                + ("═" * 36) + "\n\n"
+                                f"🎬 *Vídeo Ganador:* {best.get('title')}\n"
+                                f"👤 *Creador:* `{best.get('source_name') or best.get('uploader')}`\n"
+                                f"🔥 *Score:* `{best.get('score')}/100` | 👁️ *Vistas:* `{best.get('views', 0):,}`\n\n"
+                                f"💡 *Justificación IA:*\n_{best.get('ai_justification')}_\n\n"
+                                f"🏷️ *Título Sugerido:* `{best.get('recommended_title')}`\n"
+                                f"⚡ *Gancho Superior:* `{best.get('hook_line1')} | {best.get('hook_line2')}`\n\n"
+                                f"🔗 [Ver Original]({best.get('url')})"
+                            )
+                            send_telegram_alert(msg, reply_markup=get_persistent_menu_keyboard())
+                        except Exception as e:
+                            send_telegram_alert(f"⚠️ Error en selección con IA: {e}")
+                    threading.Thread(target=_run_ai_sel, daemon=True).start()
+
+                elif cmd in ["/launch", "/launchmode", "/launch_mode", "🚀"]:
+                    send_telegram_alert(
+                        "🚀 *MODO DÍA DEL ESTRENO (LAUNCH DAY 2026)*\n"
+                        + ("═" * 36) + "\n\n"
+                        "• Cobertura: *72 Canales de Autoridad + 64 Queries de Tendencia*\n"
+                        "• Algoritmo: *Velocity Burst x2 + Freshness Boost (<12h)*\n"
+                        "• Selector: *IA Gemini Flash evaluando gameplay y secretos de primer día*\n\n"
+                        "Para lanzar una tanda en modo estreno ejecuta:\n"
+                        "`./run.sh --launch-mode --auto`"
+                    )
+
                 elif cmd in ["/radar", "/viral", "🔥"] or text == "🔥 Radar Viral":
                     if ACTIVE_TASK:
                         send_telegram_alert(f"⚠️ *Tarea activa en curso:* `{ACTIVE_TASK}`. Por favor espera a que finalice.")
                     else:
                         t = threading.Thread(target=run_viral_radar_in_background, args=(allowed_chat_id,), daemon=True)
                         t.start()
+
+                elif cmd in ["/deals", "/ofertas", "🛒"] or text == "🛒 Ofertas Amazon":
+                    try:
+                        from .deal_scanner import scan_and_update_deals, load_deals_state, format_deals_report
+                        if "--update" in text or "actualizar" in text.lower() or "forzar" in text.lower():
+                            send_telegram_alert("🔄 *Sincronizando y forzando actualización de ofertas en Amazon...*")
+                            res = scan_and_update_deals(force=True, notify_telegram=False)
+                            send_telegram_alert(res["report"], reply_markup=get_persistent_menu_keyboard())
+                        else:
+                            state = load_deals_state()
+                            report = format_deals_report(state)
+                            keyboard = {
+                                "inline_keyboard": [
+                                    [{"text": "🔄 Forzar Actualización Ahora", "callback_data": "deals_force_update"}],
+                                    [{"text": "🌐 Ver Linktree Oficial", "url": "https://linktr.ee/gtavihubspain"}]
+                                ]
+                            }
+                            send_telegram_alert(report, reply_markup=keyboard)
+                    except Exception as e:
+                        send_telegram_alert(f"⚠️ Error consultando ofertas: {e}", reply_markup=get_persistent_menu_keyboard())
+
+                elif cmd in ["/optimize", "/aprender", "/learning", "🧠"] or text == "🧠 Auto-Perfeccionar":
+                    send_telegram_alert("🧠 *Iniciando ciclo de auto-perfeccionamiento y benchmark...*\nAuditando vídeos de nuestro canal y extrayendo patrones ganadores de los líderes.")
+                    def _run_opt():
+                        try:
+                            from .learning_engine import run_self_learning_cycle, generate_learning_telegram_report
+                            pb = run_self_learning_cycle()
+                            report = generate_learning_telegram_report(pb)
+                            send_telegram_alert(report, reply_markup=get_persistent_menu_keyboard())
+                        except Exception as e:
+                            send_telegram_alert(f"⚠️ Error durante la optimización: {e}")
+                    threading.Thread(target=_run_opt, daemon=True).start()
 
                 elif cmd == "/addchannel":
                     parts = text.split(maxsplit=2)

@@ -3,12 +3,13 @@ import os
 import sys
 import argparse
 import subprocess
+from datetime import datetime
 from pathlib import Path
 
 # Asegurar path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from src.config import MAX_VIDEOS_PER_RUN, CHANNELS_FILE, is_quant_busy
+from src.config import MAX_VIDEOS_PER_RUN, CHANNELS_FILE, is_quant_busy, get_max_videos_per_run
 from src.channels import fetch_channel_candidates
 from src.pipeline import process_single_video
 
@@ -133,6 +134,11 @@ def main():
         help="Iniciar el bot de control remoto y notificaciones de Telegram."
     )
     parser.add_argument(
+        "--launch-mode",
+        action="store_true",
+        help="Modo de Alta Frecuencia para el Día del Estreno (priorización hiper-agresiva por velocidad de vistas y frescura en tiempo real)."
+    )
+    parser.add_argument(
         "--radar", "--viral-radar",
         dest="viral_radar",
         action="store_true",
@@ -142,6 +148,11 @@ def main():
         "--auto-viral",
         action="store_true",
         help="Ingesta y procesa automáticamente el clip #1 más viral del Radar."
+    )
+    parser.add_argument(
+        "--update-deals",
+        action="store_true",
+        help="Sincroniza y actualiza las ofertas de hardware y periféricos de Amazon para GTA VI (ciclo de 3 días)."
     )
 
     args = parser.parse_args()
@@ -157,6 +168,14 @@ def main():
     if args.telegram:
         from src.telegram_bot import start_telegram_bot_daemon
         start_telegram_bot_daemon()
+        return
+
+    if args.update_deals:
+        from src.deal_scanner import scan_and_update_deals
+        print("\n[*] Ejecutando escáner y sincronización de ofertas de Amazon (ciclo 3 días)...")
+        res = scan_and_update_deals(force=True, notify_telegram=True)
+        print(f"[✓] {res['message']} (Total ofertas: {res.get('total_deals', 0)})")
+        print(res.get("report", ""))
         return
 
     if args.viral_radar:
@@ -181,7 +200,7 @@ def main():
             original_title=top_clip["title"],
             creator_name=top_clip["uploader"],
             mode=args.mode,
-            force_short=True if top_clip.get("is_short") else None,
+            force_short=True if (args.publish_all or top_clip.get("is_short")) else None,
             auto_upload=args.upload,
             privacy_status=args.privacy,
             keep_local_video=args.keep_local_video,
@@ -229,6 +248,9 @@ def main():
         force_short = True
     elif args.format == "normal":
         force_short = False
+    elif args.publish_all:
+        # Publicación multiplataforma (Shorts, TikTok, Reels) REQUIERE formato vertical 9:16
+        force_short = True
     elif args.url and "/shorts/" in args.url.lower():
         force_short = True
 
@@ -258,37 +280,54 @@ def main():
                 subprocess.run(["open", str(vid_path)])
         return
 
-    # Modo 2: Modo autónomo (canales)
-    if args.auto:
-        print("[*] Iniciando escaneo autónomo de canales...")
-        candidates = fetch_channel_candidates(max_per_channel=args.max_videos)
+    # Modo 2: Modo autónomo (canales) & Modo Día del Estreno (Launch Mode)
+    if args.auto or args.launch_mode:
+        launch_active = args.launch_mode or (datetime.now() >= datetime.fromisoformat("2026-11-19"))
+        tag = "🚀 [MODO DÍA DEL ESTRENO]" if launch_active else "[*]"
+        print(f"{tag} Iniciando escaneo autónomo multi-fuente (72 canales + 64 queries)...")
+        effective_limit = args.max_videos if args.max_videos != MAX_VIDEOS_PER_RUN else get_max_videos_per_run()
+        candidates = fetch_channel_candidates(max_per_channel=effective_limit)
         
         if not candidates:
             print("[✓] No hay vídeos nuevos pendientes de procesar en ningún canal.")
             return
 
-        print(f"[!] Se encontraron {len(candidates)} vídeos nuevos.")
+        print(f"[!] Se encontraron {len(candidates)} vídeos candidatos.")
+        
+        from src.ai_selector import select_best_candidate_ai
+        
         count = 0
-        for item in candidates:
-            if count >= args.max_videos:
-                print(f"[*] Límite de {args.max_videos} vídeos alcanzado en esta tanda.")
+        remaining = list(candidates)
+        while remaining and count < effective_limit:
+            chosen = select_best_candidate_ai(remaining, launch_mode=launch_active)
+            if not chosen:
                 break
             
+            # Quitar de la lista de pendientes para la siguiente iteración
+            chosen_id = chosen.get("id")
+            remaining = [c for c in remaining if c.get("id") != chosen_id]
+            
+            # Construir gancho de 2 líneas si la IA o el Playbook generaron líneas específicas
+            custom_hook = None
+            if chosen.get("hook_line1") and chosen.get("hook_line2"):
+                custom_hook = f"{chosen['hook_line1']}\n{chosen['hook_line2']}"
+
             res = process_single_video(
-                url=item["url"],
-                video_id=item["id"],
-                original_title=item["title"],
-                creator_name=item.get("source_name", ""),
-                source_lang=item.get("lang", "en"),
+                url=chosen["url"],
+                video_id=chosen["id"],
+                original_title=chosen.get("recommended_title") or chosen["title"],
+                creator_name=chosen.get("source_name") or chosen.get("uploader", ""),
+                source_lang=chosen.get("lang", "en"),
                 mode=args.mode,
-                force_short=True if item.get("is_short") or force_short else force_short,
+                force_short=True if (args.publish_all or chosen.get("is_short") or force_short) else force_short,
                 auto_upload=args.upload,
                 privacy_status=args.privacy,
                 keep_local_video=args.keep_local_video,
                 publish_all=args.publish_all,
                 dry_run=args.dry_run,
                 stagger_delay=args.stagger_delay,
-                copilot_mode=False if args.no_copilot else None
+                copilot_mode=False if args.no_copilot else None,
+                hook_override=custom_hook
             )
             if res:
                 count += 1

@@ -15,7 +15,10 @@ from src.telegram_bot import (
     send_telegram_video,
     get_dashboard_text
 )
-from src.copilot import is_copilot_enabled, set_copilot_enabled
+from src.copilot import (
+    is_copilot_enabled, set_copilot_enabled,
+    check_and_auto_approve_expired_videos, COPILOT_AUTO_APPROVE_TIMEOUT_MIN
+)
 
 class TestTelegramBot(unittest.TestCase):
     def test_url_pattern_detection(self):
@@ -126,6 +129,12 @@ class TestTelegramBot(unittest.TestCase):
         # Revertir
         set_copilot_enabled(original)
         self.assertEqual(is_copilot_enabled(), original)
+
+    def test_copilot_auto_approve_check(self):
+        # Debe ejecutarse sin lanzar excepciones y devolver una lista
+        res = check_and_auto_approve_expired_videos(timeout_minutes=999999)
+        self.assertIsInstance(res, list)
+        self.assertGreaterEqual(COPILOT_AUTO_APPROVE_TIMEOUT_MIN, 1)
 
     def test_dashboard_text(self):
         dash = get_dashboard_text()

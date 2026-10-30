@@ -1,0 +1,24 @@
+{
+  "last_updated": "2026-10-29T23:10:44.217993",
+  "saturation": 1.35,
+  "contrast": 1.25,
+  "brightness": 1.05,
+  "top_bar": false,
+  "bottom_gradient": true,
+  "text_hook": true,
+  "text_color": [
+    255,
+    230,
+    0
+  ],
+  "text_stroke": [
+    0,
+    0,
+    0
+  ],
+  "text_stroke_width": 6,
+  "font_size_ratio": 0.07,
+  "color_tone": "neon_miami",
+  "vignette_alpha": 120,
+  "analysis_source": "default"
+}

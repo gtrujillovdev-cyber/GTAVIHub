@@ -40,7 +40,8 @@ def upload_to_youtube(
     tags: Optional[List[str]] = None,
     privacy_status: str = "private",
     is_short: bool = False,
-    thumbnail_path: Optional[Path] = None
+    thumbnail_path: Optional[Path] = None,
+    pinned_comment: Optional[str] = None
 ) -> Optional[str]:
     """
     Sube un vídeo a YouTube mediante la API v3.
@@ -112,6 +113,26 @@ def upload_to_youtube(
                 print(f"[✓] Miniatura asignada con éxito.")
             except Exception as e:
                 print(f"[Info] Miniatura personalizada no asignada (requiere verificación telefónica del canal): {e}")
+
+        # Comentario de llamada a la acción y monetización automática
+        if pinned_comment:
+            try:
+                youtube.commentThreads().insert(
+                    part="snippet",
+                    body={
+                        "snippet": {
+                            "videoId": video_id,
+                            "topLevelComment": {
+                                "snippet": {
+                                    "textOriginal": pinned_comment
+                                }
+                            }
+                        }
+                    }
+                ).execute()
+                print(f"[✓] Comentario de llamada a la acción y monetización fijado con éxito.")
+            except Exception as e:
+                print(f"[Info] Comentario automático omitido: {e}")
 
         return video_id
     except Exception as e:
