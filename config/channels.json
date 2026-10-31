@@ -222,8 +222,13 @@
       "type": "streamer_reaction",
       "lang": "es",
       "filter_keywords": true,
-      "enabled": false,
-      "description": "Shorts oficiales de IlloJuan en LMDShow"
+      "enabled": true,
+      "description": "Shorts oficiales de IlloJuan en LMDShow",
+      "block_instagram": true,
+      "allowed_platforms": [
+        "youtube",
+        "tiktok"
+      ]
     },
     {
       "name": "IlloJuan Clips (Shorts)",
@@ -231,8 +236,13 @@
       "type": "streamer_reaction",
       "lang": "es",
       "filter_keywords": true,
-      "enabled": false,
-      "description": "Shorts de mejores momentos de IlloJuan"
+      "enabled": true,
+      "description": "Shorts de mejores momentos de IlloJuan",
+      "block_instagram": true,
+      "allowed_platforms": [
+        "youtube",
+        "tiktok"
+      ]
     },
     {
       "name": "ElXokas (Shorts)",
@@ -240,8 +250,13 @@
       "type": "streamer_reaction",
       "lang": "es",
       "filter_keywords": true,
-      "enabled": false,
-      "description": "Shorts oficiales de ElXokas"
+      "enabled": true,
+      "description": "Shorts oficiales de ElXokas",
+      "block_instagram": true,
+      "allowed_platforms": [
+        "youtube",
+        "tiktok"
+      ]
     },
     {
       "name": "ElXokas Clips (Shorts)",
@@ -249,8 +264,13 @@
       "type": "streamer_reaction",
       "lang": "es",
       "filter_keywords": true,
-      "enabled": false,
-      "description": "Shorts de clips virales de ElXokas"
+      "enabled": true,
+      "description": "Shorts de clips virales de ElXokas",
+      "block_instagram": true,
+      "allowed_platforms": [
+        "youtube",
+        "tiktok"
+      ]
     },
     {
       "name": "Ibai (Shorts)",
@@ -258,8 +278,13 @@
       "type": "streamer_reaction",
       "lang": "es",
       "filter_keywords": true,
-      "enabled": false,
-      "description": "Shorts oficiales de Ibai Llanos"
+      "enabled": true,
+      "description": "Shorts oficiales de Ibai Llanos",
+      "block_instagram": true,
+      "allowed_platforms": [
+        "youtube",
+        "tiktok"
+      ]
     },
     {
       "name": "AuronPlay (Shorts)",
@@ -267,8 +292,13 @@
       "type": "streamer_reaction",
       "lang": "es",
       "filter_keywords": true,
-      "enabled": false,
-      "description": "Shorts oficiales de AuronPlay"
+      "enabled": true,
+      "description": "Shorts oficiales de AuronPlay",
+      "block_instagram": true,
+      "allowed_platforms": [
+        "youtube",
+        "tiktok"
+      ]
     },
     {
       "name": "Rubius Z (Shorts)",
@@ -276,8 +306,13 @@
       "type": "streamer_reaction",
       "lang": "es",
       "filter_keywords": true,
-      "enabled": false,
-      "description": "Shorts oficiales de El Rubius"
+      "enabled": true,
+      "description": "Shorts oficiales de El Rubius",
+      "block_instagram": true,
+      "allowed_platforms": [
+        "youtube",
+        "tiktok"
+      ]
     },
     {
       "name": "TheGrefg (Shorts)",
@@ -285,8 +320,13 @@
       "type": "streamer_reaction",
       "lang": "es",
       "filter_keywords": true,
-      "enabled": false,
-      "description": "Shorts oficiales de TheGrefg"
+      "enabled": true,
+      "description": "Shorts oficiales de TheGrefg",
+      "block_instagram": true,
+      "allowed_platforms": [
+        "youtube",
+        "tiktok"
+      ]
     },
     {
       "name": "DjMaRiiO (Shorts)",
@@ -294,8 +334,13 @@
       "type": "streamer_reaction",
       "lang": "es",
       "filter_keywords": true,
-      "enabled": false,
-      "description": "Shorts oficiales de DjMaRiiO"
+      "enabled": true,
+      "description": "Shorts oficiales de DjMaRiiO",
+      "block_instagram": true,
+      "allowed_platforms": [
+        "youtube",
+        "tiktok"
+      ]
     },
     {
       "name": "Menos Trece (Shorts)",
@@ -303,8 +348,13 @@
       "type": "streamer_reaction",
       "lang": "es",
       "filter_keywords": true,
-      "enabled": false,
-      "description": "Shorts oficiales de Menos Trece"
+      "enabled": true,
+      "description": "Shorts oficiales de Menos Trece",
+      "block_instagram": true,
+      "allowed_platforms": [
+        "youtube",
+        "tiktok"
+      ]
     },
     {
       "name": "Zellendust (Shorts)",
@@ -312,8 +362,13 @@
       "type": "streamer_reaction",
       "lang": "es",
       "filter_keywords": true,
-      "enabled": false,
-      "description": "Shorts oficiales de ZellenDust"
+      "enabled": true,
+      "description": "Shorts oficiales de ZellenDust",
+      "block_instagram": true,
+      "allowed_platforms": [
+        "youtube",
+        "tiktok"
+      ]
     },
     {
       "name": "Pelicanger (Shorts)",
@@ -321,8 +376,13 @@
       "type": "streamer_reaction",
       "lang": "es",
       "filter_keywords": true,
-      "enabled": false,
-      "description": "Shorts oficiales de Pelicanger"
+      "enabled": true,
+      "description": "Shorts oficiales de Pelicanger",
+      "block_instagram": true,
+      "allowed_platforms": [
+        "youtube",
+        "tiktok"
+      ]
     },
     {
       "name": "DaniRep (Shorts)",
@@ -564,8 +624,13 @@
       "type": "streamer",
       "lang": "es",
       "filter_keywords": true,
-      "enabled": false,
-      "description": "Reacciones y momentos de hype de AlphaSniper97"
+      "enabled": true,
+      "description": "Reacciones y momentos de hype de AlphaSniper97",
+      "block_instagram": true,
+      "allowed_platforms": [
+        "youtube",
+        "tiktok"
+      ]
     },
     {
       "name": "Alexelcapo (Shorts)",
@@ -573,8 +638,13 @@
       "type": "streamer",
       "lang": "es",
       "filter_keywords": true,
-      "enabled": false,
-      "description": "Reflexiones y opiniones sinceras de Alexelcapo"
+      "enabled": true,
+      "description": "Reflexiones y opiniones sinceras de Alexelcapo",
+      "block_instagram": true,
+      "allowed_platforms": [
+        "youtube",
+        "tiktok"
+      ]
     },
     {
       "name": "Folagor03 (Shorts)",
@@ -582,8 +652,13 @@
       "type": "streamer",
       "lang": "es",
       "filter_keywords": true,
-      "enabled": false,
-      "description": "Reacciones virales y directos de Folagor"
+      "enabled": true,
+      "description": "Reacciones virales y directos de Folagor",
+      "block_instagram": true,
+      "allowed_platforms": [
+        "youtube",
+        "tiktok"
+      ]
     },
     {
       "name": "Guías Paso a Paso (Shorts)",
@@ -941,36 +1016,61 @@
       "query": "ytsearch15:GTA 6 ElXokas analisis teoria #shorts",
       "lang": "es",
       "only_shorts": true,
-      "enabled": false,
-      "description": "Teorías y reflexiones de ElXokas sobre GTA 6"
+      "enabled": true,
+      "description": "Teorías y reflexiones de ElXokas sobre GTA 6",
+      "block_instagram": true,
+      "allowed_platforms": [
+        "youtube",
+        "tiktok"
+      ]
     },
     {
       "query": "ytsearch15:GTA 6 Rubius trailer reaccion momentos #shorts",
       "lang": "es",
       "only_shorts": true,
-      "enabled": false,
-      "description": "Reacciones de Rubius al mundo de GTA 6"
+      "enabled": true,
+      "description": "Reacciones de Rubius al mundo de GTA 6",
+      "block_instagram": true,
+      "allowed_platforms": [
+        "youtube",
+        "tiktok"
+      ]
     },
     {
       "query": "ytsearch15:GTA 6 Ibai novedades risas #shorts",
       "lang": "es",
       "only_shorts": true,
-      "enabled": false,
-      "description": "Comentarios y risas de Ibai sobre GTA 6"
+      "enabled": true,
+      "description": "Comentarios y risas de Ibai sobre GTA 6",
+      "block_instagram": true,
+      "allowed_platforms": [
+        "youtube",
+        "tiktok"
+      ]
     },
     {
       "query": "ytsearch15:GTA 6 TheGrefg filtracion reaccion #shorts",
       "lang": "es",
       "only_shorts": true,
-      "enabled": false,
-      "description": "Reacciones épicas de TheGrefg a GTA 6"
+      "enabled": true,
+      "description": "Reacciones épicas de TheGrefg a GTA 6",
+      "block_instagram": true,
+      "allowed_platforms": [
+        "youtube",
+        "tiktok"
+      ]
     },
     {
       "query": "ytsearch15:GTA 6 AuronPlay momentos trailer #shorts",
       "lang": "es",
       "only_shorts": true,
-      "enabled": false,
-      "description": "Momentos divertidos de AuronPlay comentando GTA 6"
+      "enabled": true,
+      "description": "Momentos divertidos de AuronPlay comentando GTA 6",
+      "block_instagram": true,
+      "allowed_platforms": [
+        "youtube",
+        "tiktok"
+      ]
     },
     {
       "query": "ytsearch15:GTA 6 viral breakdown secrets #shorts",

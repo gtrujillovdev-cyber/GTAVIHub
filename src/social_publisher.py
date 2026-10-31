@@ -552,7 +552,7 @@ class SocialPublisher:
         para evitar que las redes detecten una firma robótica sincronizada.
         """
         if platforms is None:
-            platforms = ["youtube", "tiktok", "instagram"]
+            platforms = list(metadata.get("allowed_platforms") or ["youtube", "tiktok", "instagram"])
 
         results = {}
         title = metadata.get("title", video_path.stem)
@@ -599,6 +599,30 @@ class SocialPublisher:
             if not is_eligible:
                 print(f"\n[Compliance Shield] 🛡️ {reason}")
                 self._notify_telegram(f"🛡️ *[Compliance Shield]* Saltando *{plat.upper()}* para proteger la cuenta:\n_{reason}_")
+
+                # OPCIÓN B: Contenido alternativo para Instagram si el Reel de clip/streamer no es elegible
+                if plat == "instagram":
+                    print("[Opción B] 🎬 Generando contenido alternativo seguro para Instagram (Story cinemática de hardware)...")
+                    try:
+                        from .story_scheduler import publish_scheduled_story
+                        story_res = publish_scheduled_story(force=True, preferred_type="product", dry_run=self.dry_run)
+                        if story_res.get("status") in ("published", "simulated", "ok") or (self.dry_run and story_res.get("item")):
+                            story_item = story_res.get("item", "Oferta de hardware")
+                            story_url = story_res.get("story_url") or "https://www.instagram.com/gtavihubspain/"
+                            results["instagram"] = f"Story Alternativa Publicada: {story_item} ({story_url})"
+                            print(f"[✓] [Opción B] Story alternativa publicada en Instagram: {story_item}")
+                            self._notify_telegram(
+                                f"🛡️ *[Instagram - Opción B Activa]*\n"
+                                f"Reel omitido por seguridad de cuenta (contenido de terceros/streamer).\n"
+                                f"🌟 Publicada *Story alternativa* en Instagram: *{story_item}*\n"
+                                f"👉 Mantiene actividad diaria y monetización sin riesgo de 'Contenido no original'."
+                            )
+                            continue
+                        else:
+                            print(f"[Opción B] Fallback de story omitido: {story_res.get('reason')}")
+                    except Exception as story_err:
+                        print(f"[Opción B] Error en fallback de story: {story_err}")
+
                 results[plat] = "Bloqueado por Compliance Shield"
                 continue
 

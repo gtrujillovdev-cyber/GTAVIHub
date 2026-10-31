@@ -172,7 +172,11 @@ def build_content_teaser_story(
 
     return img_path, reel_url, caption
 
-def publish_scheduled_story(force: bool = False, preferred_type: Optional[str] = None) -> Dict[str, Any]:
+def publish_scheduled_story(
+    force: bool = False,
+    preferred_type: Optional[str] = None,
+    dry_run: bool = False
+) -> Dict[str, Any]:
     """
     Ejecuta el ciclo de publicación programada de historias si las condiciones de algoritmo son óptimas.
     """
@@ -203,8 +207,15 @@ def publish_scheduled_story(force: bool = False, preferred_type: Optional[str] =
     result_url = publish_story_to_instagram(
         image_path=img_path,
         affiliate_url=link_url,
-        caption=caption
+        caption=caption,
+        dry_run=dry_run
     )
+
+    if dry_run and img_path and Path(img_path).exists():
+        try:
+            Path(img_path).unlink()
+        except Exception:
+            pass
 
     now_iso = datetime.now(timezone.utc).isoformat()
     today_str = datetime.now(timezone.utc).strftime("%Y-%m-%d")

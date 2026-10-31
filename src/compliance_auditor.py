@@ -168,6 +168,18 @@ class ComplianceAuditor:
         is_safe = (len(issues) == 0)
         return is_safe, issues
 
+    FORBIDDEN_STREAMERS = [
+        "illojuan", "ibai", "elxokas", "auron", "rubius", "thegrefg",
+        "djmariio", "menostrece", "zellendust", "pelicanger", "folagor", "alphasniper"
+    ]
+
+    @classmethod
+    def is_streamer(cls, creator_name: str, title: str = "") -> bool:
+        """Determina si un contenido proviene o hace referencia a un streamer de alto perfil."""
+        name_lower = (creator_name or "").lower()
+        title_lower = (title or "").lower()
+        return any(st in name_lower or st in title_lower for st in cls.FORBIDDEN_STREAMERS)
+
     @classmethod
     def is_platform_eligible(
         cls,
@@ -185,21 +197,29 @@ class ComplianceAuditor:
         title = metadata.get("title", "").lower()
         creator_lower = (creator_name or "").lower()
 
-        # Streamers de alto perfil vetados para evitar coincidencia biométrica/facial en Meta
-        forbidden_streamers = [
-            "illojuan", "ibai", "elxokas", "auron", "rubius", "thegrefg",
-            "djmariio", "menostrece", "zellendust", "pelicanger", "folagor", "alphasniper"
-        ]
+        # 0. Restricciones explícitas de configuración del canal
+        allowed_platforms = metadata.get("allowed_platforms")
+        if allowed_platforms and platform not in allowed_platforms:
+            return (
+                False,
+                f"Bloqueado para {platform.title()}: Plataforma no permitida en channels.json (Permitidas: {', '.join(allowed_platforms)})."
+            )
 
         if platform == "instagram":
+            # Si el canal tiene la bandera block_instagram
+            if metadata.get("block_instagram", False):
+                return (
+                    False,
+                    "Bloqueado para Instagram Reels: Origen marcado con 'block_instagram: true' para proteger la cuenta."
+                )
+
             # 1. Bloqueo absoluto de clips de streamers de alto perfil en Instagram
-            for st in forbidden_streamers:
-                if st in creator_lower or st in title:
-                    return (
-                        False,
-                        f"Bloqueado para Instagram Reels: Detectada referencia a streamer '{st.title()}'. "
-                        "El sistema Rights Manager de Meta sanciona el clipping de terceros como 'Contenido no original'."
-                    )
+            if cls.is_streamer(creator_name, title):
+                return (
+                    False,
+                    "Bloqueado para Instagram Reels: Detectada referencia a streamer de terceros. "
+                    "El sistema Rights Manager de Meta sanciona el clipping de terceros como 'Contenido no original'."
+                )
 
             # 2. Exigencia mandatoria de transformación editorial / locución propia
             # Meta no acepta como 'original' vídeos que solo lleven recorte 9:16 o subtítulos de audio ajeno.
@@ -215,14 +235,12 @@ class ComplianceAuditor:
                 )
 
         elif platform == "youtube":
-            # YouTube Shorts: Advertencia estricta contra Reused Content
-            for st in forbidden_streamers:
-                if (st in creator_lower or st in title) and not (has_voiceover or mode in ["dub", "voice"]):
-                    return (
-                        False,
-                        f"Bloqueado para YouTube: Clip en bruto de '{st.title()}' sin valor editorial añadido. "
-                        "Riesgo de sanción por 'Reused Content' en YouTube Partner Program."
-                    )
+            # YouTube Shorts permite clips transformados con subtítulos dinámicos y créditos bajo Fair Use.
+            pass
+
+        elif platform == "tiktok":
+            # TikTok permite contenido gaming / reacciones con atribución y ganchos editoriales.
+            pass
 
         return True, "Elegible para publicación"
 

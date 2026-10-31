@@ -136,7 +136,11 @@ def approve_and_publish_video(video_id: str) -> Optional[Dict[str, Any]]:
                 "pinned_comment": metadata.get("pinned_comment"),
                 "debate_question": metadata.get("debate_question", ""),
                 "original_url": data.get("original_url", ""),
-                "privacy": privacy_status
+                "privacy": privacy_status,
+                "mode": metadata.get("mode") or data.get("mode", "subs"),
+                "has_voiceover": metadata.get("has_voiceover", False) or data.get("mode") in ["dub", "voice"],
+                "block_instagram": metadata.get("block_instagram", False),
+                "allowed_platforms": metadata.get("allowed_platforms")
             },
             creator_name=creator,
             stagger_delay_minutes=stagger_delay

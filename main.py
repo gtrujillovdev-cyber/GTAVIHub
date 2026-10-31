@@ -327,7 +327,9 @@ def main():
                 dry_run=args.dry_run,
                 stagger_delay=args.stagger_delay,
                 copilot_mode=False if args.no_copilot else None,
-                hook_override=custom_hook
+                hook_override=custom_hook,
+                block_instagram=chosen.get("block_instagram", False),
+                allowed_platforms=chosen.get("allowed_platforms")
             )
             if res:
                 count += 1

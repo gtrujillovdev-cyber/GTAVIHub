@@ -51,6 +51,72 @@ class TestCompliance(unittest.TestCase):
         )
         self.assertTrue(eligible)
 
+        # 5. YouTube y TikTok deben permitir clips de streamers bajo Fair Use
+        eligible_yt, _ = ComplianceAuditor.is_platform_eligible(
+            platform="youtube",
+            metadata={"title": "IlloJuan flipa con el mapa de GTA 6"},
+            creator_name="IlloJuan",
+            has_voiceover=False,
+            mode="subs"
+        )
+        self.assertTrue(eligible_yt)
+
+        eligible_tt, _ = ComplianceAuditor.is_platform_eligible(
+            platform="tiktok",
+            metadata={"title": "Ibai reacciona a GTA 6"},
+            creator_name="Ibai",
+            has_voiceover=False,
+            mode="subs"
+        )
+        self.assertTrue(eligible_tt)
+
+        # 6. allowed_platforms y block_instagram deben ser respetados estrictamente
+        eligible_ig, reason_ig = ComplianceAuditor.is_platform_eligible(
+            platform="instagram",
+            metadata={"block_instagram": True, "title": "Clip oficial GTA 6"},
+            creator_name="Rockstar Games",
+            has_voiceover=True
+        )
+        self.assertFalse(eligible_ig)
+        self.assertIn("block_instagram", reason_ig)
+
+        eligible_allowed, _ = ComplianceAuditor.is_platform_eligible(
+            platform="instagram",
+            metadata={"allowed_platforms": ["youtube", "tiktok"], "title": "Clip GTA 6"},
+            creator_name="Rockstar Games",
+            has_voiceover=True
+        )
+        self.assertFalse(eligible_allowed)
+
+    def test_option_b_story_alternative_on_blocked_instagram(self):
+        from pathlib import Path
+        from src.social_publisher import SocialPublisher
+        import tempfile
+
+        publisher = SocialPublisher(dry_run=True)
+        with tempfile.NamedTemporaryFile(suffix=".mp4") as f:
+            dummy_path = Path(f.name)
+            results = publisher.publish_all(
+                video_path=dummy_path,
+                metadata={
+                    "title": "IlloJuan flipa con el trailer de GTA 6",
+                    "description": "Clip de IlloJuan. Fuente: https://youtube.com/watch?v=123. FAIR USE y Uso Legítimo.",
+                    "block_instagram": True,
+                    "allowed_platforms": ["youtube", "tiktok", "instagram"]
+                },
+                creator_name="IlloJuan",
+                stagger_delay_minutes=0
+            )
+            # YouTube y TikTok deben procesarse
+            self.assertIn("youtube", results)
+            self.assertIn("tiktok", results)
+            # Instagram debe haber disparado la Opción B (Story alternativa)
+            self.assertIn("instagram", results)
+            self.assertTrue(
+                "Story Alternativa Publicada" in str(results["instagram"]) or
+                "Bloqueado por Compliance Shield" in str(results["instagram"])
+            )
+
     def test_auditor_metadata_validation(self):
         metadata = {
             "title": "GTA 6 Nueva Filtración de Vice City",

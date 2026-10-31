@@ -273,6 +273,8 @@ def fetch_channel_candidates(max_per_channel: int = 2) -> List[Dict[str, Any]]:
                         "lang": ch.get("lang", "es"),
                         "is_short": (0 < dur_secs <= 60),
                         "source_count": 1,
+                        "block_instagram": ch.get("block_instagram", False),
+                        "allowed_platforms": ch.get("allowed_platforms", ["youtube", "tiktok", "instagram"]),
                     })
         return results
 
@@ -351,6 +353,8 @@ def fetch_channel_candidates(max_per_channel: int = 2) -> List[Dict[str, Any]]:
                             "lang": q.get("lang", "es"),
                             "is_short": (0 < dur_secs <= 60),
                             "source_count": 1,
+                            "block_instagram": q.get("block_instagram", False),
+                            "allowed_platforms": q.get("allowed_platforms", ["youtube", "tiktok", "instagram"]),
                         })
         except Exception as e:
             print(f"[!] Error en query {query}: {e}")

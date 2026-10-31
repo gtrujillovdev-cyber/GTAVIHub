@@ -36,7 +36,9 @@ def process_single_video(
     dry_run: bool = False,
     stagger_delay: int = 12,
     copilot_mode: Optional[bool] = None,
-    hook_override: Optional[str] = None
+    hook_override: Optional[str] = None,
+    block_instagram: bool = False,
+    allowed_platforms: Optional[list] = None
 ) -> Optional[Dict[str, Any]]:
     """
     Ejecuta el ciclo de vida completo de un vídeo con transformación editorial real:
@@ -64,6 +66,7 @@ def process_single_video(
 
     # 0. PROTOCOLO INNEGOCIABLE DE VALIDACIÓN EXCLUSIVA GTA 6 (Fail-Safe Defense-in-Depth)
     from .channels import is_strictly_gta6
+    from .compliance_auditor import ComplianceAuditor
     if not is_strictly_gta6(original_title):
         err_msg = f"❌ [BLOQUEO DE SEGURIDAD GTA 6] El vídeo '{original_title}' NO trata exclusivamente sobre GTA 6. Abortando inmediatamente."
         print(f"\n{err_msg}")
@@ -73,6 +76,10 @@ def process_single_video(
         except Exception:
             pass
         return None
+
+    if not block_instagram and ComplianceAuditor.is_streamer(creator_name, original_title):
+        block_instagram = True
+        print(f"[*] Detectado contenido de streamer ({creator_name}): 'block_instagram: true' activado preventivamente.")
 
     # Auditoría inicial de almacenamiento
     enforce_storage_limits(max_mb=1000)
@@ -298,7 +305,13 @@ def process_single_video(
             creator_name=creator_name,
             output_video_path=output_path,
             thumbnail_path=thumb_path if thumb_path.exists() else None,
-            metadata=metadata,
+            metadata={
+                **metadata,
+                "block_instagram": block_instagram,
+                "allowed_platforms": allowed_platforms,
+                "has_voiceover": (dub_audio_path is not None and dub_audio_path.exists()) or (mode in ["dub", "voice"]),
+                "mode": mode
+            },
             is_short=is_short,
             mode=mode,
             publish_all=publish_all,
@@ -355,7 +368,9 @@ def process_single_video(
                 "original_url": url,
                 "privacy": effective_privacy,
                 "mode": mode,
-                "has_voiceover": (dub_audio_path is not None and dub_audio_path.exists()) or (mode in ["dub", "voice"])
+                "has_voiceover": (dub_audio_path is not None and dub_audio_path.exists()) or (mode in ["dub", "voice"]),
+                "block_instagram": block_instagram,
+                "allowed_platforms": allowed_platforms
             },
             creator_name=creator_name or "Rockstar Games",
             stagger_delay_minutes=stagger_delay

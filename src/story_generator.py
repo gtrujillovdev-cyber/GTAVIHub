@@ -323,11 +323,16 @@ def build_hardware_deal_story(deal_key: str = "volante_logitech_g29") -> Tuple[P
 def publish_story_to_instagram(
     image_path: Path,
     affiliate_url: str,
-    caption: str = ""
+    caption: str = "",
+    dry_run: bool = False
 ) -> Optional[str]:
     """
     Publica la historia directamente en Instagram Stories usando instagrapi con Link Sticker.
     """
+    if dry_run:
+        print(f"[Story] [DRY RUN] Simulación exitosa de Historia en Instagram (@gtavihubspain).")
+        return f"https://www.instagram.com/stories/mock_story_{Path(image_path).stem}"
+
     ig_user = os.getenv("INSTAGRAM_USERNAME")
     ig_pass = os.getenv("INSTAGRAM_PASSWORD")
     if not ig_user or not ig_pass:
