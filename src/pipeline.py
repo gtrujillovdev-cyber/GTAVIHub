@@ -353,7 +353,9 @@ def process_single_video(
                 "hook": hook_text,
                 "tags": metadata.get("tags", ["GTA6", "GrandTheftAutoVI", "Gaming", "Shorts"]),
                 "original_url": url,
-                "privacy": effective_privacy
+                "privacy": effective_privacy,
+                "mode": mode,
+                "has_voiceover": (dub_audio_path is not None and dub_audio_path.exists()) or (mode in ["dub", "voice"])
             },
             creator_name=creator_name or "Rockstar Games",
             stagger_delay_minutes=stagger_delay

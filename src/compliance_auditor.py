@@ -67,9 +67,15 @@ PLATFORM_POLICIES = {
         "name": "Instagram Reels (Meta)",
         "rules": [
             {
+                "id": "IG-ORIGINALITY-TRANSFORMATION",
+                "title": "Doctrina Anti-Agregadores y Contenido No Original (Meta 2024-2026)",
+                "requirement": "Meta penaliza severamente el clipping de terceros o tráilers en bruto. Obligatorio valor editorial propio sustancial (locución neural en off, doblaje o análisis informativo). Prohibido subir clips mudos o con audio de streamers sin voz propia.",
+                "status": "ENFORCED"
+            },
+            {
                 "id": "IG-REELS-RECOMMEND",
-                "title": "Directrices de Recomendación en Explorar",
-                "requirement": "Meta penaliza vídeos con marcas de agua de terceros (ej. logo de TikTok) o baja resolución. Todos nuestros renders son limpios y a 60fps.",
+                "title": "Directrices de Recomendación en Explorar / Para ti",
+                "requirement": "Meta penaliza vídeos con marcas de agua de terceros (ej. logo de TikTok) o baja resolución. Todos nuestros renders son limpios a 1080x1920 y 60fps.",
                 "status": "ENFORCED"
             },
             {
@@ -161,6 +167,64 @@ class ComplianceAuditor:
 
         is_safe = (len(issues) == 0)
         return is_safe, issues
+
+    @classmethod
+    def is_platform_eligible(
+        cls,
+        platform: str,
+        metadata: Dict[str, Any],
+        creator_name: str,
+        has_voiceover: bool = False,
+        mode: str = "subs"
+    ) -> Tuple[bool, str]:
+        """
+        Cortafuegos de Originalidad Multiplataforma (Anti-Aggregator & Anti-Reused Content):
+        Evalúa si un vídeo cumple con las exigencias específicas de cada plataforma
+        antes de autorizar su publicación para blindar las cuentas contra penalizaciones.
+        """
+        title = metadata.get("title", "").lower()
+        creator_lower = (creator_name or "").lower()
+
+        # Streamers de alto perfil vetados para evitar coincidencia biométrica/facial en Meta
+        forbidden_streamers = [
+            "illojuan", "ibai", "elxokas", "auron", "rubius", "thegrefg",
+            "djmariio", "menostrece", "zellendust", "pelicanger", "folagor", "alphasniper"
+        ]
+
+        if platform == "instagram":
+            # 1. Bloqueo absoluto de clips de streamers de alto perfil en Instagram
+            for st in forbidden_streamers:
+                if st in creator_lower or st in title:
+                    return (
+                        False,
+                        f"Bloqueado para Instagram Reels: Detectada referencia a streamer '{st.title()}'. "
+                        "El sistema Rights Manager de Meta sanciona el clipping de terceros como 'Contenido no original'."
+                    )
+
+            # 2. Exigencia mandatoria de transformación editorial / locución propia
+            # Meta no acepta como 'original' vídeos que solo lleven recorte 9:16 o subtítulos de audio ajeno.
+            is_transformed_audio = has_voiceover or (mode in ["dub", "voice"])
+            is_story_deal = metadata.get("is_story_deal", False)
+
+            if not is_transformed_audio and not is_story_deal:
+                return (
+                    False,
+                    "Bloqueado para Instagram Reels: El clip carece de locución en off propia (modo doblaje/narrador). "
+                    "Para blindar la cuenta contra la penalización de 'Contenido no original' de Meta, "
+                    "solo se publican Reels con narración propia o historias de afiliados 100% originales."
+                )
+
+        elif platform == "youtube":
+            # YouTube Shorts: Advertencia estricta contra Reused Content
+            for st in forbidden_streamers:
+                if (st in creator_lower or st in title) and not (has_voiceover or mode in ["dub", "voice"]):
+                    return (
+                        False,
+                        f"Bloqueado para YouTube: Clip en bruto de '{st.title()}' sin valor editorial añadido. "
+                        "Riesgo de sanción por 'Reused Content' en YouTube Partner Program."
+                    )
+
+        return True, "Elegible para publicación"
 
     @classmethod
     def print_compliance_scorecard(cls):

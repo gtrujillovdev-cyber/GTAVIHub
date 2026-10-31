@@ -587,6 +587,21 @@ class SocialPublisher:
         is_compliant = AntiBanValidator.validate_metadata(metadata, creator_name, orig_url)
 
         for i, plat in enumerate(platforms):
+            # Cortafuegos de Originalidad y Compliance específico de la plataforma
+            has_voice = metadata.get("has_voiceover", False) or metadata.get("mode") in ["dub", "voice"]
+            is_eligible, reason = ComplianceAuditor.is_platform_eligible(
+                platform=plat,
+                metadata=metadata,
+                creator_name=creator_name,
+                has_voiceover=has_voice,
+                mode=metadata.get("mode", "subs")
+            )
+            if not is_eligible:
+                print(f"\n[Compliance Shield] 🛡️ {reason}")
+                self._notify_telegram(f"🛡️ *[Compliance Shield]* Saltando *{plat.upper()}* para proteger la cuenta:\n_{reason}_")
+                results[plat] = "Bloqueado por Compliance Shield"
+                continue
+
             if i > 0 and not self.dry_run:
                 if stagger_delay_minutes <= 0:
                     jitter_seconds = 0

@@ -222,7 +222,7 @@
       "type": "streamer_reaction",
       "lang": "es",
       "filter_keywords": true,
-      "enabled": true,
+      "enabled": false,
       "description": "Shorts oficiales de IlloJuan en LMDShow"
     },
     {
@@ -231,7 +231,7 @@
       "type": "streamer_reaction",
       "lang": "es",
       "filter_keywords": true,
-      "enabled": true,
+      "enabled": false,
       "description": "Shorts de mejores momentos de IlloJuan"
     },
     {
@@ -240,7 +240,7 @@
       "type": "streamer_reaction",
       "lang": "es",
       "filter_keywords": true,
-      "enabled": true,
+      "enabled": false,
       "description": "Shorts oficiales de ElXokas"
     },
     {
@@ -249,7 +249,7 @@
       "type": "streamer_reaction",
       "lang": "es",
       "filter_keywords": true,
-      "enabled": true,
+      "enabled": false,
       "description": "Shorts de clips virales de ElXokas"
     },
     {
@@ -258,7 +258,7 @@
       "type": "streamer_reaction",
       "lang": "es",
       "filter_keywords": true,
-      "enabled": true,
+      "enabled": false,
       "description": "Shorts oficiales de Ibai Llanos"
     },
     {
@@ -267,7 +267,7 @@
       "type": "streamer_reaction",
       "lang": "es",
       "filter_keywords": true,
-      "enabled": true,
+      "enabled": false,
       "description": "Shorts oficiales de AuronPlay"
     },
     {
@@ -276,7 +276,7 @@
       "type": "streamer_reaction",
       "lang": "es",
       "filter_keywords": true,
-      "enabled": true,
+      "enabled": false,
       "description": "Shorts oficiales de El Rubius"
     },
     {
@@ -285,7 +285,7 @@
       "type": "streamer_reaction",
       "lang": "es",
       "filter_keywords": true,
-      "enabled": true,
+      "enabled": false,
       "description": "Shorts oficiales de TheGrefg"
     },
     {
@@ -294,7 +294,7 @@
       "type": "streamer_reaction",
       "lang": "es",
       "filter_keywords": true,
-      "enabled": true,
+      "enabled": false,
       "description": "Shorts oficiales de DjMaRiiO"
     },
     {
@@ -303,7 +303,7 @@
       "type": "streamer_reaction",
       "lang": "es",
       "filter_keywords": true,
-      "enabled": true,
+      "enabled": false,
       "description": "Shorts oficiales de Menos Trece"
     },
     {
@@ -312,7 +312,7 @@
       "type": "streamer_reaction",
       "lang": "es",
       "filter_keywords": true,
-      "enabled": true,
+      "enabled": false,
       "description": "Shorts oficiales de ZellenDust"
     },
     {
@@ -321,7 +321,7 @@
       "type": "streamer_reaction",
       "lang": "es",
       "filter_keywords": true,
-      "enabled": true,
+      "enabled": false,
       "description": "Shorts oficiales de Pelicanger"
     },
     {
@@ -564,7 +564,7 @@
       "type": "streamer",
       "lang": "es",
       "filter_keywords": true,
-      "enabled": true,
+      "enabled": false,
       "description": "Reacciones y momentos de hype de AlphaSniper97"
     },
     {
@@ -573,7 +573,7 @@
       "type": "streamer",
       "lang": "es",
       "filter_keywords": true,
-      "enabled": true,
+      "enabled": false,
       "description": "Reflexiones y opiniones sinceras de Alexelcapo"
     },
     {
@@ -582,7 +582,7 @@
       "type": "streamer",
       "lang": "es",
       "filter_keywords": true,
-      "enabled": true,
+      "enabled": false,
       "description": "Reacciones virales y directos de Folagor"
     },
     {
@@ -941,35 +941,35 @@
       "query": "ytsearch15:GTA 6 ElXokas analisis teoria #shorts",
       "lang": "es",
       "only_shorts": true,
-      "enabled": true,
+      "enabled": false,
       "description": "Teorías y reflexiones de ElXokas sobre GTA 6"
     },
     {
       "query": "ytsearch15:GTA 6 Rubius trailer reaccion momentos #shorts",
       "lang": "es",
       "only_shorts": true,
-      "enabled": true,
+      "enabled": false,
       "description": "Reacciones de Rubius al mundo de GTA 6"
     },
     {
       "query": "ytsearch15:GTA 6 Ibai novedades risas #shorts",
       "lang": "es",
       "only_shorts": true,
-      "enabled": true,
+      "enabled": false,
       "description": "Comentarios y risas de Ibai sobre GTA 6"
     },
     {
       "query": "ytsearch15:GTA 6 TheGrefg filtracion reaccion #shorts",
       "lang": "es",
       "only_shorts": true,
-      "enabled": true,
+      "enabled": false,
       "description": "Reacciones épicas de TheGrefg a GTA 6"
     },
     {
       "query": "ytsearch15:GTA 6 AuronPlay momentos trailer #shorts",
       "lang": "es",
       "only_shorts": true,
-      "enabled": true,
+      "enabled": false,
       "description": "Momentos divertidos de AuronPlay comentando GTA 6"
     },
     {

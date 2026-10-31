@@ -8,6 +8,49 @@ class TestCompliance(unittest.TestCase):
         self.assertIn("tiktok", PLATFORM_POLICIES)
         self.assertIn("instagram", PLATFORM_POLICIES)
 
+    def test_platform_eligibility_meta_shield(self):
+        # 1. Instagram debe bloquear clips de streamers de alto perfil
+        eligible, reason = ComplianceAuditor.is_platform_eligible(
+            platform="instagram",
+            metadata={"title": "IlloJuan flipa con el mapa de GTA 6"},
+            creator_name="IlloJuan Clips",
+            has_voiceover=False,
+            mode="subs"
+        )
+        self.assertFalse(eligible)
+        self.assertIn("streamer", reason.lower())
+
+        # 2. Instagram debe bloquear clips sin locución en off propia (solo subs)
+        eligible, reason = ComplianceAuditor.is_platform_eligible(
+            platform="instagram",
+            metadata={"title": "Filtración menú de armas de GTA 6"},
+            creator_name="TGG",
+            has_voiceover=False,
+            mode="subs"
+        )
+        self.assertFalse(eligible)
+        self.assertIn("locución", reason.lower())
+
+        # 3. Instagram debe permitir clips que cuenten con locución/doblaje neural propio
+        eligible, reason = ComplianceAuditor.is_platform_eligible(
+            platform="instagram",
+            metadata={"title": "Filtración menú de armas de GTA 6"},
+            creator_name="TGG",
+            has_voiceover=True,
+            mode="dub"
+        )
+        self.assertTrue(eligible)
+
+        # 4. YouTube debe permitir clips de noticias bajo Fair Use
+        eligible, reason = ComplianceAuditor.is_platform_eligible(
+            platform="youtube",
+            metadata={"title": "Filtración menú de armas de GTA 6"},
+            creator_name="TGG",
+            has_voiceover=False,
+            mode="subs"
+        )
+        self.assertTrue(eligible)
+
     def test_auditor_metadata_validation(self):
         metadata = {
             "title": "GTA 6 Nueva Filtración de Vice City",
