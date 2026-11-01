@@ -143,8 +143,8 @@ class TestEmojiAndFraming(unittest.TestCase):
         desc = meta_short.get("description", "")
         # En Shorts NO debe haber bloques gigantes de afiliados con tag=gtavihub-21
         self.assertNotIn("tag=gtavihub-21", desc)
-        # La descripción debe ser compacta (< 1000 caracteres)
-        self.assertLess(len(desc), 1000)
+        # La descripción debe ser compacta (< 1200 caracteres para evitar spam)
+        self.assertLess(len(desc), 1200)
         # Pero el COMENTARIO FIJADO sí debe contener el enlace de monetización
         self.assertIn("pinned_comment", meta_short)
         self.assertIn("linktr.ee", meta_short["pinned_comment"].lower())

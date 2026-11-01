@@ -266,7 +266,8 @@ Devuelve tu respuesta EXACTAMENTE en este formato JSON (sin texto extra):
     if is_short:
         # Formato optimizado para YouTube Shorts: limpio, natural y libre de spam de enlaces
         # (Las ofertas y enlaces de afiliados se ubican en el COMENTARIO FIJADO para no disparar el filtro anti-spam)
-        full_description = f"""{summary}
+        short_summary = summary[:600].rsplit(".", 1)[0] + "." if len(summary) > 600 else summary
+        full_description = f"""{short_summary}
 
 💬 {to_unicode_bold("DEBATE:")} {debate_question}
 
