@@ -112,7 +112,7 @@ CRITERIOS EDITORIALES DE VICTORIA (PLAYBOOK VIRAL):
 4. ENGAGEMENT Y CURIOSIDAD: El vídeo debe provocar el deseo irrefrenable de comentar o ver hasta el final.
 5. CERO CLICKBAIT FALSO: Descarta conceptos abstractos o mods antiguos. Solo contenido real y de impacto.
 6. CULTURA POP & VIRALIDAD: Las parodias virales (como la de South Park) y las demostraciones técnicas de físicas tienen altísima retención.
-7. GANCHO DE 2 LÍNEAS: Redacta dos líneas de gancho superiores (Línea 1 en blanco max 26 caracteres, Línea 2 en amarillo neón max 22 caracteres).
+7. GANCHO DE 2 LÍNEAS (AFIRMACIÓN DE IMPACTO, NUNCA PREGUNTAS): Redacta dos líneas de titular afirmativo (Línea 1 en blanco max 24 caracteres, Línea 2 en amarillo neón max 22 caracteres). PROHIBIDO usar signos de interrogación ('¿' o '?') en el gancho superior; debe ser una afirmación o alerta rotunda (ej. 'FÍSICAS RAGE 9' / 'TORNADOS EXTREMOS' o 'DETALLE OCULTO' / 'SECRETOS DE LEONIDA').
 
 RESPONDE EXCLUSIVAMENTE CON UN OBJETO JSON VÁLIDO:
 {{

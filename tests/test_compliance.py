@@ -193,6 +193,27 @@ class TestCompliance(unittest.TestCase):
         self.assertEqual(to_unicode_bold("DEBATE"), "𝗗𝗘𝗕𝗔𝗧𝗘")
         self.assertEqual(to_unicode_bold("Test 123"), "𝗧𝗲𝘀𝘁 𝟭𝟮𝟯")
 
+    def test_purge_audio_descriptors(self):
+        from src.translator import purge_audio_descriptors, sanitize_srt_content
+        sample1 = "Imagine escaping the police while a massive [music] tornado destroys the"
+        self.assertEqual(purge_audio_descriptors(sample1), "Imagine escaping the police while a massive tornado destroys the")
+
+        sample2 = "Tornado police car, Rockstar hasn't [music] confirmed it yet"
+        self.assertEqual(purge_audio_descriptors(sample2), "Rockstar hasn't confirmed it yet")
+
+        sample3 = "Would [music] you want to see tornadoes in GTA 6? Video game."
+        self.assertEqual(purge_audio_descriptors(sample3), "Would you want to see tornadoes in GTA 6?")
+
+        sample_srt = (
+            "1\n00:00:00,000 --> 00:00:02,000\n[música] Bienvenido a Leonida\n\n"
+            "2\n00:00:02,000 --> 00:00:04,000\nTornado, coche de policía. Rockstar prepara GTA 6\n"
+        )
+        cleaned_srt = sanitize_srt_content(sample_srt)
+        self.assertNotIn("[música]", cleaned_srt)
+        self.assertNotIn("coche de policía", cleaned_srt)
+        self.assertIn("Bienvenido a Leonida", cleaned_srt)
+        self.assertIn("Rockstar prepara GTA 6", cleaned_srt)
+
     def test_channel_catalog_integrity(self):
         from src.config import CHANNELS_FILE
         import json

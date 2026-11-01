@@ -34,13 +34,49 @@ def get_gemini_client():
         _client = genai.Client(api_key=GEMINI_API_KEY)
     return _client
 
+AUDIO_TAG_REGEX = re.compile(
+    r"\[(?i:music|música|musica|applause|aplausos|cheering|laughter|risas|sound|audio|gasp|sigh|cough|groan|screaming|bell|siren|silence|whispering|instrumental|intro music|outro music|background music|noise)[^\]]*\]|"
+    r"\((?i:music|música|musica|applause|laughter|risas|sound)[^\)]*\)|"
+    r"\[[\w\s\.\,\-\'\"]*\]",
+    re.UNICODE
+)
+
+ASR_HALLUCINATIONS = re.compile(
+    r"(?i)\b(video game|tornado police car|tornado, coche de policía|coche de policía|police siren|sound effect)\b[\.\,\:]?",
+    re.UNICODE
+)
+
+def purge_audio_descriptors(text: str) -> str:
+    """
+    Elimina etiquetas de efectos sonoros de YouTube ASR ([music], [música], etc.)
+    y descripciones acústicas automáticas para que el guion hablado y los subtítulos
+    sean 100% narración humana natural y fluida.
+    """
+    cleaned = AUDIO_TAG_REGEX.sub("", text)
+    cleaned = ASR_HALLUCINATIONS.sub("", cleaned)
+    return " ".join(cleaned.split()).strip()
+
 def clean_srt_response(text: str) -> str:
-    """Elimina delimitadores markdown si el modelo los devuelve."""
+    """Elimina delimitadores markdown si el modelo los devuelve y purga etiquetas de sonido."""
     text = text.strip()
     if text.startswith("```"):
         text = re.sub(r"^```[a-zA-Z]*\n", "", text)
         text = re.sub(r"\n```$", "", text)
     return text.strip()
+
+def sanitize_srt_content(srt_text: str) -> str:
+    """Limpia línea por línea el contenido de un SRT purgando etiquetas acústicas."""
+    lines = srt_text.splitlines()
+    cleaned_lines = []
+    for line in lines:
+        stripped = line.strip()
+        # Si es número de índice o línea de tiempo '-->', mantener intacta
+        if re.match(r"^\d+$", stripped) or "-->" in stripped:
+            cleaned_lines.append(line)
+        else:
+            purged = purge_audio_descriptors(line)
+            cleaned_lines.append(purged)
+    return "\n".join(cleaned_lines)
 
 def translate_srt(
     input_srt_path: Path,
@@ -55,10 +91,14 @@ def translate_srt(
         print(f"[!] No existe el archivo SRT: {input_srt_path}")
         return False
 
-    # Si ya está en español, copia directa intacta sin alterar nada
+    # Si ya está en español, copia directa limpia sin alterar nada
     if source_lang == "es":
-        print(f"[*] El contenido ya está en español. Saltando traducción...")
-        shutil.copyfile(input_srt_path, output_srt_path)
+        print(f"[*] El contenido ya está en español. Limpiando y preparando...")
+        with open(input_srt_path, "r", encoding="utf-8", errors="ignore") as f:
+            raw_es = f.read()
+        cleaned_es = sanitize_srt_content(raw_es)
+        with open(output_srt_path, "w", encoding="utf-8") as f:
+            f.write(cleaned_es)
         return True
 
     with open(input_srt_path, "r", encoding="utf-8", errors="ignore") as f:
@@ -68,6 +108,9 @@ def translate_srt(
         print("[!] El archivo SRT está vacío.")
         return False
 
+    # Purgar previamente tags de sonido en el contenido antes de enviarlo a la IA
+    sanitized_input = sanitize_srt_content(content)
+
     client = get_gemini_client()
 
     prompt = (
@@ -75,18 +118,22 @@ def translate_srt(
         "Traduce y adapta el siguiente archivo de subtítulos en formato SRT al español.\n\n"
         "REGLAS OBLIGATORIAS:\n"
         "1. Conserva EXACTAMENTE la estructura de bloques numéricos y marcas de tiempo (ej. 00:00:01,200 --> 00:00:03,500).\n"
-        "2. Traduce y sintetiza de forma muy concisa y directa las líneas habladas para que encajen con el ritmo de locución original (evita rodeos que alarguen artificialmente la frase).\n"
-        "3. Usa un español dinámico, fresco y actual (apto para YouTube Shorts / TikTok).\n"
-        "4. Respeta nombres canónicos (Vice City, Lucia, Jason, Leonida, Rockstar Games, etc.).\n"
-        "5. Devuelve ÚNICAMENTE el texto SRT resultante, sin explicaciones ni bloques markdown extra."
+        "2. ELIMINA TOTALMENTE cualquier etiqueta de sonido, efecto acústico o música entre corchetes o paréntesis (ej. [music], [música], [applause], [sound]), así como descriptores de escena generados por error de reconocimiento de voz (ej. 'police siren', 'tornado police car', 'video game').\n"
+        "3. Traduce ÚNICAMENTE el diálogo y la narración real hablada. Debe sonar como una locución humana impecable, natural y fluida, perfectamente concebida para ser doblada por voz en off en español.\n"
+        "4. Si un bloque contenía únicamente música o un efecto sonoro, déjalo con texto en blanco para no generar subtítulos ni locución artificial sobre la música.\n"
+        "5. Traduce y sintetiza de forma concisa y directa para que encaje con el ritmo de locución original (evita rodeos que alarguen artificialmente la frase).\n"
+        "6. Usa un español dinámico, fresco y actual (apto para YouTube Shorts / TikTok).\n"
+        "7. Respeta nombres canónicos (Vice City, Lucia, Jason, Leonida, Rockstar Games, etc.).\n"
+        "8. Devuelve ÚNICAMENTE el texto SRT resultante, sin explicaciones ni bloques markdown extra."
     )
 
     try:
         response = client.models.generate_content(
             model=GEMINI_MODEL,
-            contents=f"{prompt}\n\n{content}"
+            contents=f"{prompt}\n\n{sanitized_input}"
         )
         translated_srt = clean_srt_response(response.text)
+        translated_srt = sanitize_srt_content(translated_srt)
 
         with open(output_srt_path, "w", encoding="utf-8") as f:
             f.write(translated_srt)
@@ -97,7 +144,11 @@ def translate_srt(
         print(f"[!] Error traduciendo subtítulos con Gemini: {e}")
         print("[*] Fallback de seguridad: conservando subtítulos originales para mantener el karaoke dinámico...")
         try:
-            shutil.copyfile(input_srt_path, output_srt_path)
+            with open(input_srt_path, "r", encoding="utf-8", errors="ignore") as f:
+                raw_fb = f.read()
+            cleaned_fb = sanitize_srt_content(raw_fb)
+            with open(output_srt_path, "w", encoding="utf-8") as f:
+                f.write(cleaned_fb)
             return True
         except Exception as copy_err:
             print(f"[!] Error en fallback de subtítulos: {copy_err}")
@@ -163,7 +214,7 @@ Tu tarea es ADAPTAR EL TONO Y FORMATO AL CONTENIDO REAL:
    - "gameplay_puro" (misiones, persecuciones policiales, tiroteos, mundo abierto)
 2. "viral_title": Un título ULTRA LLAMATIVO completamente en MAYÚSCULAS con emojis acordes al arquetipo y etiqueta #GTA6 (máx 80 caracteres). El tono debe adaptarse: cómico para parodias, riguroso/asombro para técnica, misterio para filtraciones, épico para noticias. REGLA DE ORO: Jamás uses palabras como 'CONCEPTO', 'CGI', 'FAN-MADE' o 'UNREAL ENGINE'.
 3. "summary": Un resumen apasionante de 2 párrafos en español explicando qué ocurre en el clip y por qué la comunidad de GTA 6 está reaccionando.
-4. "hook": Una frase o pregunta corta de MÁXIMA INTRIGA O SINTONÍA CON EL ARQUETIPO para los primeros 2 segundos (máx 4-5 palabras en MAYÚSCULAS, máx 24 caracteres) para la píldora superior.
+4. "hook": Una frase o titular rotundo y afirmativo de MÁXIMO IMPACTO para los primeros 2 segundos (máx 3-4 palabras en MAYÚSCULAS, máx 22 caracteres, ej: '¡FÍSICAS AL LÍMITE!', '¡SECRETO REVELADO!', '¡NUEVA MECÁNICA!'). IMPORTANTE: NUNCA utilices signos de interrogación ('¿' o '?') en el hook; las preguntas se reservan exclusivamente para el debate de comentarios.
 5. "debate_question": Una pregunta directa, polarizante y picante para la comunidad adaptada al arquetipo que genere aluvión de comentarios en los primeros minutos.
 
 Devuelve tu respuesta EXACTAMENTE en este formato JSON (sin texto extra):

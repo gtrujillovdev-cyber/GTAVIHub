@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Optional
 import edge_tts
 from .config import DEFAULT_TTS_VOICE
+from .translator import purge_audio_descriptors
 
 def parse_first_cue_start(srt_path: Path) -> float:
     """Detecta el segundo exacto en el que empieza a hablar el primer personaje en el SRT."""
@@ -39,8 +40,10 @@ def extract_text_from_srt(srt_path: Path) -> str:
         # Saltar números de bloque o líneas de tiempo
         if re.match(r"^\d+$", line_str) or "-->" in line_str:
             continue
-        if line_str:
-            clean_lines.append(line_str)
+        # Purgar etiquetas sonoras ([music], [música]) y artefactos de audio
+        sanitized = purge_audio_descriptors(line_str)
+        if sanitized:
+            clean_lines.append(sanitized)
 
     return " ".join(clean_lines)
 

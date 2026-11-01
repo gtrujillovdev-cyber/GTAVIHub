@@ -337,6 +337,9 @@ HOT_PINK_KEYWORDS = {
 def render_top_hook_headline(hook_text: str, output_path: Path) -> bool:
     """Renderiza una potente y espectacular tarjeta de gancho superior estilo Broadcast Viral (0.0 a 2.5s) con soporte composite de emojis."""
     clean_hook = clean_text_preserve_emojis(hook_text).upper()
+    # Purgar interrogaciones para que el gancho superior sea siempre una afirmación rotunda y no compita con los subtítulos
+    clean_hook = clean_hook.replace("¿", "").replace("?", "").strip()
+    clean_hook = " ".join(clean_hook.split())
     if not clean_hook:
         return False
     
