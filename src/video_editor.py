@@ -8,6 +8,14 @@ from typing import Optional, Tuple, List, Dict, Any
 from PIL import Image, ImageDraw, ImageFont, ImageFilter
 
 from .config import BASE_DIR, FFMPEG_VIDEO_CODEC, FFMPEG_BITRATE, FFMPEG_THREADS, SUBTITLE_OFFSET, is_quant_busy
+from .emoji_renderer import (
+    split_text_and_emojis,
+    measure_composite_line,
+    draw_composite_line,
+    clean_text_preserve_emojis,
+    render_emoji_image,
+    get_best_emoji_font
+)
 
 def get_video_dimensions(video_path: Path) -> Tuple[int, int]:
     """Obtiene ancho y alto del vídeo usando ffprobe."""
@@ -252,14 +260,9 @@ def parse_srt_file(srt_path: Path, offset_seconds: Optional[float] = None) -> Li
     return all_bursts
 
 def get_emoji_font(size: int = 40):
-    """Carga la tipografía nativa de emojis a color de Apple en macOS."""
-    for p in ["/System/Library/Fonts/Apple Color Emoji.ttc", "/System/Library/Fonts/Supplemental/Apple Color Emoji.ttc"]:
-        if os.path.exists(p):
-            try:
-                return ImageFont.truetype(p, size)
-            except Exception:
-                pass
-    return None
+    """Carga la tipografía nativa de emojis a color de Apple en macOS de forma segura sin invalid pixel size."""
+    font, _ = get_best_emoji_font(size)
+    return font
 
 EMOJI_KEYWORDS = {
     # Personajes & Lore de GTA 6
@@ -332,8 +335,8 @@ HOT_PINK_KEYWORDS = {
 }
 
 def render_top_hook_headline(hook_text: str, output_path: Path) -> bool:
-    """Renderiza una potente y espectacular tarjeta de gancho superior estilo Broadcast Viral (0.0 a 2.5s)."""
-    clean_hook = clean_text_no_emoji(hook_text).upper()
+    """Renderiza una potente y espectacular tarjeta de gancho superior estilo Broadcast Viral (0.0 a 2.5s) con soporte composite de emojis."""
+    clean_hook = clean_text_preserve_emojis(hook_text).upper()
     if not clean_hook:
         return False
     
@@ -351,18 +354,12 @@ def render_top_hook_headline(hook_text: str, output_path: Path) -> bool:
 
     font1 = get_best_font(size=46)
     font2 = get_best_font(size=60)
-    d_temp = ImageDraw.Draw(Image.new("RGBA", (1, 1)))
+    
+    tokens1 = split_text_and_emojis(line1) if line1 else []
+    tokens2 = split_text_and_emojis(line2)
 
-    if line1:
-        bb1 = d_temp.textbbox((0, 0), line1, font=font1)
-        w1 = bb1[2] - bb1[0]
-        h1 = bb1[3] - bb1[1]
-    else:
-        w1, h1 = 0, 0
-
-    bb2 = d_temp.textbbox((0, 0), line2, font=font2)
-    w2 = bb2[2] - bb2[0]
-    h2 = bb2[3] - bb2[1]
+    w1, h1 = measure_composite_line(tokens1, font1, emoji_size=46) if line1 else (0, 0)
+    w2, h2 = measure_composite_line(tokens2, font2, emoji_size=56)
 
     content_w = max(w1, w2)
     pad_x = 52
@@ -386,17 +383,17 @@ def render_top_hook_headline(hook_text: str, output_path: Path) -> bool:
     cur_y = pad_y
     if line1:
         x1 = pad_x + (content_w - w1) / 2
-        # Sombra profunda
-        d.text((x1 + 3, cur_y + 3), line1, font=font1, fill=(0, 0, 0, 240))
+        # Sombra profunda para texto
+        draw_composite_line(img, d, tokens1, int(x1 + 3), int(cur_y + 3), font1, fill_color=(0, 0, 0, 240), stroke_width=0, emoji_size=46)
         # Línea 1: Blanco Puro con trazo negro
-        d.text((x1, cur_y), line1, font=font1, fill=(255, 255, 255, 255), stroke_width=3, stroke_fill=(0, 0, 0, 255))
+        draw_composite_line(img, d, tokens1, int(x1), int(cur_y), font1, fill_color=(255, 255, 255, 255), stroke_color=(0, 0, 0, 255), stroke_width=3, emoji_size=46)
         cur_y += h1 + spacing
 
     x2 = pad_x + (content_w - w2) / 2
-    # Sombra profunda
-    d.text((x2 + 3, cur_y + 4), line2, font=font2, fill=(0, 0, 0, 240))
+    # Sombra profunda para texto
+    draw_composite_line(img, d, tokens2, int(x2 + 3), int(cur_y + 4), font2, fill_color=(0, 0, 0, 240), stroke_width=0, emoji_size=56)
     # Línea 2: Amarillo Eléctrico Neón (#FFE600) con trazo negro de impacto
-    d.text((x2, cur_y), line2, font=font2, fill=(255, 230, 0, 255), stroke_width=4, stroke_fill=(0, 0, 0, 255))
+    draw_composite_line(img, d, tokens2, int(x2), int(cur_y), font2, fill_color=(255, 230, 0, 255), stroke_color=(0, 0, 0, 255), stroke_width=4, emoji_size=56)
 
     img.save(output_path, "PNG")
     return True
@@ -406,15 +403,13 @@ def render_retention_hook(output_path: Path, text: str = "ESPERA A VER ESTO") ->
     Renderiza una micro-tarjeta de retención (segundo gancho) para mostrar entre 5.0-7.0s.
     Más pequeña y sutil que el hook principal, diseñada para frenar el swipe a mitad de Short.
     """
-    clean = clean_text_no_emoji(text).upper()
+    clean = clean_text_preserve_emojis(text).upper()
     if not clean:
         return False
 
     font = get_best_font(size=38)
-    d_temp = ImageDraw.Draw(Image.new("RGBA", (1, 1)))
-    bb = d_temp.textbbox((0, 0), clean, font=font)
-    tw = bb[2] - bb[0]
-    th = bb[3] - bb[1]
+    tokens = split_text_and_emojis(clean)
+    tw, th = measure_composite_line(tokens, font, emoji_size=38)
 
     pad_x, pad_y = 36, 14
     box_w = tw + pad_x * 2
@@ -430,7 +425,7 @@ def render_retention_hook(output_path: Path, text: str = "ESPERA A VER ESTO") ->
         outline=(0, 240, 255, 180),
         width=2
     )
-    d.text((pad_x, pad_y), clean, font=font, fill=(0, 240, 255, 255), stroke_width=2, stroke_fill=(0, 0, 0, 255))
+    draw_composite_line(img, d, tokens, pad_x, pad_y, font, fill_color=(0, 240, 255, 255), stroke_color=(0, 0, 0, 255), stroke_width=2, emoji_size=38)
 
     img.save(output_path, "PNG")
     return True
@@ -474,7 +469,8 @@ def render_karaoke_subtitle_state(words: List[str], active_idx: int, is_vertical
         font = get_best_font(size=font_size)
 
     pop_font = get_best_font(size=font_size + 6)
-    emoji_font = get_emoji_font(size=44) if is_vertical else None
+    from .emoji_renderer import is_color_emoji_supported
+    has_emoji_support = is_vertical and is_color_emoji_supported()
 
     # Asignar casilla fija a cada palabra con el ancho máximo (normal o pop) para cero jitter y cero colisiones
     cell_widths = []
@@ -490,7 +486,7 @@ def render_karaoke_subtitle_state(words: List[str], active_idx: int, is_vertical
     text_h = (sample_bb[3] - sample_bb[1])
 
     # Altura adicional para emoji si aplica
-    emoji_room = 46 if (is_vertical and emoji_font) else 0
+    emoji_room = 46 if has_emoji_support else 0
 
     pad_x = 48
     pad_y = 20
@@ -513,7 +509,7 @@ def render_karaoke_subtitle_state(words: List[str], active_idx: int, is_vertical
     # Detectar palabra activa y sus propiedades
     raw_active_word = display_words[active_idx] if 0 <= active_idx < len(display_words) else ""
     clean_active = re.sub(r'[^a-zA-ZáéíóúñÁÉÍÓÚÑ]', '', raw_active_word).lower()
-    active_emoji = EMOJI_KEYWORDS.get(clean_active) if emoji_font else None
+    active_emoji = EMOJI_KEYWORDS.get(clean_active) if has_emoji_support else None
     is_hot_pink = clean_active in HOT_PINK_KEYWORDS
 
     active_color = (255, 45, 135, 255) if is_hot_pink else (255, 230, 0, 255)
@@ -558,13 +554,12 @@ def render_karaoke_subtitle_state(words: List[str], active_idx: int, is_vertical
         d.text((draw_x, draw_y), w, font=current_font, fill=text_color, stroke_width=stroke_w, stroke_fill=(0, 0, 0, 255))
 
         # Emoji contextual flotante encima si aplica
-        if is_active and active_emoji and emoji_font:
-            emoji_x = int(cur_x + (cw - 44) / 2)
-            emoji_y = max(2, pill_top - 42)
-            try:
-                d.text((emoji_x, emoji_y), active_emoji, font=emoji_font, embedded_color=True)
-            except Exception:
-                pass
+        if is_active and active_emoji:
+            emo_img = render_emoji_image(active_emoji, target_size=42)
+            if emo_img:
+                emoji_x = int(cur_x + (cw - emo_img.width) / 2)
+                emoji_y = max(2, pill_top - emo_img.height - 2)
+                img.alpha_composite(emo_img, (emoji_x, emoji_y))
 
         cur_x += cw + space_w
 
@@ -644,26 +639,17 @@ def render_final_video(
     is_vertical = force_short_format or is_already_vertical
 
     if is_vertical and not is_already_vertical:
-        if is_official_content:
-            # Modo Cinema Full-Frame (0% Recorte Lateral):
-            # Preserva exactamente el 100% del plano horizontal original (1080x608 a 16:9) centrado a y=656
-            # con Ambient Blur reactivo para trailers oficiales, comparativas y análisis técnicos.
-            fg_w = 1080
-            fg_h = 608
-            fg_y = 656
-            fg_bottom = fg_y + fg_h
-            is_cinema_layout = True
-            print(f"[*] Modo Cinema Full-Frame (0% recorte lateral): {fg_w}x{fg_h} @ y={fg_y} con Ambient Canvas.")
-        else:
-            # Modo Encuadre Dinámico Inteligente (Dynamic Smart Crop para gameplay y streamers):
-            # Llena con fuerza el área central a 1080x1080, preservando el foco de acción y dejando
-            # zonas seguras arriba para el gancho (y=120) y abajo para subtítulos (y=1520).
-            fg_w = 1080
-            fg_h = 1080
-            fg_y = 420
-            fg_bottom = fg_y + fg_h
-            is_cinema_layout = True
-            print(f"[*] Modo Encuadre Dinámico Inteligente: Vídeo adaptado a {fg_w}x{fg_h} @ y={fg_y} (recorte moderado).")
+        # Modo Cinema Full-Width (Anti-Cropping) con Ambient Canvas reactivo:
+        # Preserva el 100% del plano horizontal original (1080x608 a 16:9), evitando que se pierda
+        # el minimapa (abajo izquierda), armas/HUD (arriba derecha) o la cara de streamers.
+        # Llena verticalmente la pantalla 9:16 con Ambient Blur de alta gama y sombras de unión suaves.
+        # Zonas seguras: Arriba (y=120) para el Gancho Contextual y abajo (y=1420) para Karaoke.
+        fg_w = 1080
+        fg_h = 608
+        fg_y = 656
+        fg_bottom = fg_y + fg_h
+        is_cinema_layout = True
+        print(f"[*] Modo Cinema Full-Width (0% recorte lateral, minimapa y HUD 100% visibles): {fg_w}x{fg_h} @ y={fg_y} con Ambient Canvas.")
     else:
         # Formato C (Vertical Nativo 9:16):
         fg_w = 1080
@@ -814,22 +800,14 @@ def render_final_video(
 
     # A) Base de vídeo:
     if is_vertical and not is_already_vertical:
-        if is_official_content:
-            # Cinema Full-Frame (0% recorte horizontal): escala preservando 16:9 con ambient glow
-            v_base = (
-                "[0:v]split[v1][v2];"
-                "[v1]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,boxblur=28:5,eq=brightness=-0.15:contrast=1.05:saturation=1.2[bg];"
-                f"[v2]scale=1080:-2,unsharp=3:3:0.6:3:3:0.0,eq=contrast=1.06:saturation=1.12[fg];"
-                f"[bg][fg]overlay=0:{fg_y}[v_framed]"
-            )
-        else:
-            # Encuadre dinámico inteligente para gameplay y streamer
-            v_base = (
-                "[0:v]split[v1][v2];"
-                "[v1]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,boxblur=28:5,eq=brightness=-0.12:contrast=1.05:saturation=1.15[bg];"
-                f"[v2]scale=-2:{fg_h},crop=1080:{fg_h}:(iw-1080)/2:0,unsharp=3:3:0.6:3:3:0.0,eq=contrast=1.06:saturation=1.12[fg];"
-                f"[bg][fg]overlay=0:{fg_y}[v_framed]"
-            )
+        # Cinema Full-Width: Fondo Velvet Blur reactivo + Plano panorámico completo 100% visible
+        # Filtro unsharp de nitidez 4K y corrección de contraste/saturación (transformación editorial Fair Use)
+        v_base = (
+            "[0:v]split[v1][v2];"
+            "[v1]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,boxblur=26:5,eq=brightness=-0.14:contrast=1.06:saturation=1.18[bg];"
+            f"[v2]scale=1080:-2,unsharp=3:3:0.6:3:3:0.0,eq=contrast=1.06:saturation=1.12[fg];"
+            f"[bg][fg]overlay=0:{fg_y}[v_framed]"
+        )
     elif is_vertical:
         # Formato C (Nativo Vertical 9:16): Pantalla completa sin bandas
         v_base = "[0:v]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,unsharp=3:3:0.6:3:3:0.0,eq=contrast=1.06:saturation=1.12[v_framed]"
@@ -855,9 +833,9 @@ def render_final_video(
 
     # D) Superponer Subtítulos Karaoke palabra por palabra
     # Safe Zone vertical (Instagram Reels / TikTok / YouTube Shorts):
-    # En vídeos horizontales adaptados: y=1460 (centrado en el tercio inferior libre, sin tapar interfaz).
+    # En vídeos horizontales adaptados: y=1420 (centrado en el tercio inferior libre, sin tapar interfaz).
     # En vídeos verticales nativos: y=1200.
-    sub_y = "1460" if (is_vertical and not is_already_vertical) else ("1200" if is_vertical else "H-h-90")
+    sub_y = "1420" if (is_vertical and not is_already_vertical) else ("1200" if is_vertical else "H-h-90")
     for s_idx, (_, start_s, end_s) in enumerate(sub_pngs):
         in_id = sub_inputs_start + s_idx
         next_v = f"v_sub_{s_idx}"

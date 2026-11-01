@@ -1,5 +1,6 @@
 import os
 import sys
+import json
 from pathlib import Path
 from typing import Optional, Dict, List
 from google.oauth2.credentials import Credentials
@@ -11,10 +12,42 @@ from .config import BASE_DIR
 
 SCOPES = [
     "https://www.googleapis.com/auth/youtube.upload",
-    "https://www.googleapis.com/auth/youtube.readonly"
+    "https://www.googleapis.com/auth/youtube.readonly",
+    "https://www.googleapis.com/auth/youtube.force-ssl",
+    "https://www.googleapis.com/auth/youtube"
 ]
 
 TOKEN_FILE = BASE_DIR / "token.json"
+BOOST_STATE_FILE = BASE_DIR / "data" / "engagement_boost.json"
+
+
+def should_toggle_engagement_boost() -> bool:
+    """
+    Cadencia 1 de cada 2 (50% alternado):
+    Determina si este Short recibe el impulso inicial (primer like + comentario fijado)
+    o si se publica en modo puramente orgánico para no generar patrones repetitivos.
+    """
+    BOOST_STATE_FILE.parent.mkdir(parents=True, exist_ok=True)
+    state = {"apply_boost": True, "count": 0}
+    if BOOST_STATE_FILE.exists():
+        try:
+            with open(BOOST_STATE_FILE, "r", encoding="utf-8") as f:
+                state = json.load(f)
+        except Exception:
+            state = {"apply_boost": True, "count": 0}
+
+    should_apply = state.get("apply_boost", True)
+    # Alternar para el próximo vídeo
+    state["apply_boost"] = not should_apply
+    state["count"] = state.get("count", 0) + (1 if should_apply else 0)
+
+    try:
+        with open(BOOST_STATE_FILE, "w", encoding="utf-8") as f:
+            json.dump(state, f, indent=2)
+    except Exception as e:
+        print(f"[Warning] No se pudo persistir estado de engagement boost: {e}")
+
+    return should_apply
 
 def get_authenticated_youtube_service():
     """Obtiene el cliente autenticado de YouTube usando token.json."""
@@ -23,7 +56,12 @@ def get_authenticated_youtube_service():
         return None
 
     try:
-        creds = Credentials.from_authorized_user_file(str(TOKEN_FILE), SCOPES)
+        # Cargar credenciales usando los scopes autorizados en el archivo para evitar 'invalid_scope'
+        try:
+            creds = Credentials.from_authorized_user_file(str(TOKEN_FILE))
+        except Exception:
+            creds = Credentials.from_authorized_user_file(str(TOKEN_FILE), SCOPES)
+
         if creds and creds.expired and creds.refresh_token:
             creds.refresh(Request())
             with open(TOKEN_FILE, "w", encoding="utf-8") as token:
@@ -114,25 +152,38 @@ def upload_to_youtube(
             except Exception as e:
                 print(f"[Info] Miniatura personalizada no asignada (requiere verificación telefónica del canal): {e}")
 
-        # Comentario de llamada a la acción y monetización automática
-        if pinned_comment:
+        # Boost algorítmico natural: 1 de cada 2 Shorts (50% alternado)
+        apply_boost = should_toggle_engagement_boost()
+        if apply_boost:
+            print(f"[*] [Boost Algorítmico 1 de cada 2] Activado para {video_id}: Primer Like + Comentario fijado...")
+            # 1. Primer Like automático para romper el 0
             try:
-                youtube.commentThreads().insert(
-                    part="snippet",
-                    body={
-                        "snippet": {
-                            "videoId": video_id,
-                            "topLevelComment": {
-                                "snippet": {
-                                    "textOriginal": pinned_comment
+                youtube.videos().rate(id=video_id, rating="like").execute()
+                print(f"[✓ Boost Algorítmico] Primer Like automático asignado a {video_id}.")
+            except Exception as e:
+                print(f"[Info] Like automático omitido: {e}")
+
+            # 2. Comentario de llamada a la acción y debate
+            if pinned_comment:
+                try:
+                    youtube.commentThreads().insert(
+                        part="snippet",
+                        body={
+                            "snippet": {
+                                "videoId": video_id,
+                                "topLevelComment": {
+                                    "snippet": {
+                                        "textOriginal": pinned_comment
+                                    }
                                 }
                             }
                         }
-                    }
-                ).execute()
-                print(f"[✓] Comentario de llamada a la acción y monetización fijado con éxito.")
-            except Exception as e:
-                print(f"[Info] Comentario automático omitido: {e}")
+                    ).execute()
+                    print(f"[✓ Boost Algorítmico] Comentario fijado de llamada a la acción publicado con éxito.")
+                except Exception as e:
+                    print(f"[Info] Comentario automático omitido: {e}")
+        else:
+            print(f"[*] [Boost Algorítmico 1 de cada 2] Omitido para {video_id}: Publicación orgánica pura sin auto-interacción.")
 
         return video_id
     except Exception as e:

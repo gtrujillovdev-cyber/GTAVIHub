@@ -213,15 +213,18 @@ Devuelve tu respuesta EXACTAMENTE en este formato JSON (sin texto extra):
         hook = fallback_hook
         debate_question = "¿Qué os parece este gameplay de GTA 6? ¿Cumple con lo esperado? ¡Comenta abajo! 👇" if is_launched else "¿Crees que GTA 6 cumplirá todas las expectativas? ¡Comenta abajo! 👇"
 
-    # Asegurar que el título siempre esté en mayúsculas y bien formateado
+    # Asegurar que el título siempre esté en mayúsculas y contenga #Shorts para el crawler
     if not viral_title:
-        viral_title = f"¡IMPACTANTE! 😱 DETALLES DE GTA 6: {original_title[:40].upper()} #GTA6"
+        viral_title = f"¡IMPACTANTE! 😱 DETALLES DE GTA 6: {original_title[:40].upper()} #GTA6 #Shorts"
     else:
         viral_title = viral_title.upper()
+        if "#SHORTS" not in viral_title and len(viral_title) <= 90:
+            viral_title = f"{viral_title} #Shorts"
 
     # Ensamblar descripción PROGRAMÁTICAMENTE (garantiza cero placeholders y cumplimiento legal)
+    creator_clean = creator_name or "Rockstar Games"
     url_line = f"🔗 Vídeo Original: {original_url}\n" if original_url else ""
-    creator_line = f"👤 Creador / Fuente Original: {creator_name}\n" if creator_name else "👤 Fuente Original: Rockstar Games\n"
+    creator_line = f"👤 Creador / Fuente Original: {creator_clean}\n"
 
     # Detección de música del tráiler de GTA 6
     is_trailer_content = any(k in original_title.lower() for k in ["trailer", "tráiler", "rockstar", "official"])
@@ -260,7 +263,23 @@ Devuelve tu respuesta EXACTAMENTE en este formato JSON (sin texto extra):
             f"📩 Contacto Business: {BUSINESS_EMAIL}"
         )
 
-    full_description = f"""{summary}
+    if is_short:
+        # Formato optimizado para YouTube Shorts: limpio, natural y libre de spam de enlaces
+        # (Las ofertas y enlaces de afiliados se ubican en el COMENTARIO FIJADO para no disparar el filtro anti-spam)
+        full_description = f"""{summary}
+
+💬 {to_unicode_bold("DEBATE:")} {debate_question}
+
+📌 Creador / Fuente: {creator_clean}
+🔗 Original: {original_url}
+
+⚖️ Uso Legítimo / Fair Use (Art. 107 Copyright Act) con fines informativos y comentario para la comunidad hispanohablante.
+📩 Contacto: {BUSINESS_EMAIL}
+
+#GTA6 #GTAVI #RockstarGames #Gaming #Shorts
+"""
+    else:
+        full_description = f"""{summary}
 
 💬 {to_unicode_bold("DEBATE DE LA COMUNIDAD:")}
 {debate_question}
@@ -298,11 +317,18 @@ Grand Theft Auto VI, GTA VI, Vice City y los logotipos asociados son marcas regi
 #GTA6 #GrandTheftAutoVI #RockstarGames #GTAVI #ViceCity #Gaming #Shorts #Videojuegos
 """
 
+    tags = [
+        "GTA 6", "GTA VI", "Grand Theft Auto VI", "GTA 6 Trailer", "GTA 6 Gameplay",
+        "Rockstar Games", "Vice City", "Leonida", "GTA 6 Leaks", "GTA 6 Filtraciones",
+        "Gaming", "Shorts", "GTA 6 Noticias", "Lucia GTA 6", "Jason GTA 6", "Viral Gaming"
+    ]
+
     return {
         "title": viral_title[:100],
         "description": full_description[:5000],
         "hook": hook,
         "debate_question": debate_question,
         "pinned_comment": pinned_comment,
-        "archetype": archetype
+        "archetype": archetype,
+        "tags": tags
     }

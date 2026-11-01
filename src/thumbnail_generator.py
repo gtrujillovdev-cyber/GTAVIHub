@@ -5,6 +5,13 @@ from pathlib import Path
 from typing import Optional, Dict, Any
 from PIL import Image, ImageDraw, ImageFont, ImageEnhance, ImageFilter
 
+from .emoji_renderer import (
+    split_text_and_emojis,
+    measure_composite_line,
+    draw_composite_line,
+    clean_text_preserve_emojis
+)
+
 
 def extract_keyframe(video_path: Path, output_frame: Path, timestamp_sec: float = 3.0) -> bool:
     """Extrae un fotograma clave del vídeo usando ffmpeg."""
@@ -61,36 +68,75 @@ def _apply_color_tone(img: Image.Image, tone: str) -> Image.Image:
     return Image.merge("RGB", (r, g, b))
 
 
-def _draw_hook_text(draw: ImageDraw.Draw, text: str, img_w: int, img_h: int, style: Dict[str, Any]) -> None:
-    """Dibuja el texto del gancho viral con contorno grueso estilo YouTube trending."""
+def _draw_hook_text(draw_or_img: Any, text: str, img_w: int, img_h: int, style: Dict[str, Any], target_img: Optional[Image.Image] = None) -> None:
+    """
+    Dibuja el texto del gancho viral con contorno grueso estilo YouTube trending
+    y renderizado composite de emojis (cero rectángulos vacíos '[]').
+    """
     if not text:
+        return
+
+    if isinstance(draw_or_img, Image.Image):
+        target_img = draw_or_img
+        draw = ImageDraw.Draw(target_img)
+    else:
+        draw = draw_or_img
+        if target_img is None and hasattr(draw, "_image"):
+            target_img = draw._image
+
+    clean_text = clean_text_preserve_emojis(text)
+    if not clean_text:
         return
 
     font_size = max(32, int(img_h * style.get("font_size_ratio", 0.07)))
     font = get_best_font(font_size)
 
     # Limitar a 2 líneas de ~22 chars
-    wrapped = textwrap.wrap(text[:80], width=22)[:2]
+    wrapped = textwrap.wrap(clean_text[:80], width=22)[:2]
     line_h = font_size + 8
     total_h = len(wrapped) * line_h
     y_start = img_h - total_h - int(img_h * 0.08)
 
     stroke_w = style.get("text_stroke_width", 6)
-    stroke_c = tuple(style.get("text_stroke", [0, 0, 0]))
-    fill_c = tuple(style.get("text_color", [255, 230, 0]))
+    raw_stroke = style.get("text_stroke", [0, 0, 0])
+    raw_fill = style.get("text_color", [255, 230, 0])
+    stroke_c = tuple(raw_stroke) + (255,) if len(raw_stroke) == 3 else tuple(raw_stroke)
+    fill_c = tuple(raw_fill) + (255,) if len(raw_fill) == 3 else tuple(raw_fill)
 
     for i, line in enumerate(wrapped):
-        bbox = font.getbbox(line)
-        text_w = bbox[2] - bbox[0]
-        x = (img_w - text_w) // 2
+        tokens = split_text_and_emojis(line)
+        line_w, _ = measure_composite_line(tokens, font, emoji_size=font_size)
+        x = (img_w - line_w) // 2
         y = y_start + i * line_h
 
-        # Contorno (stroke) — dibujado en 8 direcciones
-        for dx in range(-stroke_w, stroke_w + 1, 2):
-            for dy in range(-stroke_w, stroke_w + 1, 2):
-                if dx != 0 or dy != 0:
-                    draw.text((x + dx, y + dy), line, font=font, fill=stroke_c)
-        draw.text((x, y), line, font=font, fill=fill_c)
+        if target_img is not None:
+            draw_composite_line(
+                target_img=target_img,
+                draw=draw,
+                tokens=tokens,
+                x=x,
+                y=y,
+                font=font,
+                fill_color=fill_c,
+                stroke_color=stroke_c,
+                stroke_width=stroke_w,
+                emoji_size=font_size
+            )
+        else:
+            # Fallback seguro: solo texto alfanumérico sin emojis para no dibujar rectángulos
+            cur_x = x
+            for kind, content in tokens:
+                if kind == "text":
+                    clean_c = re.sub(r'[^\w\s\d¡!¿?,\.:\'-áéíóúÁÉÍÓÚñÑüÜ#$€%&/()+=@_\"“”«»]', '', content)
+                    if not clean_c:
+                        continue
+                    for dx in range(-stroke_w, stroke_w + 1, 2):
+                        for dy in range(-stroke_w, stroke_w + 1, 2):
+                            if dx != 0 or dy != 0:
+                                draw.text((cur_x + dx, y + dy), clean_c, font=font, fill=stroke_c[:3])
+                    draw.text((cur_x, y), clean_c, font=font, fill=fill_c[:3])
+                    bb = draw.textbbox((0, 0), clean_c, font=font)
+                    cur_x += (bb[2] - bb[0])
 
 
 def create_video_thumbnail(
@@ -205,7 +251,7 @@ def create_video_thumbnail(
     # Texto de gancho viral
     if style.get("text_hook", True) and hook_text:
         draw = ImageDraw.Draw(img)
-        _draw_hook_text(draw, hook_text, target_w, target_h, style)
+        _draw_hook_text(draw, hook_text, target_w, target_h, style, target_img=img)
 
     final_rgb = img.convert("RGB")
     final_rgb.save(output_thumb_path, "JPEG", quality=95)

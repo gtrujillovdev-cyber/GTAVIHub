@@ -49,6 +49,7 @@ data/performance_records.json
 data/pending_approvals/
 data/discovered_channels.json
 data/heartbeat.txt
+data/engagement_boost.json
 
 .codegraph/
 branding_token.json
