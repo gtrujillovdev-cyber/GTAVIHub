@@ -14,13 +14,11 @@ from .channels import get_processed_ids, list_monitored_channels, add_monitored_
 DISCOVERED_CHANNELS_FILE = DATA_DIR / "discovered_channels.json"
 
 DEFAULT_VIRAL_QUERIES = [
-    # Parodias, Cultura Pop & Momentos Virales Globales
-    "ytsearch15:GTA 6 South Park parodia #shorts",
-    "ytsearch15:GTA 6 South Park parody #shorts",
-    "ytsearch15:GTA 6 parodia viral risas #shorts",
-    "ytsearch15:GTA 6 meme viral tiktok #shorts",
-    "ytsearch15:GTA 6 funny moments fails #shorts",
-    "ytsearch15:GTA 6 referencias peliculas series #shorts",
+    # Noticias, Leaks & Primicias de Creadores
+    "ytsearch15:GTA 6 new update leak rockstar #shorts",
+    "ytsearch15:GTA 6 things you missed #shorts",
+    "ytsearch15:GTA 6 fecha lanzamiento noticias #shorts",
+    "ytsearch15:GTA 6 nueva informacion filtrada mapa #shorts",
     # Secretos y Easter Eggs
     "ytsearch15:GTA 6 gameplay secrets easter eggs #shorts",
     "ytsearch15:GTA 6 hidden details leonida #shorts",
@@ -33,11 +31,6 @@ DEFAULT_VIRAL_QUERIES = [
     "ytsearch15:GTA 6 fisicas coches deformacion #shorts",
     "ytsearch15:GTA 6 inteligencia artificial npcs reacciones #shorts",
     "ytsearch15:GTA 6 comparativa gta 5 diferencias #shorts",
-    # Noticias, Leaks e Insiders
-    "ytsearch15:GTA 6 new update leak rockstar #shorts",
-    "ytsearch15:GTA 6 things you missed #shorts",
-    "ytsearch15:GTA 6 fecha lanzamiento noticias #shorts",
-    "ytsearch15:GTA 6 nueva informacion filtrada mapa #shorts",
     # Comunidad Hispanohablante & Streamers
     "ytsearch15:GTA 6 secretos gameplay vice city #shorts",
     "ytsearch15:GTA 6 detalles ocultos lucia jason #shorts",
@@ -47,10 +40,13 @@ DEFAULT_VIRAL_QUERIES = [
     "ytsearch15:GTA 6 Eurogamer Espana detalles #shorts",
     "ytsearch15:GTA 6 Vandal curiosidades #shorts",
     "ytsearch15:GTA 6 3DJuegos detalles #shorts",
-    # Global Virality (English)
+    # Global Virality & Parodias de GTA 6
     "ytsearch15:GTA 6 viral breakdown secrets #shorts",
     "ytsearch15:GTA 6 crazy realistic details #shorts",
     "ytsearch15:GTA 6 mind blowing physics rage engine #shorts",
+    "ytsearch15:GTA 6 parodia viral risas #shorts",
+    "ytsearch15:GTA 6 meme viral tiktok #shorts",
+    "ytsearch15:GTA 6 funny moments fails #shorts",
 ]
 
 # Consultas específicas de Gameplay Puro activas a partir del 19 de Noviembre
@@ -192,25 +188,45 @@ def calculate_virality_score(
         elif vpd >= 50:
             velocity_score = 3
 
-    # 2. Puntos por visualizaciones absolutas (0 a 25) — rebajado, complementa velocity
-    if views >= 10_000_000:
-        views_score = 25
-    elif views >= 2_000_000:
-        views_score = 22
-    elif views >= 500_000:
-        views_score = 20
-    elif views >= 100_000:
-        views_score = 17
-    elif views >= 50_000:
-        views_score = 14
-    elif views >= 20_000:
-        views_score = 11
-    elif views >= 5_000:
-        views_score = 8
-    elif views >= 1_000:
-        views_score = 5
+    # 2. Puntos por visualizaciones absolutas (0 a 25 normalmente, o hasta 45 si days_old no está disponible)
+    if days_old is None:
+        # Fallback cuando yt-dlp --flat-playlist no devuelve upload_date:
+        # El volumen de vistas asume la escala combinada para no penalizar artificialmente
+        if views >= 1_000_000:
+            views_score = 45
+        elif views >= 500_000:
+            views_score = 38
+        elif views >= 100_000:
+            views_score = 30
+        elif views >= 50_000:
+            views_score = 24
+        elif views >= 20_000:
+            views_score = 18
+        elif views >= 5_000:
+            views_score = 12
+        elif views >= 1_000:
+            views_score = 7
+        else:
+            views_score = 2
     else:
-        views_score = 2
+        if views >= 10_000_000:
+            views_score = 25
+        elif views >= 2_000_000:
+            views_score = 22
+        elif views >= 500_000:
+            views_score = 20
+        elif views >= 100_000:
+            views_score = 17
+        elif views >= 50_000:
+            views_score = 14
+        elif views >= 20_000:
+            views_score = 11
+        elif views >= 5_000:
+            views_score = 8
+        elif views >= 1_000:
+            views_score = 5
+        else:
+            views_score = 2
 
     # 3. Duración Óptima / Formato Shorts (0 a 20) — sweet spot 18-28s del Playbook
     if 18 <= duration <= 28:
@@ -302,7 +318,7 @@ def calculate_virality_score(
 def scan_viral_radar(
     queries: Optional[List[str]] = None,
     max_candidates: int = 10,
-    min_score: int = 60,
+    min_score: int = 50,
     only_shorts: bool = True
 ) -> List[Dict[str, Any]]:
     """

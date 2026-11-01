@@ -34,10 +34,11 @@ def extract_keyframe(video_path: Path, output_frame: Path, timestamp_sec: float 
 def get_best_font(size: int = 70):
     """Obtiene tipografía bold moderna en macOS."""
     font_configs = [
-        ("/System/Library/Fonts/Supplemental/DIN Alternate Bold.ttf", 0),
+        ("/System/Library/Fonts/Supplemental/Arial Bold.ttf", 0),
         ("/System/Library/Fonts/Avenir Next.ttc", 8),
         ("/System/Library/Fonts/HelveticaNeue.ttc", 9),
         ("/System/Library/Fonts/Supplemental/Futura.ttc", 0),
+        ("/System/Library/Fonts/Supplemental/DIN Alternate Bold.ttf", 0),
     ]
     for path, idx in font_configs:
         if os.path.exists(path):

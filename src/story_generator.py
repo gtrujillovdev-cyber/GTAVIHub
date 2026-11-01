@@ -54,13 +54,15 @@ def clean_text_for_font(text: str) -> str:
     return " ".join(cleaned.split()).strip()
 
 def get_story_font(size: int = 48, bold: bool = True) -> ImageFont.FreeTypeFont:
-    """Obtiene la tipografía sans-serif más limpia e impactante del sistema."""
+    """Obtiene la tipografía sans-serif más limpia e impactante del sistema con soporte Unicode completo (€, etc.)."""
     font_paths = [
-        "/System/Library/Fonts/Supplemental/DIN Alternate Bold.ttf",
-        "/System/Library/Fonts/Supplemental/Futura.ttc",
+        "/System/Library/Fonts/Supplemental/Arial Bold.ttf" if bold else "/System/Library/Fonts/Supplemental/Arial.ttf",
+        "/System/Library/Fonts/HelveticaNeue.ttc",
+        "/System/Library/Fonts/Supplemental/Trebuchet MS Bold.ttf" if bold else "/System/Library/Fonts/Supplemental/Trebuchet MS.ttf",
+        "/System/Library/Fonts/Supplemental/Verdana Bold.ttf" if bold else "/System/Library/Fonts/Supplemental/Verdana.ttf",
+        "/Library/Fonts/Arial Bold.ttf",
         "/System/Library/Fonts/SF-Compact-Display-Bold.otf",
-        "/System/Library/Fonts/Supplemental/Arial Bold.ttf",
-        "/Library/Fonts/Arial Bold.ttf"
+        "/System/Library/Fonts/Supplemental/Futura.ttc"
     ]
     for p in font_paths:
         if os.path.exists(p):
