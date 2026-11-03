@@ -40,13 +40,15 @@ DEFAULT_VIRAL_QUERIES = [
     "ytsearch15:GTA 6 Eurogamer Espana detalles #shorts",
     "ytsearch15:GTA 6 Vandal curiosidades #shorts",
     "ytsearch15:GTA 6 3DJuegos detalles #shorts",
-    # Global Virality & High-Impact Breakdowns (Cero Parodias)
-    "ytsearch20:GTA 6 breakdown analysis secrets #shorts",
+    # Global Virality & High-Impact Breakdowns (Cero Parodias ni Anuncios)
+    "ytsearch20:GTA 6 breakdown analysis secrets",
     "ytsearch20:GTA 6 crazy realistic details #shorts",
-    "ytsearch20:GTA 6 mind blowing physics rage engine #shorts",
+    "ytsearch20:GTA 6 mind blowing physics rage engine",
     "ytsearch20:GTA 6 realistic graphics reaction #shorts",
-    "ytsearch20:GTA 6 map size comparison vice city #shorts",
-    "ytsearch20:GTA 6 leaked gameplay mechanics details #shorts",
+    "ytsearch20:GTA 6 map size comparison vice city",
+    "ytsearch20:GTA 6 leaked gameplay mechanics details",
+    "ytsearch20:GTA 6 secrets you completely missed",
+    "ytsearch20:GTA 6 cosas ocultas detalles analisis"
 ]
 
 # Consultas específicas de Gameplay Puro activas a partir del 19 de Noviembre
@@ -323,14 +325,14 @@ def calculate_virality_score(
 def scan_viral_radar(
     queries: Optional[List[str]] = None,
     max_candidates: int = 10,
-    min_score: int = 50,
-    only_shorts: bool = True
+    min_score: int = 35,
+    only_shorts: bool = False
 ) -> List[Dict[str, Any]]:
     """
     Escanea dinámicamente YouTube con múltiples queries de alta tendencia en paralelo,
     descubre nuevos creadores y clasifica los vídeos por puntuación de engagement.
     Incluye velocity score (vistas/día) para priorizar contenido emergente.
-    Por defecto prioriza y filtra exclusivamente vídeos en formato Shorts (<= 65s).
+    Admite tanto Shorts directos como vídeos largos (hasta 30m) para extracción de clips por Heatmap.
     """
     from .channels import is_strictly_gta6
 
@@ -389,6 +391,8 @@ def scan_viral_radar(
                     duration = 0.0
 
                 if only_shorts and (duration > 65 or duration <= 0):
+                    continue
+                elif not only_shorts and (duration > 1800 or (duration > 0 and duration < 10)):
                     continue
 
                 try:
