@@ -65,5 +65,34 @@ class TestSubtitleSync(unittest.TestCase):
         first_t = parse_first_cue_start(self.test_srt)
         self.assertAlmostEqual(first_t, 1.8, places=2)
 
+    def test_deroll_and_anti_stutter(self):
+        from src.downloader import deroll_and_clean_srt_content
+        from src.dubber import deduplicate_phrase_repetitions, extract_text_from_srt
+
+        # Simulación exacta del bug de rolling captions de YouTube ASR en Gameranx
+        stutter_srt = (
+            "1\n00:00:00,000 --> 00:00:02,000\n"
+            "Sobre las tonterías que pasan en\nTwitter, pero tienes que ver esto.\n\n"
+            "2\n00:00:02,000 --> 00:00:04,000\n"
+            "Twitter, pero tienes que ver esto.\nEs Twitter, pero tienes que ver esto.\n\n"
+            "3\n00:00:04,000 --> 00:00:06,000\n"
+            "Es Twitter, pero tienes que ver esto.\nParece que quien está detrás de,\n\n"
+            "4\n00:00:06,000 --> 00:00:08,000\n"
+            "Parece que quien está detrás de,\nparece que quien está detrás de la cuenta.\n\n"
+        )
+        self.test_srt.write_text(stutter_srt, encoding="utf-8")
+
+        # 1. Probar que extract_text_from_srt no tartamudea ni repite frases
+        clean_text = extract_text_from_srt(self.test_srt)
+        self.assertNotIn("pero tienes que ver esto. Es Twitter, pero tienes que ver esto.", clean_text)
+        self.assertNotIn("parece que quien está detrás de, parece que quien está detrás de", clean_text)
+        # Debe contener la frase completa una sola vez
+        self.assertIn("detrás de la cuenta", clean_text)
+
+        # 2. Probar que deduplicate_phrase_repetitions elimina tartamudeos explícitos
+        repeated = "quien está detrás de, quien está detrás de la cuenta oficial"
+        deduped = deduplicate_phrase_repetitions(repeated)
+        self.assertEqual(deduped, "quien está detrás de la cuenta oficial")
+
 if __name__ == "__main__":
     unittest.main()

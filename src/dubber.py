@@ -6,6 +6,35 @@ from typing import Optional
 import edge_tts
 from .config import DEFAULT_TTS_VOICE
 from .translator import purge_audio_descriptors
+from .downloader import deroll_and_clean_srt_content
+
+def deduplicate_phrase_repetitions(text: str) -> str:
+    """
+    Elimina repeticiones contiguas de frases o cláusulas (tartamudeo residual por ASR):
+    Ej: 'parece que quien está detrás de, parece que quien está detrás de la cuenta'
+    -> 'parece que quien está detrás de la cuenta'
+    """
+    words = text.split()
+    if len(words) < 4:
+        return text
+
+    i = 0
+    cleaned_words = []
+    while i < len(words):
+        matched = False
+        # Buscar repeticiones de bloques contiguos de 8 hasta 2 palabras
+        for chunk_len in range(min(8, (len(words) - i) // 2), 1, -1):
+            chunk1 = [w.lower().strip('.,!?;:"\'') for w in words[i : i + chunk_len]]
+            chunk2 = [w.lower().strip('.,!?;:"\'') for w in words[i + chunk_len : i + 2 * chunk_len]]
+            if chunk1 == chunk2:
+                matched = True
+                i += chunk_len
+                break
+        if not matched:
+            cleaned_words.append(words[i])
+            i += 1
+
+    return " ".join(cleaned_words)
 
 def parse_first_cue_start(srt_path: Path) -> float:
     """Detecta el segundo exacto en el que empieza a hablar el primer personaje en el SRT."""
@@ -28,24 +57,37 @@ def parse_first_cue_start(srt_path: Path) -> float:
     return 0.0
 
 def extract_text_from_srt(srt_path: Path) -> str:
-    """Extrae todo el texto limpio de un archivo SRT eliminando numeración y tiempos."""
+    """Extrae todo el texto limpio y desduplicado de un archivo SRT eliminando tartamudeo y rolling buffers."""
     if not srt_path.exists():
         return ""
     with open(srt_path, "r", encoding="utf-8", errors="ignore") as f:
-        lines = f.readlines()
+        content = f.read()
 
+    # 1. Purgar rolling buffer a nivel de bloques SRT
+    derolled = deroll_and_clean_srt_content(content)
+
+    blocks = [b.strip() for b in derolled.strip().split("\n\n") if b.strip()]
     clean_lines = []
-    for line in lines:
-        line_str = line.strip()
-        # Saltar números de bloque o líneas de tiempo
-        if re.match(r"^\d+$", line_str) or "-->" in line_str:
-            continue
-        # Purgar etiquetas sonoras ([music], [música]) y artefactos de audio
-        sanitized = purge_audio_descriptors(line_str)
-        if sanitized:
-            clean_lines.append(sanitized)
+    seen_history = []
 
-    return " ".join(clean_lines)
+    for b in blocks:
+        lines = b.split("\n")
+        if len(lines) < 2:
+            continue
+        text_lines = lines[2:] if "-->" in lines[1] else lines[1:]
+        for l in text_lines:
+            sanitized = purge_audio_descriptors(l.strip())
+            if not sanitized:
+                continue
+            l_norm = " ".join(sanitized.lower().strip('.,!?;:"\'').split())
+            if any(l_norm == prev for prev in seen_history[-4:]):
+                continue
+            clean_lines.append(sanitized)
+            seen_history.append(l_norm)
+
+    raw_joined = " ".join(clean_lines)
+    # 2. Purgar cualquier repetición de n-gramas residual (tartamudeo)
+    return deduplicate_phrase_repetitions(raw_joined)
 
 async def _synthesize_async(text: str, output_audio: Path, voice: str = DEFAULT_TTS_VOICE):
     communicate = edge_tts.Communicate(text, voice)

@@ -129,8 +129,23 @@ def process_single_video(
             source_lang=lang_to_use
         )
         if not success_trans:
-            print("[Warning] No se pudieron traducir subtítulos, se continuará sin subtítulos quemados.")
+            print("[Warning] No se pudieron traducir subtítulos al español.")
             es_srt_path = None
+
+    # Blindaje Editorial: Si el contenido viene en inglés y no se pudo traducir, abortar para no publicar en inglés
+    if lang_to_use != "es" and not es_srt_path:
+        print(f"[!] [Blindaje Editorial] El vídeo original está en {lang_to_use.upper()} pero no se pudo traducir al español.")
+        print("[!] Abortando procesamiento para proteger el canal de vídeos sin traducir.")
+        try:
+            from .telegram_bot import send_telegram_alert
+            send_telegram_alert(
+                f"🛡️ *[Blindaje Editorial]* Vídeo '{original_title[:45]}...' omitido:\n"
+                f"Está en {lang_to_use.upper()} y la traducción al español no estuvo disponible. Se protege el canal contra contenido en inglés."
+            )
+        except Exception:
+            pass
+        clean_temp_directory(video_id)
+        return None
 
     # 4. Doblaje de voz neural en español (solo si el usuario lo solicita explícitamente con mode='dub'/'voice')
     dub_audio_path = None

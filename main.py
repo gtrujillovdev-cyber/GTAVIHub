@@ -186,6 +186,9 @@ def main():
         return
 
     if args.auto_viral:
+        if not args.publish_all and not args.upload:
+            args.publish_all = True
+            args.upload = True
         from src.viral_discovery import scan_viral_radar
         print("[*] Buscando el clip #1 de mayor engagement viral para ingesta inmediata...")
         candidates = scan_viral_radar(max_candidates=5)

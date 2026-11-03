@@ -28,6 +28,138 @@ def format_srt_time(seconds: float) -> str:
     ms = int(round((seconds - int(seconds)) * 1000))
     return f"{h:02d}:{m:02d}:{s:02d},{ms:03d}"
 
+def deroll_and_clean_srt_content(content: str) -> str:
+    """
+    Desduplica y sanea subtítulos SRT eliminando el 'rolling buffer' progresivo de YouTube ASR.
+    Resuelve de raíz el tartamudeo donde una frase o cláusula se repite en cues consecutivos
+    debido a la actualización progresiva de líneas o correcciones parciales de reconocimiento de voz.
+    """
+    blocks = [b.strip() for b in content.strip().split("\n\n") if b.strip()]
+    if not blocks:
+        return content
+
+    raw_cues = []
+    for b in blocks:
+        lines = b.split("\n")
+        if len(lines) < 2:
+            continue
+        time_line = lines[1] if "-->" in lines[1] else (lines[0] if "-->" in lines[0] else "")
+        if not time_line or "-->" not in time_line:
+            continue
+        t_start, t_end = [p.strip() for p in time_line.split("-->")]
+        raw_text_lines = lines[2:] if "-->" in lines[1] else lines[1:]
+        clean_text_lines = [l.strip() for l in raw_text_lines if l.strip()]
+        if clean_text_lines:
+            raw_cues.append((t_start, t_end, clean_text_lines))
+
+    cleaned_cues = []
+    recent_lines_history = []
+
+    for t_start, t_end, text_lines in raw_cues:
+        # 1. Descartar líneas idénticas a las vistas en los últimos cues (rolling caption buffer)
+        unique_lines = []
+        for l in text_lines:
+            l_norm = " ".join(l.lower().strip('.,!?;:"\'').split())
+            if not l_norm:
+                continue
+            if any(l_norm == prev for prev in recent_lines_history[-6:]):
+                continue
+            unique_lines.append(l)
+            recent_lines_history.append(l_norm)
+
+        cue_text = " ".join(unique_lines).strip()
+        if not cue_text:
+            continue
+
+        cue_norm = " ".join(cue_text.lower().strip('.,!?;:"\'').split())
+
+        if not cleaned_cues:
+            cleaned_cues.append([t_start, t_end, cue_text])
+            continue
+
+        prev_start, prev_end, prev_text = cleaned_cues[-1]
+        prev_norm = " ".join(prev_text.lower().strip('.,!?;:"\'').split())
+
+        # 2. Comprobación de idéntico total
+        if cue_norm == prev_norm:
+            cleaned_cues[-1][1] = t_end
+            continue
+
+        # 3. Comprobación si la frase anterior era un prefijo/subcadena incompleto de la actual
+        if prev_norm in cue_norm and len(cue_norm) > len(prev_norm):
+            cleaned_cues[-1] = [prev_start, t_end, cue_text]
+            continue
+
+        # 4. Comprobación si la frase actual ya estaba completamente contenida en la anterior
+        if cue_norm in prev_norm:
+            cleaned_cues[-1][1] = t_end
+            continue
+
+        # 5. Comprobación de solapamiento de palabras y redundancia semántica
+        prev_words = prev_text.split()
+        curr_words = cue_text.split()
+        prev_clean = [w.lower().strip('.,!?;:"\'') for w in prev_words if len(w) > 0]
+        curr_clean = [w.lower().strip('.,!?;:"\'') for w in curr_words if len(w) > 0]
+
+        # Comprobar porcentaje de redundancia con el bloque anterior (>= 70% palabras repetidas)
+        if curr_clean and prev_clean:
+            overlap_count = sum(1 for w in curr_clean if w in prev_clean)
+            if overlap_count / len(curr_clean) >= 0.7:
+                cleaned_cues[-1][1] = t_end
+                continue
+
+        # Solapamiento sufijo-prefijo (hasta 2 palabras guía iniciales)
+        overlap_k = 0
+        lead_skip = 0
+        max_k = min(len(prev_clean), len(curr_clean))
+        for k in range(max_k, 1, -1):
+            if prev_clean[-k:] == curr_clean[:k]:
+                overlap_k = k
+                lead_skip = 0
+                break
+
+        if overlap_k == 0:
+            for lead in (1, 2):
+                if len(curr_clean) > lead:
+                    max_k2 = min(len(prev_clean), len(curr_clean) - lead)
+                    for k in range(max_k2, 2, -1):
+                        if prev_clean[-k:] == curr_clean[lead : lead + k]:
+                            overlap_k = k
+                            lead_skip = lead
+                            break
+                    if overlap_k > 0:
+                        break
+
+        if overlap_k > 0:
+            remaining = curr_words[lead_skip + overlap_k:]
+            if not remaining:
+                cleaned_cues[-1][1] = t_end
+                continue
+            cue_text = " ".join(remaining)
+
+        cleaned_cues.append([t_start, t_end, cue_text])
+
+    out_blocks = []
+    for idx, (s, e, txt) in enumerate(cleaned_cues, 1):
+        out_blocks.append(f"{idx}\n{s} --> {e}\n{txt}")
+
+    return "\n\n".join(out_blocks) + "\n"
+
+def clean_and_deroll_srt(srt_path: Path) -> bool:
+    """Lee un archivo SRT en disco, purga su rolling buffer y guarda la versión limpia y desduplicada."""
+    if not srt_path.exists():
+        return False
+    try:
+        with open(srt_path, "r", encoding="utf-8", errors="ignore") as f:
+            content = f.read()
+        cleaned = deroll_and_clean_srt_content(content)
+        with open(srt_path, "w", encoding="utf-8") as f:
+            f.write(cleaned)
+        return True
+    except Exception as e:
+        print(f"[!] Error desduplicando SRT en {srt_path.name}: {e}")
+        return False
+
 def slice_srt_file(srt_path: Path, start_trim: float, end_trim: float, output_srt: Path) -> bool:
     """Recorta y reindexa un archivo SRT para coincidir con el intervalo recortado."""
     if not srt_path.exists():
@@ -62,6 +194,7 @@ def slice_srt_file(srt_path: Path, start_trim: float, end_trim: float, output_sr
         if new_blocks:
             with open(output_srt, "w", encoding="utf-8") as f:
                 f.write("\n\n".join(new_blocks) + "\n")
+            clean_and_deroll_srt(output_srt)
             return True
     except Exception as e:
         print(f"[!] Error recortando SRT: {e}")
@@ -304,6 +437,7 @@ def download_video_and_subtitles(
                         if converted_srt.exists():
                             chosen = converted_srt
                     srt_path = chosen
+                    clean_and_deroll_srt(srt_path)
                     detected_lang = lang_code
                     print(f"[*] Subtítulos descargados con éxito ({target_lang} -> {detected_lang})")
                     break

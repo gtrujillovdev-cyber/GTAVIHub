@@ -7,6 +7,29 @@ from .config import GEMINI_API_KEY, GEMINI_MODEL, BUSINESS_EMAIL, MONETIZATION_A
 
 _client = None
 
+FALLBACK_GEMINI_MODELS = [
+    GEMINI_MODEL,
+    "gemini-2.5-flash-lite",
+    "gemini-flash-lite-latest",
+]
+
+def generate_content_with_retry(client, contents, models=None):
+    """Ejecuta generate_content con rotación automática a modelos Flash-Lite si hay límite 429 de cuota."""
+    if models is None:
+        models = FALLBACK_GEMINI_MODELS
+    last_err = None
+    for model_name in models:
+        try:
+            return client.models.generate_content(model=model_name, contents=contents)
+        except Exception as e:
+            last_err = e
+            err_msg = str(e)
+            if "429" in err_msg or "RESOURCE_EXHAUSTED" in err_msg or "404" in err_msg or "503" in err_msg:
+                print(f"[*] Modelo '{model_name}' con limitación ({err_msg[:45]}...). Rotando a modelo alternativo...")
+                continue
+            raise e
+    raise last_err
+
 def to_unicode_bold(text: str) -> str:
     """
     Convierte texto alfanumérico ASCII a caracteres Unicode Mathematical Sans-Serif Bold.
@@ -110,6 +133,11 @@ def translate_srt(
 
     # Purgar previamente tags de sonido en el contenido antes de enviarlo a la IA
     sanitized_input = sanitize_srt_content(content)
+    try:
+        from .downloader import deroll_and_clean_srt_content
+        sanitized_input = deroll_and_clean_srt_content(sanitized_input)
+    except Exception:
+        pass
 
     client = get_gemini_client()
 
@@ -124,16 +152,22 @@ def translate_srt(
         "5. Traduce y sintetiza de forma concisa y directa para que encaje con el ritmo de locución original (evita rodeos que alarguen artificialmente la frase).\n"
         "6. Usa un español dinámico, fresco y actual (apto para YouTube Shorts / TikTok).\n"
         "7. Respeta nombres canónicos (Vice City, Lucia, Jason, Leonida, Rockstar Games, etc.).\n"
-        "8. Devuelve ÚNICAMENTE el texto SRT resultante, sin explicaciones ni bloques markdown extra."
+        "8. CERO TARTAMUDEO / CERO REPETICIÓN: Los subtítulos de entrada pueden contener líneas rodantes o correcciones de YouTube ASR. NUNCA repitas una misma frase o cláusula dos veces consecutivas. Traduce la idea una sola vez con fluidez profesional continua.\n"
+        "9. Devuelve ÚNICAMENTE el texto SRT resultante, sin explicaciones ni bloques markdown extra."
     )
 
     try:
-        response = client.models.generate_content(
-            model=GEMINI_MODEL,
+        response = generate_content_with_retry(
+            client=client,
             contents=f"{prompt}\n\n{sanitized_input}"
         )
         translated_srt = clean_srt_response(response.text)
         translated_srt = sanitize_srt_content(translated_srt)
+        try:
+            from .downloader import deroll_and_clean_srt_content
+            translated_srt = deroll_and_clean_srt_content(translated_srt)
+        except Exception:
+            pass
 
         with open(output_srt_path, "w", encoding="utf-8") as f:
             f.write(translated_srt)
@@ -142,17 +176,8 @@ def translate_srt(
         return True
     except Exception as e:
         print(f"[!] Error traduciendo subtítulos con Gemini: {e}")
-        print("[*] Fallback de seguridad: conservando subtítulos originales para mantener el karaoke dinámico...")
-        try:
-            with open(input_srt_path, "r", encoding="utf-8", errors="ignore") as f:
-                raw_fb = f.read()
-            cleaned_fb = sanitize_srt_content(raw_fb)
-            with open(output_srt_path, "w", encoding="utf-8") as f:
-                f.write(cleaned_fb)
-            return True
-        except Exception as copy_err:
-            print(f"[!] Error en fallback de subtítulos: {copy_err}")
-            return False
+        # Si el idioma de origen no es español, no podemos pretender que los subtítulos en inglés son españoles
+        return False
 
 def generate_video_metadata(
     original_title: str,
@@ -227,10 +252,9 @@ Devuelve tu respuesta EXACTAMENTE en este formato JSON (sin texto extra):
 }}
 """
     try:
-        response = client.models.generate_content(
-            model=GEMINI_MODEL,
-            contents=prompt,
-            config={"response_mime_type": "application/json"}
+        response = generate_content_with_retry(
+            client=client,
+            contents=prompt
         )
         cleaned = clean_srt_response(response.text)
         import json

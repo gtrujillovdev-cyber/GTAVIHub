@@ -144,13 +144,15 @@ def is_strictly_gta6(title: str, description: str = "") -> bool:
         if re.search(pattern, title_lower):
             return False
 
-    # 5. Descalificador estricto de idiomas no soportados (Portugués, etc.)
+    # 5. Descalificador estricto de idiomas no soportados (Portugués, Holandés, Alemán, Ruso, etc.)
     # El canal opera exclusivamente para la comunidad hispanohablante (fuentes ES o EN)
     non_target_lang_markers = [
         r"\bvoc[eê]\b", r"\bn[aã]o\b", r"\bjogando\b", r"\bdublado\b",
         r"\bolha\b", r"\bgalera\b", r"\bjogos\b",
         r"\blan[cç]amento\b", r"\bcomente\b", r"\bcurte\b", r"\bdeixa\s*o\s*like\b",
-        r"\bportugu[eê]s\b", r"\bbrasileiro\b", r"\bbrasil\b", r"\bmuito\b"
+        r"\bportugu[eê]s\b", r"\bbrasileiro\b", r"\bbrasil\b", r"\bmuito\b",
+        r"\bnederland\b", r"\blaunchtrailer\b", r"\bdeutschland\b", r"\bdeutsch\b",
+        r"\bfrançais\b", r"\bfrance\b", r"\bitaliano\b", r"\bitalia\b", r"[\u0400-\u04FF]"
     ]
     for pattern in non_target_lang_markers:
         if re.search(pattern, combined):

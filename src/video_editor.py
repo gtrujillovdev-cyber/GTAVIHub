@@ -183,6 +183,12 @@ def parse_srt_file(srt_path: Path, offset_seconds: Optional[float] = None) -> Li
     with open(srt_path, "r", encoding="utf-8", errors="ignore") as f:
         content = f.read().replace("\r\n", "\n")
 
+    try:
+        from .downloader import deroll_and_clean_srt_content
+        content = deroll_and_clean_srt_content(content)
+    except Exception:
+        pass
+
     blocks = content.strip().split("\n\n")
     raw_cues = []
     last_text = ""
@@ -693,7 +699,10 @@ def render_final_video(
             retention_png = None
 
     # 3. Generación de estados de Karaoke palabra por palabra
-    cues = parse_srt_file(srt_subtitles) if srt_subtitles else []
+    # En audio doblado neural, la sincronía fonética es directa (offset=0.0s).
+    # En audio original en inglés con YouTube ASR, se mantiene SUBTITLE_OFFSET (-0.45s).
+    effective_sub_offset = 0.0 if (dub_audio and dub_audio.exists()) else None
+    cues = parse_srt_file(srt_subtitles, offset_seconds=effective_sub_offset) if srt_subtitles else []
     sub_cues = cues[:120]
     sub_pngs = []
     global_sub_idx = 0
@@ -827,13 +836,16 @@ def render_final_video(
     current_v = "v_vignetted"
 
     # C) Superponer Gancho Superior (0.0 a 2.5s)
+    # En Cinema 16:9, se posiciona justo sobre el límite superior del encuadre del clip (fg_y - h - 20)
     if hook_idx is not None:
-        filter_chains.append(f"[{current_v}][{hook_idx}:v]overlay=(W-w)/2:120:enable='between(t,0,2.5)'[v_hooked]")
+        hook_y_expr = f"{fg_y}-h-20" if is_cinema_layout else "120"
+        filter_chains.append(f"[{current_v}][{hook_idx}:v]overlay=(W-w)/2:{hook_y_expr}:enable='between(t,0,2.5)'[v_hooked]")
         current_v = "v_hooked"
 
     # C2) Superponer segundo gancho de retención (5.0 a 7.0s) — frena el swipe mid-scroll
     if retention_idx is not None:
-        filter_chains.append(f"[{current_v}][{retention_idx}:v]overlay=(W-w)/2:220:enable='between(t,5.0,7.0)'[v_retained]")
+        ret_y_expr = f"{fg_y}-h-20" if is_cinema_layout else "220"
+        filter_chains.append(f"[{current_v}][{retention_idx}:v]overlay=(W-w)/2:{ret_y_expr}:enable='between(t,5.0,7.0)'[v_retained]")
         current_v = "v_retained"
 
     # D) Superponer Subtítulos Karaoke palabra por palabra
