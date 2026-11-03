@@ -349,9 +349,10 @@ def fetch_channel_candidates(max_per_channel: int = 2) -> List[Dict[str, Any]]:
                     except ValueError:
                         dur_secs = 0.0
 
-                    # FILTRO ESTRICTO DE SHORTS REALES (CERO VÍDEOS LARGOS):
-                    # Solo se admiten clips concebidos como Shorts nativos (10s a 65s)
-                    if dur_secs > 65 or (dur_secs > 0 and dur_secs < 10):
+                    # Soporte Dual de Formatos (Shorts nativos y Extracción de Picos Virales en vídeos largos):
+                    # Admite tanto Shorts directos (10s-65s) como vídeos largos de análisis/gameplay (hasta 30 min)
+                    # donde el motor recortará la escena cumbre mediante el mapa de calor (Heatmap).
+                    if dur_secs > 1800 or (dur_secs > 0 and dur_secs < 10):
                         continue
 
                     score_data = calculate_virality_score(title, dur_secs, views, days_old=days_old, like_count=like_count)
