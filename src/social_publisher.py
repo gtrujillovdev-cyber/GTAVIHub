@@ -1,5 +1,6 @@
 import os
 import sys
+import re
 import json
 import time
 import random
@@ -177,19 +178,17 @@ class SocialPublisher:
         if not AntiBanValidator.check_daily_limit("tiktok"):
             return None
 
-        tags_str = " ".join([f"#{t.replace(' ', '')}" for t in tags[:4]])
-        bold_hook = to_unicode_bold("¡BOMBAZO GTA 6!")
+        # Formato 100% orgánico para TikTok: Ultra-compacto (evita tapar la pantalla y evita shadowban/0-views)
+        clean_title = re.sub(r'[\r\n]+', ' ', title).strip()
+        # Limitar título a 45 caracteres para que no desborde la interfaz móvil de TikTok
+        short_title = clean_title[:45].strip()
+        tags_str = " ".join([f"#{t.replace(' ', '').replace('#', '')}" for t in tags[:3]])
+
         if debate_question:
-            q_clean = debate_question.replace("¿", "").replace("?", "").strip()
-            caption = (
-                f"🚨 {bold_hook} {title[:40]} {tags_str}\n"
-                f"💬 {to_unicode_bold('DEBATE')}: ¿{q_clean[:40]}? 👇\n"
-                f"🎮 Reserva GTA 6 & Hardware en bio 👉 @gtavihubspain"
-            )
-        elif ENABLE_AFFILIATE_CTAS:
-            caption = f"🚨 {bold_hook} {title[:55]} {tags_str}\n{AFFILIATE_CTA_TIKTOK}\n👉 @gtavihubspain | Bio: linktr.ee/gtavihubspain"
+            q_clean = debate_question.replace("¿", "").replace("?", "").strip()[:35]
+            caption = f"{short_title} 🤯\n¿{q_clean}? 👇\n{tags_str}"
         else:
-            caption = f"🚨 {bold_hook} {title[:55]} {tags_str}\n🎮 {to_unicode_bold('RESERVA GTA 6')} en la bio 👉 @gtavihubspain | linktr.ee/gtavihubspain"
+            caption = f"{short_title} 🤯\n¿Qué opinas de esto? 👇\n{tags_str}"
         tiktok_profile = BROWSER_PROFILE_DIR / "tiktok_user_data"
 
         if self.dry_run:

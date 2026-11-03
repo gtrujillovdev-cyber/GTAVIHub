@@ -283,6 +283,10 @@ def main():
 
     # Modo 2: Modo autónomo (canales) & Modo Día del Estreno (Launch Mode)
     if args.auto or args.launch_mode:
+        # En modo autónomo, publicar multiplataforma por defecto (Co-Pilot sigue activo como puerta humana)
+        if not args.publish_all and not args.upload:
+            args.publish_all = True
+            args.upload = True
         launch_active = args.launch_mode or (datetime.now() >= datetime.fromisoformat("2026-11-19"))
         tag = "🚀 [MODO DÍA DEL ESTRENO]" if launch_active else "[*]"
         print(f"{tag} Iniciando escaneo autónomo multi-fuente (72 canales + 64 queries)...")

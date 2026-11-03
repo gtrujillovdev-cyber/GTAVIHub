@@ -12,5 +12,61 @@
     "views_24h": null,
     "likes_24h": null,
     "comments_24h": null
+  },
+  {
+    "video_id": "P38MIdiNOAA",
+    "title": "Why I Couldn't Explain Everything I Saw in GTA 6",
+    "youtube_url": "",
+    "base_score": 0,
+    "velocity_vpd": 0.0,
+    "days_old": 0,
+    "is_short": true,
+    "published_at": "2026-11-02T14:34:30.678341",
+    "metrics_fetched_at": null,
+    "views_24h": null,
+    "likes_24h": null,
+    "comments_24h": null
+  },
+  {
+    "video_id": "Ocr0VNk_rlI",
+    "title": "GTA 6 - NEW Gameplay Clips",
+    "youtube_url": "",
+    "base_score": 0,
+    "velocity_vpd": 0.0,
+    "days_old": 0,
+    "is_short": true,
+    "published_at": "2026-11-02T15:06:25.399625",
+    "metrics_fetched_at": null,
+    "views_24h": null,
+    "likes_24h": null,
+    "comments_24h": null
+  },
+  {
+    "video_id": "gvL9awaPiKU",
+    "title": "GTA VI vs GTA V",
+    "youtube_url": "",
+    "base_score": 0,
+    "velocity_vpd": 0.0,
+    "days_old": 0,
+    "is_short": true,
+    "published_at": "2026-11-02T15:07:35.580954",
+    "metrics_fetched_at": null,
+    "views_24h": null,
+    "likes_24h": null,
+    "comments_24h": null
+  },
+  {
+    "video_id": "9jy_ZpngzpA",
+    "title": "GTA 6 New Screenshots Look Better Than Ever!",
+    "youtube_url": "",
+    "base_score": 0,
+    "velocity_vpd": 0.0,
+    "days_old": 0,
+    "is_short": true,
+    "published_at": "2026-11-02T16:01:34.355280",
+    "metrics_fetched_at": null,
+    "views_24h": null,
+    "likes_24h": null,
+    "comments_24h": null
   }
 ]

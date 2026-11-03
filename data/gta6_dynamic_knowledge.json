@@ -1,0 +1,91 @@
+{
+  "version": 1,
+  "last_recycled_at": "2026-11-02T15:09:42.499126+00:00",
+  "current_phase": "pre_launch",
+  "phase_name": "Fase 1: Pre-Lanzamiento y Expectación Máxima",
+  "phase_description": "Filtraciones confirmadas, comparativas generacionales RAGE 9 vs GTA 5, mapa de Leonida y reservas Amazon.",
+  "days_to_launch": 16,
+  "active_primary_topics": [
+    "comparativas tecnicas",
+    "fisicas de agua y colision",
+    "filtraciones in-game",
+    "detalles ocultos vice city",
+    "reserva ps5 pro amazon",
+    "lucia y jason dinamica",
+    "gta 6 gameplay",
+    "gta 6 gameplay south park",
+    "gta 6 leak",
+    "gta 6 fecha de lanzamiento"
+  ],
+  "retired_topics": [
+    "rumores falsos de cancelacion",
+    "trailer 1 2023",
+    "gta online antiguo"
+  ],
+  "target_affiliate_focus": "Consolas PS5 Pro / Slim, Volantes Logitech, Preventa GTA 6",
+  "title_prefixes": [
+    "¡DETALLE IN-GAME!",
+    "FÍSICAS RAGE 9:",
+    "COMPARATIVA DEFINITIVA:"
+  ],
+  "discovered_entities": {
+    "characters": [
+      "Lucia",
+      "Jason Duval",
+      "Boobie Ike",
+      "Brian Heder",
+      "Stefanie",
+      "Raul Bautista"
+    ],
+    "locations": [
+      "Vice City",
+      "Leonida Keys",
+      "Grassrivers",
+      "Port Gellhorn",
+      "Ambrosia",
+      "Mount Kalaga"
+    ],
+    "weapons_and_tools": [
+      "Loot Bag",
+      "Slim Jim",
+      "Tracker Jammer",
+      "Immobilizer Bypass",
+      "Heavy Rifle"
+    ],
+    "cultural_memes": [
+      "Florida Joker",
+      "Mud Girl",
+      "Thrillbilly Mud Club",
+      "South Park Parody"
+    ],
+    "emerging_entities": [
+      "Precio",
+      "Acciones",
+      "Hemos",
+      "Everest",
+      "Jason"
+    ]
+  },
+  "emerging_keywords_pool": [
+    "gameplay",
+    "lanzamiento",
+    "entre",
+    "leak",
+    "fecha",
+    "jugar",
+    "acciones",
+    "suben",
+    "fuerte",
+    "adolescentes",
+    "precio",
+    "actualización",
+    "firmware",
+    "noviembre",
+    "preventa",
+    "reservar",
+    "jason",
+    "trailer",
+    "south",
+    "park"
+  ]
+}

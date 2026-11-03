@@ -47,8 +47,11 @@ CACHED_VIRAL_CANDIDATES: List[Dict[str, Any]] = []
 BACKGROUND_LOCK = threading.Lock()
 ACTIVE_TASK: Optional[str] = None
 
-# Regex para detección de URLs compatibles
-URL_PATTERN = re.compile(r"https?://(?:www\.|m\.)?(?:youtube\.com|youtu\.be|tiktok\.com|vm\.tiktok\.com)/[^\s]+")
+# Regex para detección de URLs compatibles (YouTube, TikTok, Twitter/X)
+URL_PATTERN = re.compile(
+    r"https?://(?:www\.|m\.|mobile\.)?(?:youtube\.com|youtu\.be|tiktok\.com|vm\.tiktok\.com|twitter\.com|x\.com)/[^\s]+",
+    re.IGNORECASE
+)
 
 # ═══════════════════════════════════════════════════════════════════
 # 1. HELPERS DE COMUNICACIÓN CON TELEGRAM BOT API
@@ -205,7 +208,8 @@ def send_telegram_photo(
 def send_telegram_video(
     video_path: Path,
     caption: str,
-    reply_markup: Optional[Dict[str, Any]] = None
+    reply_markup: Optional[Dict[str, Any]] = None,
+    thumbnail_path: Optional[Path] = None
 ) -> bool:
     """Envía un archivo de vídeo MP4 nativo al chat para descarga directa y publicación en TikTok/Reels."""
     token = os.getenv("TELEGRAM_BOT_TOKEN") or TELEGRAM_BOT_TOKEN
@@ -213,20 +217,69 @@ def send_telegram_video(
     if not token or not chat_id or not video_path.exists():
         return False
 
+    # Sondear dimensiones y duración para forzar al reproductor de Telegram a renderizar en 9:16 vertical nativo (Short)
+    width, height, duration = 1080, 1920, 0
+    try:
+        cmd = [
+            "ffprobe", "-v", "error",
+            "-select_streams", "v:0",
+            "-show_entries", "stream=width,height,duration",
+            "-show_entries", "format=duration",
+            "-of", "json",
+            str(video_path)
+        ]
+        res = subprocess.run(cmd, capture_output=True, text=True, timeout=5)
+        if res.returncode == 0:
+            p_info = json.loads(res.stdout)
+            stream = p_info.get("streams", [{}])[0]
+            fmt = p_info.get("format", {})
+            width = int(stream.get("width") or 1080)
+            height = int(stream.get("height") or 1920)
+            dur_val = float(stream.get("duration") or fmt.get("duration") or 0.0)
+            duration = int(dur_val)
+    except Exception as e:
+        print(f"[Telegram] Warning sondeo de vídeo: {e}")
+
+    # Si no se pasó miniatura explícita, buscar miniatura homónima
+    if thumbnail_path is None or not thumbnail_path.exists():
+        candidate_thumb = video_path.with_name(video_path.stem + "_thumb.jpg")
+        if candidate_thumb.exists():
+            thumbnail_path = candidate_thumb
+
     url = get_api_url("sendVideo")
     try:
         with open(video_path, "rb") as video:
-            files = {"video": video}
+            files: Dict[str, Any] = {"video": video}
             data: Dict[str, Any] = {
                 "chat_id": chat_id,
                 "caption": caption[:1024],
                 "parse_mode": "Markdown",
-                "supports_streaming": True
+                "supports_streaming": True,
+                "width": width,
+                "height": height
             }
+            if duration > 0:
+                data["duration"] = duration
             if reply_markup:
                 data["reply_markup"] = json.dumps(reply_markup)
-            res = requests.post(url, data=data, files=files, timeout=120)
-            return res.status_code == 200
+
+            thumb_file = None
+            if thumbnail_path and thumbnail_path.exists():
+                thumb_file = open(thumbnail_path, "rb")
+                files["thumbnail"] = thumb_file
+
+            try:
+                res = requests.post(url, data=data, files=files, timeout=120)
+                if res.status_code != 200 and "parse_mode" in data:
+                    data.pop("parse_mode", None)
+                    video.seek(0)
+                    if thumb_file:
+                        thumb_file.seek(0)
+                    res = requests.post(url, data=data, files=files, timeout=120)
+                return res.status_code == 200
+            finally:
+                if thumb_file:
+                    thumb_file.close()
     except Exception as e:
         print(f"[Telegram] Error enviando vídeo: {e}")
         return False
@@ -869,6 +922,40 @@ def handle_callback_query(cq: Dict[str, Any]):
         t.start()
         return
 
+    if data == "traffic:refresh":
+        answer_callback_query(cq_id, "Actualizando Tráfico...")
+        try:
+            from .traffic_sentinel import scan_realtime_traffic, format_radar_telegram_message
+            radar_report = scan_realtime_traffic(save=True)
+            msg_txt = format_radar_telegram_message(radar_report)
+            keyboard = {
+                "inline_keyboard": [
+                    [{"text": "🔥 Escanear Vídeos con estas Tendencias", "callback_data": "viral:refresh"}],
+                    [{"text": "🔄 Refrescar Tráfico", "callback_data": "traffic:refresh"}]
+                ]
+            }
+            send_telegram_alert(msg_txt, reply_markup=keyboard)
+        except Exception as e:
+            send_telegram_alert(f"❌ Error actualizando tráfico: {e}")
+        return
+
+    if data == "knowledge:recycle":
+        answer_callback_query(cq_id, "Reciclando conocimiento...")
+        try:
+            from .knowledge_recycler import recycle_knowledge, format_recycler_telegram_message
+            state = recycle_knowledge(force=True)
+            msg_txt = format_recycler_telegram_message(state)
+            keyboard = {
+                "inline_keyboard": [
+                    [{"text": "🛰️ Ver Radar de Tráfico", "callback_data": "traffic:refresh"}],
+                    [{"text": "🔄 Forzar Reciclaje Ahora", "callback_data": "knowledge:recycle"}]
+                ]
+            }
+            send_telegram_alert(msg_txt, reply_markup=keyboard)
+        except Exception as e:
+            send_telegram_alert(f"❌ Error reciclando conocimiento: {e}")
+        return
+
     # F) Acciones de Sistema y Reinicio de Emergencia
     if data == "system:ask_restart":
         answer_callback_query(cq_id)
@@ -1188,6 +1275,38 @@ def start_telegram_bot_daemon():
                     else:
                         t = threading.Thread(target=run_viral_radar_in_background, args=(allowed_chat_id,), daemon=True)
                         t.start()
+
+                elif cmd in ["/traffic", "/trafico", "/sentinel"]:
+                    try:
+                        from .traffic_sentinel import scan_realtime_traffic, format_radar_telegram_message
+                        send_telegram_alert("🛰️ *Consultando sensores de tráfico e intención de búsqueda en vivo...*")
+                        radar_report = scan_realtime_traffic(save=True)
+                        msg_txt = format_radar_telegram_message(radar_report)
+                        keyboard = {
+                            "inline_keyboard": [
+                                [{"text": "🔥 Escanear Vídeos con estas Tendencias", "callback_data": "viral:refresh"}],
+                                [{"text": "🔄 Refrescar Tráfico", "callback_data": "traffic:refresh"}]
+                            ]
+                        }
+                        send_telegram_alert(msg_txt, reply_markup=keyboard)
+                    except Exception as e:
+                        send_telegram_alert(f"❌ Error en radar de tráfico: {e}")
+
+                elif cmd in ["/recycle", "/fase", "/conocimiento"]:
+                    try:
+                        from .knowledge_recycler import recycle_knowledge, format_recycler_telegram_message
+                        send_telegram_alert("🔄 *Reciclando conocimiento de GTA 6 y actualizando fase editorial...*")
+                        state = recycle_knowledge(force=True)
+                        msg_txt = format_recycler_telegram_message(state)
+                        keyboard = {
+                            "inline_keyboard": [
+                                [{"text": "🛰️ Ver Radar de Tráfico", "callback_data": "traffic:refresh"}],
+                                [{"text": "🔄 Forzar Reciclaje Ahora", "callback_data": "knowledge:recycle"}]
+                            ]
+                        }
+                        send_telegram_alert(msg_txt, reply_markup=keyboard)
+                    except Exception as e:
+                        send_telegram_alert(f"❌ Error reciclando conocimiento: {e}")
 
                 elif cmd in ["/deals", "/ofertas", "🛒"] or text == "🛒 Ofertas Amazon":
                     try:

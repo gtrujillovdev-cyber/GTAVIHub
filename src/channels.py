@@ -129,11 +129,84 @@ def is_strictly_gta6(title: str, description: str = "") -> bool:
         r"\bsimulated\b",
         r"\btrailer\s*2\b",
         r"\btráiler\s*2\b",
+        r"\btrailer\s*1\b",
+        r"\btráiler\s*1\b",
+        r"\bprimer\s*trailer\b",
+        r"\bprimer\s*tráiler\b",
+        r"\bfirst\s*trailer\b",
+        r"\bofficial\s*trailer\s*1\b",
+        r"\btráiler\s*oficial\s*1\b",
+        r"\bgameplay\s*filtrado\s*\(menu",
         r"\bloop\b",
         r"\bbucle\b"
     ]
     for pattern in fake_ai_regexes:
         if re.search(pattern, title_lower):
+            return False
+
+    # 5. Descalificador estricto de idiomas no soportados (Portugués, etc.)
+    # El canal opera exclusivamente para la comunidad hispanohablante (fuentes ES o EN)
+    non_target_lang_markers = [
+        r"\bvoc[eê]\b", r"\bn[aã]o\b", r"\bjogando\b", r"\bdublado\b",
+        r"\bolha\b", r"\bgalera\b", r"\bjogos\b",
+        r"\blan[cç]amento\b", r"\bcomente\b", r"\bcurte\b", r"\bdeixa\s*o\s*like\b",
+        r"\bportugu[eê]s\b", r"\bbrasileiro\b", r"\bbrasil\b", r"\bmuito\b"
+    ]
+    for pattern in non_target_lang_markers:
+        if re.search(pattern, combined):
+            return False
+
+    # 6. Descalificador Absoluto de Parodias, Memes, Mors Mutual y Contenido de GTA 5
+    parody_blacklist_regexes = [
+        r"\bmors\s*mutual\b",
+        r"\bsouth\s*park\b",
+        r"\bsouthpark\b",
+        r"\bparodia\b",
+        r"\bparody\b",
+        r"\bpar[oó]dia\b",
+        r"\bsatira\b",
+        r"\bs[aá]tira\b",
+        r"\bsketch\b",
+        r"\bmeme\b",
+        r"\bmemes\b",
+        r"\bbroma\b",
+        r"\bchiste\b",
+        r"\bfivem\b",
+        r"\bgtao\b",
+        r"\bgta\s*online\b"
+    ]
+    for pattern in parody_blacklist_regexes:
+        if re.search(pattern, combined):
+            return False
+
+    # 7. Descalificador de Publicidad Corporativa, Mandos y Merchandising (CERO ANUNCIOS):
+    merch_ad_regexes = [
+        r"\bcontroller\b",
+        r"\bcontrollers\b",
+        r"\bdualsense\b",
+        r"\bmando\b",
+        r"\bmandos\b",
+        r"\bcustom\s*controller\b",
+        r"\bunboxing\b",
+        r"\bmerch\b",
+        r"\bmerchandise\b",
+        r"\bmerchandising\b",
+        r"\bcamiseta\b",
+        r"\bt-shirt\b",
+        r"\bhoodie\b",
+        r"\bskin\b",
+        r"\bskins\b",
+        r"\bcase\b",
+        r"\bfaceplate\b",
+        r"\bconsole\s*cover\b",
+        r"\bposter\b",
+        r"\bfigura\b",
+        r"\bfigure\b",
+        r"\bstatue\b",
+        r"\bcollectors\s*edition\b"
+    ]
+    for pattern in merch_ad_regexes:
+        if re.search(pattern, combined):
             return False
 
     return True
@@ -160,7 +233,17 @@ def mark_video_processed(entry: Dict[str, Any]):
                 processed = json.load(f)
         except Exception:
             processed = []
-    processed.append(entry)
+    # Upsert: si el ID ya existe, actualizar en lugar de duplicar
+    vid_id = entry.get("id")
+    if vid_id:
+        for i, existing in enumerate(processed):
+            if existing.get("id") == vid_id:
+                processed[i] = {**existing, **entry}
+                break
+        else:
+            processed.append(entry)
+    else:
+        processed.append(entry)
     with open(PROCESSED_FILE, "w", encoding="utf-8") as f:
         json.dump(processed, f, indent=2, ensure_ascii=False)
 
@@ -172,6 +255,19 @@ def fetch_channel_candidates(max_per_channel: int = 2) -> List[Dict[str, Any]]:
 
     with open(CHANNELS_FILE, "r", encoding="utf-8") as f:
         config = json.load(f)
+
+    # Integración del Directorio Maestro (+1,000 Canales):
+    # En cada ejecución se evalúan los canales base de channels.json más un lote rotativo de 35 canales
+    # de especialistas, analistas técnicos, prensa y streamers para garantizar variedad y cero bucles.
+    base_channels = [c for c in config.get("channels", []) if c.get("enabled", True)]
+    try:
+        from .channel_directory import get_channel_directory
+        directory = get_channel_directory()
+        rotating_channels = directory.get_rotating_batch(batch_size=35)
+    except Exception:
+        rotating_channels = []
+
+    combined_channels = base_channels + rotating_channels
 
     processed_ids = get_processed_ids()
     candidates_by_id: Dict[str, Dict[str, Any]] = {}
@@ -229,30 +325,33 @@ def fetch_channel_candidates(max_per_channel: int = 2) -> List[Dict[str, Any]]:
                 up_date = parts[6].strip() if len(parts) > 6 else ""
 
                 if vid_id and vid_id not in processed_ids and vid_id != "NA":
-                    # FILTRO DE FRESCURA TEMPORAL: Descartar vídeos con más de 30 días de antigüedad
                     days_old = None
                     if up_date and up_date.isdigit() and len(up_date) == 8:
                         try:
                             age_days = (datetime.now() - datetime.strptime(up_date, "%Y%m%d")).days
-                            if age_days > 30:
-                                continue
                             days_old = max(1, age_days)
                         except Exception:
                             pass
+
+                    # FILTRO DE TRACCIÓN Y VIRALIDAD REAL:
+                    # Exigir un mínimo de 15,000 reproducciones para garantizar impacto viral comprobado
+                    # (o breakouts frescos de Día 1 con >= 3,000 reproducciones)
+                    is_fresh_breakout = (days_old == 1 and views >= 3_000)
+                    if views < 15_000 and not is_fresh_breakout:
+                        continue
+
                     # FILTRO INNEGOCIABLE DE CONTENIDO EXCLUSIVO GTA 6:
-                    # Ni siquiera los canales oficiales pueden colar contenido ajeno (como RDR o GTA Online).
                     if not is_strictly_gta6(title):
                         continue
-                    is_official = ("rockstargames" in url.lower() or ch.get("type") == "official")
 
                     try:
                         dur_secs = float(duration) if duration and duration != "NA" else 0.0
                     except ValueError:
                         dur_secs = 0.0
 
-                    # FILTRO ESTRICTO DE SHORTS REALES (CERO VÍDEOS LARGOS RECORTADOS):
-                    # Salvo tráilers oficiales, solo se admiten clips concebidos como Shorts nativos (12s a 65s)
-                    if not is_official and (dur_secs > 65 or dur_secs < 12):
+                    # FILTRO ESTRICTO DE SHORTS REALES (CERO VÍDEOS LARGOS):
+                    # Solo se admiten clips concebidos como Shorts nativos (10s a 65s)
+                    if dur_secs > 65 or (dur_secs > 0 and dur_secs < 10):
                         continue
 
                     score_data = calculate_virality_score(title, dur_secs, views, days_old=days_old, like_count=like_count)
@@ -313,16 +412,18 @@ def fetch_channel_candidates(max_per_channel: int = 2) -> List[Dict[str, Any]]:
                     up_date = parts[6].strip() if len(parts) > 6 else ""
 
                     if vid_id and vid_id not in processed_ids and vid_id != "NA":
-                        # FILTRO DE FRESCURA TEMPORAL: Descartar vídeos con más de 30 días de antigüedad
                         days_old = None
                         if up_date and up_date.isdigit() and len(up_date) == 8:
                             try:
                                 age_days = (datetime.now() - datetime.strptime(up_date, "%Y%m%d")).days
-                                if age_days > 30:
-                                    continue
                                 days_old = max(1, age_days)
                             except Exception:
                                 pass
+
+                        # Filtro de Tracción Real (Cero vídeos muertos con pocas visitas):
+                        is_fresh_breakout = (days_old == 1 and views >= 3_000)
+                        if views < 15_000 and not is_fresh_breakout:
+                            continue
 
                         if not is_strictly_gta6(title):
                             continue
@@ -368,14 +469,16 @@ def fetch_channel_candidates(max_per_channel: int = 2) -> List[Dict[str, Any]]:
             candidates_by_id[vid_id] = cand
         else:
             existing = candidates_by_id[vid_id]
-            existing["source_count"] = existing.get("source_count", 1) + 1
-            existing["score"] = min(100, existing["score"] + 5)  # +5 pts por cada fuente extra
+            # Solo otorgar bono multi-fuente si alguna de las fuentes es un canal verificado, no búsquedas redundantes
+            if cand.get("source_type") != "viral_search" or existing.get("source_type") != "viral_search":
+                existing["source_count"] = existing.get("source_count", 1) + 1
+                existing["score"] = min(100, existing["score"] + 5)
             if cand["score"] > existing["score"]:
                 cand["source_count"] = existing["source_count"]
                 candidates_by_id[vid_id] = cand
 
-    # 1. Target Channels en paralelo (máx 3 workers para no saturar GaTDSEQ)
-    target_channels = [ch for ch in config.get("channels", []) if ch.get("enabled", True)]
+    # 1. Target Channels en paralelo (canales fijos + lote rotativo del Directorio Maestro +1,000)
+    target_channels = combined_channels
     with concurrent.futures.ThreadPoolExecutor(max_workers=3) as executor:
         futures = {executor.submit(_scan_channel, ch): ch for ch in target_channels}
         for future in concurrent.futures.as_completed(futures):

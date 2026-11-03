@@ -346,6 +346,19 @@ def process_single_video(
             message=f"{metadata.get('title', original_title)[:50]}... Pulsa en Telegram para publicar.",
             subtitle="GTA VI Hub Spain"
         )
+        # Registrar en processed.json para evitar que el mismo vídeo sea seleccionado
+        # de nuevo mientras espera aprobación (o si es rechazado).
+        mark_video_processed({
+            "id": video_id,
+            "title": original_title,
+            "creator": creator_name,
+            "url": url,
+            "source_lang": lang_to_use,
+            "status": "staged_copilot",
+            "thumbnail": str(thumb_path) if thumb_path and thumb_path.exists() else None,
+            "youtube_title": metadata.get("title", ""),
+            "date": datetime.now().isoformat()
+        })
         return full_info
 
     # 8. Publicación Directa (Multiplataforma o YouTube)
@@ -387,6 +400,7 @@ def process_single_video(
             video_path=output_path,
             title=metadata.get("title", f"GTA 6 - {original_title}").upper(),
             description=metadata.get("description", ""),
+            tags=metadata.get("tags"),
             privacy_status=effective_privacy,
             is_short=is_short,
             thumbnail_path=thumb_path if thumb_path.exists() else None,
@@ -454,7 +468,7 @@ def process_single_video(
 
     # Notificación remota push en Telegram (si está configurado)
     try:
-        from .telegram_bot import send_telegram_notification, send_telegram_alert, send_telegram_photo
+        from .telegram_bot import send_telegram_notification, send_telegram_alert, send_telegram_photo, send_telegram_video
         has_real_uploads = bool(uploaded_yt_id or (publish_all and any(multiplatform_results.values())))
 
         if has_real_uploads:
@@ -472,10 +486,10 @@ def process_single_video(
             upload_reason = (
                 "⚠️ *Fallo en subida automática:* El token de YouTube expiró o las cookies no están activas."
                 if (auto_upload or publish_all)
-                else "💡 *Modo local:* Vídeo generado listo para revisión o publicación manual."
+                else "💡 *Modo Co-Pilot Local:* Vídeo listo para revisión táctil en Telegram."
             )
             local_report = (
-                "🎬 *VÍDEO RENDERIZADO EN DISCO (LOCAL)*\n"
+                "🎬 *VÍDEO RENDERIZADO (VISTA PREVIA LOCAL)*\n"
                 + ("═" * 36) + "\n\n"
                 f"• *Título:* `{metadata.get('title', original_title)}`\n"
                 f"• *Autor:* `{creator_name or 'Rockstar Games'}`\n"
@@ -484,7 +498,12 @@ def process_single_video(
                 "Para publicarlo ejecuta:\n"
                 f"`./run.sh --url \"{url}\" --upload`"
             )
-            if thumb_path and thumb_path.exists():
+            # Prioridad absoluta: enviar el VÍDEO reproducible directamente a Telegram
+            if output_path and Path(output_path).exists():
+                sent_vid = send_telegram_video(Path(output_path), caption=local_report, thumbnail_path=thumb_path if thumb_path.exists() else None)
+                if not sent_vid and thumb_path and thumb_path.exists():
+                    send_telegram_photo(thumb_path, local_report)
+            elif thumb_path and thumb_path.exists():
                 send_telegram_photo(thumb_path, local_report)
             else:
                 send_telegram_alert(local_report)

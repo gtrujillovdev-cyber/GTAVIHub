@@ -369,11 +369,27 @@ Grand Theft Auto VI, GTA VI, Vice City y los logotipos asociados son marcas regi
 #GTA6 #GrandTheftAutoVI #RockstarGames #GTAVI #ViceCity #Gaming #Shorts #Videojuegos
 """
 
-    tags = [
-        "GTA 6", "GTA VI", "Grand Theft Auto VI", "GTA 6 Trailer", "GTA 6 Gameplay",
-        "Rockstar Games", "Vice City", "Leonida", "GTA 6 Leaks", "GTA 6 Filtraciones",
-        "Gaming", "Shorts", "GTA 6 Noticias", "Lucia GTA 6", "Jason GTA 6", "Viral Gaming"
-    ]
+    # Tags dinámicos: base común + específicos por archetype para mejorar indexación SEO
+    base_tags = ["GTA 6", "GTA VI", "Grand Theft Auto VI", "Rockstar Games", "Vice City", "Gaming"]
+    if is_short:
+        base_tags.append("Shorts")
+    archetype_tags = {
+        "humor_parodia": ["GTA 6 Memes", "GTA 6 Divertido", "Parodia GTA 6", "South Park GTA"],
+        "analisis_tecnico": ["RAGE 9", "Físicas GTA 6", "Gráficos GTA 6", "Digital Foundry", "PS5 Pro"],
+        "filtracion_misterio": ["GTA 6 Secretos", "Easter Eggs GTA 6", "Mapa GTA 6", "Leonida"],
+        "noticia_oficial": ["GTA 6 Noticias", "Tráiler GTA 6", "Rockstar Anuncio", "GTA 6 Fecha"],
+        "reaccion_streamer": ["Reacciones GTA 6", "Streamers GTA 6", "Gameplay en Vivo"],
+        "gameplay_puro": ["GTA 6 Gameplay", "Misiones GTA 6", "Tiroteos GTA 6", "Mundo Abierto"],
+    }
+    entity_tags = []
+    title_lower = (original_title or "").lower()
+    if any(k in title_lower for k in ["lucia", "lucía"]):
+        entity_tags.append("Lucia GTA 6")
+    if "jason" in title_lower:
+        entity_tags.append("Jason GTA 6")
+    if any(k in title_lower for k in ["vice city", "leonida"]):
+        entity_tags.append("Leonida")
+    tags = base_tags + archetype_tags.get(archetype, ["GTA 6 Viral"]) + entity_tags
 
     return {
         "title": viral_title[:100],

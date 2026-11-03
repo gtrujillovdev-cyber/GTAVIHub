@@ -40,22 +40,22 @@ DEFAULT_VIRAL_QUERIES = [
     "ytsearch15:GTA 6 Eurogamer Espana detalles #shorts",
     "ytsearch15:GTA 6 Vandal curiosidades #shorts",
     "ytsearch15:GTA 6 3DJuegos detalles #shorts",
-    # Global Virality & Parodias de GTA 6
-    "ytsearch15:GTA 6 viral breakdown secrets #shorts",
-    "ytsearch15:GTA 6 crazy realistic details #shorts",
-    "ytsearch15:GTA 6 mind blowing physics rage engine #shorts",
-    "ytsearch15:GTA 6 parodia viral risas #shorts",
-    "ytsearch15:GTA 6 meme viral tiktok #shorts",
-    "ytsearch15:GTA 6 funny moments fails #shorts",
+    # Global Virality & High-Impact Breakdowns (Cero Parodias)
+    "ytsearch20:GTA 6 breakdown analysis secrets #shorts",
+    "ytsearch20:GTA 6 crazy realistic details #shorts",
+    "ytsearch20:GTA 6 mind blowing physics rage engine #shorts",
+    "ytsearch20:GTA 6 realistic graphics reaction #shorts",
+    "ytsearch20:GTA 6 map size comparison vice city #shorts",
+    "ytsearch20:GTA 6 leaked gameplay mechanics details #shorts",
 ]
 
 # Consultas específicas de Gameplay Puro activas a partir del 19 de Noviembre
 GAMEPLAY_VIRAL_QUERIES = [
-    "ytsearch15:GTA 6 gameplay real mission #shorts",
-    "ytsearch15:GTA 6 gameplay espanol momentos #shorts",
-    "ytsearch15:GTA 6 gameplay conduccion disparos #shorts",
-    "ytsearch15:GTA 6 gameplay mundo abierto detalles #shorts",
-    "ytsearch15:GTA 6 gameplay tiroteo policia #shorts",
+    "ytsearch20:GTA 6 gameplay real mission #shorts",
+    "ytsearch20:GTA 6 gameplay espanol momentos #shorts",
+    "ytsearch20:GTA 6 gameplay conduccion disparos #shorts",
+    "ytsearch20:GTA 6 gameplay mundo abierto detalles #shorts",
+    "ytsearch20:GTA 6 gameplay tiroteo policia #shorts",
 ]
 
 VIRAL_KEYWORDS = [
@@ -78,36 +78,43 @@ VIRAL_KEYWORDS = [
     "easter egg", "detalles", "details", "comparativa", "vida real", "oficial", "official",
     "vercetti", "mansion", "mansión", "barco fantasma", "ovni",
     "fecha", "rockstar", "confirmado", "noticia", "exclusiva", "bombazo",
-    # Parodias, Cultura Pop & Fenómenos Virales
-    "south park", "southpark", "parodia", "parody", "satira", "sátira", "sketch",
-    "meme", "memes", "tiktok", "humor", "risas", "fails", "broma", "tendencia", "trending", "viral"
+    "tendencia", "trending", "viral"
 ]
 
 # Palabras clave de creadores y momentos reales (reciben bonus de puntuación)
 CREATOR_KEYWORDS = [
     "stream", "directo", "reaccion", "reacción", "clip", "clips", "streamer",
-    "jugando", "gameplay", "momento", "fails", "risas", "truco", "mision",
+    "jugando", "gameplay", "momento", "truco", "mision",
     "misión", "ibai", "xokas", "elxokas", "auron", "rubius", "thegrefg",
-    "illojuan", "danirep", "tgg", "mors mutual", "darkviperau", "speedrun",
+    "illojuan", "danirep", "tgg", "darkviperau", "speedrun",
     "secreto", "easter egg", "misterio", "locura"
 ]
 
-# Palabras excluidas para garantizar 100% Fair Use, evitar infracciones de Content ID musical
-# y filtrar conceptos abstractos/CGI/Unreal Engine hechos por fans que no son clips reales de creadores
+# Palabras excluidas para garantizar 100% Fair Use, evitar infracciones de Content ID musical,
+# purgar parodias / memes / GTA 5 y filtrar conceptos abstractos/CGI/Unreal Engine que no son GTA 6 real
 EXCLUDED_KEYWORDS = [
     "soundtrack", "ost", "full album", "vevo", "remix song", "cover song",
     "trap beat", "rap beat", "no commentary walkthrough", "full movie",
     "cancion oficial", "canción oficial", "tema musical",
-    # Conceptos abstractos / CGI / Fan-made / Unreal Engine / IA / Mods / Fakes / Bucles
+    # Parodias, Memes, South Park y Creadores Vetados (CERO CONTENIDO DE BROMA O GTA 5)
+    "south park", "southpark", "parodia", "parody", "satira", "sátira", "sketch",
+    "meme", "memes", "mors mutual", "morsmutual", "broma", "chiste", "fivem",
+    "gta online", "gtao", "gta 5", "gta v", "gta5", "gtav",
+    # Anuncios Corporativos, Mandos y Merchandising (CERO PUBLICIDAD COMERCIAL)
+    "dualsense", "controller", "controllers", "mando", "mandos", "custom controller",
+    "unboxing", "merch", "merchandise", "merchandising", "t-shirt", "camiseta", "hoodie",
+    "skin", "skins", "faceplate", "console cover", "limited edition controller", "statue",
+    # Conceptos abstractos / CGI / Fan-made / Unreal Engine / IA / Mods / Fakes / Bucles / Teasers 2023
     "concept", "concept trailer", "gameplay concept", "fan made", "fan trailer",
     "fan-made", "unreal engine", "ue5", "unreal engine 5", "ai trailer",
     "artificial intelligence", "blender render", "remake concept", "graphics showcase",
     "mod", "mods", "modded", "cinematic edit", "tiktok edit", "fake", "simulated", "ai generated",
-    "trailer 2", "tráiler 2", "trailer2", "loop", "bucle"
+    "trailer 1", "primer trailer", "first trailer", "trailer 2", "tráiler 2", "trailer2", "loop", "bucle",
+    "extended look", "teaser trailer", "official trailer", "trailer oficial", "teaser"
 ]
 
 # Términos cortos que necesitan word-boundary para evitar falsos positivos por substring
-_EXCLUDED_WHOLE_WORDS = {"mod", "mods", "fake", "loop", "cgi"}
+_EXCLUDED_WHOLE_WORDS = {"mod", "mods", "fake", "loop", "cgi", "gta5", "gtav"}
 
 def calculate_virality_score(
     title: str, duration: float, views: int, days_old: Optional[int] = None,
@@ -269,18 +276,16 @@ def calculate_virality_score(
         "graphics", "graficos", "gráficos", "fisicas", "físicas", "physics", "secreto", "secret", "secretos",
         "easter egg", "lucia", "jason", "stefanie", "mud girl", "florida joker",
         "vice city", "leonida", "port gellhorn", "comparativa", "mapa", "detalles", "details",
-        "rage 9", "atraco", "caimán", "cocodrilo", "vida real", "interiores", "ia npc",
-        "south park", "southpark", "parodia", "parody", "satira", "sátira"
+        "rage 9", "atraco", "caimán", "cocodrilo", "vida real", "interiores", "ia npc"
     ]
     if any(k in title_lower for k in high_value_gta6):
         bonus += 5
 
-    pop_culture_crossovers = [
-        "south park", "southpark", "parodia", "parody", "satira", "sátira", "sketch",
-        "meme", "memes", "fails", "risas"
-    ]
-    if any(k in title_lower for k in pop_culture_crossovers):
-        bonus = min(10, bonus + 3)
+    # Bonus extra para clips con alta tracción demostrada (>50K vistas)
+    if views >= 100_000:
+        bonus = min(10, bonus + 4)
+    elif views >= 50_000:
+        bonus = min(10, bonus + 2)
 
     creator_matches = [ck for ck in CREATOR_KEYWORDS if ck in title_lower]
     if creator_matches:
@@ -330,8 +335,18 @@ def scan_viral_radar(
     from .channels import is_strictly_gta6
 
     if queries is None:
+        try:
+            from .traffic_sentinel import get_latest_traffic_radar
+            radar = get_latest_traffic_radar()
+            dyn = radar.get("dynamic_search_queries", [])
+            if dyn:
+                queries = dyn[:8] + list(DEFAULT_VIRAL_QUERIES[:6])
+            else:
+                queries = list(DEFAULT_VIRAL_QUERIES)
+        except Exception:
+            queries = list(DEFAULT_VIRAL_QUERIES)
+
         from .config import is_gameplay_enabled
-        queries = list(DEFAULT_VIRAL_QUERIES)
         if is_gameplay_enabled():
             queries.extend(GAMEPLAY_VIRAL_QUERIES)
 
@@ -401,6 +416,12 @@ def scan_viral_radar(
                     clean_handle = re.sub(r'[^\w.-]', '', uploader.replace(' ', ''))
                     channel_url = f"https://www.youtube.com/@{clean_handle}"
 
+                # Filtro de Tracción Real (Cero vídeos muertos con pocas visitas):
+                # Requiere un mínimo de 15,000 visitas (o breakout fresco en Día 1 con >= 3,000)
+                is_fresh_breakout = (days_old == 1 and views >= 3_000)
+                if views < 15_000 and not is_fresh_breakout:
+                    continue
+
                 score_data = calculate_virality_score(title, duration, views, days_old=days_old)
                 if score_data["score"] < min_score:
                     continue
@@ -455,7 +476,12 @@ def scan_viral_radar(
                         candidate["source_count"] = existing["source_count"]
                         candidates_by_id[vid_id] = candidate
 
-    ranked = sorted(candidates_by_id.values(), key=lambda x: x["score"], reverse=True)
+    # Priorizar clips masivos con alto volumen de reproducciones y alta puntuación
+    ranked = sorted(
+        candidates_by_id.values(),
+        key=lambda x: (x.get("views", 0) * 0.5 + x.get("score", 0) * 1000),
+        reverse=True
+    )
     top_candidates = ranked[:max_candidates]
 
     # Guardar / actualizar registro de canales virales descubiertos
@@ -558,8 +584,20 @@ def get_viral_radar_summary(top_candidates: Optional[List[Dict[str, Any]]] = Non
 
     summary = (
         "🔥 *RADAR VIRAL GTA 6 — MÁXIMO ENGAGEMENT*\n"
-        + ("═" * 36) + "\n\n"
+        + ("═" * 36) + "\n"
     )
+
+    try:
+        from .traffic_sentinel import get_latest_traffic_radar
+        radar = get_latest_traffic_radar()
+        top_intents = radar.get("top_search_intents", [])[:3]
+        if top_intents:
+            intents_str = " • ".join(f"`{t}`" for t in top_intents)
+            summary += f"🛰️ *Intención en Vivo:* {intents_str}\n" + ("═" * 36) + "\n\n"
+        else:
+            summary += "\n"
+    except Exception:
+        summary += "\n"
 
     medals = ["🥇", "🥈", "🥉", "4️⃣", "5️⃣"]
     for idx, item in enumerate(top_candidates[:5]):

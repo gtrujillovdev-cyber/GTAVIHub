@@ -108,3 +108,6 @@ Para evitar sobrecalentamiento, estrangulamiento térmico o degradación de los 
 6. **Radar Viral y Algoritmo de Engagement (`src/viral_discovery.py`)**:
    - `/radar` o botón `[🔥 Radar Viral]`: Escanea YouTube en tiempo real buscando clips emergentes con puntuación de engagement (0 a 100).
    - Ingesta de 1 toque mediante botones `[⚡ Ingestar #1]` y auto-registro de creadores emergentes con `[➕ Añadir Nuevos Creadores]`.
+7. **Centinela de Tráfico e Intención de Búsqueda en Vivo (`src/traffic_sentinel.py`)**:
+   - `/traffic` o `/sentinel`: Rastreo en tiempo real de intenciones de búsqueda activas mediante YouTube Suggest API y noticias de última hora en Google News (últimas 24h).
+   - Genera consultas dinámicas que alimentan a `viral_discovery.py` y sincroniza las palabras clave más tecleadas por los usuarios con los metadatos y ganchos de `ai_selector.py`.

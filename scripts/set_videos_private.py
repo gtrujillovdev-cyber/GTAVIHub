@@ -23,11 +23,22 @@ SCOPES = [
 ]
 
 TARGET_VIDEOS = [
-    ("0gKWC0a-9NA", "GTA Online - Biohazard Outbreak"),
-    ("VZ_o_cAnmuc", "¿Casas de GTA 6 ya en GTA Online?!"),
-    ("zKU4k9E7QNs", "Encontraron casas de GTA 6 en GTA Online"),
-    ("_0RV5NCQveo", "La bestia está en GTA 6 en GTA Online"),
-    ("HcEAD7gR0mA", "¿Adiós a GTA 6 en PS5?")
+    ("Ka-EdJr4WZE", "South Park Parodia GTA 6"),
+    ("trqx8DrfuzU", "Gameplay Filtrado Menu Mapa"),
+    ("8N9FZKsLoNY", "Extended Look"),
+    ("fI6YePdmOI8", "Joker de Florida Demanda"),
+    ("KYOsbM3Nodk", "DualSense Exclusivo PS5"),
+    ("hBr7lVMy8g0", "Quién Filtró GTA 6"),
+    ("4nC5hjQcKN8", "South Park Recrea Trailer"),
+    ("QM36qM3ADw4", "Ibai Reacción GTA 6"),
+    ("faQ4teEAdaI", "GTA VI Netflix Extended Look"),
+    ("usNYW4m7Uvg", "Secreto de Lucia Joker Florida"),
+    ("cgyKJc836Xw", "Gráficos GTA 6"),
+    ("0gKWC0a-9NA", "GTA Online Biohazard"),
+    ("VZ_o_cAnmuc", "Casas GTA 6"),
+    ("zKU4k9E7QNs", "Casas GTA 6 v2"),
+    ("_0RV5NCQveo", "La Bestia GTA 6"),
+    ("HcEAD7gR0mA", "Adios GTA 6 PS5")
 ]
 
 def get_valid_token():

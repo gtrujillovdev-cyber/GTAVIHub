@@ -667,19 +667,20 @@ def render_final_video(
     create_subtle_vignette(vignette_png, fg_top=fg_y, fg_bottom=fg_bottom, is_cinema=is_cinema_layout)
 
     # 2. Gancho textual superior (0 a 2.5s)
+    # En Cinema layout (vídeo horizontal adaptado a 9:16): se coloca en la zona superior libre (y=120) sobre el Velvet Blur.
+    # En vídeo vertical nativo (is_already_vertical): NO colocar tarjeta opaca superior porque colisiona frontalmente
+    # con el HUD, logotipos de Rockstar y rostros ya encuadrados en vertical.
     hook_png = None
-    if hook_text and is_vertical:
+    if hook_text and is_vertical and not is_already_vertical:
         hook_png = temp_dir / f"{base_name}_hook.png"
         rendered_hook = render_top_hook_headline(hook_text, hook_png)
         if not rendered_hook:
             hook_png = None
 
-    # 2b. Segundo gancho de retención (5.0 a 7.0s) — adaptativo al arquetipo del contenido
-    # Solo se aplica en arquetipos donde el viewer necesita un empujón extra para quedarse.
-    # En humor/parodia y reacciones el ritmo natural ya retiene; insertar texto lo rompe.
+    # 2b. Segundo gancho de retención (5.0 a 7.0s) — solo en Cinema layout adaptado
     retention_png = None
     _archetypes_need_retention = {"filtracion_misterio", "analisis_tecnico", "noticia_oficial"}
-    if hook_text and is_vertical and archetype in _archetypes_need_retention:
+    if hook_text and is_vertical and not is_already_vertical and archetype in _archetypes_need_retention:
         retention_png = temp_dir / f"{base_name}_retention.png"
         _retention_by_archetype = {
             "filtracion_misterio": ["OJO CON ESTO", "MIRA BIEN", "EL DETALLE CLAVE"],
@@ -730,10 +731,11 @@ def render_final_video(
         dub_idx = input_idx
         input_idx += 1
 
-    # Banda Sonora Ambiental Sutil (Synthwave / Vice City Beats) a -22 dB
+    # Banda Sonora Ambiental: Solo activa si está explícitamente configurada en .env (para no ensuciar el sonido in-game)
     ambient_idx = None
     ambient_dir = BASE_DIR / "assets" / "audio" / "ambient_beats"
-    if ambient_dir.exists():
+    enable_ambient = os.getenv("ENABLE_AMBIENT_BEATS", "false").lower() in ("true", "1")
+    if enable_ambient and ambient_dir.exists():
         ambient_tracks = [p for p in ambient_dir.glob("*.mp3") if p.is_file()] + [p for p in ambient_dir.glob("*.wav") if p.is_file()]
         if ambient_tracks:
             chosen_ambient = random.choice(ambient_tracks)

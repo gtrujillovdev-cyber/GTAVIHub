@@ -149,9 +149,11 @@ class TestCompliance(unittest.TestCase):
         self.assertTrue(is_strictly_gta("Detalles ocultos de Lucía y Jason en el trailer"))
         self.assertTrue(is_strictly_gta("Esto es GTA VI (GAMEPLAY + EXCLUSIVA)"))
         self.assertTrue(is_strictly_gta("Grand Theft Auto VI - Nuevos Detalles Filtrados de Leonida"))
-        self.assertTrue(is_strictly_gta("Mors Mutual: GTA 6 is unplayable..."))
+        self.assertTrue(is_strictly_gta("GTA Series Videos: GTA 6 New Screenshots Breakdown"))
 
-        # Vídeos de GTA 5, GTA Online, GTA 4 u otras entregas (DEBEN SER RECHAZADOS)
+        # Vídeos de GTA 5, GTA Online, GTA 4, Mors Mutual o Parodias (DEBEN SER RECHAZADOS)
+        self.assertFalse(is_strictly_gta("Mors Mutual: GTA 6 is unplayable..."))
+        self.assertFalse(is_strictly_gta("SOUTH PARK GTA 6 PARODY VIRAL"))
         self.assertFalse(is_strictly_gta("CORRE O TE ATROPELLO ESPECIAL GTA 6 - GTA 5 ONLINE"))
         self.assertFalse(is_strictly_gta("GTA Online Wants Me to Grind FOREVER - 100% Career Progress #48"))
         self.assertFalse(is_strictly_gta("TRIPLE MONEY & DISCOUNTS | GTA Online Weekly Update"))
@@ -181,11 +183,14 @@ class TestCompliance(unittest.TestCase):
         self.assertFalse(is_strictly_gta("Bully 2 cancellation story explained"))
         self.assertFalse(is_strictly_gta("Max Payne 1 and 2 Remake update"))
 
-        # Casos válidos de GTA 6 con crossovers y comparativas técnicas
-        self.assertTrue(is_strictly_gta("South Park GTA 6 Parody Scene"))
+        # Casos válidos de GTA 6 y comparativas técnicas de físicas
+        self.assertTrue(is_strictly_gta("GTA 6 RAGE 9 Vehicle Physics Breakdown"))
         self.assertTrue(is_strictly_gta("GTA 5 vs GTA 6 Water Physics Comparison"))
         self.assertTrue(is_strictly_gta("Lucia and Jason criminal duo explained in GTA 6"))
         self.assertTrue(is_strictly_gta("Jason Schreier reveals GTA 6 internal release date"))
+
+        # Descartar parodias de South Park
+        self.assertFalse(is_strictly_gta("South Park GTA 6 Parody Scene"))
 
     def test_to_unicode_bold(self):
         from src.translator import to_unicode_bold

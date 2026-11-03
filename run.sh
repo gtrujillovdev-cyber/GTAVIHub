@@ -55,6 +55,30 @@ if [ "$1" == "radar" ] || [ "$1" == "--radar" ] || [ "$1" == "viral" ]; then
     exit 0
 fi
 
+# Comando especial para el Centinela de Tráfico en Tiempo Real
+if [ "$1" == "traffic" ] || [ "$1" == "--traffic" ] || [ "$1" == "sentinel" ]; then
+    python3 src/traffic_sentinel.py
+    exit 0
+fi
+
+# Comando especial para el Reciclador Dinámico de Conocimiento
+if [ "$1" == "recycle" ] || [ "$1" == "--recycle" ] || [ "$1" == "fase" ]; then
+    python3 src/knowledge_recycler.py
+    exit 0
+fi
+
+# Comando especial para el Laboratorio de Clips y prueba de formatos (sin subidas)
+if [ "$1" == "lab" ] || [ "$1" == "--lab" ]; then
+    shift
+    if [ "$1" == "--loop" ] || [ "$1" == "loop" ]; then
+        shift
+        python3 scripts/recursive_lab_session.py "$@"
+    else
+        python3 scripts/clip_lab.py "$@"
+    fi
+    exit 0
+fi
+
 # Ejecutar con argumentos pasados o por defecto --auto
 if [ $# -eq 0 ]; then
     echo "[*] Ejecutando escaneo autónomo estándar..."

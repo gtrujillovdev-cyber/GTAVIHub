@@ -6,25 +6,25 @@ class TestAiSelector(unittest.TestCase):
     def setUp(self):
         self.mock_candidates = [
             {
-                "id": "vid_southpark",
-                "title": "SOUTH PARK GTA 6 PARODY VIRAL SCENE",
+                "id": "vid_physics_viral",
+                "title": "GTA 6 RAGE 9 WATER PHYSICS REALISTIC ACCIDENT",
                 "duration": 28.0,
-                "views": 450000,
-                "velocity": 15000.0,
+                "views": 850000,
+                "velocity": 45000.0,
                 "days_old": 1,
-                "score": 95,
-                "uploader": "Comedy Central Fan",
+                "score": 96,
+                "uploader": "Digital Foundry Fan",
                 "is_short": True
             },
             {
-                "id": "vid_physics",
-                "title": "GTA 6 RAGE 9 WATER PHYSICS REALISTIC ACCIDENT",
+                "id": "vid_map_secrets",
+                "title": "GTA 6 LEONIDA MAP HIDDEN LOCATIONS REVEALED",
                 "duration": 22.0,
-                "views": 250000,
-                "velocity": 8000.0,
+                "views": 350000,
+                "velocity": 18000.0,
                 "days_old": 2,
-                "score": 88,
-                "uploader": "Tech Analyst",
+                "score": 89,
+                "uploader": "GTA Series Breakdown",
                 "is_short": True
             },
             {
@@ -47,7 +47,7 @@ class TestAiSelector(unittest.TestCase):
     def test_single_candidate_enrichment(self):
         single = [self.mock_candidates[0]]
         res = select_best_candidate_ai(single)
-        self.assertEqual(res["id"], "vid_southpark")
+        self.assertEqual(res["id"], "vid_physics_viral")
         self.assertIn("hook_line1", res)
         self.assertIn("hook_line2", res)
 
@@ -58,22 +58,22 @@ class TestAiSelector(unittest.TestCase):
         mock_response.text = '''
         {
             "selected_index": 0,
-            "justification": "South Park parody has massive pop culture momentum and high retention.",
-            "recommended_title": "¡INCREÍBLE! 💀 SOUTH PARK DESTROZA GTA 6 CON ESTA PARODIA VIRAL 🔥 #GTA6",
-            "hook_line1": "SOUTH PARK LO HIZO",
-            "hook_line2": "¡PARODIA A GTA 6! 💀",
-            "audience_appeal": "Atracción inmediata para fans de GTA y comedia"
+            "justification": "RAGE 9 physics breakdown has highest retention and technical appeal.",
+            "recommended_title": "¡BRUTAL! 🌊 FÍSICAS DE AGUA EN GTA 6 DESTROZAN TODO 🔥 #GTA6",
+            "hook_line1": "FÍSICAS RAGE 9",
+            "hook_line2": "¡AGUA HIPERREALISTA! 🌊",
+            "audience_appeal": "Atracción inmediata para la comunidad de GTA 6"
         }
         '''
         mock_client.models.generate_content.return_value = mock_response
         mock_get_client.return_value = mock_client
 
         res = select_best_candidate_ai(self.mock_candidates, launch_mode=False)
-        self.assertEqual(res["id"], "vid_southpark")
+        self.assertEqual(res["id"], "vid_physics_viral")
         self.assertTrue(res["ai_selection"])
-        self.assertEqual(res["hook_line1"], "SOUTH PARK LO HIZO")
-        self.assertEqual(res["hook_line2"], "¡PARODIA A GTA 6! 💀")
-        self.assertIn("South Park parody", res["ai_justification"])
+        self.assertEqual(res["hook_line1"], "FÍSICAS RAGE 9")
+        self.assertEqual(res["hook_line2"], "¡AGUA HIPERREALISTA! 🌊")
+        self.assertIn("RAGE 9 physics", res["ai_justification"])
 
     @patch("src.ai_selector.get_gemini_client")
     def test_heuristic_fallback_when_gemini_fails(self, mock_get_client):
@@ -81,7 +81,7 @@ class TestAiSelector(unittest.TestCase):
 
         res = select_best_candidate_ai(self.mock_candidates, launch_mode=False)
         self.assertFalse(res["ai_selection"])
-        self.assertEqual(res["id"], "vid_southpark")  # Mayor score heurístico
+        self.assertEqual(res["id"], "vid_physics_viral")  # Mayor score heurístico
         self.assertIsNotNone(res["hook_line1"])
         self.assertIsNotNone(res["hook_line2"])
 

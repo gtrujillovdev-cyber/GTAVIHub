@@ -237,8 +237,9 @@ def create_video_thumbnail(
 
     img = img.convert("RGBA")
 
-    # Viñeta inferior (configurable)
-    if style.get("bottom_gradient", True):
+    # Viñeta inferior: Solo para vídeos horizontales (16:9) con texto explicativo.
+    # En Shorts verticales, mantener el fotograma 100% limpio y brillante sin oscurecer la imagen.
+    if not is_short and style.get("bottom_gradient", True):
         overlay = Image.new("RGBA", (target_w, target_h), (0, 0, 0, 0))
         draw_ov = ImageDraw.Draw(overlay)
         grad_h = int(target_h * 0.35)
@@ -249,8 +250,10 @@ def create_video_thumbnail(
             draw_ov.line([(0, y_pos), (target_w, y_pos)], fill=(0, 0, 0, alpha))
         img = Image.alpha_composite(img, overlay)
 
-    # Texto de gancho viral
-    if style.get("text_hook", True) and hook_text:
+    # Texto de gancho viral: SOLO para miniaturas horizontales 16:9 (YouTube estándar).
+    # En Shorts verticales 9:16, NO dibujar texto superpuesto en el tercio inferior para evitar
+    # colisiones con la interfaz de TikTok/Reels/Shorts y duplicidades con el gancho del vídeo.
+    if not is_short and style.get("text_hook", True) and hook_text:
         draw = ImageDraw.Draw(img)
         _draw_hook_text(draw, hook_text, target_w, target_h, style, target_img=img)
 

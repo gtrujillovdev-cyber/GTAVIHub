@@ -62,6 +62,22 @@ def select_best_candidate_ai(
     except Exception:
         recent_titles = []
 
+    # Cargar radar de tráfico y contexto editorial reciclado en tiempo real
+    traffic_radar_summary = {}
+    dynamic_editorial_context = ""
+    try:
+        from .traffic_sentinel import get_latest_traffic_radar
+        from .knowledge_recycler import get_current_editorial_context
+        radar = get_latest_traffic_radar()
+        traffic_radar_summary = {
+            "top_youtube_search_intents": radar.get("top_search_intents", [])[:5],
+            "breaking_news_topics": [n.get("title", "") for n in radar.get("breaking_news", [])[:4]],
+            "hottest_keywords": radar.get("trending_keywords", [])[:8]
+        }
+        dynamic_editorial_context = get_current_editorial_context()
+    except Exception:
+        traffic_radar_summary = {}
+
     # Preparar resumen de candidatos para el prompt
     candidates_summary = []
     for idx, c in enumerate(pool):
@@ -89,12 +105,14 @@ def select_best_candidate_ai(
                 "MODO: DÍA DEL ESTRENO (LAUNCH DAY 2026). Prioriza novedad absoluta, misiones iniciales, "
                 "gameplay real, descubrimientos en el mapa y velocidad explosiva de vistas por hora."
                 if launch_mode else
-                "MODO: COBERTURA VIRAL CONTINUA. Prioriza parodias de impacto cultural (ej. South Park), "
-                "físicas RAGE 9 increíbles, secretos y debates que polaricen a la comunidad."
+                "MODO: COBERTURA VIRAL DE ALTO IMPACTO (GTA 6 PURO). Prioriza clips con ALTO VOLUMEN DE VISTAS, "
+                "análisis técnicos de gráficos, físicas RAGE 9, secretos del mapa de Leonida, novedades confirmadas y filtraciones creíbles. "
+                "ESTRICTAMENTE PROHIBIDO: parodias, memes, clips de GTA 5 o parodias tipo South Park."
             )
 
             prompt = f"""Eres el Director de Estrategia de Contenidos y Algoritmos para 'GTA VI Hub Spain' (YouTube Shorts, TikTok, Instagram Reels).
 {mode_context}
+{dynamic_editorial_context}
 
 OBJETIVO:
 Analiza los siguientes 15 vídeos candidatos pre-filtrados y SELECCIONA EL MEJOR CLIP ABSOLUTO para procesar y publicar ahora mismo.
@@ -102,16 +120,20 @@ Analiza los siguientes 15 vídeos candidatos pre-filtrados y SELECCIONA EL MEJOR
 CANDIDATOS:
 {json.dumps(candidates_summary, indent=2, ensure_ascii=False)}
 
+DEMANDA DE BÚSQUEDA Y TRÁFICO EN TIEMPO REAL (LO QUE INTERNET BUSCA AHORA MISMO):
+{json.dumps(traffic_radar_summary, indent=2, ensure_ascii=False)}
+
 VÍDEOS RECIENTES YA PUBLICADOS (EVITA REPETIR ESTAS TEMÁTICAS):
 {json.dumps(recent_titles, indent=2, ensure_ascii=False)}
 
 CRITERIOS EDITORIALES DE VICTORIA (PLAYBOOK VIRAL):
+0. CERO METRAJE DEL TRÁILER DE 2023: DESCARTAR FULMINANTEMENTE cualquier corte o tráiler oficial antiguo de Rockstar Games (Trailer 1, 'Extended Look', o resubidas del teaser de 2023). La comunidad ya lo ha visto 500 millones de veces. Prioriza contenido fresco, streamers (reacciones/humor), análisis técnicos y descubrimientos reales.
 1. VELOCIDAD VIRAL (velocity_vpd): Prioriza vídeos con alta velocidad de crecimiento (vistas/día). El algoritmo de YouTube distribuye activamente el contenido en ascenso explosivo.
 2. MULTI-FUENTE (source_count > 1): Un vídeo detectado por múltiples fuentes/queries simultáneamente es una señal inequívoca de momento viral. Priorizarlo sobre candidatos únicos.
 3. ENGAGEMENT REAL (engagement_rate): Ratio likes/vistas como proxy de distribución activa por el algoritmo. Un ratio > 0.02 indica audiencia comprometida.
 4. ENGAGEMENT Y CURIOSIDAD: El vídeo debe provocar el deseo irrefrenable de comentar o ver hasta el final.
 5. CERO CLICKBAIT FALSO: Descarta conceptos abstractos o mods antiguos. Solo contenido real y de impacto.
-6. CULTURA POP & VIRALIDAD: Las parodias virales (como la de South Park) y las demostraciones técnicas de físicas tienen altísima retención.
+6. CONTENIDO 100% GTA 6 REAL: Prioriza clips con tracción real de vistas (demostraciones de RAGE 9, detalles del mapa de Leonida, mecánicas in-game, vehículos, comparativas con vida real). DESCALIFICAR AUTOMÁTICAMENTE cualquier parodia, meme, o gameplay de GTA 5.
 7. GANCHO DE 2 LÍNEAS (AFIRMACIÓN DE IMPACTO, NUNCA PREGUNTAS): Redacta dos líneas de titular afirmativo (Línea 1 en blanco max 24 caracteres, Línea 2 en amarillo neón max 22 caracteres). PROHIBIDO usar signos de interrogación ('¿' o '?') en el gancho superior; debe ser una afirmación o alerta rotunda (ej. 'FÍSICAS RAGE 9' / 'TORNADOS EXTREMOS' o 'DETALLE OCULTO' / 'SECRETOS DE LEONIDA').
 
 RESPONDE EXCLUSIVAMENTE CON UN OBJETO JSON VÁLIDO:
