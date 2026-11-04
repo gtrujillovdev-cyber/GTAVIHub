@@ -6,7 +6,10 @@ import json
 import subprocess
 from pathlib import Path
 from typing import Optional, Tuple, Dict, Any, List
-from .config import TEMP_DIR, get_ffmpeg_threads, SHORT_MIN_DURATION, SHORT_MAX_DURATION, SHORT_TARGET_DURATION
+from .config import (
+    TEMP_DIR, get_ffmpeg_threads, SHORT_MIN_DURATION, GAMEPLAY_MIN_DURATION,
+    SHORT_MAX_DURATION, SHORT_TARGET_DURATION
+)
 
 def parse_srt_time(ts_str: str) -> float:
     """Convierte HH:MM:SS,mmm a segundos flotantes."""
@@ -262,9 +265,11 @@ def snap_window_to_subtitles(
                 
                 score = abs(c["end"] - ideal_end)
                 if is_sentence_end:
-                    score -= 4.0
+                    score -= 5.0  # Gran preferencia por terminar en punto o frase cerrada
+                else:
+                    score += 4.0  # Penalizar fuertemente cortar a mitad de pensamiento
                 if has_subsequent_pause:
-                    score -= 2.0
+                    score -= 2.5
 
                 candidate_ends.append((score, c["end"]))
 
@@ -281,7 +286,7 @@ def snap_window_to_subtitles(
 
 def find_viral_heatmap_segment(
     url: str,
-    min_duration: int = SHORT_MIN_DURATION,
+    min_duration: int = GAMEPLAY_MIN_DURATION,
     max_duration: int = SHORT_MAX_DURATION,
     target_duration: int = SHORT_TARGET_DURATION,
     video_id: str = ""
@@ -313,11 +318,12 @@ def find_viral_heatmap_segment(
 
         heatmap = info.get("heatmap")
         if heatmap and isinstance(heatmap, list) and len(heatmap) > 5:
-            # Duraciones candidatas adaptativas alineadas con el arco narrativo (16s a 42s)
-            candidate_durations = [16, 20, 24, 28, 34, 42]
-            best_score = -1.0
+            # Duraciones candidatas context-aware (de 19s hasta 58s)
+            candidate_durations = [19, 24, 30, 36, 42, 50, 56, 58]
+            best_avd_score = -1.0
             best_start = 15.0
             best_dur = target_duration
+            best_avd_seconds = 0.0
 
             for c_dur in candidate_durations:
                 if c_dur > duration:
@@ -330,16 +336,28 @@ def find_viral_heatmap_segment(
                     window_pts = [float(p.get("value", 0.0)) for p in heatmap if start_t <= float(p.get("start_time", 0.0)) <= end_t]
                     if not window_pts:
                         continue
-                    avg_val = sum(window_pts) / len(window_pts)
-                    peak_val = max(window_pts)
-                    # Score ponderado adaptativo: premia picos y modula según retención orgánica
-                    window_score = avg_val * (1 + peak_val * 0.4) * (24 / max(c_dur, 16))
-                    if window_score > best_score:
-                        best_score = window_score
+                    avg_retention = sum(window_pts) / len(window_pts)
+                    peak_retention = max(window_pts)
+                    min_retention = min(window_pts)
+
+                    # --- AVD (Average View Duration) Engine ---
+                    # 1. Tiempo de visualización esperado en segundos absolutos:
+                    estimated_avd_s = c_dur * avg_retention * (1.0 + peak_retention * 0.35)
+                    # 2. Factor de consistencia (penaliza acantilados donde el usuario abandona a la mitad):
+                    cliff_penalty = max(0.5, min(1.0, (min_retention / (avg_retention + 1e-4))))
+                    # 3. Puntuación final centrada en AVD absoluto optimizado para algoritmo de YouTube/TikTok:
+                    avd_score = estimated_avd_s * (0.7 + 0.3 * cliff_penalty)
+
+                    if avd_score > best_avd_score:
+                        best_avd_score = avd_score
                         best_start = start_t
                         best_dur = c_dur
+                        best_avd_seconds = estimated_avd_s
 
-            print(f"[⚡ Heatmap Detector] Pico viral detectado: {best_start:.1f}s a {best_start + best_dur:.1f}s (Duración: {best_dur}s, Score ponderado: {best_score:.3f})")
+            print(f"[⚡ AVD Engine] Segmento óptimo por Average View Duration:")
+            print(f"    • Rango: {best_start:.1f}s a {best_start + best_dur:.1f}s ({best_dur}s)")
+            print(f"    • AVD Estimado: {best_avd_seconds:.1f}s de retención neta (Score AVD: {best_avd_score:.2f})")
+            return (best_start, best_start + best_dur)
             return (best_start, best_start + best_dur)
         else:
             # Vídeo largo sin heatmap: saltar intro y aplicar duración orgánica determinista anti-robot
@@ -448,7 +466,7 @@ def download_video_and_subtitles(
     if video_path and video_path.exists():
         viral_range = find_viral_heatmap_segment(
             url,
-            min_duration=SHORT_MIN_DURATION,
+            min_duration=GAMEPLAY_MIN_DURATION,
             max_duration=SHORT_MAX_DURATION,
             target_duration=SHORT_TARGET_DURATION,
             video_id=video_id
@@ -462,7 +480,7 @@ def download_video_and_subtitles(
                     srt_path=srt_path,
                     v_start=v_start,
                     v_end=v_end,
-                    min_duration=SHORT_MIN_DURATION,
+                    min_duration=GAMEPLAY_MIN_DURATION,
                     max_duration=SHORT_MAX_DURATION
                 )
 

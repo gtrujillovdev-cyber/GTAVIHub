@@ -237,15 +237,19 @@ def calculate_virality_score(
         else:
             views_score = 2
 
-    # 3. Duración Óptima / Formato Shorts (0 a 20) — sweet spot 18-28s del Playbook
-    if 18 <= duration <= 28:
-        format_score = 20  # Sweet spot máximo: loop continuo garantizado
-    elif 12 <= duration <= 35:
-        format_score = 16  # Muy buen Short
-    elif 10 <= duration <= 60:
-        format_score = 12  # Short estándar
+    # 3. Duración Adaptativa / Formato Shorts (0 a 20) — Context-aware y balance Watch Time
+    if 19 <= duration <= 28:
+        format_score = 20  # Loop continuo & retención máxima de rebote
+    elif 29 <= duration <= 45:
+        format_score = 19  # Narrativa fluida, contexto completo sin apresurarse
+    elif 46 <= duration <= 58:
+        format_score = 18  # Inmersivo: máximo Watch Time absoluto si retiene bien
+    elif 59 <= duration <= 60:
+        format_score = 14  # Límite superior de formato vertical corto
+    elif 14 <= duration < 19:
+        format_score = 10  # Micro-clip rápido
     elif 60 < duration <= 80:
-        format_score = 5
+        format_score = 5   # Frontera con formato horizontal
     elif 80 < duration <= 180:
         format_score = 2
     else:

@@ -648,17 +648,16 @@ def render_final_video(
     is_vertical = force_short_format or is_already_vertical
 
     if is_vertical and not is_already_vertical:
-        # Modo Cinema Full-Width (Anti-Cropping) con Ambient Canvas reactivo:
-        # Preserva el 100% del plano horizontal original (1080x608 a 16:9), evitando que se pierda
-        # el minimapa (abajo izquierda), armas/HUD (arriba derecha) o la cara de streamers.
-        # Llena verticalmente la pantalla 9:16 con Ambient Blur de alta gama y sombras de unión suaves.
-        # Zonas seguras: Arriba (y=120) para el Gancho Contextual y abajo (y=1420) para Karaoke.
+        # Modo Smart Frame Inmersivo 4:5 (70.3% de cobertura de pantalla):
+        # Reencuadre centrado de alto impacto que maximiza el tamaño del gameplay en móviles
+        # (1080x1350 centrado a y=285), eliminando el efecto de vídeo pequeño 'sello de correos'.
+        # Zonas seguras limpias: Arriba (y=110) para el Gancho Neón y abajo (y=1430) para Karaoke.
         fg_w = 1080
-        fg_h = 608
-        fg_y = 656
+        fg_h = 1350
+        fg_y = 285
         fg_bottom = fg_y + fg_h
         is_cinema_layout = True
-        print(f"[*] Modo Cinema Full-Width (0% recorte lateral, minimapa y HUD 100% visibles): {fg_w}x{fg_h} @ y={fg_y} con Ambient Canvas.")
+        print(f"[*] Modo Smart Frame Inmersivo 4:5 (70.3% cobertura): {fg_w}x{fg_h} @ y={fg_y} con Ambient Canvas.")
     else:
         # Formato C (Vertical Nativo 9:16):
         fg_w = 1080
@@ -814,12 +813,12 @@ def render_final_video(
 
     # A) Base de vídeo:
     if is_vertical and not is_already_vertical:
-        # Cinema Full-Width: Fondo Velvet Blur reactivo + Plano panorámico completo 100% visible
+        # Smart Frame Inmersivo: Fondo Velvet Blur reactivo + Plano aumentado 1080x1350 (70.3% pantalla)
         # Filtro unsharp de nitidez 4K y corrección de contraste/saturación (transformación editorial Fair Use)
         v_base = (
             "[0:v]split[v1][v2];"
             "[v1]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,boxblur=26:5,eq=brightness=-0.14:contrast=1.06:saturation=1.18[bg];"
-            f"[v2]scale=1080:-2,unsharp=3:3:0.6:3:3:0.0,eq=contrast=1.06:saturation=1.12[fg];"
+            f"[v2]scale={fg_w}:{fg_h}:force_original_aspect_ratio=increase,crop={fg_w}:{fg_h},unsharp=3:3:0.6:3:3:0.0,eq=contrast=1.06:saturation=1.12[fg];"
             f"[bg][fg]overlay=0:{fg_y}[v_framed]"
         )
     elif is_vertical:
@@ -836,23 +835,23 @@ def render_final_video(
     current_v = "v_vignetted"
 
     # C) Superponer Gancho Superior (0.0 a 2.5s)
-    # En Cinema 16:9, se posiciona justo sobre el límite superior del encuadre del clip (fg_y - h - 20)
+    # En Smart Frame Inmersivo, se posiciona en la franja superior limpia (y=110)
     if hook_idx is not None:
-        hook_y_expr = f"{fg_y}-h-20" if is_cinema_layout else "120"
+        hook_y_expr = "110" if is_cinema_layout else "120"
         filter_chains.append(f"[{current_v}][{hook_idx}:v]overlay=(W-w)/2:{hook_y_expr}:enable='between(t,0,2.5)'[v_hooked]")
         current_v = "v_hooked"
 
     # C2) Superponer segundo gancho de retención (5.0 a 7.0s) — frena el swipe mid-scroll
     if retention_idx is not None:
-        ret_y_expr = f"{fg_y}-h-20" if is_cinema_layout else "220"
+        ret_y_expr = "180" if is_cinema_layout else "220"
         filter_chains.append(f"[{current_v}][{retention_idx}:v]overlay=(W-w)/2:{ret_y_expr}:enable='between(t,5.0,7.0)'[v_retained]")
         current_v = "v_retained"
 
     # D) Superponer Subtítulos Karaoke palabra por palabra
     # Safe Zone vertical (Instagram Reels / TikTok / YouTube Shorts):
-    # En vídeos horizontales adaptados: y=1420 (centrado en el tercio inferior libre, sin tapar interfaz).
+    # En vídeos adaptados (Smart Frame): y=1430 (franja inferior limpia sin solapar UI de likes/comentarios).
     # En vídeos verticales nativos: y=1200.
-    sub_y = "1420" if (is_vertical and not is_already_vertical) else ("1200" if is_vertical else "H-h-90")
+    sub_y = "1430" if (is_vertical and not is_already_vertical) else ("1200" if is_vertical else "H-h-90")
     for s_idx, (_, start_s, end_s) in enumerate(sub_pngs):
         in_id = sub_inputs_start + s_idx
         next_v = f"v_sub_{s_idx}"

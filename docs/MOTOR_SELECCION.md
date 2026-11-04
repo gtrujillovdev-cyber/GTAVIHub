@@ -28,19 +28,19 @@ Cuando el mismo vídeo aparece en varias fuentes o queries, `_merge_candidate()`
 
 ## 3. Algoritmo de Scoring (`calculate_virality_score`)
 
-**Versión 2 — Velocity-first (oct 2026)**
+**Versión 3 — Velocity & Watch Time (AVD-Aware, nov 2026)**
 
 | Componente | Peso | Lógica |
 |-----------|------|--------|
-| Velocity Score (vistas/día) | 0–30 pts | **Eje primario.** > 50k vpd = 30pts, > 10k = 20pts, > 2k = 12pts |
-| Views Absolutas | 0–25 pts | > 1M = 25pts; escala logarítmica |
-| Format Score (duración) | 0–20 pts | 18–28s = 20pts (sweet spot Shorts) |
-| Keyword Score | 0–15 pts | Coincidencias en `VIRAL_KEYWORDS` |
-| Engagement Rate (likes/vistas) | 0–10 pts | > 0.04 = 10pts; > 0.02 = 6pts |
-| Creator/Pop Bonus | 0–10 pts | Creador conocido, cultural pop |
-| Freshness Penalty | −5 pts | Si el vídeo tiene > 14 días |
+| **Velocity Score** (vistas/día) | 0–30 pts | **Eje primario.** > 50k vpd = 30pts, > 10k = 20pts, > 2k = 12pts |
+| **Views Absolutas** | 0–25 pts | > 1M = 25pts; escala logarítmica |
+| **Format & AVD Score** (duración) | 0–20 pts | 19–28s = 20pts (loops), 29–45s = 19pts (contexto), 46–58s = 18pts (máximo AVD) |
+| **Keyword Score** | 0–15 pts | Coincidencias en `VIRAL_KEYWORDS` |
+| **Engagement Rate** (likes/vistas) | 0–10 pts | > 0.05 = 10pts; > 0.02 = 7pts (señal de distribución activa) |
+| **Creator/Pop Bonus** | 0–10 pts | Creador conocido, cultura pop, físicas de juego |
+| **Freshness Penalty** | −5 pts | Si el vídeo tiene > 14 días |
 
-**Nota técnica:** La velocidad es el eje primario porque el algoritmo de YouTube distribuye activamente el contenido en ascenso, no el que ya acumuló vistas históricamente.
+**Nota técnica:** Se equilibra el porcentaje de retención con el **Average View Duration (AVD)** en segundos netos. Un clip de 50 segundos con 75% de retención genera 37.5 segundos de tiempo de visualización absoluto, multiplicando el impulso algorítmico respecto a clips excesivamente cortos.
 
 ### 3.1 Filtro de palabras excluidas
 
@@ -55,6 +55,14 @@ Cuando el mismo vídeo aparece en varias fuentes o queries, `_merge_candidate()`
 2. Ausencia de términos off-topic con regex de límite de palabra.
 3. Exclusión de expresiones compuestas (ej. `r"\b(?:3d|blender|cgi)\s*render\b"`).
 4. Verificación final en `process_single_video` como fail-safe de defensa en profundidad.
+
+### 4.1 Escudo de Vitalidad de Audio (`src/audio_shield.py`)
+
+Filtro obligatorio pre-render y pre-publicación contra penalizaciones por falta de audio o clips mudos:
+- Analiza `mean_volume` y `max_volume` vía `ffmpeg -af volumedetect`.
+- Si `mean_volume < -42.0 dB` o `max_volume < -28.0 dB` → rechazo inmediato por volumen inaudible.
+- Si el vídeo dura > 15s y contiene < 10 palabras habladas sin doblaje neural → aborto preventivo anti B-roll mudo.
+- Garantiza cero subidas que causen caídas drásticas de retención por ausencia de locución.
 
 ## 5. Selector con IA (`select_best_candidate_ai`)
 

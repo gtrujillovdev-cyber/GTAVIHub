@@ -1,0 +1,21 @@
+{
+  "iterations": 1000,
+  "median_views": 41432.5,
+  "mean_views": 45526.119,
+  "new_format_median": 52297,
+  "old_format_median": 94,
+  "top_archetypes": [
+    {
+      "id": "f\u00edsicas_rage9",
+      "recommended": true
+    },
+    {
+      "id": "detalles_mapa_leonida",
+      "recommended": true
+    },
+    {
+      "id": "filtracion_armas_mecanicas",
+      "recommended": true
+    }
+  ]
+}

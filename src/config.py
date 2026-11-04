@@ -40,6 +40,7 @@ MAX_VIDEOS_PER_RUN = int(os.getenv("MAX_VIDEOS_PER_RUN", "2"))
 DEFAULT_TTS_VOICE = os.getenv("DEFAULT_TTS_VOICE", "es-ES-AlvaroNeural")
 AUTO_DUB_ENGLISH = os.getenv("AUTO_DUB_ENGLISH", "true").lower() in ("1", "true", "yes")
 SHORT_MIN_DURATION = int(os.getenv("SHORT_MIN_DURATION", "12"))
+GAMEPLAY_MIN_DURATION = int(os.getenv("GAMEPLAY_MIN_DURATION", "19"))
 SHORT_MAX_DURATION = int(os.getenv("SHORT_MAX_DURATION", "58"))
 SHORT_TARGET_DURATION = int(os.getenv("SHORT_TARGET_DURATION", "24"))
 

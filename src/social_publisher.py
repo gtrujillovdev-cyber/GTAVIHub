@@ -567,9 +567,9 @@ class SocialPublisher:
             )
             _vid_dur = float(_dur_probe.stdout.strip()) if _dur_probe.stdout.strip() else 0
             _platform_notes = {
-                "youtube": f"{'OK' if 18 <= _vid_dur <= 58 else 'WARN'} ({_vid_dur:.0f}s, óptimo 18-28s)",
-                "tiktok": f"{'OK' if _vid_dur <= 34 else 'WARN largo'} ({_vid_dur:.0f}s, óptimo <21s)",
-                "instagram": f"{'OK' if _vid_dur <= 60 else 'WARN'} ({_vid_dur:.0f}s, óptimo 15-30s)"
+                "youtube": f"{'OK' if 19 <= _vid_dur <= 58 else 'WARN'} ({_vid_dur:.0f}s, óptimo 19-28s)",
+                "tiktok": f"{'OK' if _vid_dur <= 34 else 'WARN largo'} ({_vid_dur:.0f}s, óptimo 19-26s)",
+                "instagram": f"{'OK' if _vid_dur <= 60 else 'WARN'} ({_vid_dur:.0f}s, óptimo 19-30s)"
             }
             print(f"[*] Duración del clip: {_vid_dur:.1f}s")
             for _p, _note in _platform_notes.items():
@@ -577,6 +577,21 @@ class SocialPublisher:
                     print(f"    {_p.upper()}: {_note}")
         except Exception:
             pass
+
+        # 0b. Pre-vuelo de Vitalidad Acústica: Jamás publicar un vídeo mudo o defectuoso
+        from .audio_shield import detect_audio_levels
+        _audio_chk = detect_audio_levels(video_path)
+        if not self.dry_run and (not _audio_chk["has_audio"] or _audio_chk["mean_volume"] < -42.0):
+            err_mute = (
+                f"🚨 [Escudo Anti-Silencio] Vídeo '{video_path.name}' RECHAZADO: "
+                f"Audio inaudible/mudo (mean_volume: {_audio_chk.get('mean_volume', -99):.1f} dB). "
+                f"Publicación abortada en todas las plataformas para prevenir Shadowban."
+            )
+            print(f"\n{err_mute}")
+            self._notify_telegram(err_mute)
+            return {"error": "audio_volume_muted"}
+        elif self.dry_run and not _audio_chk["has_audio"]:
+            print("[*] [DRY RUN Audio Shield] Archivo mock sin audio detectado pero permitido en simulación.")
 
         # 1. Comprobación estricta de directrices Anti-Ban y respeto al autor
         print("\n" + "=" * 65)

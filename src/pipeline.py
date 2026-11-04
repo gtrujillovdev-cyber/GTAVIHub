@@ -158,6 +158,32 @@ def process_single_video(
         else:
             dub_audio_path = None
 
+    # 4b. Protocolo Innegociable de Vitalidad Acústica y Narrativa (Anti-Silencio / Anti-Mute)
+    from .audio_shield import validate_audio_and_speech_vitality
+    has_vo = (dub_audio_path is not None and dub_audio_path.exists())
+    is_vital, vital_reason, vital_details = validate_audio_and_speech_vitality(
+        video_path=video_path,
+        srt_path=es_srt_path or srt_path,
+        has_voiceover=has_vo,
+        mode=mode
+    )
+    if not is_vital:
+        print(f"\n[!] {vital_reason}")
+        print("[!] [Anti-Shadowban] Abortando procesamiento para proteger las métricas y la reputación del canal contra clips mudos o B-roll sin voz.")
+        try:
+            from .telegram_bot import send_telegram_alert
+            send_telegram_alert(
+                f"🛡️ *[Escudo Anti-Silencio Activado]*\n"
+                f"Vídeo descartado para proteger la calidad del canal:\n"
+                f"🎬 `{original_title[:45]}...`\n"
+                f"⚠️ *Motivo:* {vital_reason}"
+            )
+        except Exception:
+            pass
+        clean_temp_directory(video_id)
+        gc.collect()
+        return None
+
     # 5. Generación de Metadatos Virales (Título + Gancho + Pregunta Polarizante + Descripción Legal)
     print("[*] Generando metadatos virales con tendencias de YouTube y Fair Use...")
     metadata = generate_video_metadata(

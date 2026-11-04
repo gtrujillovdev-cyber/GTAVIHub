@@ -28,31 +28,33 @@ create_video_thumbnail()
 upload_to_youtube() / SocialPublisher
 ```
 
-## 3. Segmentación por Heatmap (`find_viral_heatmap_segment`)
+## 3. Segmentación por Heatmap y Motor AVD (`find_viral_heatmap_segment`)
 
-Analiza el "most replayed" heatmap de YouTube vía yt-dlp para detectar el segmento de máxima retención.
+Analiza el "most replayed" heatmap de YouTube vía yt-dlp para detectar el segmento que maximiza el **Average View Duration (AVD)** y el tiempo de atención total (Watch Time), sin truncar narrativas ni mutilar contexto.
 
-### Duraciones candidatas (oct 2026)
+### Duraciones candidatas adaptativas (Context-Aware)
 
-| Duración | Prioridad | Justificación |
-|----------|-----------|---------------|
-| 20s | ★★★★★ | Mayor loop-rate en Shorts |
-| 24s | ★★★★☆ | Sweet spot óptimo del Playbook |
-| 28s | ★★★★☆ | Límite superior del sweet spot |
-| 34s | ★★★☆☆ | Fallback para contenido denso |
-| 40s | ★★☆☆☆ | Solo si no hay ventana mejor |
+| Rango de Duración | Arquetipo / Uso | Impacto Algorítmico |
+|---|---|---|
+| **19s – 28s** | Momentos de impacto rápido, choques, loops continuos | Alta tasa de repetición (Loop Rate > 100%) |
+| **30s – 42s** | Físicas de vehículos, tiroteos, reacciones de streamers | Gran equilibrio entre retención y contexto |
+| **45s – 58s** | Comparativas de mapa, easter eggs complejos, misiones | **Máximo Watch Time absoluto (AVD en segundos)** |
 
-### Fórmula de scoring ponderado
+### Fórmula del Motor AVD (Average View Duration)
 
 ```python
-window_score = avg_val * (1 + peak_val * 0.4) * (28 / max(c_dur, 20))
+# 1. Tiempo de atención neto esperado (segundos)
+estimated_avd_s = c_dur * avg_retention * (1.0 + peak_retention * 0.35)
+
+# 2. Factor de estabilidad de retención (penaliza acantilados de abandono)
+cliff_penalty = max(0.5, min(1.0, (min_retention / (avg_retention + 1e-4))))
+
+# 3. Score AVD absoluto optimizado para YouTube Shorts & TikTok
+avd_score = estimated_avd_s * (0.7 + 0.3 * cliff_penalty)
 ```
 
-- `avg_val`: retención media de la ventana.
-- `peak_val * 0.4`: bonus por picos de intensidad (momentos que se repiten).
-- `(28 / c_dur)`: penalización por duraciones largas — favorece clips cortos con máxima retención sobre mesetas mediocres largas.
-
-**Vídeos cortos (≤ 65s):** se preserva la duración orgánica completa sin ningún corte.
+- **Vídeos orgánicos cortos (≤ 60s):** NUNCA se recortan. Se respeta íntegramente la duración orgánica del autor (cero cortes).
+- **Finalización de frase limpia:** El módulo `snap_window_to_subtitles` sincroniza el corte final con signos de puntuación (`.!?:…`), expandiendo hasta 58s si es necesario para no dejar ideas incompletas.
 
 ## 4. Ajuste por Subtítulos (`snap_window_to_subtitles`)
 
@@ -67,13 +69,17 @@ Evita que el clip empiece o acabe a media frase.
 
 | Transformación | Especificación | Justificación |
 |---------------|----------------|---------------|
-| Reencuadre adaptativo | Nativo 9:16 / Cinema Full-Frame (1080×608 0% corte) / Dynamic Smart Crop (1080×1080) | Adaptado al arquetipo |
-| Gancho superior | 0.0s–2.5s, 2 líneas contrastadas | Blanco + Amarillo Neón |
-| Subtítulos Karaoke | Pop Bounce, glow dinámico por palabra | Retención activa |
-| Audio Ducking | ~18% durante voz en off (modo dub) | Claridad del mensaje |
-| Codificación | `h264_videotoolbox` (GPU/ASIC) | Obligatorio; jamás `libx264` |
-| Bitrate vídeo | 8 Mbps | Calidad YouTube/TikTok |
-| Bitrate audio | 192 kbps AAC | Estándar de plataforma |
+| **Formato D: Pro-Cinema 83.3%** | 1080×1600 @ y=160, crop lateral mínimo (16.7%) | Espectáculo visual máximo, físicas RAGE 9, coches, agua e inmersión cinemática |
+| **Formato C: Smart Frame 4:5** | 1080×1350 @ y=285 (70.3% cobertura vertical) | Margen seguro para HUD crítico, minimapa, armas y streamings con webcam |
+| **Formato A: Cinema Full** | 1080×608 @ y=656 (31.6% cobertura, 0% recorte) | Reservado exclusivamente para tráilers oficiales 21:9 ultra-panorámicos |
+| **Formato Nativo** | 1080×1920 (100% cobertura) | Vídeos que ya son nativos verticales 9:16 |
+| **Gancho superior** | 0.0s–2.5s, 2 líneas contrastadas | Blanco + Amarillo Neón (Top Hook dinámico) |
+| **Subtítulos Karaoke** | Pop Bounce, glow dinámico por palabra | Retención activa (Anti-drop visual) |
+| **Escudo de Audio (Audio Shield)** | Detección estricta de volumen (ffmpeg volumedetect) | Bloquea y aborta clips con volumen < -42dB o B-rolls mudos |
+| **Audio Ducking** | ~18% durante voz en off (modo dub) | Claridad y protagonismo del mensaje |
+| **Codificación** | `h264_videotoolbox` (GPU/ASIC) | Obligatorio; jamás `libx264` |
+| **Bitrate vídeo** | 8–10 Mbps | Calidad óptima YouTube/TikTok |
+| **Bitrate audio** | 192 kbps AAC | Estándar broadcast |
 
 ### Restricciones de hardware (GaTDSEQ coexistence)
 
