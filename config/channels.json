@@ -51,8 +51,8 @@
       "type": "insider_leaks",
       "lang": "en",
       "filter_keywords": true,
-      "enabled": true,
-      "description": "Shorts de filtraciones fiables de LegacyKillaHD"
+      "enabled": false,
+      "description": "Shorts de filtraciones de LegacyKillaHD (DESACTIVADO: Facecam/talking-head)"
     },
     {
       "name": "DarkViperAU (Shorts)",
@@ -114,8 +114,8 @@
       "type": "insider_leaks",
       "lang": "en",
       "filter_keywords": true,
-      "enabled": true,
-      "description": "Shorts de curiosidades de desarrollo de Rockstar"
+      "enabled": false,
+      "description": "Shorts de curiosidades de SWEGTA (DESACTIVADO: Talking-head)"
     },
     {
       "name": "GTA VI O'Clock (Shorts)",
@@ -123,8 +123,8 @@
       "type": "gta_authority",
       "lang": "en",
       "filter_keywords": true,
-      "enabled": true,
-      "description": "Shorts de noticias y especulación de GTA VI O'Clock"
+      "enabled": false,
+      "description": "Shorts de podcast de GTA VI O'Clock (DESACTIVADO: Tertulia podcast)"
     },
     {
       "name": "Ray Snakeyes (Shorts)",
@@ -132,8 +132,8 @@
       "type": "gta_authority",
       "lang": "en",
       "filter_keywords": true,
-      "enabled": true,
-      "description": "Shorts de análisis de trailers y filtraciones"
+      "enabled": false,
+      "description": "Shorts de Ray Snakeyes (DESACTIVADO: Talking-head)"
     },
     {
       "name": "Strange Man (Shorts)",
@@ -195,8 +195,8 @@
       "type": "developer_opinion",
       "lang": "en",
       "filter_keywords": true,
-      "enabled": true,
-      "description": "Perspectiva de ex-animador de Rockstar sobre GTA 6"
+      "enabled": false,
+      "description": "Perspectiva de ex-animador de Rockstar sobre GTA 6 (DESACTIVADO: Cero gameplay, solo opiniones)"
     },
     {
       "name": "IlloJuan (LMDShow Shorts)",
@@ -426,8 +426,8 @@
       "type": "media_analysis",
       "lang": "es",
       "filter_keywords": true,
-      "enabled": true,
-      "description": "Shorts de análisis de la industria y GTA 6"
+      "enabled": false,
+      "description": "Shorts de análisis de la industria (DESACTIVADO: Video-ensayo/talking-head)"
     },
     {
       "name": "Leyendas & Videojuegos (Shorts)",
@@ -543,8 +543,8 @@
       "type": "lore_and_details",
       "lang": "en",
       "filter_keywords": true,
-      "enabled": true,
-      "description": "Entrevistas a actores y secretos de GTA 6 en Dan Allen Gaming"
+      "enabled": false,
+      "description": "Entrevistas a actores en Dan Allen Gaming (DESACTIVADO: Entrevistas/talking-head)"
     },
     {
       "name": "Rockstar Universe (Shorts)",
@@ -570,8 +570,8 @@
       "type": "cinematics_analysis",
       "lang": "es",
       "filter_keywords": true,
-      "enabled": true,
-      "description": "Análisis narrativo y cinematográfico de Jordi Maquiavello"
+      "enabled": false,
+      "description": "Análisis cinematográfico de Jordi Maquiavello (DESACTIVADO: Video-ensayo)"
     },
     {
       "name": "BaityBait (Shorts)",
@@ -579,8 +579,8 @@
       "type": "gaming_culture",
       "lang": "es",
       "filter_keywords": true,
-      "enabled": true,
-      "description": "Humor y análisis de la industria gaming con BaityBait"
+      "enabled": false,
+      "description": "Humor y análisis gaming con BaityBait (DESACTIVADO: Talking-head)"
     },
     {
       "name": "Puerta al Sótano (Shorts)",
@@ -588,8 +588,8 @@
       "type": "retro_secrets",
       "lang": "es",
       "filter_keywords": true,
-      "enabled": true,
-      "description": "Secretos y curiosidades de Rockstar en Puerta al Sótano"
+      "enabled": false,
+      "description": "Secretos de Rockstar en Puerta al Sótano (DESACTIVADO: Talking-head)"
     },
     {
       "name": "Ray Snakeet (Shorts)",

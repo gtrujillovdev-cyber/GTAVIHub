@@ -169,6 +169,23 @@ Para remontar las cuentas originales y simultáneamente escalar las nuevas sin q
    - **Red Original (`GTA VI Hub Spain`):** Se alimenta con contenido informativo, seguro y de bajo riesgo: **Noticias Oficiales, Comparativas Gráficas, Secretos de Lore y Reacciones de Streamers** en **Formato C (Smart Frame 4:5)** para limpiar el algoritmo y forzar la despenalización.
 3. **Escalonamiento Temporal Humano:** Publicaciones alternadas con franjas de 3 a 4 horas de separación (11:00 Extra, 14:30 Main, 18:00 Extra, 21:00 Main) y jitter aleatorio de 12 a 18 minutos.
 
+---
+
+### 13. 🛡️ Blindaje Anti-Talking-Head y Activación Forzada de Gameplay (`FORCE_ENABLE_GAMEPLAY = True`)
+Ante la publicación no deseada del vídeo `sB-T7nI6U-k` (*"¡ROCKSTAR SE PRONUNCIA SOBRE GTA 6!"*), originado en un canal de tertulias sin gameplay real (*York Reaction*), se auditó el ciclo de ejecución y se aplicaron medidas correctivas definitivas:
+
+1. **Causa Raíz Identificada:**
+   - En el servidor headless de producción (MacBook Pro), el cron de las **17:45 CET** se disparó ejecutando una versión previa del repositorio donde `York Reaction` figuraba como activo.
+   - En `src/config.py`, `FORCE_ENABLE_GAMEPLAY` estaba en `false` por defecto, por lo que las búsquedas activas de gameplay estaban bloqueadas hasta la fecha objetivo del 19 de Noviembre.
+   - El filtro `is_strictly_gta6()` verificaba menciones a GTA 6 y excluía fan-made / GTA 5, pero carecía de una exclusión explícita para tertulias, podcasts, video-ensayos y caras hablando a cámara (*talking-heads*).
+
+2. **Medidas de Blindaje Implementadas:**
+   - **Activación Forzada Inmediata de Gameplay:** `FORCE_ENABLE_GAMEPLAY = True` por defecto en `src/config.py`, desbloqueando de inmediato todas las consultas de mecánicas, físicas de vehículos, agua y tiroteos.
+   - **Filtro Anti-Bocachanclas Estricto:** Se integró en `src/channels.py` y `src/viral_discovery.py` una lista negra de descalificación absoluta para títulos o metadatos con: `podcast`, `entrevista`, `interview`, `ex-rockstar`, `ex-empleado`, `se pronuncia`, `declaraciones`, `comunicado`, `habla sobre`, `despido`, `opinión`, `charlas`, `video-ensayo`, `tertulia`, `debate`, `facecam`.
+   - **Purga de Canales de Tertulias/Opinión:** Se desactivaron en `config/channels.json` todas las fuentes no basadas en metraje de juego puro (York Reaction, GTA VI O'Clock, Jordi Maquiavello, BaityBait, Puerta al Sótano, Danikyo, Dan Allen Gaming, LegacyKillaHD y SWEGTA).
+   - **Prioridad Absoluta a Fuentes de Metraje Real:** El pipeline se enfoca exclusivamente en *GTA Series Videos*, *ElAnalistaDeBits*, *Digital Foundry*, *INTER*, *Sonny Evans*, *GhillieMaster*, *PowerPyx* y metraje verificado de motor RAGE 9.
+
+
 
 
 

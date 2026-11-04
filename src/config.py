@@ -55,9 +55,9 @@ SUBTITLE_OFFSET = float(os.getenv("SUBTITLE_OFFSET", "-0.45"))
 FFMPEG_THREADS = int(os.getenv("FFMPEG_THREADS", "2"))
 CHECK_QUANT_BUSY = os.getenv("CHECK_QUANT_BUSY", "true").lower() in ("1", "true", "yes")
 
-# Fase de Shorts de Gameplay (Apertura automática a partir del 19 de Noviembre)
+# Fase de Shorts de Gameplay (Apertura automática a partir del 19 de Noviembre o forzada)
 GAMEPLAY_RELEASE_DATE = os.getenv("GAMEPLAY_RELEASE_DATE", "2026-11-19")
-FORCE_ENABLE_GAMEPLAY = os.getenv("FORCE_ENABLE_GAMEPLAY", "false").lower() in ("1", "true", "yes")
+FORCE_ENABLE_GAMEPLAY = os.getenv("FORCE_ENABLE_GAMEPLAY", "true").lower() in ("1", "true", "yes")
 
 # Modo Ametralladora (Launch Day Engine: Máxima cadencia y aprovechamiento al límite)
 LAUNCH_MAX_VIDEOS_PER_RUN = int(os.getenv("LAUNCH_MAX_VIDEOS_PER_RUN", "3"))

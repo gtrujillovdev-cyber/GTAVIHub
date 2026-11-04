@@ -211,6 +211,34 @@ def is_strictly_gta6(title: str, description: str = "") -> bool:
         if re.search(pattern, combined):
             return False
 
+    # 8. Descalificador Estricto de Talking-Heads, Tertulias, Podcasts y Cháchara sin Gameplay (Anti-Bocachanclas)
+    talking_head_regexes = [
+        r"\bpodcast\b",
+        r"\bentrevista\b",
+        r"\binterview\b",
+        r"\bex[- ](?:rockstar|empleado|animador|developer|dev)\b",
+        r"\bse pronuncia\b",
+        r"\bdeclaraciones\b",
+        r"\bcomunicado\b",
+        r"\bhabla sobre\b",
+        r"\bdespido[s]?\b",
+        r"\bopinion\b",
+        r"\bopinión\b",
+        r"\bopinando\b",
+        r"\bcharlas\b",
+        r"\bcharla\b",
+        r"\bvideo[- ]ensayo\b",
+        r"\bvideo\s*essay\b",
+        r"\btertulia\b",
+        r"\bdebate\b",
+        r"\bhablando\b",
+        r"\bfacecam\b",
+        r"\breactor\b"
+    ]
+    for pattern in talking_head_regexes:
+        if re.search(pattern, combined):
+            return False
+
     return True
 
 # Alias para retrocompatibilidad

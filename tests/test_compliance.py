@@ -192,6 +192,14 @@ class TestCompliance(unittest.TestCase):
         # Descartar parodias de South Park
         self.assertFalse(is_strictly_gta("South Park GTA 6 Parody Scene"))
 
+        # Descartar talking-heads, cháchara de ex-empleados, podcasts y tertulias sin gameplay
+        self.assertFalse(is_strictly_gta("Ex-Rockstar Animator Reacts to GTA 6"))
+        self.assertFalse(is_strictly_gta("¡ROCKSTAR SE PRONUNCIA SOBRE GTA 6!"))
+        self.assertFalse(is_strictly_gta("GTA 6 Podcast: Declaraciones y rumores"))
+        self.assertFalse(is_strictly_gta("Entrevista exclusiva sobre el despido en GTA 6"))
+        self.assertFalse(is_strictly_gta("Mi opinión sobre el futuro de GTA 6"))
+        self.assertFalse(is_strictly_gta("Video-ensayo sobre la industria de GTA 6"))
+
     def test_to_unicode_bold(self):
         from src.translator import to_unicode_bold
         self.assertEqual(to_unicode_bold("GTA 6"), "𝗚𝗧𝗔 𝟲")

@@ -31,12 +31,12 @@ DEFAULT_VIRAL_QUERIES = [
     "ytsearch15:GTA 6 fisicas coches deformacion #shorts",
     "ytsearch15:GTA 6 inteligencia artificial npcs reacciones #shorts",
     "ytsearch15:GTA 6 comparativa gta 5 diferencias #shorts",
-    # Comunidad Hispanohablante & Streamers
+    # Comunidad Hispanohablante & Mecánicas Clave
     "ytsearch15:GTA 6 secretos gameplay vice city #shorts",
     "ytsearch15:GTA 6 detalles ocultos lucia jason #shorts",
-    "ytsearch15:GTA 6 Jordi Maquiavello analisis #shorts",
-    "ytsearch15:GTA 6 BaityBait analisis #shorts",
-    "ytsearch15:GTA 6 Puerta al Sotano secretos #shorts",
+    "ytsearch15:GTA 6 gameplay mecanicas tiroteo #shorts",
+    "ytsearch15:GTA 6 conduccion fisicas colision #shorts",
+    "ytsearch15:GTA 6 armas disparos animaciones #shorts",
     "ytsearch15:GTA 6 Eurogamer Espana detalles #shorts",
     "ytsearch15:GTA 6 Vandal curiosidades #shorts",
     "ytsearch15:GTA 6 3DJuegos detalles #shorts",
@@ -112,7 +112,12 @@ EXCLUDED_KEYWORDS = [
     "artificial intelligence", "blender render", "remake concept", "graphics showcase",
     "mod", "mods", "modded", "cinematic edit", "tiktok edit", "fake", "simulated", "ai generated",
     "trailer 1", "primer trailer", "first trailer", "trailer 2", "tráiler 2", "trailer2", "loop", "bucle",
-    "extended look", "teaser trailer", "official trailer", "trailer oficial", "teaser"
+    "extended look", "teaser trailer", "official trailer", "trailer oficial", "teaser",
+    # Talking-Heads, Tertulias, Podcasts, Cháchara y Opinión sin Gameplay (CERO BOCACHANCLAS)
+    "podcast", "entrevista", "interview", "ex-rockstar", "ex rockstar", "ex-empleado", "ex empleado",
+    "ex animador", "ex-animador", "se pronuncia", "declaraciones", "comunicado", "habla sobre",
+    "despido", "despidos", "opinion", "opinión", "opinando", "charlas", "video-ensayo",
+    "video ensayo", "video essay", "tertulia", "debate", "hablando", "facecam", "reactor"
 ]
 
 # Términos cortos que necesitan word-boundary para evitar falsos positivos por substring
