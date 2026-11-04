@@ -5,6 +5,16 @@
     "days_remaining": 15,
     "pipeline_architecture": "Adaptive Smart (Formato C/D + Audio Shield + AVD Engine)"
   },
+  "empirical_ground_truth_calibration": {
+    "calibration_source": "calibrated_bayesian_prior",
+    "sample_size_real_videos": 0,
+    "empirical_median_views": 95362,
+    "empirical_mean_views": 116394,
+    "empirical_stdev_views": 79439,
+    "empirical_like_rate": 0.085,
+    "empirical_breakout_rate_pct": 99.8,
+    "updated_at": "2026-11-04T18:33:58.233477"
+  },
   "per_video_distribution": {
     "mean_views": 116394,
     "median_views": 95362,

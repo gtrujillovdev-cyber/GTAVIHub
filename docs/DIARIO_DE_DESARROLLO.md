@@ -130,4 +130,19 @@ Para asegurar el canal al 100% y eliminar cualquier factor de incertidumbre ante
 - **Reproducciones Totales Acumuladas:** **~5.200.000 visitas** (rango intercuartílico P25–P75: 4.8M a 5.6M).
 - **Comunidad / Suscriptores Estimados:** **~66.400 suscriptores** (rango intercuartílico P25–P75: 60.100 a 72.900).
 
+---
+
+### 10. 🛡️ Centinela de Canales Resiliente a Bans y Calibración en Bucle Cerrado (`src/channel_sentinel.py`)
+Para que las simulaciones sean **100% reales** y el pipeline sea **inmune a bloqueos algorítmicos**:
+1. **Auto-Monitor Continuo en Checkpoints:**
+   - Supervisa de forma automatizada cada vídeo publicado en cuatro ventanas críticas: **3h** (velocidad temprana), **12h** (superación de fase semilla), **24h** (expansión algorítmica) y **48h** (consolidación).
+   - Registra el historial en `data/channel_analytics_history.json`.
+2. **Detección Activa de Shadowban / Supresión Algorítmica:**
+   - Si un canal acumula $\ge 2$ vídeos consecutivos con $< 400$ visualizaciones tras $\ge 8$ horas, el centinela cambia automáticamente su estado a `QUARANTINE`.
+   - **Auto-Healing y Conmutación Automática (Failover):** Reroutea inmediatamente las siguientes publicaciones hacia la red de respaldo (**GTA VI Hub Extra**) y aplica un enfriamiento de 48h a la cuenta afectada para no agravar la penalización.
+3. **Calibración Empírica de Simulaciones (Ground Truth Feedback):**
+   - El simulador Monte Carlo importa dinámicamente las visitas y engagement reales mediante `calibrate_simulation_from_real_data()`.
+   - La simulación ya no se basa únicamente en modelos teóricos: a medida que se suben vídeos, ajusta sus distribuciones con la realidad empírica de nuestros canales.
+
+
 

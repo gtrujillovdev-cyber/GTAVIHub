@@ -468,9 +468,10 @@ def process_single_video(
         "date": datetime.now().isoformat()
     })
 
-    # 8b. Registro en performance_tracker para el bucle de feedback de 24h
+    # 8b. Registro en performance_tracker y ChannelSentinel para monitorización 24/7 y calibración
     try:
         from .performance_tracker import record_published_video
+        from .channel_sentinel import record_video_for_sentinel, update_realtime_metrics, get_resilient_publishing_target
         record_published_video(
             video_id=video_id,
             title=original_title,
@@ -480,8 +481,17 @@ def process_single_video(
             days_old=0,
             is_short=is_short
         )
+        record_video_for_sentinel(
+            video_id=video_id,
+            title=original_title,
+            platform_urls=multiplatform_results if multiplatform_results else {"youtube": full_info.get("uploaded_youtube_url", "")},
+            target_channel=get_resilient_publishing_target("youtube"),
+            archetype=metadata.get("archetype", "general")
+        )
+        # Auto-monitorización en segundo plano: rastrear checkpoints de vistas de vídeos previos
+        update_realtime_metrics(max_items=2)
     except Exception as e:
-        print(f"[Pipeline] Info performance_tracker: {e}")
+        print(f"[Pipeline] Info performance_tracker / ChannelSentinel: {e}")
 
     # 9. REGLAS ESTRICTAS DE LIMPIEZA
     # Limpiar todos los archivos de trabajo en temp/

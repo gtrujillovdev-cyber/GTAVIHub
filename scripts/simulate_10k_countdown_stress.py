@@ -17,7 +17,13 @@ import random
 import math
 import statistics
 import json
+import sys
 from pathlib import Path
+
+# Asegurar importación de src
+BASE_DIR = Path(__file__).resolve().parent.parent
+if str(BASE_DIR) not in sys.path:
+    sys.path.insert(0, str(BASE_DIR))
 
 random.seed(19112026)  # Semilla fija para reproducibilidad científica
 
@@ -208,6 +214,13 @@ def run_10k_simulation():
         sprint_total_views.append(sum(s["views"] for s in sprint_sample))
         sprint_total_subs.append(sum(s["new_subscribers"] for s in sprint_sample))
 
+    # Calibración en bucle cerrado con datos empíricos de los canales reales
+    try:
+        from src.channel_sentinel import calibrate_simulation_from_real_data
+        calibration_data = calibrate_simulation_from_real_data()
+    except Exception as e:
+        calibration_data = {"error": str(e)}
+
     report = {
         "metadata": {
             "total_simulations": total_runs,
@@ -215,6 +228,7 @@ def run_10k_simulation():
             "days_remaining": 15,
             "pipeline_architecture": "Adaptive Smart (Formato C/D + Audio Shield + AVD Engine)"
         },
+        "empirical_ground_truth_calibration": calibration_data,
         "per_video_distribution": {
             "mean_views": mean_view,
             "median_views": p50,
