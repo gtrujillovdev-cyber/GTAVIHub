@@ -1,0 +1,54 @@
+{
+  "legacy_old": {
+    "total_simulations": 1000,
+    "median_views": 1092,
+    "mean_views": 1168,
+    "min_views": 273,
+    "max_views": 5127,
+    "avg_vvsa_pct": 47.5,
+    "avg_apv_pct": 61.6,
+    "avg_avd_seconds": 12.3,
+    "flop_rate_pct": 92.7,
+    "breakout_rate_gt_10k_pct": 0.0,
+    "viral_rate_gt_50k_pct": 0.0
+  },
+  "format_c_only": {
+    "total_simulations": 1000,
+    "median_views": 30574,
+    "mean_views": 62799,
+    "min_views": 2479,
+    "max_views": 336501,
+    "avg_vvsa_pct": 88.3,
+    "avg_apv_pct": 86.3,
+    "avg_avd_seconds": 31.9,
+    "flop_rate_pct": 0.0,
+    "breakout_rate_gt_10k_pct": 97.1,
+    "viral_rate_gt_50k_pct": 31.2
+  },
+  "format_d_only": {
+    "total_simulations": 1000,
+    "median_views": 31686,
+    "mean_views": 62805,
+    "min_views": 1758,
+    "max_views": 325209,
+    "avg_vvsa_pct": 89.5,
+    "avg_apv_pct": 85.7,
+    "avg_avd_seconds": 31.7,
+    "flop_rate_pct": 0.0,
+    "breakout_rate_gt_10k_pct": 96.1,
+    "viral_rate_gt_50k_pct": 29.6
+  },
+  "adaptive_smart": {
+    "total_simulations": 1000,
+    "median_views": 33042,
+    "mean_views": 66151,
+    "min_views": 2290,
+    "max_views": 320224,
+    "avg_vvsa_pct": 89.8,
+    "avg_apv_pct": 86.0,
+    "avg_avd_seconds": 31.3,
+    "flop_rate_pct": 0.0,
+    "breakout_rate_gt_10k_pct": 95.5,
+    "viral_rate_gt_50k_pct": 32.7
+  }
+}
