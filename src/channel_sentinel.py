@@ -28,37 +28,37 @@ PROCESSED_FILE = DATA_DIR / "processed.json"
 DEFAULT_STATE = {
     "channels": {
         "youtube_main": {
-            "name": "GTA VI Hub Spain",
+            "name": "GTA VI Hub Spain (Legacy Banned)",
             "handle": "@GTAVIHubSpain",
             "platform": "youtube",
-            "status": "healthy",  # healthy | degraded | quarantine (shadowbanned)
-            "consecutive_flops": 0,
+            "status": "quarantine",  # Cuenta original suspendida/baneada
+            "consecutive_flops": 99,
             "last_checked": None,
             "recent_views": [],
-            "cooldown_until": None
+            "cooldown_until": "2099-01-01T00:00:00"
         },
         "youtube_extra": {
-            "name": "GTA VI Hub Extra",
+            "name": "GTA VI Hub Extra (Active Primary)",
             "handle": "@GTAVIHubExtra",
             "platform": "youtube",
-            "status": "healthy",
+            "status": "healthy",  # Nuevo canal principal activo
             "consecutive_flops": 0,
             "last_checked": None,
             "recent_views": [],
             "cooldown_until": None
         },
         "tiktok_main": {
-            "name": "GTAViHubSpain",
+            "name": "GTAViHubSpain (Legacy Banned)",
             "handle": "@gtavihubspain",
             "platform": "tiktok",
-            "status": "healthy",
-            "consecutive_flops": 0,
+            "status": "quarantine",
+            "consecutive_flops": 99,
             "last_checked": None,
             "recent_views": [],
-            "cooldown_until": None
+            "cooldown_until": "2099-01-01T00:00:00"
         },
         "tiktok_extra": {
-            "name": "GTAViHubExtra",
+            "name": "GTAViHubExtra (Active Primary)",
             "handle": "@gtavihubextra",
             "platform": "tiktok",
             "status": "healthy",
@@ -68,8 +68,11 @@ DEFAULT_STATE = {
             "cooldown_until": None
         }
     },
-    "routing_preference": "auto_resilient",  # auto_resilient | force_main | force_extra
-    "last_failover_event": None
+    "routing_preference": "force_extra",  # Enrutamiento permanente a las nuevas cuentas oficiales
+    "last_failover_event": {
+        "timestamp": "2026-11-04T18:45:00",
+        "reason": "legacy_channels_banned_full_migration_to_extra"
+    }
 }
 
 def load_sentinel_state() -> Dict[str, Any]:

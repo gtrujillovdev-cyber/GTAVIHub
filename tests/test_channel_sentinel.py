@@ -46,10 +46,10 @@ class TestChannelSentinel(unittest.TestCase):
         history = load_analytics_history()
         self.assertTrue(any(v["video_id"] == "test_vid_123" for v in history))
 
-    def test_resilient_routing_default_main(self):
-        # En estado normal (healthy), el target debe ser main
+    def test_resilient_routing_default_extra(self):
+        # Con la migración por baneo de las cuentas originales, el target por defecto es 'extra'
         target = get_resilient_publishing_target("youtube")
-        self.assertEqual(target, "main")
+        self.assertEqual(target, "extra")
 
     def test_shadowban_detection_and_failover_routing(self):
         # Simular 2 vídeos consecutivos con bajas visualizaciones (< 400 vistas) en el canal principal

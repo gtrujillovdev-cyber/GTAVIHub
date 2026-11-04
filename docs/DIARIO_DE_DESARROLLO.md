@@ -144,5 +144,21 @@ Para que las simulaciones sean **100% reales** y el pipeline sea **inmune a bloq
    - El simulador Monte Carlo importa dinámicamente las visitas y engagement reales mediante `calibrate_simulation_from_real_data()`.
    - La simulación ya no se basa únicamente en modelos teóricos: a medida que se suben vídeos, ajusta sus distribuciones con la realidad empírica de nuestros canales.
 
+---
+
+### 11. 🚀 Transición Operativa Completa: 'GTA VI Hub Extra' como Red Principal Activa
+Tras confirmar que las cuentas originales (@gtavihubspain) se encuentran penalizadas/suspendidas:
+1. **Purga de Enlaces Tóxicos:** Se eliminaron del código todas las referencias, enlaces y créditos dirigidos a las cuentas baneadas para evitar sanciones por asociación en los algoritmos de Meta y TikTok.
+2. **Reconfiguración Global del Pipeline:** Las nuevas cuentas oficiales son ahora el destino de producción por defecto:
+   - **YouTube:** `GTA VI Hub Extra` ([@GTAVIHubExtra](https://www.youtube.com/@GTAVIHubExtra))
+   - **TikTok:** `GTAViHubExtra` ([@gtavihubextra](https://www.tiktok.com/@gtavihubextra?lang=es))
+   - **Instagram:** [@gtavihubextra](https://www.instagram.com/gtavihubextra/)
+   - **Hub Linktree:** `https://linktr.ee/gtavihubextra`
+3. **Protocolo de Arranque Limpio (Clean Slate Seeding):**
+   - Cadencia de calentamiento: 1 a 2 vídeos/día en los primeros 3 días para consolidar el *creator trust score* en canales nuevos.
+   - Escalado progresivo hasta 3-4 vídeos diarios de cara al lanzamiento del 19 de Noviembre.
+   - Enfoque prioritario exclusivo en arquetipos de retención comprobada (Físicas RAGE 9 y Mapa Leonida) con Audio Shield estricto y Formato D/C.
+
+
 
 

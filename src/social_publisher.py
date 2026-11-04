@@ -194,7 +194,7 @@ class SocialPublisher:
         if self.dry_run:
             print(f"[2/3 TikTok] [DRY RUN] Simulación exitosa. Caption: '{caption[:60]}...'")
             print(f"             Perfil de sesión: {tiktok_profile}")
-            return f"https://www.tiktok.com/@gtavihubspain/video/mock_{video_path.stem}"
+            return f"https://www.tiktok.com/@gtavihubextra/video/mock_{video_path.stem}"
 
         try:
             # Comprobar si playwright está disponible en el entorno
@@ -463,10 +463,10 @@ class SocialPublisher:
 
                 if "manage" in current_url or "content" in current_url:
                     print("[✓] Vídeo publicado en TikTok.")
-                    return f"https://www.tiktok.com/@gtavihubspain"
+                    return f"https://www.tiktok.com/@gtavihubextra"
                 else:
                     print(f"[*] URL final: {current_url} — vídeo posiblemente en revisión")
-                    return f"https://www.tiktok.com/@gtavihubspain"
+                    return f"https://www.tiktok.com/@gtavihubextra"
         except ImportError:
             print("[TikTok] Playwright no está instalado o configurado aún. Puedes activarlo con: pip install playwright && playwright install chromium")
             print(f"[TikTok] Archivo preparado para subida manual o por navegador: {video_path}")
@@ -486,7 +486,7 @@ class SocialPublisher:
         Credenciales en .env: INSTAGRAM_USERNAME, INSTAGRAM_PASSWORD.
         Session cache en assets/.browser_profiles/instagrapi_session.json.
         """
-        print(f"\n[3/3 Instagram] Preparando subida a Instagram Reels (@gtavihubspain)...")
+        print(f"\n[3/3 Instagram] Preparando subida a Instagram Reels (@gtavihubextra)...")
         if not AntiBanValidator.check_daily_limit("instagram"):
             return None
 
@@ -622,7 +622,7 @@ class SocialPublisher:
                         story_res = publish_scheduled_story(force=True, preferred_type="product", dry_run=self.dry_run)
                         if story_res.get("status") in ("published", "simulated", "ok") or (self.dry_run and story_res.get("item")):
                             story_item = story_res.get("item", "Oferta de hardware")
-                            story_url = story_res.get("story_url") or "https://www.instagram.com/gtavihubspain/"
+                            story_url = story_res.get("story_url") or "https://www.instagram.com/gtavihubextra/"
                             results["instagram"] = f"Story Alternativa Publicada: {story_item} ({story_url})"
                             print(f"[✓] [Opción B] Story alternativa publicada en Instagram: {story_item}")
                             self._notify_telegram(
@@ -693,8 +693,8 @@ class SocialPublisher:
                     f"{debate_block}"
                     f"{desc[:900]}\n\n"
                     f"🌐 {bold_redes}\n"
-                    f"👉 Hub Central: https://linktr.ee/gtavihubspain\n"
-                    f"👉 Síguenos en @gtavihubspain\n\n"
+                    f"👉 Hub Central: https://linktr.ee/gtavihubextra\n"
+                    f"👉 Síguenos en @gtavihubextra\n\n"
                     f"{cta_block}\n\n"
                     f"📌 {bold_creditos} Vía {creator_clean}. Todo el crédito al autor original.\n"
                     f"📩 {bold_contacto} {BUSINESS_EMAIL}\n\n"

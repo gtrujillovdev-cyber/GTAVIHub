@@ -333,7 +333,7 @@ Devuelve tu respuesta EXACTAMENTE en este formato JSON (sin texto extra):
             f"🌴 💬 {to_unicode_bold('DEBATE GTA 6:')}\n"
             f"{debate_question}\n"
             f"👇 ¡Déjanos tu teoría en los comentarios!\n\n"
-            f"🌐 𝗧𝗢𝗗𝗔𝗦 𝗡𝗨𝗘𝗦𝗧𝗥𝗔𝗦 𝗥𝗘𝗗𝗘𝗦 👉 https://linktr.ee/gtavihubspain\n"
+            f"🌐 𝗧𝗢𝗗𝗔𝗦 𝗡𝗨𝗘𝗦𝗧𝗥𝗔𝗦 𝗥𝗘𝗗𝗘𝗦 👉 https://linktr.ee/gtavihubextra\n"
             f"🎮 𝗥𝗘𝗦𝗘𝗥𝗩𝗔 𝗢𝗙𝗜𝗖𝗜𝗔𝗟 𝗚𝗧𝗔 𝟲 👉 {MONETIZATION_AFFILIATE_URL}\n"
             f"📩 Contacto Business: {BUSINESS_EMAIL}"
         )
@@ -361,12 +361,12 @@ Devuelve tu respuesta EXACTAMENTE en este formato JSON (sin texto extra):
 {debate_question}
 👇 ¿Cuál es tu teoría? ¡Te leemos en los comentarios!
 
-🌴 {to_unicode_bold("GTA VI HUB ESPAÑA | REDES OFICIALES:")}
+🌴 {to_unicode_bold("GTA VI HUB EXTRA | REDES OFICIALES:")}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-🌐 Hub Central & Enlaces: https://linktr.ee/gtavihubspain
-🎬 TikTok Oficial: https://tiktok.com/@gtavihubspain
-📸 Instagram Reels: https://instagram.com/gtavihubspain
-🔴 Suscríbete al Canal: https://youtube.com/@GTAVIHubSpain?sub_confirmation=1
+🌐 Hub Central & Enlaces: https://linktr.ee/gtavihubextra
+🎬 TikTok Oficial: https://tiktok.com/@gtavihubextra
+📸 Instagram Reels: https://instagram.com/gtavihubextra
+🔴 Suscríbete al Canal: https://youtube.com/@GTAVIHubExtra?sub_confirmation=1
 
 {affiliate_block}
 
