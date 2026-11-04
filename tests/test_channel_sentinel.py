@@ -46,10 +46,14 @@ class TestChannelSentinel(unittest.TestCase):
         history = load_analytics_history()
         self.assertTrue(any(v["video_id"] == "test_vid_123" for v in history))
 
-    def test_resilient_routing_default_extra(self):
-        # Con la migración por baneo de las cuentas originales, el target por defecto es 'extra'
-        target = get_resilient_publishing_target("youtube")
-        self.assertEqual(target, "extra")
+    def test_resilient_routing_dual_parallel(self):
+        # En modo dual_parallel:
+        # Físicas y acción van a 'extra'
+        target_action = get_resilient_publishing_target("youtube", archetype="rage9_physics")
+        self.assertEqual(target_action, "extra")
+        # Noticias y comparativas van a 'main'
+        target_lore = get_resilient_publishing_target("youtube", archetype="official_news")
+        self.assertEqual(target_lore, "main")
 
     def test_shadowban_detection_and_failover_routing(self):
         # Simular 2 vídeos consecutivos con bajas visualizaciones (< 400 vistas) en el canal principal

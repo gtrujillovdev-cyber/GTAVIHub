@@ -28,37 +28,37 @@ PROCESSED_FILE = DATA_DIR / "processed.json"
 DEFAULT_STATE = {
     "channels": {
         "youtube_main": {
-            "name": "GTA VI Hub Spain (Legacy Banned)",
+            "name": "GTA VI Hub Spain",
             "handle": "@GTAVIHubSpain",
             "platform": "youtube",
-            "status": "quarantine",  # Cuenta original suspendida/baneada
-            "consecutive_flops": 99,
+            "status": "healthy",  # Canal original en intento de remontada
+            "consecutive_flops": 0,
             "last_checked": None,
             "recent_views": [],
-            "cooldown_until": "2099-01-01T00:00:00"
+            "cooldown_until": None
         },
         "youtube_extra": {
-            "name": "GTA VI Hub Extra (Active Primary)",
+            "name": "GTA VI Hub Extra",
             "handle": "@GTAVIHubExtra",
             "platform": "youtube",
-            "status": "healthy",  # Nuevo canal principal activo
+            "status": "healthy",  # Canal nuevo de crecimiento rápido
             "consecutive_flops": 0,
             "last_checked": None,
             "recent_views": [],
             "cooldown_until": None
         },
         "tiktok_main": {
-            "name": "GTAViHubSpain (Legacy Banned)",
+            "name": "GTAViHubSpain",
             "handle": "@gtavihubspain",
             "platform": "tiktok",
-            "status": "quarantine",
-            "consecutive_flops": 99,
+            "status": "healthy",
+            "consecutive_flops": 0,
             "last_checked": None,
             "recent_views": [],
-            "cooldown_until": "2099-01-01T00:00:00"
+            "cooldown_until": None
         },
         "tiktok_extra": {
-            "name": "GTAViHubExtra (Active Primary)",
+            "name": "GTAViHubExtra",
             "handle": "@gtavihubextra",
             "platform": "tiktok",
             "status": "healthy",
@@ -68,10 +68,10 @@ DEFAULT_STATE = {
             "cooldown_until": None
         }
     },
-    "routing_preference": "force_extra",  # Enrutamiento permanente a las nuevas cuentas oficiales
+    "routing_preference": "dual_parallel",  # dual_parallel: reparte contenido variado a ambos
     "last_failover_event": {
-        "timestamp": "2026-11-04T18:45:00",
-        "reason": "legacy_channels_banned_full_migration_to_extra"
+        "timestamp": "2026-11-04T18:55:00",
+        "strategy": "dual_parallel_diversified_rehabilitation"
     }
 }
 
@@ -308,13 +308,13 @@ def evaluate_and_heal_channels() -> Dict[str, Any]:
         "channels": state["channels"]
     }
 
-def get_resilient_publishing_target(platform: str = "youtube") -> str:
+def get_resilient_publishing_target(platform: str = "youtube", archetype: str = "general") -> str:
     """
-    Retorna el destino óptimo de publicación ('main' o 'extra') según la salud actual
-    del canal, garantizando resiliencia automática ante caídas o shadowbans.
+    Retorna el destino óptimo de publicación ('main' o 'extra') según la estrategia
+    configurada y la salud actual del canal, garantizando resiliencia y cero contenido duplicado.
     """
     state = load_sentinel_state()
-    pref = state.get("routing_preference", "auto_resilient")
+    pref = state.get("routing_preference", "dual_parallel")
     if pref == "force_main":
         return "main"
     elif pref == "force_extra":
@@ -327,12 +327,23 @@ def get_resilient_publishing_target(platform: str = "youtube") -> str:
     main_status = channels.get(main_key, {}).get("status", "healthy")
     extra_status = channels.get(extra_key, {}).get("status", "healthy")
 
-    # Si el canal principal está en cuarentena pero el de respaldo está sano, conmutar
+    # Si el canal principal está en cuarentena pero el de respaldo está sano, conmutar a extra
     if main_status == "quarantine" and extra_status != "quarantine":
         print(f"[Auto-Healing Failover] Redirigiendo publicación a cuenta de respaldo ({extra_key}) debido a cuarentena en {main_key}.")
         return "extra"
 
-    # Si ambos están sanos o ambos en cuarentena, el principal mantiene prioridad
+    if pref == "dual_parallel":
+        # Estrategia Bicanal Diversificada:
+        # Físicas de acción, armas y gameplays puros -> Red Extra (crecimiento y nuevo lienzo)
+        # Noticias oficiales, comparativas y lore editorial -> Red Main (rehabilitación segura)
+        action_archetypes = {
+            "rage9_physics", "weapons_shooting_rdr2", "weapons_rdr2_mechanics",
+            "físicas_rage9", "gameplay_puro", "action"
+        }
+        if archetype.lower() in action_archetypes or "fisica" in archetype.lower() or "arma" in archetype.lower():
+            return "extra"
+        return "main"
+
     return "main"
 
 def calibrate_simulation_from_real_data() -> Dict[str, Any]:

@@ -159,6 +159,17 @@ Tras confirmar que las cuentas originales (@gtavihubspain) se encuentran penaliz
    - Escalado progresivo hasta 3-4 vídeos diarios de cara al lanzamiento del 19 de Noviembre.
    - Enfoque prioritario exclusivo en arquetipos de retención comprobada (Físicas RAGE 9 y Mapa Leonida) con Audio Shield estricto y Formato D/C.
 
+---
+
+### 12. 🎭 Estrategia Bicanal Diversificada: Remontada del Original y Crecimiento en Paralelo (Zero-Duplicate Rule)
+Para remontar las cuentas originales y simultáneamente escalar las nuevas sin que las plataformas penalicen por duplicados:
+1. **Regla de Oro (Zero-Duplicate Rule):** Queda terminantemente prohibido subir el mismo vídeo a ambas cuentas. Los algoritmos de detección perceptual (Content ID y TikTok Unoriginal Content Shield) penalizarían a ambas.
+2. **Matriz de Asignación por Arquetipo (`dual_parallel`):**
+   - **Red Nueva (`GTA VI Hub Extra`):** Se alimenta con contenido de alto impacto visual e inmersión: **Físicas RAGE 9, Choques, Agua, Armas y Acción** en **Formato D (Pro-Cinema 83.3%)**.
+   - **Red Original (`GTA VI Hub Spain`):** Se alimenta con contenido informativo, seguro y de bajo riesgo: **Noticias Oficiales, Comparativas Gráficas, Secretos de Lore y Reacciones de Streamers** en **Formato C (Smart Frame 4:5)** para limpiar el algoritmo y forzar la despenalización.
+3. **Escalonamiento Temporal Humano:** Publicaciones alternadas con franjas de 3 a 4 horas de separación (11:00 Extra, 14:30 Main, 18:00 Extra, 21:00 Main) y jitter aleatorio de 12 a 18 minutos.
+
+
 
 
 
