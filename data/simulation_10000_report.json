@@ -1,0 +1,42 @@
+{
+  "metadata": {
+    "total_simulations": 10000,
+    "target_date": "19 de Noviembre de 2026",
+    "days_remaining": 15,
+    "pipeline_architecture": "Adaptive Smart (Formato C/D + Audio Shield + AVD Engine)"
+  },
+  "per_video_distribution": {
+    "mean_views": 116394,
+    "median_views": 95362,
+    "stdev_views": 79439,
+    "percentile_5_worst_case": 25142,
+    "percentile_25": 49071,
+    "percentile_75": 171699,
+    "percentile_95": 268535,
+    "percentile_99_mega_hit": 330257,
+    "min_views_recorded": 4469,
+    "max_views_recorded": 397937
+  },
+  "conversion_and_retention_benchmarks": {
+    "average_vvsa_pct": 94.53,
+    "average_apv_pct": 87.12,
+    "average_avd_seconds": 30.45,
+    "stagnation_risk_pct": 0.0,
+    "breakout_rate_gt_10k_pct": 99.8,
+    "viral_rate_gt_50k_pct": 74.17,
+    "mega_viral_rate_gt_100k_pct": 48.36
+  },
+  "countdown_sprint_forecast_15_days": {
+    "videos_scheduled_total": 45,
+    "cumulative_views_median": 5203194,
+    "cumulative_views_p25_p75": [
+      4849826,
+      5581998
+    ],
+    "cumulative_subs_median": 66424,
+    "cumulative_subs_p25_p75": [
+      60104,
+      72917
+    ]
+  }
+}
