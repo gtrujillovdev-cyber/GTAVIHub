@@ -18,6 +18,7 @@ SCOPES = [
 ]
 
 TOKEN_FILE = BASE_DIR / "token.json"
+TOKEN_EXTRA_FILE = BASE_DIR / "token_extra.json"
 BOOST_STATE_FILE = BASE_DIR / "data" / "engagement_boost.json"
 
 
@@ -49,26 +50,31 @@ def should_toggle_engagement_boost() -> bool:
 
     return should_apply
 
-def get_authenticated_youtube_service():
-    """Obtiene el cliente autenticado de YouTube usando token.json."""
-    if not TOKEN_FILE.exists():
-        print(f"[!] No se encontró {TOKEN_FILE.name}. Ejecuta primero: python3 auth_youtube.py")
+def get_authenticated_youtube_service(account: str = "main"):
+    """Obtiene el cliente autenticado de YouTube usando token.json o token_extra.json."""
+    is_extra = account in ("extra", "youtube_extra")
+    chosen_file = TOKEN_EXTRA_FILE if (is_extra and TOKEN_EXTRA_FILE.exists()) else TOKEN_FILE
+
+    if is_extra and not TOKEN_EXTRA_FILE.exists():
+        print(f"[YouTube Uploader] ⚠️ Aviso: 'token_extra.json' no encontrado para @GTAVIHubExtra. Usando {chosen_file.name}. Ejecuta 'python3 scripts/auth_youtube.py --extra' para autorizar el canal nuevo.")
+
+    if not chosen_file.exists():
+        print(f"[!] No se encontró {chosen_file.name}. Ejecuta primero: python3 scripts/auth_youtube.py")
         return None
 
     try:
-        # Cargar credenciales usando los scopes autorizados en el archivo para evitar 'invalid_scope'
         try:
-            creds = Credentials.from_authorized_user_file(str(TOKEN_FILE))
+            creds = Credentials.from_authorized_user_file(str(chosen_file))
         except Exception:
-            creds = Credentials.from_authorized_user_file(str(TOKEN_FILE), SCOPES)
+            creds = Credentials.from_authorized_user_file(str(chosen_file), SCOPES)
 
         if creds and creds.expired and creds.refresh_token:
             creds.refresh(Request())
-            with open(TOKEN_FILE, "w", encoding="utf-8") as token:
+            with open(chosen_file, "w", encoding="utf-8") as token:
                 token.write(creds.to_json())
         return build("youtube", "v3", credentials=creds)
     except Exception as e:
-        print(f"[!] Error cargando credenciales de YouTube: {e}")
+        print(f"[!] Error cargando credenciales de YouTube ({chosen_file.name}): {e}")
         return None
 
 def upload_to_youtube(
@@ -79,13 +85,14 @@ def upload_to_youtube(
     privacy_status: str = "private",
     is_short: bool = False,
     thumbnail_path: Optional[Path] = None,
-    pinned_comment: Optional[str] = None
+    pinned_comment: Optional[str] = None,
+    target_account: str = "main"
 ) -> Optional[str]:
     """
     Sube un vídeo a YouTube mediante la API v3.
     Retorna el ID del vídeo subido o None si falla.
     """
-    youtube = get_authenticated_youtube_service()
+    youtube = get_authenticated_youtube_service(account=target_account)
     if not youtube:
         return None
 

@@ -1,4 +1,5 @@
 import re
+import json
 import shutil
 from pathlib import Path
 from typing import Optional, Dict
@@ -295,6 +296,27 @@ Devuelve tu respuesta EXACTAMENTE en este formato JSON (sin texto extra):
         viral_title = viral_title.upper()
         if "#SHORTS" not in viral_title and len(viral_title) <= 90:
             viral_title = f"{viral_title} #Shorts"
+
+    # Desduplicación Estricta de Títulos (Anti-Spam Shield: CERO títulos repetidos)
+    try:
+        from .config import PROCESSED_FILE
+        if PROCESSED_FILE.exists():
+            with open(PROCESSED_FILE, "r", encoding="utf-8") as pf:
+                recent_processed = json.load(pf)
+                recent_titles = [
+                    v.get("youtube_title", "").upper().replace("#SHORTS", "").replace("#GTA6", "").strip()
+                    for v in recent_processed[-30:]
+                    if v.get("youtube_title")
+                ]
+                clean_candidate = viral_title.upper().replace("#SHORTS", "").replace("#GTA6", "").strip()
+                if clean_candidate in recent_titles or any(len(clean_candidate) > 12 and clean_candidate == t for t in recent_titles):
+                    print(f"[Anti-Duplicate] Título '{viral_title}' ya publicado en los últimos 30 clips. Diferenciando variante...")
+                    short_tag = re.sub(r'[^A-Z0-9 ]', '', original_title.upper()).strip()
+                    short_tag = short_tag.split()[0] if short_tag else "NUEVO"
+                    base_vt = viral_title.replace("#SHORTS", "").strip()
+                    viral_title = f"{base_vt} ({short_tag}) #Shorts"
+    except Exception as e:
+        print(f"[Anti-Duplicate] Nota: {e}")
 
     # Ensamblar descripción PROGRAMÁTICAMENTE (garantiza cero placeholders y cumplimiento legal)
     creator_clean = creator_name or "Rockstar Games"

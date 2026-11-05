@@ -627,16 +627,17 @@ def render_final_video(
     force_short_format: bool = False,
     hook_text: str = "",
     is_official_content: bool = False,
-    archetype: str = ""
+    archetype: str = "",
+    format_preset: Optional[str] = None
 ) -> bool:
     """
     Ensamblaje viral definitivo con KARAOKE GLOW, GANCHO SUPERIOR (0-2.5s) y ENCUADRE INTELIGENTE:
-    1. Formato C (Nativo Vertical 9:16) Prioritario:
-       - Si el vídeo ya es vertical, se escala a pantalla completa nativa sin deformar.
-    2. Formato B (Full Frame Cinema con 0% de recorte):
-       - EXCLUSIVO para tráilers y comunicados oficiales de Rockstar Games o análisis técnicos clave
-         donde recortar arruina los detalles de la pantalla panorámica.
-    3. Reencuadre vertical dinámico para clips no oficiales.
+    1. Formato D (Pro-Cinema 83.3% / 1080x1600):
+       - Máxima inmersión visual para físicas RAGE 9, gameplay puro, tiroteos y choques.
+    2. Formato C (Smart Frame 4:5 / 1080x1350):
+       - Encuadre editorial balanceado para comparativas, noticias oficiales y lore.
+    3. Formato Vertical Nativo 9:16:
+       - Si el vídeo ya es vertical nativo, se escala a pantalla completa (1080x1920).
     4. Gancho Superior de Contexto (0.0s a 2.5s) y Subtítulos Karaoke Dinámicos con Halo Neón.
     5. Normalización de audio YouTube Shorts (-14 LUFS).
     6. Aceleración nativa VideoToolbox en Apple Silicon e Intel.
@@ -647,24 +648,47 @@ def render_final_video(
     is_already_vertical = (height > width)
     is_vertical = force_short_format or is_already_vertical
 
+    # Determinar preset: Formato D (Pro-Cinema 83.3%) vs Formato C (Smart Frame 4:5 70.3%)
+    effective_preset = (format_preset or "").upper()
+    if not effective_preset:
+        action_archetypes = {"gameplay_puro", "analisis_tecnico", "rage9_physics", "weapons_shooting_rdr2", "fisicas"}
+        effective_preset = "D" if archetype in action_archetypes else "C"
+
     if is_vertical and not is_already_vertical:
-        # Modo Smart Frame Inmersivo 4:5 (70.3% de cobertura de pantalla):
-        # Reencuadre centrado de alto impacto que maximiza el tamaño del gameplay en móviles
-        # (1080x1350 centrado a y=285), eliminando el efecto de vídeo pequeño 'sello de correos'.
-        # Zonas seguras limpias: Arriba (y=110) para el Gancho Neón y abajo (y=1430) para Karaoke.
-        fg_w = 1080
-        fg_h = 1350
-        fg_y = 285
-        fg_bottom = fg_y + fg_h
-        is_cinema_layout = True
-        print(f"[*] Modo Smart Frame Inmersivo 4:5 (70.3% cobertura): {fg_w}x{fg_h} @ y={fg_y} con Ambient Canvas.")
+        if effective_preset == "D":
+            # Formato D (Pro-Cinema 83.3% de cobertura de pantalla):
+            # 1080x1600 centrado a y=160. Máxima presencia de pantalla sin cortar elementos clave.
+            fg_w = 1080
+            fg_h = 1600
+            fg_y = 160
+            fg_bottom = 1760
+            is_cinema_layout = True
+            hook_y_expr = "50"
+            ret_y_expr = "100"
+            sub_y = "1650"
+            print(f"[*] Modo Formato D Pro-Cinema (83.3% cobertura): {fg_w}x{fg_h} @ y={fg_y} con Velvet Canvas.")
+        else:
+            # Formato C (Smart Frame Inmersivo 4:5, 70.3% de cobertura):
+            # 1080x1350 centrado a y=285 con Ambient Canvas.
+            fg_w = 1080
+            fg_h = 1350
+            fg_y = 285
+            fg_bottom = 1635
+            is_cinema_layout = True
+            hook_y_expr = "110"
+            ret_y_expr = "180"
+            sub_y = "1430"
+            print(f"[*] Modo Formato C Smart Frame 4:5 (70.3% cobertura): {fg_w}x{fg_h} @ y={fg_y} con Ambient Canvas.")
     else:
-        # Formato C (Vertical Nativo 9:16):
+        # Formato Vertical Nativo 9:16 (1080x1920)
         fg_w = 1080
         fg_h = 1920
         fg_y = 0
         fg_bottom = 1920
         is_cinema_layout = False
+        hook_y_expr = "120"
+        ret_y_expr = "220"
+        sub_y = "1200" if is_vertical else "H-h-90"
         print(f"[*] Modo Vertical Nativo 9:16: Pantalla completa sin deformación (Vertical: {is_vertical}).")
 
     # 1. Viñeta y sombras de unión
@@ -835,23 +859,16 @@ def render_final_video(
     current_v = "v_vignetted"
 
     # C) Superponer Gancho Superior (0.0 a 2.5s)
-    # En Smart Frame Inmersivo, se posiciona en la franja superior limpia (y=110)
     if hook_idx is not None:
-        hook_y_expr = "110" if is_cinema_layout else "120"
         filter_chains.append(f"[{current_v}][{hook_idx}:v]overlay=(W-w)/2:{hook_y_expr}:enable='between(t,0,2.5)'[v_hooked]")
         current_v = "v_hooked"
 
     # C2) Superponer segundo gancho de retención (5.0 a 7.0s) — frena el swipe mid-scroll
     if retention_idx is not None:
-        ret_y_expr = "180" if is_cinema_layout else "220"
         filter_chains.append(f"[{current_v}][{retention_idx}:v]overlay=(W-w)/2:{ret_y_expr}:enable='between(t,5.0,7.0)'[v_retained]")
         current_v = "v_retained"
 
     # D) Superponer Subtítulos Karaoke palabra por palabra
-    # Safe Zone vertical (Instagram Reels / TikTok / YouTube Shorts):
-    # En vídeos adaptados (Smart Frame): y=1430 (franja inferior limpia sin solapar UI de likes/comentarios).
-    # En vídeos verticales nativos: y=1200.
-    sub_y = "1430" if (is_vertical and not is_already_vertical) else ("1200" if is_vertical else "H-h-90")
     for s_idx, (_, start_s, end_s) in enumerate(sub_pngs):
         in_id = sub_inputs_start + s_idx
         next_v = f"v_sub_{s_idx}"

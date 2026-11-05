@@ -28,8 +28,8 @@ if [ -f "$HEARTBEAT" ] && pgrep -f "main.py --telegram" >/dev/null 2>&1; then
     fi
 fi
 
-# 2. Asegurar que el bot de Telegram esté siempre corriendo (Auto-healing 24/7)
+# 2. Asegurar que el bot de Telegram esté siempre corriendo (Auto-healing 24/7 con prioridad nice 15)
 if ! pgrep -f "main.py --telegram" >/dev/null 2>&1; then
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] [Watchdog] Bot de Telegram no detectado o tras reinicio. Arrancando..." >> "$LOG_DIR/watchdog.log"
-    nohup "$PYTHON" -u "$DIR/main.py" --telegram >> "$LOG_DIR/telegram_bot_stdout.log" 2>> "$LOG_DIR/telegram_bot_stderr.log" &
+    nohup /usr/bin/nice -n 15 "$PYTHON" -u "$DIR/main.py" --telegram >> "$LOG_DIR/telegram_bot_stdout.log" 2>> "$LOG_DIR/telegram_bot_stderr.log" &
 fi

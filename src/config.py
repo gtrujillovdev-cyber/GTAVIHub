@@ -35,8 +35,9 @@ PROCESSED_FILE = DATA_DIR / "processed.json" if (DATA_DIR / "processed.json").ex
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
 
-# Defaults & Duración Dinámica Orgánica (Anti-Fingerprinting)
-MAX_VIDEOS_PER_RUN = int(os.getenv("MAX_VIDEOS_PER_RUN", "2"))
+# Defaults & Duración Dinámica Orgánica (Anti-Fingerprinting y Anti-Spam: 1 clip por tanda)
+MAX_VIDEOS_PER_RUN = int(os.getenv("MAX_VIDEOS_PER_RUN", "1"))
+MAX_DAILY_UPLOADS = int(os.getenv("MAX_DAILY_UPLOADS", "3"))
 DEFAULT_TTS_VOICE = os.getenv("DEFAULT_TTS_VOICE", "es-ES-AlvaroNeural")
 AUTO_DUB_ENGLISH = os.getenv("AUTO_DUB_ENGLISH", "true").lower() in ("1", "true", "yes")
 SHORT_MIN_DURATION = int(os.getenv("SHORT_MIN_DURATION", "12"))
@@ -59,8 +60,8 @@ CHECK_QUANT_BUSY = os.getenv("CHECK_QUANT_BUSY", "true").lower() in ("1", "true"
 GAMEPLAY_RELEASE_DATE = os.getenv("GAMEPLAY_RELEASE_DATE", "2026-11-19")
 FORCE_ENABLE_GAMEPLAY = os.getenv("FORCE_ENABLE_GAMEPLAY", "true").lower() in ("1", "true", "yes")
 
-# Modo Ametralladora (Launch Day Engine: Máxima cadencia y aprovechamiento al límite)
-LAUNCH_MAX_VIDEOS_PER_RUN = int(os.getenv("LAUNCH_MAX_VIDEOS_PER_RUN", "3"))
+# Cadencia Anti-Spam y Protección de Algoritmo (1 vídeo por ejecución en hora punta)
+LAUNCH_MAX_VIDEOS_PER_RUN = int(os.getenv("LAUNCH_MAX_VIDEOS_PER_RUN", "1"))
 
 def is_gameplay_enabled() -> bool:
     """Verifica si la fase de Shorts de Gameplay está activa (automáticamente desde el 19 de Noviembre o vía override)."""
@@ -74,9 +75,7 @@ def is_gameplay_enabled() -> bool:
         return False
 
 def get_max_videos_per_run() -> int:
-    """En fase de lanzamiento pasa a Modo Ametralladora (3 vídeos por tanda en vez de 1-2)."""
-    if is_gameplay_enabled():
-        return LAUNCH_MAX_VIDEOS_PER_RUN
+    """1 vídeo por tanda en cada hora punta para asegurar una cadencia orgánica estricta (máx 3-4 al día)."""
     return MAX_VIDEOS_PER_RUN
 
 def get_ffmpeg_threads() -> int:

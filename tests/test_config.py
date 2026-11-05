@@ -67,7 +67,6 @@ class TestConfig(unittest.TestCase):
         # Con override manual debe ser True
         cfg.FORCE_ENABLE_GAMEPLAY = True
         self.assertTrue(is_gameplay_enabled())
-        cfg.FORCE_ENABLE_GAMEPLAY = False
 
 if __name__ == "__main__":
     unittest.main()

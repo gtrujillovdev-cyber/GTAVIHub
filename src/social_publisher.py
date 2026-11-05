@@ -123,9 +123,10 @@ class SocialPublisher:
         self.dry_run = dry_run
         BROWSER_PROFILE_DIR.mkdir(parents=True, exist_ok=True)
 
-    @staticmethod
-    def _notify_telegram(text: str) -> None:
+    def _notify_telegram(self, text: str) -> None:
         """Envía una actualización rápida del estado de publicación a Telegram."""
+        if getattr(self, "dry_run", False):
+            return
         try:
             from .telegram_bot import send_telegram_alert
             send_telegram_alert(text)
@@ -139,10 +140,11 @@ class SocialPublisher:
         description: str,
         privacy: str = "public",
         thumbnail_path: Optional[Path] = None,
-        pinned_comment: Optional[str] = None
+        pinned_comment: Optional[str] = None,
+        target_account: str = "main"
     ) -> Optional[str]:
         """Sube el vídeo a YouTube Shorts mediante API oficial v3."""
-        print(f"\n[1/3 YouTube] Iniciando publicación de '{video_path.name}'...")
+        print(f"\n[1/3 YouTube] Iniciando publicación de '{video_path.name}' (Cuenta: {target_account.upper()})...")
         if not AntiBanValidator.check_daily_limit("youtube"):
             return None
 
@@ -157,7 +159,8 @@ class SocialPublisher:
             privacy_status=privacy,
             is_short=True,
             thumbnail_path=thumbnail_path,
-            pinned_comment=pinned_comment
+            pinned_comment=pinned_comment,
+            target_account=target_account
         )
         if video_id:
             return f"https://youtu.be/{video_id}" if not str(video_id).startswith("http") else str(video_id)
@@ -351,6 +354,7 @@ class SocialPublisher:
 
                 # Hacer click en el botón de publicar con reintentos y selectores exhaustivos de TikTok Studio
                 post_selectors = [
+                    "button[data-e2e='post_video_button']",
                     "button.Button__root--type-primary:has-text('Post')",
                     "button.Button__root--type-primary:has-text('Publicar')",
                     "button:has-text('Post')",
@@ -364,12 +368,12 @@ class SocialPublisher:
                 ]
 
                 posted = False
-                # Reintentar encontrar y clickear el botón hasta por 45s (esperando validaciones de copyright/render)
+                # Reintentar encontrar y clickear el botón hasta por 90s (esperando validaciones de copyright/render en la nube)
                 start_post_wait = time.time()
-                while time.time() - start_post_wait < 45 and not posted:
+                while time.time() - start_post_wait < 90 and not posted:
                     # Descartar posibles popups modales que se hayan superpuesto
                     try:
-                        for d_sel in ["button:has-text('Got it')", "button:has-text('Turn on')"]:
+                        for d_sel in ["button:has-text('Got it')", "button:has-text('Turn on')", "button:has-text('Not now')", "button:has-text('Ahora no')", "button:has-text('Entendido')", "button:has-text('Aceptar')"]:
                             m_btn = page.locator(d_sel).first
                             if m_btn.count() > 0 and m_btn.is_visible():
                                 m_btn.click()
@@ -658,13 +662,20 @@ class SocialPublisher:
             if plat == "youtube":
                 target_privacy = metadata.get("privacy") or os.getenv("YOUTUBE_PRIVACY_STATUS", "public")
                 pinned_comment = metadata.get("pinned_comment")
+                try:
+                    from .channel_sentinel import get_resilient_publishing_target
+                    target_yt = metadata.get("target_channel") or get_resilient_publishing_target("youtube")
+                except Exception:
+                    target_yt = "youtube_extra"
+                target_acc = "extra" if "extra" in str(target_yt) else "main"
                 url = self.publish_to_youtube(
                     video_path,
                     title,
                     desc,
                     privacy=target_privacy,
                     thumbnail_path=thumb,
-                    pinned_comment=pinned_comment
+                    pinned_comment=pinned_comment,
+                    target_account=target_acc
                 )
                 results["youtube"] = url
                 if url:

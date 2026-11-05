@@ -260,6 +260,9 @@ def process_single_video(
     thumb_path = OUTPUT_DIR / f"{slug}_{video_id}_thumb.jpg"
     meta_path = OUTPUT_DIR / f"{slug}_{video_id}_info.json"
 
+    # Formato D (Pro-Cinema 83.3%) para acción/físicas/cuenta Extra; Formato C (4:5) para noticias/comparativas
+    target_preset = "D" if archetype in {"gameplay_puro", "analisis_tecnico", "rage9_physics", "weapons_shooting_rdr2", "fisicas"} else "C"
+
     success_render = render_final_video(
         input_video=video_path,
         output_video=output_path,
@@ -268,7 +271,8 @@ def process_single_video(
         force_short_format=is_short,
         hook_text=hook_text,
         is_official_content=is_official_content,
-        archetype=archetype
+        archetype=archetype,
+        format_preset=target_preset
     )
 
     if not success_render or not output_path.exists():

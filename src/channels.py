@@ -244,6 +244,28 @@ def is_strictly_gta6(title: str, description: str = "") -> bool:
 # Alias para retrocompatibilidad
 is_strictly_gta = is_strictly_gta6
 
+def get_daily_published_count() -> int:
+    """Cuenta cuántos vídeos han sido completados en las últimas 24 horas."""
+    if not PROCESSED_FILE.exists():
+        return 0
+    try:
+        from datetime import datetime, timedelta
+        cutoff = datetime.now() - timedelta(hours=24)
+        with open(PROCESSED_FILE, "r", encoding="utf-8") as f:
+            data = json.load(f)
+            count = 0
+            for v in data:
+                if v.get("status") == "completed" and v.get("date"):
+                    try:
+                        v_date = datetime.fromisoformat(v["date"])
+                        if v_date >= cutoff:
+                            count += 1
+                    except Exception:
+                        pass
+            return count
+    except Exception:
+        return 0
+
 def get_processed_ids() -> set:
     if not PROCESSED_FILE.exists():
         return set()

@@ -17,11 +17,14 @@ SCOPES = [
 # Si el script está en scripts/, el root del proyecto es el padre del directorio scripts
 BASE_DIR = Path(__file__).resolve().parent.parent if Path(__file__).resolve().parent.name == "scripts" else Path(__file__).resolve().parent
 CLIENT_SECRETS_FILE = BASE_DIR / "client_secrets.json"
-TOKEN_FILE = BASE_DIR / "token.json"
+# Soporte para cuenta principal (token.json) o cuenta nueva limpia (token_extra.json)
+is_extra = "--extra" in sys.argv or ("--account" in sys.argv and "extra" in sys.argv)
+TOKEN_FILE = BASE_DIR / ("token_extra.json" if is_extra else "token.json")
+account_label = "@GTAVIHubExtra" if is_extra else "@GTAVIHubSpain"
 
 def authenticate_youtube():
     print("=" * 60)
-    print("🔐 AUTENTICACIÓN DE YOUTUBE PARA GTA6CHANNEL")
+    print(f"🔐 AUTENTICACIÓN DE YOUTUBE: {account_label} ({TOKEN_FILE.name})")
     print("=" * 60)
 
     if not CLIENT_SECRETS_FILE.exists():

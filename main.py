@@ -157,6 +157,10 @@ def main():
 
     args = parser.parse_args()
 
+    # Timeout global de sockets para evitar cuelgues indefinidos en APIs (Google, Telegram, etc.)
+    import socket
+    socket.setdefaulttimeout(35)
+
     # Prioridad de cortesía en el planificador de CPU para convivir con GaTDSEQ
     try:
         current_nice = os.nice(0)
@@ -164,6 +168,28 @@ def main():
             os.nice(15 - current_nice)
     except Exception:
         pass
+
+    # Lockfile y guardia de cadencia diaria para ejecuciones autónomas
+    if args.auto or args.auto_viral:
+        lock_file = Path("/tmp/gtavihub_pipeline.lock")
+        if lock_file.exists():
+            try:
+                old_pid = int(lock_file.read_text().strip())
+                os.kill(old_pid, 0)
+                print(f"[!] Ya existe una ejecución de pipeline en curso (PID: {old_pid}). Abortando para evitar solapamientos.")
+                return
+            except (OSError, ValueError):
+                pass
+        lock_file.write_text(str(os.getpid()))
+        import atexit
+        atexit.register(lambda: lock_file.unlink(missing_ok=True) if lock_file.exists() else None)
+
+        from src.channels import get_daily_published_count
+        from src.config import MAX_DAILY_UPLOADS
+        daily_count = get_daily_published_count()
+        if daily_count >= MAX_DAILY_UPLOADS and not args.dry_run:
+            print(f"[Anti-Spam Shield] Límite diario alcanzado ({daily_count}/{MAX_DAILY_UPLOADS} vídeos en 24h). Omitiendo tanda para proteger el canal.")
+            return
 
     if args.telegram:
         from src.telegram_bot import start_telegram_bot_daemon

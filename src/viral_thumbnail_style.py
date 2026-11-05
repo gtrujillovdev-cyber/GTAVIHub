@@ -110,7 +110,11 @@ def _analyze_with_gemini(thumbnail_urls: list) -> Dict[str, Any]:
             "}"
         )
 
-        response = model.generate_content([prompt] + parts)
+        try:
+            response = model.generate_content([prompt] + parts, request_options={"timeout": 15})
+        except Exception:
+            # Fallback a llamada estándar sin request_options si la versión de SDK no soporta timeout
+            response = model.generate_content([prompt] + parts)
         raw = response.text.strip()
         # Extraer JSON del texto
         start = raw.find("{")

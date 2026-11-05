@@ -185,6 +185,29 @@ Ante la publicación no deseada del vídeo `sB-T7nI6U-k` (*"¡ROCKSTAR SE PRONUN
    - **Purga de Canales de Tertulias/Opinión:** Se desactivaron en `config/channels.json` todas las fuentes no basadas en metraje de juego puro (York Reaction, GTA VI O'Clock, Jordi Maquiavello, BaityBait, Puerta al Sótano, Danikyo, Dan Allen Gaming, LegacyKillaHD y SWEGTA).
    - **Prioridad Absoluta a Fuentes de Metraje Real:** El pipeline se enfoca exclusivamente en *GTA Series Videos*, *ElAnalistaDeBits*, *Digital Foundry*, *INTER*, *Sonny Evans*, *GhillieMaster*, *PowerPyx* y metraje verificado de motor RAGE 9.
 
+---
+
+### 14. 🛠️ Resolución de Incidencias Operativas y Auditoría de Reglas (5 de Noviembre de 2026)
+Tras una auditoría forense completa del pipeline en el MacBook Pro de producción (`100.108.212.124`), se identificaron y solventaron 6 incumplimientos operativos clave:
+
+1. **Implementación Efectiva del Formato D (Pro-Cinema 83.3% / 1080x1600):**
+   - El renderizador estaba fijado a 1080x1350 (Formato C 70.3%).
+   - Se diseñó un selector dinámico en [`src/video_editor.py`](file:///Users/gabrieltrujillovallejo/Documents/GtrujilloMacDoc/GitHub/GitGa/Developer/Projects/GTA6Channel/src/video_editor.py) y [`src/pipeline.py`](file:///Users/gabrieltrujillovallejo/Documents/GtrujilloMacDoc/GitHub/GitGa/Developer/Projects/GTA6Channel/src/pipeline.py): Formato D (`1080x1600 @ y=160`) para arquetipos de físicas, tiroteos, gameplay y canal Extra; Formato C (`1080x1350 @ y=285`) para comparativas técnicas y lore.
+2. **Control de Cadencia Anti-Spam (Máx 3 Vídeos/Día):**
+   - Se limitó `MAX_VIDEOS_PER_RUN = 1` y `LAUNCH_MAX_VIDEOS_PER_RUN = 1`.
+   - Se implementó `get_daily_published_count()` en [`src/channels.py`](file:///Users/gabrieltrujillovallejo/Documents/GtrujilloMacDoc/GitHub/GitGa/Developer/Projects/GTA6Channel/src/channels.py) con bloqueo estricto a las 3 publicaciones en un periodo de 24 horas, evitando penalizaciones de spam por saturación algorítmica.
+3. **Resiliencia ante Bloqueos de Red & Socket Hangs:**
+   - Se incorporó un lockfile atómico (`/tmp/gtavihub_pipeline.lock`) en [`main.py`](file:///Users/gabrieltrujillovallejo/Documents/GtrujilloMacDoc/GitHub/GitGa/Developer/Projects/GTA6Channel/main.py) para impedir ejecuciones concurrentes de cron.
+   - Se fijó `socket.setdefaulttimeout(35)` y un límite de 15 segundos en `src/viral_thumbnail_style.py` para erradicar procesos durmientes en `CLOSE_WAIT`.
+4. **Desduplicación Estricta de Títulos:**
+   - Se añadió un filtro en [`src/translator.py`](file:///Users/gabrieltrujillovallejo/Documents/GtrujilloMacDoc/GitHub/GitGa/Developer/Projects/GTA6Channel/src/translator.py) que contrasta el título generado con los últimos 30 clips de `data/processed.json` e inyecta variantes contextuales únicas para que jamás se repita un título idéntico.
+5. **Corrección de Publicación en TikTok Studio:**
+   - Se actualizaron los selectores (`button[data-e2e='post_video_button']`), se amplió la ventana de espera a 90 segundos para permitir el renderizado en la nube y se blindó la gestión de popups y avisos.
+6. **Soporte de Cuenta Dual en YouTube (`token_extra.json`):**
+   - [`src/uploader.py`](file:///Users/gabrieltrujillovallejo/Documents/GtrujilloMacDoc/GitHub/GitGa/Developer/Projects/GTA6Channel/src/uploader.py) y [`src/social_publisher.py`](file:///Users/gabrieltrujillovallejo/Documents/GtrujilloMacDoc/GitHub/GitGa/Developer/Projects/GTA6Channel/src/social_publisher.py) ahora seleccionan dinámicamente entre `token_extra.json` (cuenta limpia `@GTAVIHubExtra`) y `token.json`.
+   - Se añadió el flag `--extra` en [`scripts/auth_youtube.py`](file:///Users/gabrieltrujillovallejo/Documents/GtrujilloMacDoc/GitHub/GitGa/Developer/Projects/GTA6Channel/scripts/auth_youtube.py) para autorizar de forma independiente la nueva cuenta sin tocar la antigua.
+
+
 
 
 
