@@ -13,6 +13,36 @@ GTA6_POSITIVE_KEYWORDS = [
     "leonida", "port gellhorn", "vice beach", "rage 9", "mud girl", "florida joker"
 ]
 
+# ── Filtro Anti-Oficial: el canal es para contenido EXTRA, no para copiar tráilers ──
+_OFFICIAL_UPLOADERS = {
+    "rockstar games", "rockstar games españa", "rockstar games japan",
+    "rockstar games france", "rockstar games germany", "rockstar games brazil",
+    "rockstar games uk", "rockstar games italia", "take-two interactive",
+}
+
+_OFFICIAL_REUPLOAD_PATTERNS = [
+    r"^grand theft auto\s*(?:vi|6)\s*[:\-–|]?\s*(?:gameplay\s*)?trailer(?:\s*\d+)?[\s!🔥🤯]*$",
+    r"^grand theft auto\s*(?:vi|6)\s*[:\-–|]?\s*official",
+    r"^grand theft auto\s*(?:vi|6)\s*[:\-–|]?\s*(?:cover\s*art|key\s*art)",
+    r"^gta\s*(?:6|vi)\s*[:\-–|]?\s*(?:gameplay\s*)?trailer(?:\s*\d+)?[\s!🔥🤯]*$",
+    r"^gta\s*(?:6|vi)\s*[:\-–|]?\s*official",
+    r"^gta\s*(?:6|vi)\s*[:\-–|]?\s*(?:cover\s*art|key\s*art)",
+    r"^grand theft auto\s*(?:vi|6)\s*[:\-–|]?\s*(?:tráiler|trailer)\s*(?:de\s*lanzamiento|oficial)",
+]
+
+def is_official_or_reupload(title: str, uploader: str = "") -> bool:
+    """Devuelve True si el contenido es oficial de Rockstar o un reupload puro de tráiler/arte.
+    El canal GTA VI Hub Spain es para contenido EXTRA (análisis, secretos, físicas),
+    no para copiar tráilers oficiales que ya tienen millones de vistas en el canal original."""
+    if uploader.strip().lower() in _OFFICIAL_UPLOADERS:
+        return True
+    title_clean = title.strip().lower()
+    for pattern in _OFFICIAL_REUPLOAD_PATTERNS:
+        if re.match(pattern, title_clean):
+            return True
+    return False
+
+
 def is_strictly_gta6(title: str, description: str = "") -> bool:
     """
     Verifica de forma estricta, matemática e innegociable que el contenido trata EXCLUSIVAMENTE
@@ -396,6 +426,11 @@ def fetch_channel_candidates(max_per_channel: int = 2) -> List[Dict[str, Any]]:
                     if not is_strictly_gta6(title):
                         continue
 
+                    # FILTRO ANTI-OFICIAL: no copiar tráilers de Rockstar ni reuploads puros
+                    uploader_name = ch.get("name", "")
+                    if is_official_or_reupload(title, uploader_name):
+                        continue
+
                     try:
                         dur_secs = float(duration) if duration and duration != "NA" else 0.0
                     except ValueError:
@@ -480,6 +515,12 @@ def fetch_channel_candidates(max_per_channel: int = 2) -> List[Dict[str, Any]]:
 
                         if not is_strictly_gta6(title):
                             continue
+
+                        # FILTRO ANTI-OFICIAL: no copiar tráilers de Rockstar ni reuploads puros
+                        uploader_raw = parts[3].strip() if len(parts) > 3 else ""
+                        if is_official_or_reupload(title, uploader_raw):
+                            continue
+
                         try:
                             dur_secs = float(duration) if duration and duration != "NA" else 0.0
                         except ValueError:

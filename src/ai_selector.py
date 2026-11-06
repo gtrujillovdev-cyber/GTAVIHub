@@ -28,10 +28,11 @@ def select_best_candidate_ai(
     if not candidates:
         return {}
 
-    from .channels import is_strictly_gta6
+    from .channels import is_strictly_gta6, is_official_or_reupload
     candidates = [c for c in candidates if is_strictly_gta6(c.get("title", ""))]
+    candidates = [c for c in candidates if not is_official_or_reupload(c.get("title", ""), c.get("uploader", ""))]
     if not candidates:
-        print("[AI Selector] Todos los candidatos fueron descartados por no ser estrictamente de GTA 6.")
+        print("[AI Selector] Todos los candidatos fueron descartados (no GTA 6 o contenido oficial/reupload).")
         return {}
 
     # Si solo hay un candidato, enriquecerlo y retornarlo

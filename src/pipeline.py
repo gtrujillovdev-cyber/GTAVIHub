@@ -65,7 +65,7 @@ def process_single_video(
     print(f"=======================================================")
 
     # 0. PROTOCOLO INNEGOCIABLE DE VALIDACIÓN EXCLUSIVA GTA 6 (Fail-Safe Defense-in-Depth)
-    from .channels import is_strictly_gta6
+    from .channels import is_strictly_gta6, is_official_or_reupload
     from .compliance_auditor import ComplianceAuditor
     if not is_strictly_gta6(original_title):
         err_msg = f"❌ [BLOQUEO DE SEGURIDAD GTA 6] El vídeo '{original_title}' NO trata exclusivamente sobre GTA 6. Abortando inmediatamente."
@@ -73,6 +73,15 @@ def process_single_video(
         try:
             from .telegram_bot import send_telegram_alert
             send_telegram_alert(f"🛡️ *Filtro Exclusivo GTA 6 Activado*\nVídeo descartado (no es GTA 6):\n`{original_title[:60]}`")
+        except Exception:
+            pass
+        return None
+
+    if is_official_or_reupload(original_title, creator_name):
+        print(f"\n❌ [FILTRO ANTI-OFICIAL] '{original_title}' es contenido oficial de Rockstar o reupload de tráiler. Abortando.")
+        try:
+            from .telegram_bot import send_telegram_alert
+            send_telegram_alert(f"🛡️ *Filtro Anti-Oficial*\nDescartado (tráiler/oficial):\n`{original_title[:60]}`")
         except Exception:
             pass
         return None

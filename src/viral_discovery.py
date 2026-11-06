@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import List, Dict, Any, Optional
 
 from .config import BASE_DIR, DATA_DIR, CHANNELS_FILE
-from .channels import get_processed_ids, list_monitored_channels, add_monitored_channel
+from .channels import get_processed_ids, list_monitored_channels, add_monitored_channel, is_official_or_reupload
 
 DISCOVERED_CHANNELS_FILE = DATA_DIR / "discovered_channels.json"
 
@@ -392,6 +392,11 @@ def scan_viral_radar(
 
                 # FILTRO INNEGOCIABLE DE EXCLUSIVIDAD GTA 6
                 if not is_strictly_gta6(title):
+                    continue
+
+                # FILTRO ANTI-OFICIAL: no copiar tráilers de Rockstar ni reuploads puros
+                uploader_peek = parts[4].strip() if len(parts) > 4 and parts[4] not in ("NA", "") else ""
+                if is_official_or_reupload(title, uploader_peek):
                     continue
 
                 try:

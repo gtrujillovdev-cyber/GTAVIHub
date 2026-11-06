@@ -216,6 +216,7 @@ def main():
             args.publish_all = True
             args.upload = True
         from src.viral_discovery import scan_viral_radar
+        from src.channels import mark_video_processed
         print("[*] Buscando el clip #1 de mayor engagement viral para ingesta inmediata...")
         candidates = scan_viral_radar(max_candidates=5)
         if candidates:
@@ -236,6 +237,16 @@ def main():
                 stagger_delay=args.stagger_delay,
                 copilot_mode=False if args.no_copilot else None
             )
+            # Si el procesamiento falló, marcar como procesado para evitar bucle infinito
+            if res is None:
+                mark_video_processed({
+                    "id": top_clip["id"],
+                    "title": top_clip["title"],
+                    "creator": top_clip["uploader"],
+                    "status": "skipped",
+                    "reason": "processing_failed"
+                })
+                print(f"[*] Vídeo {top_clip['id']} marcado como skipped para evitar reselección.")
             return
         else:
             print("[*] No se encontraron clips virales en el radar con score suficiente. Activando fallback a canales monitoreados...")

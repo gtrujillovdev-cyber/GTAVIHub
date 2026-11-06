@@ -204,7 +204,7 @@
       "type": "streamer_reaction",
       "lang": "es",
       "filter_keywords": true,
-      "enabled": true,
+      "enabled": false,
       "description": "Shorts oficiales de IlloJuan en LMDShow",
       "block_instagram": true,
       "allowed_platforms": [
@@ -218,7 +218,7 @@
       "type": "streamer_reaction",
       "lang": "es",
       "filter_keywords": true,
-      "enabled": true,
+      "enabled": false,
       "description": "Shorts de mejores momentos de IlloJuan",
       "block_instagram": true,
       "allowed_platforms": [
@@ -232,7 +232,7 @@
       "type": "streamer_reaction",
       "lang": "es",
       "filter_keywords": true,
-      "enabled": true,
+      "enabled": false,
       "description": "Shorts oficiales de ElXokas",
       "block_instagram": true,
       "allowed_platforms": [
@@ -246,7 +246,7 @@
       "type": "streamer_reaction",
       "lang": "es",
       "filter_keywords": true,
-      "enabled": true,
+      "enabled": false,
       "description": "Shorts de clips virales de ElXokas",
       "block_instagram": true,
       "allowed_platforms": [
@@ -260,7 +260,7 @@
       "type": "streamer_reaction",
       "lang": "es",
       "filter_keywords": true,
-      "enabled": true,
+      "enabled": false,
       "description": "Shorts oficiales de Ibai Llanos",
       "block_instagram": true,
       "allowed_platforms": [
@@ -274,7 +274,7 @@
       "type": "streamer_reaction",
       "lang": "es",
       "filter_keywords": true,
-      "enabled": true,
+      "enabled": false,
       "description": "Shorts oficiales de AuronPlay",
       "block_instagram": true,
       "allowed_platforms": [
@@ -288,7 +288,7 @@
       "type": "streamer_reaction",
       "lang": "es",
       "filter_keywords": true,
-      "enabled": true,
+      "enabled": false,
       "description": "Shorts oficiales de El Rubius",
       "block_instagram": true,
       "allowed_platforms": [
@@ -302,7 +302,7 @@
       "type": "streamer_reaction",
       "lang": "es",
       "filter_keywords": true,
-      "enabled": true,
+      "enabled": false,
       "description": "Shorts oficiales de TheGrefg",
       "block_instagram": true,
       "allowed_platforms": [
@@ -316,7 +316,7 @@
       "type": "streamer_reaction",
       "lang": "es",
       "filter_keywords": true,
-      "enabled": true,
+      "enabled": false,
       "description": "Shorts oficiales de DjMaRiiO",
       "block_instagram": true,
       "allowed_platforms": [
@@ -330,7 +330,7 @@
       "type": "streamer_reaction",
       "lang": "es",
       "filter_keywords": true,
-      "enabled": true,
+      "enabled": false,
       "description": "Shorts oficiales de Menos Trece",
       "block_instagram": true,
       "allowed_platforms": [
@@ -344,7 +344,7 @@
       "type": "streamer_reaction",
       "lang": "es",
       "filter_keywords": true,
-      "enabled": true,
+      "enabled": false,
       "description": "Shorts oficiales de ZellenDust",
       "block_instagram": true,
       "allowed_platforms": [
@@ -358,7 +358,7 @@
       "type": "streamer_reaction",
       "lang": "es",
       "filter_keywords": true,
-      "enabled": true,
+      "enabled": false,
       "description": "Shorts oficiales de Pelicanger",
       "block_instagram": true,
       "allowed_platforms": [
@@ -606,7 +606,7 @@
       "type": "streamer",
       "lang": "es",
       "filter_keywords": true,
-      "enabled": true,
+      "enabled": false,
       "description": "Reacciones y momentos de hype de AlphaSniper97",
       "block_instagram": true,
       "allowed_platforms": [
@@ -620,7 +620,7 @@
       "type": "streamer",
       "lang": "es",
       "filter_keywords": true,
-      "enabled": true,
+      "enabled": false,
       "description": "Reflexiones y opiniones sinceras de Alexelcapo",
       "block_instagram": true,
       "allowed_platforms": [
@@ -634,7 +634,7 @@
       "type": "streamer",
       "lang": "es",
       "filter_keywords": true,
-      "enabled": true,
+      "enabled": false,
       "description": "Reacciones virales y directos de Folagor",
       "block_instagram": true,
       "allowed_platforms": [
@@ -760,245 +760,245 @@
       "query": "ytsearch15:GTA 6 graficos rage 9 realismo agua #shorts",
       "lang": "es",
       "only_shorts": true,
-      "enabled": false,
+      "enabled": true,
       "description": "Físicas hiperrealistas de agua y motor RAGE 9"
     },
     {
       "query": "ytsearch15:GTA 6 fisicas agua olas densidad #shorts",
       "lang": "es",
       "only_shorts": true,
-      "enabled": false,
+      "enabled": true,
       "description": "Detalles de olas, densidad y físicas acuáticas"
     },
     {
       "query": "ytsearch15:GTA 6 fisicas coches accidentes colision #shorts",
       "lang": "es",
       "only_shorts": true,
-      "enabled": false,
+      "enabled": true,
       "description": "Deformación de vehículos y físicas de colisiones"
     },
     {
       "query": "ytsearch15:GTA 6 comparativa gta 5 diferencias #shorts",
       "lang": "es",
       "only_shorts": true,
-      "enabled": false,
+      "enabled": true,
       "description": "Comparativa técnica directa entre GTA 5 y GTA 6"
     },
     {
       "query": "ytsearch15:GTA 6 detalles realistas que flipas #shorts",
       "lang": "es",
       "only_shorts": true,
-      "enabled": false,
+      "enabled": true,
       "description": "Detalles ultra realistas de Rockstar en GTA 6"
     },
     {
       "query": "ytsearch15:GTA 6 inteligencia artificial npcs reacciones #shorts",
       "lang": "es",
       "only_shorts": true,
-      "enabled": false,
+      "enabled": true,
       "description": "Comportamiento e IA avanzada de peatones y multitudes"
     },
     {
       "query": "ytsearch15:GTA 6 iluminacion ray tracing noche #shorts",
       "lang": "es",
       "only_shorts": true,
-      "enabled": false,
+      "enabled": true,
       "description": "Ray tracing e iluminación nocturna en Vice City"
     },
     {
       "query": "ytsearch15:GTA 6 animales ecosistema caimanes #shorts",
       "lang": "es",
       "only_shorts": true,
-      "enabled": false,
+      "enabled": true,
       "description": "Ecosistema salvaje de Leonida: caimanes y fauna"
     },
     {
       "query": "ytsearch15:GTA 6 destruccion edificios fisicas #shorts",
       "lang": "es",
       "only_shorts": true,
-      "enabled": false,
+      "enabled": true,
       "description": "Físicas de destrucción de entornos e interiores"
     },
     {
       "query": "ytsearch15:GTA 6 mapa Leonida comparativa miami #shorts",
       "lang": "es",
       "only_shorts": true,
-      "enabled": false,
+      "enabled": true,
       "description": "Mapa de Leonida comparado con Miami real"
     },
     {
       "query": "ytsearch15:GTA 6 secretos ocultos vice city #shorts",
       "lang": "es",
       "only_shorts": true,
-      "enabled": false,
+      "enabled": true,
       "description": "Secretos y misterios ocultos en Vice City"
     },
     {
       "query": "ytsearch15:GTA 6 easter eggs misterios mapa #shorts",
       "lang": "es",
       "only_shorts": true,
-      "enabled": false,
+      "enabled": true,
       "description": "Easter eggs ocultos y mitos en el mapa de GTA 6"
     },
     {
       "query": "ytsearch15:GTA 6 detalles que no viste trailer #shorts",
       "lang": "es",
       "only_shorts": true,
-      "enabled": false,
+      "enabled": true,
       "description": "Detalles imperceptibles a simple vista del tráiler"
     },
     {
       "query": "ytsearch15:GTA 6 localizaciones reales leonida #shorts",
       "lang": "es",
       "only_shorts": true,
-      "enabled": false,
+      "enabled": true,
       "description": "Lugares reales de Florida recreados en Leonida"
     },
     {
       "query": "ytsearch15:GTA 6 edificios que puedes entrar interiores #shorts",
       "lang": "es",
       "only_shorts": true,
-      "enabled": false,
+      "enabled": true,
       "description": "Interiores explorables y accesibles en GTA 6"
     },
     {
       "query": "ytsearch15:GTA 6 mansiones barcos exploracion #shorts",
       "lang": "es",
       "only_shorts": true,
-      "enabled": false,
+      "enabled": true,
       "description": "Mansiones de lujo y yates en Vice City"
     },
     {
       "query": "ytsearch15:GTA 6 curiosidades ocultas rockstar #shorts",
       "lang": "es",
       "only_shorts": true,
-      "enabled": false,
+      "enabled": true,
       "description": "Curiosidades y homenajes ocultos de Rockstar Games"
     },
     {
       "query": "ytsearch15:GTA 6 rockstar comunicado oficial noticias #shorts",
       "lang": "es",
       "only_shorts": true,
-      "enabled": false,
+      "enabled": true,
       "description": "Última hora y comunicados de Rockstar Games"
     },
     {
       "query": "ytsearch15:GTA 6 fecha lanzamiento novedades #shorts",
       "lang": "es",
       "only_shorts": true,
-      "enabled": false,
+      "enabled": true,
       "description": "Confirmaciones oficiales de fecha y lanzamiento"
     },
     {
       "query": "ytsearch15:GTA 6 nueva informacion filtrada mapa #shorts",
       "lang": "es",
       "only_shorts": true,
-      "enabled": false,
+      "enabled": true,
       "description": "Filtraciones verificadas de nuevos distritos del mapa"
     },
     {
       "query": "ytsearch15:GTA 6 precio ps5 pro rendimiento #shorts",
       "lang": "es",
       "only_shorts": true,
-      "enabled": false,
+      "enabled": true,
       "description": "Rendimiento en PS5 Pro y precios de edición coleccionista"
     },
     {
       "query": "ytsearch15:GTA 6 armas tiroteos mecanicas #shorts",
       "lang": "es",
       "only_shorts": true,
-      "enabled": false,
+      "enabled": true,
       "description": "Mecánicas de disparo, rueda de armas y tiroteos"
     },
     {
       "query": "ytsearch15:GTA 6 personalizacion coches tuning #shorts",
       "lang": "es",
       "only_shorts": true,
-      "enabled": false,
+      "enabled": true,
       "description": "Tuning de vehículos y personalización en GTA 6"
     },
     {
       "query": "ytsearch15:GTA 6 lucia jason historia lore #shorts",
       "lang": "es",
       "only_shorts": true,
-      "enabled": false,
+      "enabled": true,
       "description": "Historia y trasfondo de Lucía y Jason"
     },
     {
       "query": "ytsearch15:GTA 6 florida joker entrevista rockstar #shorts",
       "lang": "es",
       "only_shorts": true,
-      "enabled": false,
+      "enabled": true,
       "description": "Polémicas y declaraciones del Joker de Florida"
     },
     {
       "query": "ytsearch15:GTA 6 Jordi Maquiavello analisis #shorts",
       "lang": "es",
       "only_shorts": true,
-      "enabled": false,
+      "enabled": true,
       "description": "Análisis cinematográfico de Jordi Maquiavello"
     },
     {
       "query": "ytsearch15:GTA 6 BaityBait analisis #shorts",
       "lang": "es",
       "only_shorts": true,
-      "enabled": false,
+      "enabled": true,
       "description": "Análisis y opiniones de BaityBait sobre GTA 6"
     },
     {
       "query": "ytsearch15:GTA 6 Puerta al Sotano secretos #shorts",
       "lang": "es",
       "only_shorts": true,
-      "enabled": false,
+      "enabled": true,
       "description": "Secretos y comparativas de Puerta al Sótano"
     },
     {
       "query": "ytsearch15:GTA 6 Ray Snakeet secretos #shorts",
       "lang": "es",
       "only_shorts": true,
-      "enabled": false,
+      "enabled": true,
       "description": "Secretos del universo GTA con Ray Snakeet"
     },
     {
       "query": "ytsearch15:GTA 6 Eurogamer Espana detalles #shorts",
       "lang": "es",
       "only_shorts": true,
-      "enabled": false,
+      "enabled": true,
       "description": "Análisis y noticias de Eurogamer España"
     },
     {
       "query": "ytsearch15:GTA 6 Vandal analisis detalles #shorts",
       "lang": "es",
       "only_shorts": true,
-      "enabled": false,
+      "enabled": true,
       "description": "Detalles y avances de la revista Vandal"
     },
     {
       "query": "ytsearch15:GTA 6 3DJuegos curiosidades #shorts",
       "lang": "es",
       "only_shorts": true,
-      "enabled": false,
+      "enabled": true,
       "description": "Curiosidades y análisis técnico de 3DJuegos"
     },
     {
       "query": "ytsearch15:GTA 6 Leyendas Videojuegos secretos #shorts",
       "lang": "es",
       "only_shorts": true,
-      "enabled": false,
+      "enabled": true,
       "description": "Secretos y misterios en Leyendas & Videojuegos"
     },
     {
       "query": "ytsearch15:GTA 6 Knekro detalles reaccion #shorts",
       "lang": "es",
       "only_shorts": true,
-      "enabled": false,
+      "enabled": true,
       "description": "Opiniones y reacciones sinceras de Knekro"
     },
     {
       "query": "ytsearch15:GTA 6 ElXokas analisis teoria #shorts",
       "lang": "es",
       "only_shorts": true,
-      "enabled": false,
+      "enabled": true,
       "description": "Teorías y reflexiones de ElXokas sobre GTA 6",
       "block_instagram": true,
       "allowed_platforms": [
@@ -1010,7 +1010,7 @@
       "query": "ytsearch15:GTA 6 Rubius trailer reaccion momentos #shorts",
       "lang": "es",
       "only_shorts": true,
-      "enabled": false,
+      "enabled": true,
       "description": "Reacciones de Rubius al mundo de GTA 6",
       "block_instagram": true,
       "allowed_platforms": [
@@ -1034,7 +1034,7 @@
       "query": "ytsearch15:GTA 6 TheGrefg filtracion reaccion #shorts",
       "lang": "es",
       "only_shorts": true,
-      "enabled": false,
+      "enabled": true,
       "description": "Reacciones épicas de TheGrefg a GTA 6",
       "block_instagram": true,
       "allowed_platforms": [
@@ -1046,7 +1046,7 @@
       "query": "ytsearch15:GTA 6 AuronPlay momentos trailer #shorts",
       "lang": "es",
       "only_shorts": true,
-      "enabled": false,
+      "enabled": true,
       "description": "Momentos divertidos de AuronPlay comentando GTA 6",
       "block_instagram": true,
       "allowed_platforms": [
@@ -1058,49 +1058,49 @@
       "query": "ytsearch15:GTA 6 viral breakdown secrets #shorts",
       "lang": "en",
       "only_shorts": true,
-      "enabled": false,
+      "enabled": true,
       "description": "Viral breakdown of secrets in English"
     },
     {
       "query": "ytsearch15:GTA 6 crazy realistic details #shorts",
       "lang": "en",
       "only_shorts": true,
-      "enabled": false,
+      "enabled": true,
       "description": "Crazy realistic details going viral worldwide"
     },
     {
       "query": "ytsearch15:GTA 6 mind blowing physics rage engine #shorts",
       "lang": "en",
       "only_shorts": true,
-      "enabled": false,
+      "enabled": true,
       "description": "Mind blowing physics in the RAGE engine"
     },
     {
       "query": "ytsearch15:GTA 6 biggest easter eggs leonida #shorts",
       "lang": "en",
       "only_shorts": true,
-      "enabled": false,
+      "enabled": true,
       "description": "Biggest easter eggs hidden across Leonida"
     },
     {
       "query": "ytsearch15:GTA 6 new leaks rockstar games #shorts",
       "lang": "en",
       "only_shorts": true,
-      "enabled": false,
+      "enabled": true,
       "description": "New verified leaks from Rockstar Games"
     },
     {
       "query": "ytsearch15:GTA 6 things you missed in trailer #shorts",
       "lang": "en",
       "only_shorts": true,
-      "enabled": false,
+      "enabled": true,
       "description": "Hidden things you missed in GTA 6 footage"
     },
     {
       "query": "ytsearch15:GTA 6 insane police ai wanted level #shorts",
       "lang": "en",
       "only_shorts": true,
-      "enabled": false,
+      "enabled": true,
       "description": "Insane police AI tactics and wanted system"
     },
     {
