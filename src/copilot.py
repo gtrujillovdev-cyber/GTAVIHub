@@ -14,15 +14,15 @@ PENDING_DIR = DATA_DIR / "pending_approvals"
 PENDING_DIR.mkdir(parents=True, exist_ok=True)
 
 def is_copilot_enabled() -> bool:
-    """Verifica si el modo Co-Pilot (aprobación previa manual) está activo."""
+    """Verifica si el modo Co-Pilot (aprobación previa manual) está activo (True por defecto)."""
     if not COPILOT_STATE_FILE.exists():
-        return False
+        return True
     try:
         with open(COPILOT_STATE_FILE, "r", encoding="utf-8") as f:
             data = json.load(f)
-            return bool(data.get("enabled", False))
+            return bool(data.get("enabled", True))
     except Exception:
-        return False
+        return True
 
 def set_copilot_enabled(enabled: bool):
     """Activa o desactiva el modo Co-Pilot."""
@@ -140,7 +140,8 @@ def approve_and_publish_video(video_id: str) -> Optional[Dict[str, Any]]:
                 "mode": metadata.get("mode") or data.get("mode", "subs"),
                 "has_voiceover": metadata.get("has_voiceover", False) or data.get("mode") in ["dub", "voice"],
                 "block_instagram": metadata.get("block_instagram", False),
-                "allowed_platforms": metadata.get("allowed_platforms")
+                "allowed_platforms": metadata.get("allowed_platforms"),
+                "target_channel": "youtube_extra"
             },
             creator_name=creator,
             stagger_delay_minutes=stagger_delay
@@ -156,7 +157,8 @@ def approve_and_publish_video(video_id: str) -> Optional[Dict[str, Any]]:
             privacy_status=privacy_status,
             is_short=is_short,
             thumbnail_path=thumb_path if thumb_path and thumb_path.exists() else None,
-            pinned_comment=metadata.get("pinned_comment")
+            pinned_comment=metadata.get("pinned_comment"),
+            target_account="extra"
         )
 
     # Registro en processed.json
@@ -230,12 +232,15 @@ def reject_and_purge_video(video_id: str) -> bool:
     return True
 
 COPILOT_AUTO_APPROVE_TIMEOUT_MIN = int(os.getenv("COPILOT_AUTO_APPROVE_TIMEOUT_MIN", "15"))
+COPILOT_AUTO_APPROVE_ENABLED = os.getenv("COPILOT_AUTO_APPROVE_ENABLED", "false").lower() in ("true", "1", "yes")
 
 def check_and_auto_approve_expired_videos(timeout_minutes: int = COPILOT_AUTO_APPROVE_TIMEOUT_MIN) -> List[Dict[str, Any]]:
     """
-    Revisa si hay vídeos staged en espera que hayan superado el tiempo de cortesía (default: 15 min).
-    Si han expirado sin acción humana, los aprueba y publica automáticamente para no bloquear el canal.
+    En modo Co-Pilot estricto, los vídeos NUNCA se auto-aprueban solos salvo que
+    COPILOT_AUTO_APPROVE_ENABLED=true esté explícitamente configurado en .env.
     """
+    if not COPILOT_AUTO_APPROVE_ENABLED:
+        return []
     pending = get_all_pending_videos()
     approved = []
     now = datetime.now()

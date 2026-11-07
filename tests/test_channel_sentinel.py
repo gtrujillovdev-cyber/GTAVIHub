@@ -47,7 +47,13 @@ class TestChannelSentinel(unittest.TestCase):
         self.assertTrue(any(v["video_id"] == "test_vid_123" for v in history))
 
     def test_resilient_routing_dual_parallel(self):
-        # En modo dual_parallel:
+        # Por defecto fuerza 'extra' (@GTAVIHubExtra)
+        self.assertEqual(get_resilient_publishing_target("youtube", archetype="official_news"), "extra")
+        # Cuando se configura dual_parallel explícitamente:
+        state = load_sentinel_state()
+        state["routing_preference"] = "dual_parallel"
+        state["channels"]["youtube_main"]["status"] = "healthy"
+        save_sentinel_state(state)
         # Físicas y acción van a 'extra'
         target_action = get_resilient_publishing_target("youtube", archetype="rage9_physics")
         self.assertEqual(target_action, "extra")

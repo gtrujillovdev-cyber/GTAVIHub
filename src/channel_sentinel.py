@@ -31,8 +31,8 @@ DEFAULT_STATE = {
             "name": "GTA VI Hub Spain",
             "handle": "@GTAVIHubSpain",
             "platform": "youtube",
-            "status": "healthy",  # Canal original en intento de remontada
-            "consecutive_flops": 0,
+            "status": "quarantine",  # Canal original desactivado permanentemente
+            "consecutive_flops": 10,
             "last_checked": None,
             "recent_views": [],
             "cooldown_until": None
@@ -41,7 +41,7 @@ DEFAULT_STATE = {
             "name": "GTA VI Hub Extra",
             "handle": "@GTAVIHubExtra",
             "platform": "youtube",
-            "status": "healthy",  # Canal nuevo de crecimiento rápido
+            "status": "healthy",  # Canal exclusivo en modo Co-Pilot
             "consecutive_flops": 0,
             "last_checked": None,
             "recent_views": [],
@@ -51,8 +51,8 @@ DEFAULT_STATE = {
             "name": "GTAViHubSpain",
             "handle": "@gtavihubspain",
             "platform": "tiktok",
-            "status": "healthy",
-            "consecutive_flops": 0,
+            "status": "quarantine",
+            "consecutive_flops": 10,
             "last_checked": None,
             "recent_views": [],
             "cooldown_until": None
@@ -68,10 +68,10 @@ DEFAULT_STATE = {
             "cooldown_until": None
         }
     },
-    "routing_preference": "dual_parallel",  # dual_parallel: reparte contenido variado a ambos
+    "routing_preference": "force_extra",  # Exclusivo hacia @GTAVIHubExtra en modo Co-Pilot
     "last_failover_event": {
-        "timestamp": "2026-11-04T18:55:00",
-        "strategy": "dual_parallel_diversified_rehabilitation"
+        "timestamp": "2026-11-07T14:25:00",
+        "strategy": "force_extra_copilot_curated"
     }
 }
 

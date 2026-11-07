@@ -258,7 +258,6 @@ Devuelve tu respuesta EXACTAMENTE en este formato JSON (sin texto extra):
             contents=prompt
         )
         cleaned = clean_srt_response(response.text)
-        import json
         data = json.loads(cleaned)
         archetype = data.get("archetype", "filtracion_misterio").strip().lower()
         viral_title = data.get("viral_title", "").strip().upper()

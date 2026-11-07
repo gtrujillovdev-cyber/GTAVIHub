@@ -207,9 +207,20 @@ Tras una auditoría forense completa del pipeline en el MacBook Pro de producci�
    - [`src/uploader.py`](file:///Users/gabrieltrujillovallejo/Documents/GtrujilloMacDoc/GitHub/GitGa/Developer/Projects/GTA6Channel/src/uploader.py) y [`src/social_publisher.py`](file:///Users/gabrieltrujillovallejo/Documents/GtrujilloMacDoc/GitHub/GitGa/Developer/Projects/GTA6Channel/src/social_publisher.py) ahora seleccionan dinámicamente entre `token_extra.json` (cuenta limpia `@GTAVIHubExtra`) y `token.json`.
    - Se añadió el flag `--extra` en [`scripts/auth_youtube.py`](file:///Users/gabrieltrujillovallejo/Documents/GtrujilloMacDoc/GitHub/GitGa/Developer/Projects/GTA6Channel/scripts/auth_youtube.py) para autorizar de forma independiente la nueva cuenta sin tocar la antigua.
 
+---
 
+### 15. 🛡️ Transición a Modo Co-Pilot Estricto y Exclusividad `@GTAVIHubExtra` (7 de Noviembre de 2026)
+Tras auditar el rendimiento en YouTube y verificar que la falta de `token_extra.json` provocaba que los vídeos siguieran subiéndose por fallback al canal original penalizado (`@gtavihubspain`), además de repetir plantillas de título en `data/viral_playbook.json`:
 
-
-
+1. **Apagado Total de Crons Autónomos Ciegos (`--auto` / `--auto-viral`):**
+   - Se eliminaron del `crontab` del MacBook Pro todas las tareas de publicación desatendida. Solo permanecen activos `watchdog.sh` (bot de Telegram 24/7) y `check_views_notify.py`.
+2. **Modo Co-Pilot Estricto (100% Human-In-The-Loop en [`src/copilot.py`](file:///Users/gabrieltrujillovallejo/Documents/GtrujilloMacDoc/GitHub/GitGa/Developer/Projects/GTA6Channel/src/copilot.py)):**
+   - `is_copilot_enabled()` pasa a `True` por defecto.
+   - Se desactivó la auto-aprobación tras 15 minutos (`COPILOT_AUTO_APPROVE_ENABLED = False`). Ningún vídeo se publica jamás sin pulsar explícitamente `[✅ Aprobar y Publicar]` en Telegram.
+3. **Bloqueo Físico del Canal Antiguo y Exclusividad `@GTAVIHubExtra` ([`src/uploader.py`](file:///Users/gabrieltrujillovallejo/Documents/GtrujilloMacDoc/GitHub/GitGa/Developer/Projects/GTA6Channel/src/uploader.py) y [`src/channel_sentinel.py`](file:///Users/gabrieltrujillovallejo/Documents/GtrujilloMacDoc/GitHub/GitGa/Developer/Projects/GTA6Channel/src/channel_sentinel.py)):**
+   - Se eliminó el fallback de `token_extra.json` a `token.json`. Si `token_extra.json` no existe, la subida se bloquea.
+   - Se añadió verificación criptográfica de identidad de canal antes de cada subida (`youtube.channels().list(mine=True)`): si el token pertenece a `@gtavihubspain` (`UCBOl2KuaHEoUWYWJqb7ID9Q`), la subida se aborta inmediatamente.
+4. **Purga de Plantillas Cliché en [`src/learning_engine.py`](file:///Users/gabrieltrujillovallejo/Documents/GtrujilloMacDoc/GitHub/GitGa/Developer/Projects/GTA6Channel/src/learning_engine.py):**
+   - Se eliminó la plantilla repetitiva `"LAS FÍSICAS DE {TOPIC} NO TIENEN NINGÚN SENTIDO"` y se añadió a `forbidden_cliches`, purgando `data/viral_playbook.json` para regenerar heurísticas limpias.
 
 

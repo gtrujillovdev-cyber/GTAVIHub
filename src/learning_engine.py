@@ -38,21 +38,21 @@ DEFAULT_PLAYBOOK = {
     },
     "active_heuristics": {
         "winning_title_templates": [
-            "¿SABÍAS ESTO DE {TOPIC}? 😱 [DETALLE OCULTO] #GTA6",
-            "{ENTITY} RECREA EL GAMEPLAY DE {TOPIC} 💀 #GTA6",
-            "¡EL SECRETO MEJOR GUARDADO DE {TOPIC}! 🔍🔥 #GTA6",
-            "LAS FÍSICAS DE {TOPIC} NO TIENEN NINGÚN SENTIDO 🤯 #GTA6",
-            "¿POR QUÉ ROCKSTAR OCULTÓ ESTO EN {TOPIC}? 🚨 #GTA6"
+            "¿TE DISTE CUENTA DE ESTE DETALLE EN {TOPIC}? 🔍 #GTA6",
+            "ASÍ REACCIONA LA IA CUANDO HACES ESTO EN {TOPIC} 🤯 #GTA6",
+            "COMPARATIVA REAL: RDR2 VS {TOPIC} AL LÍMITE 🔥 #GTA6",
+            "LO QUE NADIE VIO EN ESTA ESCENA DE {TOPIC} 👀 #GTA6"
         ],
         "winning_hook_templates": [
             "Line 1: SUJETO O CONTEXTO | Line 2: IMPACTO O REVELACIÓN",
-            "¿TE DIJISTE CUENTA DE ESTO? 🤯",
-            "ESTO CAMBIA TODO EN GTA 6 💀",
-            "EL DETALLE QUE NADIE VIO 🔍"
+            "MIRA ESTE DETALLE OCULTO 🔍",
+            "LA REACCIÓN DE LOS NPCs 🤯",
+            "RDR2 VS GTA 6 AL DETALLE 🔥"
         ],
         "optimal_duration_seconds": 24,
         "forbidden_cliches": [
-            "FILTRACIÓN ÉPICA", "FILTRACIÓN MORTAL", "BRUTAL", "ALERTA MUNDIAL", "CASAS DE GTA ONLINE"
+            "FILTRACIÓN ÉPICA", "FILTRACIÓN MORTAL", "BRUTAL", "ALERTA MUNDIAL",
+            "CASAS DE GTA ONLINE", "NO TIENEN NINGÚN SENTIDO", "NO TIENE NINGÚN SENTIDO"
         ]
     }
 }

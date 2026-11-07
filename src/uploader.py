@@ -50,16 +50,27 @@ def should_toggle_engagement_boost() -> bool:
 
     return should_apply
 
-def get_authenticated_youtube_service(account: str = "main"):
-    """Obtiene el cliente autenticado de YouTube usando token.json o token_extra.json."""
-    is_extra = account in ("extra", "youtube_extra")
-    chosen_file = TOKEN_EXTRA_FILE if (is_extra and TOKEN_EXTRA_FILE.exists()) else TOKEN_FILE
+BANNED_LEGACY_CHANNEL_IDS = {"UCBOl2KuaHEoUWYWJqb7ID9Q"}
+BANNED_LEGACY_HANDLES = {"@gtavihubspain"}
 
-    if is_extra and not TOKEN_EXTRA_FILE.exists():
-        print(f"[YouTube Uploader] ⚠️ Aviso: 'token_extra.json' no encontrado para @GTAVIHubExtra. Usando {chosen_file.name}. Ejecuta 'python3 scripts/auth_youtube.py --extra' para autorizar el canal nuevo.")
+def get_authenticated_youtube_service(account: str = "extra"):
+    """Obtiene el cliente autenticado de YouTube usando token_extra.json (por defecto @GTAVIHubExtra)."""
+    is_extra = account in ("extra", "youtube_extra")
+    if is_extra:
+        if TOKEN_EXTRA_FILE.exists():
+            chosen_file = TOKEN_EXTRA_FILE
+        else:
+            print(
+                "[YouTube Uploader] 🚨 BLOQUEO DE SEGURIDAD: No existe 'token_extra.json' para @GTAVIHubExtra.\n"
+                "                   Se ha bloqueado el fallback a 'token.json' (@GTAVIHubSpain) para evitar subir al canal penalizado.\n"
+                "                   Ejecuta primero: ./.venv/bin/python3 scripts/auth_youtube.py --extra"
+            )
+            return None
+    else:
+        chosen_file = TOKEN_FILE
 
     if not chosen_file.exists():
-        print(f"[!] No se encontró {chosen_file.name}. Ejecuta primero: python3 scripts/auth_youtube.py")
+        print(f"[!] No se encontró {chosen_file.name}. Ejecuta primero: ./.venv/bin/python3 scripts/auth_youtube.py --extra")
         return None
 
     try:
@@ -86,15 +97,42 @@ def upload_to_youtube(
     is_short: bool = False,
     thumbnail_path: Optional[Path] = None,
     pinned_comment: Optional[str] = None,
-    target_account: str = "main"
+    target_account: str = "extra"
 ) -> Optional[str]:
     """
-    Sube un vídeo a YouTube mediante la API v3.
+    Sube un vídeo a YouTube mediante la API v3 exclusivamente al canal autorizado (@GTAVIHubExtra).
     Retorna el ID del vídeo subido o None si falla.
     """
     youtube = get_authenticated_youtube_service(account=target_account)
     if not youtube:
         return None
+
+    # Cortafuegos de identidad de canal: impedir subidas accidentales a @GTAVIHubSpain
+    if os.getenv("ALLOW_LEGACY_MAIN_CHANNEL", "false").lower() not in ("true", "1", "yes"):
+        try:
+            ch_resp = youtube.channels().list(part="snippet", mine=True).execute()
+            items = ch_resp.get("items", [])
+            if items:
+                ch_id = items[0].get("id", "")
+                ch_snippet = items[0].get("snippet", {})
+                ch_handle = str(ch_snippet.get("customUrl", "")).lower()
+                ch_title = ch_snippet.get("title", "")
+                if ch_id in BANNED_LEGACY_CHANNEL_IDS or ch_handle in BANNED_LEGACY_HANDLES:
+                    err_msg = (
+                        f"🚨 [Bloqueo de Seguridad YouTube] El token activo pertenece al canal antiguo "
+                        f"'{ch_title}' ({ch_handle} / {ch_id}). Subida ABORTADA. "
+                        f"Autoriza @GTAVIHubExtra con: ./.venv/bin/python3 scripts/auth_youtube.py --extra"
+                    )
+                    print(err_msg)
+                    try:
+                        from .telegram_bot import send_telegram_alert
+                        send_telegram_alert(err_msg)
+                    except Exception:
+                        pass
+                    return None
+                print(f"[✓ YouTube Destino Verificado] Canal activo: {ch_title} ({ch_handle or ch_id})")
+        except Exception as e:
+            print(f"[YouTube Uploader] Info verificación de canal: {e}")
 
     if not video_path.exists():
         print(f"[!] Archivo de vídeo no encontrado: {video_path}")
