@@ -135,6 +135,7 @@ def approve_and_publish_video(video_id: str) -> Optional[Dict[str, Any]]:
                 "thumbnail_path": thumb_path if thumb_path and thumb_path.exists() else None,
                 "pinned_comment": metadata.get("pinned_comment"),
                 "debate_question": metadata.get("debate_question", ""),
+                "tags": metadata.get("tags"),
                 "original_url": data.get("original_url", ""),
                 "privacy": privacy_status,
                 "mode": metadata.get("mode") or data.get("mode", "subs"),
@@ -147,13 +148,15 @@ def approve_and_publish_video(video_id: str) -> Optional[Dict[str, Any]]:
             stagger_delay_minutes=stagger_delay
         )
         if multiplatform_results.get("youtube"):
-            uploaded_yt_id = multiplatform_results["youtube"]
+            yt_res = str(multiplatform_results["youtube"])
+            uploaded_yt_id = yt_res.split("youtu.be/")[-1] if "youtu.be/" in yt_res else yt_res
     else:
         from .uploader import upload_to_youtube
         uploaded_yt_id = upload_to_youtube(
             video_path=video_path,
             title=metadata.get("title", f"GTA 6 - {data.get('original_title')}").upper(),
             description=metadata.get("description", ""),
+            tags=metadata.get("tags"),
             privacy_status=privacy_status,
             is_short=is_short,
             thumbnail_path=thumb_path if thumb_path and thumb_path.exists() else None,
@@ -162,7 +165,10 @@ def approve_and_publish_video(video_id: str) -> Optional[Dict[str, Any]]:
         )
 
     # Registro en processed.json
-    yt_url = f"https://youtu.be/{uploaded_yt_id}" if uploaded_yt_id else None
+    if uploaded_yt_id:
+        yt_url = str(uploaded_yt_id) if str(uploaded_yt_id).startswith("http") else f"https://youtu.be/{uploaded_yt_id}"
+    else:
+        yt_url = None
     mark_video_processed({
         "id": video_id,
         "title": data.get("original_title"),

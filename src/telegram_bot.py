@@ -619,7 +619,10 @@ def run_scan_in_background(chat_id: str, max_videos: int = 2):
         send_telegram_alert(f"🎯 *{len(candidates)} candidato(s) único(s) validado(s).* Seleccionando el mejor...")
         count = 0
         remaining = list(candidates)
-        for _ in range(max_videos):
+        max_attempts = min(len(remaining), max_videos + 4)
+        for _ in range(max_attempts):
+            if count >= max_videos:
+                break
             remaining = filter_repetitive_candidates(remaining)
             if not remaining:
                 break
@@ -654,8 +657,8 @@ def run_scan_in_background(chat_id: str, max_videos: int = 2):
             )
             if res:
                 count += 1
-                yt_url = res.get("youtube_url")
-                if yt_url:
+                yt_url = res.get("youtube_url") or res.get("uploaded_youtube_url")
+                if yt_url and res.get("status") != "staged_for_copilot":
                     send_telegram_alert(
                         f"🚀 *¡Vídeo Publicado!*\n\n"
                         f"📌 *{title_display}*\n"
@@ -720,15 +723,19 @@ def run_approval_publish_in_background(video_id: str):
 
     try:
         res = approve_and_publish_video(video_id)
-        if res and res.get("youtube_url"):
+        if res and (res.get("youtube_url") or res.get("multiplatform")):
+            mp = res.get("multiplatform") or {}
+            yt_line = f"🔗 *YouTube Shorts:* {res.get('youtube_url')}" if res.get("youtube_url") else "⚠️ *YouTube:* falló (revisar cuota/token)"
+            tt_val = mp.get("tiktok")
+            tt_line = f"\n🎵 *TikTok:* {tt_val}" if tt_val else "\n⚠️ *TikTok:* no publicado / quedó en borrador"
             send_telegram_alert(
-                f"🚀 *¡Vídeo Aprobado y Publicado con Éxito!*\n\n"
+                f"🚀 *¡Publicación Finalizada!*\n\n"
                 f"🎬 *Título:* `{res.get('title')}`\n"
-                f"🔗 *YouTube Shorts:* {res.get('youtube_url')}\n\n"
+                f"{yt_line}{tt_line}\n\n"
                 f"🧹 _Archivos pesados purgados del disco._"
             )
         else:
-            send_telegram_alert("⚠️ *Vídeo procesado, pero revisa las credenciales de publicación.*")
+            send_telegram_alert("⚠️ *No se pudo publicar en YouTube/TikTok.* Revisa credenciales o logs en mbp1.")
     except Exception as e:
         send_telegram_alert(f"❌ *Error al publicar vídeo aprobado:* `{e}`")
     finally:
@@ -1244,36 +1251,20 @@ def start_telegram_bot_daemon():
                 # B) Comandos del Teclado Persistente y Slash Commands
                 if cmd in ["/start", "/help", "/menu", "/guia", "/docs"]:
                     help_msg = (
-                        "🎮 *CENTRO DE MANDO MÓVIL — GTA VI HUB SPAIN*\n"
-                        + ("═" * 36) + "\n\n"
-                        + "📱 *BOTONES DE CONTROL EN PANTALLA:*\n"
-                        + "• `🚀 Forzar Escaneo` — Rastrea los 22 canales configurados y publica nuevos clips.\n"
-                        + "• `🔥 Radar Viral` — Rastrear clips de GTA 6 con mayor engagement y creadores emergentes.\n"
-                        + "• `🛡️ Modo Co-Pilot` — Activa/desactiva la puerta de enlace humana (1-clic para aprobar o purgar).\n"
-                        + "• `📊 Dashboard` — Estado de cuotas orgánicas, almacenamiento y sesiones de redes.\n"
-                        + "• `🖥️ Estado Host / GaTDSEQ` — CPU load, RAM real en Mac, SSD, batería y convivencia quant.\n"
-                        + "• `📈 Métricas YouTube` — Suscriptores, visualizaciones y analíticas en tiempo real vía API v3.\n"
-                        + "• `⚙️ Canales` — Conmutador interactivo para activar o pausar fuentes monitoreadas.\n"
-                        + "• `🌐 Mis Canales` — Enlaces directos a tus redes y canal (YouTube Shorts, Studio, TikTok, Instagram).\n"
-                        + "• `🎬 Último Clip` — Envía la miniatura renderizada y los metadatos del clip más reciente.\n"
-                        + "• `🧹 Limpiar Temp` — Purga estricta de archivos de trabajo volátiles a 0 bytes.\n\n"
-                        + "📥 *INGESTA BAJO DEMANDA DE ENLACES:*\n"
-                        + "Pega cualquier enlace de YouTube o TikTok en este chat. El bot detectará el vídeo y desplegará botones para elegir el formato:\n"
-                        + "  • `⚡ Short Vertical Hormozi`: Reencuadre 9:16 + subtítulos Pop Bounce.\n"
-                        + "  • `🎙️ Doblaje Neural`: Traducción de audio al español neutro + subtítulos.\n"
-                        + "  • `💬 Solo Subtítulos`: Audio original + subtítulos quemados en pantalla.\n\n"
-                        + "⌨️ *COMANDOS ADICIONALES:*\n"
-                        + "• `/restart` o `/reiniciar` — Reinicia el bot en caliente si se queda pillado.\n"
-                        + "• `/unlock` — Libera bloqueos y tareas si el sistema está atascado.\n"
-                        + "• `/miscanales` o `/redes` — Enlaces y accesos directos a tus canales propios.\n"
-                        + "• `/addchannel <url> [nombre]` — Añade un canal al monitoreo continuo.\n"
-                        + "• `/delchannel <número o nombre>` — Da de baja una fuente.\n"
-                        + "• `/radar` o `/viral` — Ejecuta el Radar Viral de engagement.\n"
-                        + "• `/copilot` — Configura la aprobación táctil de publicaciones.\n"
-                        + "• `/audit` — Auditoría de directrices anti-strike y Fair Use.\n"
-                        + "• `/fuentes` o `/sources` — Radar de canales y creadores aprendidos automáticamente.\n"
-                        + "• `/clean` — Limpieza inmediata de disco en el host.\n"
-                        + "• `/guia` — Vuelve a mostrar este manual completo."
+                        "🎮 *CENTRO DE MANDO — GTA VI HUB EXTRA*\n"
+                        + ("═" * 34) + "\n\n"
+                        + "📱 *BOTONES PRINCIPALES:*\n"
+                        + "• `🚀 Forzar Escaneo` — Busca lo último `<24h` por velocidad real y genera clip.\n"
+                        + "• `🎬 Último Clip` — Muestra el vídeo pendiente o más reciente.\n"
+                        + "• `📊 Estado` — Salud del sistema, cuotas y almacenamiento.\n"
+                        + "• `🛡️ Modo Co-Pilot` — Activa/desactiva aprobación previa manual.\n\n"
+                        + "📥 *INGESTA DIRECTA:* Pega cualquier enlace de YouTube, TikTok o X en este chat.\n\n"
+                        + "⌨️ *COMANDOS ÚTILES:*\n"
+                        + "• `/radar` — Radar viral en vivo\n"
+                        + "• `/stats` — Métricas reales de `@gtavihubextra`\n"
+                        + "• `/host` — Telemetría de `mbp1` y GaTDSEQ\n"
+                        + "• `/unlock` / `/clean` — Desbloquear cola y limpiar `temp/`\n"
+                        + "• `/restart` — Reinicio rápido del bot"
                     )
                     send_telegram_alert(help_msg, reply_markup=get_persistent_menu_keyboard())
 

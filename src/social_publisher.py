@@ -206,6 +206,11 @@ class SocialPublisher:
             storage_state_file = BROWSER_PROFILE_DIR / "storage_state.json"
 
             print(f"[*] Abriendo sesión persistente de TikTok en {tiktok_profile} (headless={headless})...")
+            for lk_name in ("SingletonLock", "SingletonSocket", "SingletonCookie"):
+                try:
+                    (tiktok_profile / lk_name).unlink(missing_ok=True)
+                except Exception:
+                    pass
             with sync_playwright() as p:
                 launch_kwargs = {
                     "user_data_dir": str(tiktok_profile),
