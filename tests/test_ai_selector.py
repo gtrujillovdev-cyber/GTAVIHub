@@ -101,7 +101,7 @@ class TestAiSelector(unittest.TestCase):
             },
             {
                 "id": "vid_fresh_breakout",
-                "title": "GTA 6 MISSION 1 REAL GAMEPLAY LEAK",
+                "title": "GTA 6 MISSION 1 REAL GAMEPLAY BREAKOUT",
                 "duration": 25.0,
                 "views": 40000,
                 "velocity": 40000.0,

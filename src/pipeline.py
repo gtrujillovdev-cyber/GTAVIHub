@@ -38,7 +38,9 @@ def process_single_video(
     copilot_mode: Optional[bool] = None,
     hook_override: Optional[str] = None,
     block_instagram: bool = False,
-    allowed_platforms: Optional[list] = None
+    allowed_platforms: Optional[list] = None,
+    is_manual_ingest: bool = False,
+    allow_official_commentary: bool = False
 ) -> Optional[Dict[str, Any]]:
     """
     Ejecuta el ciclo de vida completo de un vídeo con transformación editorial real:
@@ -68,16 +70,21 @@ def process_single_video(
     from .channels import is_strictly_gta6, is_official_or_reupload
     from .compliance_auditor import ComplianceAuditor
     if not is_strictly_gta6(original_title):
-        err_msg = f"❌ [BLOQUEO DE SEGURIDAD GTA 6] El vídeo '{original_title}' NO trata exclusivamente sobre GTA 6. Abortando inmediatamente."
-        print(f"\n{err_msg}")
-        try:
-            from .telegram_bot import send_telegram_alert
-            send_telegram_alert(f"🛡️ *Filtro Exclusivo GTA 6 Activado*\nVídeo descartado (no es GTA 6):\n`{original_title[:60]}`")
-        except Exception:
-            pass
-        return None
+        if is_manual_ingest:
+            if "gta" not in (original_title or "").lower():
+                original_title = f"GTA 6: {original_title or 'Gameplay Clip'}"
+            print(f"[*] Ingesta manual: Contexto de GTA 6 asegurado para '{original_title}'")
+        else:
+            err_msg = f"❌ [BLOQUEO DE SEGURIDAD GTA 6] El vídeo '{original_title}' NO trata exclusivamente sobre GTA 6. Abortando inmediatamente."
+            print(f"\n{err_msg}")
+            try:
+                from .telegram_bot import send_telegram_alert
+                send_telegram_alert(f"🛡️ *Filtro Exclusivo GTA 6 Activado*\nVídeo descartado (no es GTA 6):\n`{original_title[:60]}`")
+            except Exception:
+                pass
+            return None
 
-    if is_official_or_reupload(original_title, creator_name):
+    if not is_manual_ingest and not allow_official_commentary and is_official_or_reupload(original_title, creator_name):
         print(f"\n❌ [FILTRO ANTI-OFICIAL] '{original_title}' es contenido oficial de Rockstar o reupload de tráiler. Abortando.")
         try:
             from .telegram_bot import send_telegram_alert
@@ -105,7 +112,9 @@ def process_single_video(
 
     # 1. Descarga limpia
     report_stage("📥 [1/5] Descargando vídeo y pistas originales (1080p)...")
-    video_path, srt_path, detected_lang = download_video_and_subtitles(url, video_id, source_lang=source_lang)
+    video_path, srt_path, detected_lang = download_video_and_subtitles(
+        url, video_id, source_lang=source_lang, trim_official_bumpers=allow_official_commentary
+    )
     if not video_path:
         print(f"[!] Falló la descarga del vídeo {video_id}. Abortando.")
         report_stage("⚠️ *Descarga omitida:* El vídeo no está disponible, tiene restricción de edad en YouTube o excedió el tiempo límite.")
@@ -127,9 +136,18 @@ def process_single_video(
 
     print(f"    Formato Final: {'Vertical 9:16 (Shorts/TikTok/Reels)' if is_short else 'Horizontal 16:9'}")
 
-    # 2. Procesar/Traducir subtítulos si existen (sin inventar bucles artificiales)
-    report_stage("🤖 [2/5] Analizando con Gemini Flash y generando metadatos virales...")
+    # 2. Procesar/Traducir subtítulos si existen (o transcribir audio / comentario editorial con Gemini Flash)
+    report_stage("🤖 [2/5] Analizando pistas y generando subtítulos/metadatos...")
+    # Usar source_lang real del audio (evita omitir doblaje cuando un vídeo inglés trae pista de subtítulos en español)
+    audio_needs_dub = (source_lang != "es")
+    generated_editorial_script = False
     es_srt_path = None
+    if allow_official_commentary and srt_path and srt_path.exists():
+        # En spots oficiales, evitar subtítulos de letras musicales genéricas
+        print("[*] Spot oficial detectado: limpiando posibles letras musicales para preservar visual y gancho limpio...")
+        srt_path.unlink(missing_ok=True)
+        srt_path = None
+
     if srt_path and srt_path.exists():
         es_srt_path = TEMP_DIR / f"{video_id}_es.srt"
         success_trans = translate_srt(
@@ -140,9 +158,99 @@ def process_single_video(
         if not success_trans:
             print("[Warning] No se pudieron traducir subtítulos al español.")
             es_srt_path = None
+    else:
+        # En spots oficiales NO transcribir letras musicales del tráiler: pasar directo a narración editorial propia
+        if not allow_official_commentary:
+            # Si no hay subtítulos nativos, intentar transcribir directamente el audio del clip con Gemini Flash
+            try:
+                from .translator import transcribe_and_translate_audio_gemini
+                from .dubber import parse_first_cue_start
+                temp_audio = TEMP_DIR / f"{video_id}_audio_speech.mp3"
+                cmd_extract_audio = [
+                    "ffmpeg", "-y",
+                    "-i", str(video_path),
+                    "-vn",
+                    "-acodec", "libmp3lame",
+                    "-ar", "16000",
+                    "-ac", "1",
+                    "-b:a", "64k",
+                    str(temp_audio)
+                ]
+                subprocess.run(cmd_extract_audio, capture_output=True, timeout=25)
+                if temp_audio.exists() and temp_audio.stat().st_size > 500:
+                    print("[*] Audio extraído. Consultando Gemini Flash para transcripción y traducción al español...")
+                    candidate_srt = TEMP_DIR / f"{video_id}_es.srt"
+                    success_ai, has_speech = transcribe_and_translate_audio_gemini(temp_audio, candidate_srt, target_lang="es")
+                    if success_ai and has_speech and candidate_srt.exists():
+                        first_t = parse_first_cue_start(candidate_srt)
+                        if first_t <= 12.0:
+                            es_srt_path = candidate_srt
+                            srt_path = candidate_srt
+                            lang_to_use = "es"
+                            print(f"[✓] Transcripción y traducción de audio completada con éxito.")
+                        else:
+                            print(f"[!] Transcripción con timestamp corrupto ({first_t:.1f}s > 12s). Descartando SRT para usar comentario editorial...")
+                            candidate_srt.unlink(missing_ok=True)
+                    elif success_ai and not has_speech:
+                        print("[*] Audio analizado: Clip sin narración (gameplay o efectos de sonido puros).")
+                        es_srt_path = None
+                if temp_audio.exists():
+                    temp_audio.unlink(missing_ok=True)
+            except Exception as e:
+                print(f"[!] Info transcripción multimodal de audio: {e}")
 
-    # Blindaje Editorial: Si el contenido viene en inglés y no se pudo traducir, abortar para no publicar en inglés
-    if lang_to_use != "es" and not es_srt_path:
+        # Si aún no hay subtítulos y no se detectó voz, intentar OCR como respaldo secundario
+        if not es_srt_path:
+            try:
+                from .ocr_extractor import extract_gameplay_text
+                gameplay_text = extract_gameplay_text(video_path, max_chars=120)
+                if gameplay_text:
+                    print(f"[OCR] Texto de gameplay extraído (<120 car): '{gameplay_text}'")
+                    ocr_srt = TEMP_DIR / f"{video_id}_ocr.srt"
+                    with open(ocr_srt, "w", encoding="utf-8") as f:
+                        f.write(f"1\n00:00:01,000 --> 00:00:06,500\n{gameplay_text}\n\n")
+                    if lang_to_use != "es":
+                        es_srt_path = TEMP_DIR / f"{video_id}_es.srt"
+                        if not translate_srt(ocr_srt, es_srt_path, source_lang=lang_to_use):
+                            es_srt_path = ocr_srt
+                    else:
+                        es_srt_path = ocr_srt
+                    srt_path = ocr_srt
+            except Exception as e:
+                print(f"[OCR] Info extracción de texto en pantalla: {e}")
+
+    # Si es clip oficial/visual con música/rótulos breves (<12 palabras) o sin locución, usar modo gameplay (conserva audio original sin abortar en Audio Shield)
+    _active_caption_words = 0
+    _cap_check = es_srt_path or srt_path
+    if _cap_check and _cap_check.exists():
+        try:
+            _lines = [l.strip() for l in _cap_check.read_text(encoding="utf-8", errors="ignore").splitlines() if l.strip() and not l.strip().isdigit() and "-->" not in l]
+            _active_caption_words = len(" ".join(_lines).split())
+        except Exception:
+            _active_caption_words = 0
+
+    if (not es_srt_path and not (srt_path and srt_path.exists())) or (allow_official_commentary and _active_caption_words < 12):
+        tl_lower = (original_title or "").lower()
+        is_visual_showcase = (
+            mode in ("gameplay", "clean")
+            or allow_official_commentary
+            or any(
+                kw in tl_lower
+                for kw in (
+                    "gameplay", "pre-load", "preload", "trailer", "teaser",
+                    "comparison", "comparativa", "physics", "físicas", "fisicas",
+                    "graphics", "gráficos", "graficos", "rage 9", "4k", "60fps",
+                    "detail", "detalle", "showcase", "captura"
+                )
+            )
+        )
+        if is_visual_showcase:
+            print("[*] Clip visual/gameplay/oficial sin narración extensa: conservando sonido auténtico en modo gameplay.")
+            mode = "gameplay"
+
+    # Blindaje Editorial: Si el contenido tiene voz original en otro idioma y no se pudo traducir, abortar para no publicar sin subtítulos en español.
+    # Si es ingesta manual o gameplay/visual sin locución, se permite procesar.
+    if lang_to_use != "es" and not es_srt_path and not is_manual_ingest and mode not in ("gameplay", "clean"):
         print(f"[!] [Blindaje Editorial] El vídeo original está en {lang_to_use.upper()} pero no se pudo traducir al español.")
         print("[!] Abortando procesamiento para proteger el canal de vídeos sin traducir.")
         try:
@@ -156,12 +264,12 @@ def process_single_video(
         clean_temp_directory(video_id)
         return None
 
-    # 4. Doblaje de voz neural en español (solo si el usuario lo solicita explícitamente con mode='dub'/'voice')
+    # 4. Doblaje de voz neural en español (solo bajo demanda explícita en modo dub/voice, o si AUTO_DUB_ENGLISH=true)
     dub_audio_path = None
-    should_dub = (mode in ["dub", "voice"]) or (mode != "short" and AUTO_DUB_ENGLISH and lang_to_use != "es")
-    if should_dub and lang_to_use != "es" and es_srt_path:
+    should_dub = (mode in ["dub", "voice"]) or (mode not in ["short", "subs", "gameplay", "clean"] and AUTO_DUB_ENGLISH and audio_needs_dub)
+    if should_dub and es_srt_path and audio_needs_dub:
         dub_audio_path = TEMP_DIR / f"{video_id}_es_voice.mp3"
-        print(f"[*] Modo voz activa ({lang_to_use.upper()} -> ES). Generando locución neural en español...")
+        print(f"[*] Modo voz activa (ES Neural). Generando locución en español...")
         if generate_voiceover(es_srt_path, dub_audio_path):
             mode = "dub"
         else:
@@ -174,7 +282,9 @@ def process_single_video(
         video_path=video_path,
         srt_path=es_srt_path or srt_path,
         has_voiceover=has_vo,
-        mode=mode
+        mode=mode,
+        is_manual=is_manual_ingest,
+        allow_gameplay_sound=(mode in ["gameplay", "clean"] or is_manual_ingest)
     )
     if not is_vital:
         print(f"\n[!] {vital_reason}")
@@ -195,14 +305,26 @@ def process_single_video(
 
     # 5. Generación de Metadatos Virales (Título + Gancho + Pregunta Polarizante + Descripción Legal)
     print("[*] Generando metadatos virales con tendencias de YouTube y Fair Use...")
+    clip_transcript_text = ""
+    active_srt = es_srt_path or srt_path
+    if active_srt and active_srt.exists():
+        try:
+            clip_transcript_text = active_srt.read_text(encoding="utf-8", errors="ignore")
+        except Exception:
+            clip_transcript_text = ""
+
     metadata = generate_video_metadata(
         original_title=original_title or video_id,
         original_url=url,
         is_short=is_short,
         creator_name=creator_name,
-        source_lang=lang_to_use
+        source_lang=lang_to_use,
+        clip_transcript=clip_transcript_text
     )
-    hook_text = hook_override if hook_override else metadata.get("hook", "¡ANÁLISIS AL DETALLE!")
+    if clip_transcript_text and not is_manual_ingest and metadata.get("hook"):
+        hook_text = metadata.get("hook")
+    else:
+        hook_text = hook_override if hook_override else metadata.get("hook", "¡ANÁLISIS AL DETALLE!")
 
     # 5a. Filtro adaptativo anti-cliché: solo purga clichés genéricos que no encajan con el arquetipo real
     # Si el contenido genuinamente trata sobre algo "brutal" (gameplay_puro, reaccion_streamer), se respeta.
@@ -217,8 +339,9 @@ def process_single_video(
             _gen_title = metadata.get("title", "")
             _changed = False
             for cliche in _forbidden:
-                if cliche.lower() in _gen_title.lower():
-                    _gen_title = re.sub(re.escape(cliche), "", _gen_title, flags=re.IGNORECASE).strip()
+                pattern_c = rf"\b{re.escape(cliche)}(?:es|s)?\b"
+                if re.search(pattern_c, _gen_title, flags=re.IGNORECASE):
+                    _gen_title = re.sub(pattern_c, "", _gen_title, flags=re.IGNORECASE).strip()
                     _gen_title = re.sub(r'\s{2,}', ' ', _gen_title).strip(" !¡")
                     _changed = True
                     print(f"[Playbook] Cliché '{cliche}' eliminado (arquetipo {_archetype} no lo justifica)")
@@ -236,8 +359,11 @@ def process_single_video(
     debate_q = metadata.get("debate_question", "")
     if debate_q and not metadata.get("pinned_comment"):
         try:
-            from .affiliates import format_pinned_comment_affiliates
-            metadata["pinned_comment"] = format_pinned_comment_affiliates(debate_q)
+            from .affiliates import format_pinned_comment_affiliates, format_pinned_comment_clean, is_affiliates_enabled
+            if is_affiliates_enabled():
+                metadata["pinned_comment"] = format_pinned_comment_affiliates(debate_q)
+            else:
+                metadata["pinned_comment"] = format_pinned_comment_clean(debate_q)
         except Exception:
             pass
 
@@ -269,8 +395,17 @@ def process_single_video(
     thumb_path = OUTPUT_DIR / f"{slug}_{video_id}_thumb.jpg"
     meta_path = OUTPUT_DIR / f"{slug}_{video_id}_info.json"
 
-    # Formato D (Pro-Cinema 83.3%) para acción/físicas/cuenta Extra; Formato C (4:5) para noticias/comparativas
-    target_preset = "D" if archetype in {"gameplay_puro", "analisis_tecnico", "rage9_physics", "weapons_shooting_rdr2", "fisicas"} else "C"
+    # Formato D (83.3%) para gameplay puro/físicas/spots oficiales; Formato FIT (16:9 completo) para breakdowns, comparativas y reacciones
+    is_comparison_or_breakdown = any(
+        kw in title_lower
+        for kw in (" vs ", "comparison", "comparativa", "breakdown", "missed", "reaction", "reacciona", "reacción", "fps", "analysis", "review")
+    )
+    if is_comparison_or_breakdown or (not allow_official_commentary and archetype in {"analisis_tecnico", "reaccion_streamer", "noticia_oficial", "filtracion_misterio", "humor_parodia"}):
+        target_preset = "FIT"
+    elif allow_official_commentary or archetype in {"gameplay_puro", "rage9_physics", "weapons_shooting_rdr2", "fisicas"}:
+        target_preset = "D"
+    else:
+        target_preset = "FIT"
 
     success_render = render_final_video(
         input_video=video_path,
@@ -390,7 +525,8 @@ def process_single_video(
                 is_short=is_short,
                 mode=mode,
                 hook_text=hook_text,
-                original_url=url
+                original_url=url,
+                video_path=output_path if output_path and output_path.exists() else None
             )
         except Exception as e:
             print(f"[Pipeline] Info Co-Pilot Telegram: {e}")

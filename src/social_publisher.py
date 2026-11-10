@@ -618,8 +618,13 @@ class SocialPublisher:
                 print(f"\n[Compliance Shield] 🛡️ {reason}")
                 self._notify_telegram(f"🛡️ *[Compliance Shield]* Saltando *{plat.upper()}* para proteger la cuenta:\n_{reason}_")
 
-                # OPCIÓN B: Contenido alternativo para Instagram si el Reel de clip/streamer no es elegible
-                if plat == "instagram":
+                # OPCIÓN B: Solo activar Stories rotativas de productos Amazon si is_affiliates_enabled() es True
+                try:
+                    from .affiliates import is_affiliates_enabled
+                    _aff_on = is_affiliates_enabled()
+                except Exception:
+                    _aff_on = False
+                if plat == "instagram" and _aff_on:
                     print("[Opción B] 🎬 Generando contenido alternativo seguro para Instagram (Story cinemática de hardware)...")
                     try:
                         from .story_scheduler import publish_scheduled_story
@@ -696,7 +701,7 @@ class SocialPublisher:
                 bold_contacto = to_unicode_bold("CONTACTO / BUSINESS:")
 
                 debate_block = f"💬 {bold_debate}\n{debate_q}\n👇 ¡Déjanos tu teoría en los comentarios!\n\n" if debate_q else ""
-                cta_block = AFFILIATE_CTA_INSTAGRAM if ENABLE_AFFILIATE_CTAS else "🎮 Reserva oficial de GTA VI y mejores ofertas de PS5 en el LINK DE LA BIO."
+                cta_block = AFFILIATE_CTA_INSTAGRAM if ENABLE_AFFILIATE_CTAS else "🌴 Cobertura diaria de GTA VI y noticias oficiales en @gtavihubextra."
 
                 creator_clean = creator_name or "Rockstar Games"
                 caption = (

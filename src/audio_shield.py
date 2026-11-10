@@ -146,14 +146,16 @@ def validate_audio_and_speech_vitality(
     mode: str = "subs",
     min_mean_vol: float = MIN_MEAN_VOLUME_DB,
     min_max_vol: float = MIN_MAX_VOLUME_DB,
-    min_words: int = MIN_SPEECH_WORDS
+    min_words: int = MIN_SPEECH_WORDS,
+    is_manual: bool = False,
+    allow_gameplay_sound: bool = False
 ) -> Tuple[bool, str, Dict[str, Any]]:
     """
     Escudo Integral de Vitalidad de Audio.
     Verifica que:
     1. El vídeo no esté silenciado ni por debajo de los umbrales mínimos audibles.
     2. Si no lleva locución neural propia (has_voiceover=False), el vídeo original
-       tenga diálogo/comentarios reales y suficientes para evitar clips mudos de tráilers.
+       tenga diálogo/comentarios reales o sea una ingesta manual de gameplay/físicas permitida.
     """
     # 1. Obtener duración del vídeo
     duration = 0.0
@@ -204,17 +206,21 @@ def validate_audio_and_speech_vitality(
     speech_stats = measure_speech_density(srt_path, duration)
 
     # Si no hay doblaje ni voz generada por IA, el clip original DEBE tener discurso real
+    # a menos que sea una ingesta manual explícita o modo gameplay con sonido audible.
     if not has_voiceover and mode in ["subs", "short"]:
         if duration > 15.0 and not speech_stats["has_substantive_speech"]:
-            return False, (
-                f"❌ [Escudo de Audio] Densidad de voz insuficiente ({speech_stats['word_count']} palabras en {duration:.1f}s). "
-                f"El clip es metraje de tráiler/B-roll sin narrador ni locución activa. "
-                f"Descartado para evitar subir clips vacíos al canal."
-            ), {
-                "audio_stats": audio_stats,
-                "speech_stats": speech_stats,
-                "duration": duration
-            }
+            if not is_manual and not allow_gameplay_sound and mode != "gameplay":
+                return False, (
+                    f"❌ [Escudo de Audio] Densidad de voz insuficiente ({speech_stats['word_count']} palabras en {duration:.1f}s). "
+                    f"El clip es metraje de tráiler/B-roll sin narrador ni locución activa. "
+                    f"Descartado para evitar subir clips vacíos al canal."
+                ), {
+                    "audio_stats": audio_stats,
+                    "speech_stats": speech_stats,
+                    "duration": duration
+                }
+            else:
+                print(f"[*] [Audio Shield] Metraje de gameplay/físicas con audio audible permitido (is_manual={is_manual}, mode={mode}).")
 
     return True, "✅ [Escudo de Audio] Vitalidad acústica y narrativa verificadas con éxito.", {
         "audio_stats": audio_stats,

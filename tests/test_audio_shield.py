@@ -90,6 +90,27 @@ class TestAudioShield(unittest.TestCase):
             self.assertTrue(is_valid)
             self.assertIn("verificadas con éxito", reason)
 
+    def test_validation_accepts_manual_gameplay_audio(self):
+        # Clip de gameplay sin locución humana pero con sonido del juego y modo manual
+        fake_video = self.temp_path / "gameplay.mp4"
+        fake_video.write_bytes(b"gameplay_data")
+
+        import unittest.mock as mock
+        with mock.patch("src.audio_shield.detect_audio_levels") as mock_audio, \
+             mock.patch("subprocess.run") as mock_subp:
+            mock_audio.return_value = {"has_audio": True, "mean_volume": -20.0, "max_volume": -2.0}
+            mock_subp.return_value = mock.Mock(stdout="20.0", returncode=0)
+
+            is_valid, reason, _ = validate_audio_and_speech_vitality(
+                video_path=fake_video,
+                srt_path=None,
+                has_voiceover=False,
+                mode="gameplay",
+                is_manual=True
+            )
+            self.assertTrue(is_valid)
+            self.assertIn("verificadas con éxito", reason)
+
 
 if __name__ == "__main__":
     unittest.main()

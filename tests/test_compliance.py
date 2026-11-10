@@ -245,5 +245,149 @@ class TestCompliance(unittest.TestCase):
         self.assertTrue(any("Hobby Consolas" in n for n in names))
         self.assertTrue(any("CaptainEggcellent" in n for n in names))
 
+    def test_is_safe_rrss_candidate_anti_leak_and_fair_use(self):
+        from src.compliance_auditor import is_safe_rrss_candidate
+
+        # 1. Leaks o material robado deben ser rechazados tajantemente
+        safe, reason, _ = is_safe_rrss_candidate("GTA 6 Gameplay Leaks WON'T STOP (BANNED EVERYWHERE)", uploader="dkdynamite", duration_sec=30)
+        self.assertFalse(safe)
+        self.assertIn("anti-leak", reason.lower())
+
+        safe, reason, _ = is_safe_rrss_candidate("Filtración del código fuente de GTA 6 en desarrollo", uploader="Random", duration_sec=25)
+        self.assertFalse(safe)
+        self.assertIn("anti-leak", reason.lower())
+
+        # 2. Tráilers oficiales directos de Rockstar deben ser rechazados
+        safe, reason, _ = is_safe_rrss_candidate("Grand Theft Auto VI Trailer 1 Official", uploader="Rockstar Games", duration_sec=90)
+        self.assertFalse(safe)
+
+        # 3. Duraciones no compatibles con Shorts deben ser rechazadas
+        safe, reason, _ = is_safe_rrss_candidate("GTA 6 Evolución Gráfica Comparativa", uploader="ElAnalistaDeBits", duration_sec=120)
+        self.assertFalse(safe)
+        self.assertIn("excede", reason.lower())
+
+        # 4. Medios competidores con logotipos quemados (Vandal, 3DJuegos) deben ser rechazados por Anti-Plagio
+        safe_vandal, reason_vandal, _ = is_safe_rrss_candidate(
+            "¡Menuda EVOLUCIÓN! Comparan los gráficos de GTA San Andreas con los de GTA 6 😱",
+            uploader="Vandal",
+            duration_sec=16
+        )
+        self.assertFalse(safe_vandal)
+        self.assertIn("anti-plagio", reason_vandal.lower())
+
+        # 5. Candidatos de análisis técnico limpio (ElAnalistaDeBits / GTA Series) deben ser APROBADOS al 100%
+        safe, _, meta = is_safe_rrss_candidate(
+            "¡Menuda EVOLUCIÓN! Comparan los gráficos de GTA San Andreas con los de GTA 6 😱",
+            uploader="ElAnalistaDeBits",
+            duration_sec=16
+        )
+        self.assertTrue(safe)
+        self.assertGreaterEqual(meta["safety_score"], 90)
+        self.assertEqual(meta["archetype"], "Comparativa Gráfica en Loop")
+        self.assertEqual(meta["recommended_mode"], "gameplay")
+
+        # 5. Descubrimiento geográfico de TGG debe ser APROBADO
+        safe_tgg, _, meta_tgg = is_safe_rrss_candidate(
+            "A Viewer Found GTA 6's Hotel in Real Life",
+            uploader="TGG",
+            duration_sec=13
+        )
+        self.assertTrue(safe_tgg)
+        self.assertGreaterEqual(meta_tgg["safety_score"], 85)
+
+        # 6. Fuentes 16:9 limpias (228s) con allow_long_clipping=True deben ser APROBADAS para auto-recorte
+        safe_ws, _, meta_ws = is_safe_rrss_candidate(
+            "GTA 6 Launch Screenshots - All 39 New Images Released",
+            uploader="GTA Series Videos",
+            duration_sec=228,
+            allow_long_clipping=True
+        )
+        self.assertTrue(safe_ws)
+        self.assertGreaterEqual(meta_ws["safety_score"], 90)
+
+        # 7. Conceptos CGI / formatos lentos de podcast deben ser rechazados, pero reacciones frescas y tráilers nuevos transformados deben APROBARSE
+        safe_podcast, reason_pod, _ = is_safe_rrss_candidate(
+            "The 6 Confirmed Radio Stations in Grand Theft Auto VI",
+            uploader="EssayChannel",
+            duration_sec=385,
+            allow_long_clipping=True
+        )
+        self.assertFalse(safe_podcast)
+        self.assertIn("quality shield", reason_pod.lower())
+
+        safe_react, _, _ = is_safe_rrss_candidate(
+            "Grand Theft Auto VI: Pre-Load Now Trailer - Reaction!",
+            uploader="Tyrone Magnus",
+            duration_sec=126,
+            allow_long_clipping=True
+        )
+        self.assertTrue(safe_react)
+
+        safe_new_rockstar, _, _ = is_safe_rrss_candidate(
+            "Grand Theft Auto VI: Pre-Load Now",
+            uploader="Rockstar Games",
+            duration_sec=30,
+            allow_official_commentary=True
+        )
+        self.assertTrue(safe_new_rockstar)
+
+    def test_filter_repetitive_candidates(self):
+        from src.channels import filter_repetitive_candidates
+        mock_history = [
+            {
+                "id": "old_1",
+                "title": "GTA 6 Launch Screenshots - All 39 New Images",
+                "creator": "GTA Series Videos",
+                "status": "completed"
+            },
+            {
+                "id": "rej_1",
+                "title": "Lucia gets nervous when asked about GTA 6",
+                "creator": "MemeUploader",
+                "status": "rejected_by_operator"
+            }
+        ]
+        cands = [
+            {"id": "dup_exact_topic", "title": "GTA 6 Launch Screenshots All 39 New Images Released", "score": 95, "source_name": "GTA Series Videos"},
+            {"id": "dup_rejected_topic", "title": "Lucia gets very nervous asked about GTA 6!", "score": 92, "source_name": "AnotherChannel"},
+            {"id": "fresh_1a", "title": "GTA 6 RAGE 9 Water Physics Comparison in Vice Beach", "score": 88, "source_name": "ElAnalistaDeBits"},
+            {"id": "fresh_1b", "title": "GTA 6 RAGE 9 Water Physics Comparison in Vice Beach (Reupload)", "score": 85, "source_name": "CloneChannel"},
+            {"id": "cooldown_src", "title": "GTA 6 Hidden Easter Eggs in Port Gellhorn", "score": 90, "source_name": "GTA Series Videos"},
+        ]
+        res = filter_repetitive_candidates(cands, processed_entries=mock_history)
+        ids = [c["id"] for c in res]
+        self.assertNotIn("dup_exact_topic", ids)
+        self.assertNotIn("dup_rejected_topic", ids)
+        self.assertIn("fresh_1a", ids)
+        self.assertNotIn("fresh_1b", ids)
+        cooldown_item = next(c for c in res if c["id"] == "cooldown_src")
+        self.assertTrue(cooldown_item.get("cooldown_applied"))
+        self.assertEqual(cooldown_item["score"], 70)
+
+    def test_filter_repetitive_allows_distinct_rockstar_and_reactions(self):
+        from src.channels import filter_repetitive_candidates
+        mock_history = [
+            {
+                "id": "rz1B4B2yBZY",
+                "title": "Grand Theft Auto VI Launch Trailer",
+                "creator": "Rockstar Games (Oficial)",
+                "status": "discarded",
+            }
+        ]
+        cands = [
+            {"id": "_yl5ELcmugI", "title": "Grand Theft Auto VI: Pre-Load Now", "score": 95, "source_name": "Rockstar Games"},
+            {"id": "fest1234567", "title": "Grand Theft Auto VI: The Festival", "score": 92, "source_name": "Rockstar Games"},
+            {"id": "react123456", "title": "GTA 6 LAUNCH TRAILER REACTION - ITS SO PEAK!", "score": 90, "source_name": "SomeCreator"},
+            {"id": "analys12345", "title": "GTA 6 Launch Trailer - Analysis + Full Thoughts!", "score": 89, "source_name": "BreakdownYT"},
+            {"id": "dup_same123", "title": "Grand Theft Auto VI: Launch Trailer (4K)", "score": 80, "source_name": "ReuploadYT"},
+        ]
+        res = filter_repetitive_candidates(cands, processed_entries=mock_history)
+        ids = [c["id"] for c in res]
+        self.assertIn("_yl5ELcmugI", ids)
+        self.assertIn("fest1234567", ids)
+        self.assertIn("react123456", ids)
+        self.assertIn("analys12345", ids)
+        self.assertNotIn("dup_same123", ids)
+
 if __name__ == "__main__":
     unittest.main()

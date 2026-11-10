@@ -112,32 +112,45 @@ def get_playbook_context_for_prompt() -> str:
 
 def generate_hook_card_texts(title: str, topic: str = "") -> tuple:
     """
-    Genera dos líneas de texto de gancho superior (Línea 1 en blanco, Línea 2 en amarillo neón)
-    basado en las heurísticas activas del playbook.
+    Genera dos líneas de texto de gancho superior en ESPAÑOL (Línea 1 en blanco, Línea 2 en amarillo neón)
+    con longitud segura (<= 21 caracteres por línea) para no desbordar ni filtrar inglés crudo.
     """
-    t_lower = title.lower()
+    t_lower = (title or "").lower()
 
     if any(k in t_lower for k in ["south park", "southpark"]):
         return ("SOUTH PARK LO HIZO", "¡PARODIA A GTA 6! 💀")
-    elif any(k in t_lower for k in ["fisica", "física", "water", "agua", "rage"]):
-        return ("FÍSICAS HIPERREALISTAS", "¡RAGE 9 AL LÍMITE! 🌊")
-    elif any(k in t_lower for k in ["secreto", "secret", "easter egg"]):
-        return ("EL SECRETO QUE NADIE VIO", "¡DESCUBIERTO EN EL MAPA! 🔍")
-    elif any(k in t_lower for k in ["mision", "misión", "gameplay", "prologo"]):
-        return ("GAMEPLAY EXCLUSIVO", "¡PRIMERA MISIÓN REAL! 🔥")
-    elif any(k in t_lower for k in ["policia", "policía", "5 estrellas"]):
+    elif any(k in t_lower for k in ["fisica", "física", "physics", "water", "agua", "rage", "npc", "density", "densidad"]):
+        return ("FÍSICAS RAGE 9", "¡REALISMO EXTREMO! 🌊")
+    elif any(k in t_lower for k in ["screenshot", "screenshots", "image", "images", "imágenes", "imagenes", "pantallazo"]):
+        return ("IMÁGENES INÉDITAS", "DETALLES DE GTA 6 🔍")
+    elif any(k in t_lower for k in ["graphic", "graphics", "gráfico", "grafico", "visual", "ray tracing", "4k", "ps5"]):
+        return ("GRÁFICOS DE INFARTO", "¡OTRO NIVEL EN GTA 6!")
+    elif any(k in t_lower for k in ["compar", "versus", " vs ", "evoluc", "difference", "diferencia"]):
+        return ("COMPARATIVA DIRECTA", "¡MIRA EL CAMBIO! ⚔️")
+    elif any(k in t_lower for k in ["radio", "music", "música", "soundtrack", "song"]):
+        return ("RADIOS DE VICE CITY", "¡TEMAZOS CONFIRMADOS!")
+    elif any(k in t_lower for k in ["map", "mapa", "leonida", "vice city", "mountain", "hotel", "location"]):
+        return ("MAPA DE LEONIDA", "¡SECRETOS OCULTOS! 🗺️")
+    elif any(k in t_lower for k in ["secreto", "secret", "easter egg", "detail", "detalle", "hidden"]):
+        return ("EL SECRETO OCULTO", "¡QUE CASI NADIE VIO!")
+    elif any(k in t_lower for k in ["mision", "misión", "gameplay", "prologo", "feature"]):
+        return ("GAMEPLAY EXCLUSIVO", "¡ASÍ ES POR DENTRO! 🔥")
+    elif any(k in t_lower for k in ["policia", "policía", "police", "chase", "persecuci", "wanted", "5 estrellas"]):
         return ("NIVEL 5 ESTRELLAS", "¡PERSECUCIÓN EXTREMA! 🚨")
-    elif any(k in t_lower for k in ["comparativa", "gta 5", "versus"]):
-        return ("COMPARATIVA DIRECTA", "¿CUÁL ES MEJOR? ⚔️")
-    
-    # Fallback general
-    clean = re.sub(r"[#\[\].\-:!¡?¿]", "", title).strip()
-    words = clean.split()
-    if len(words) >= 4:
-        l1 = " ".join(words[:2]).upper()[:24]
-        l2 = " ".join(words[2:5]).upper()[:22]
-        return (l1, l2)
-    return ("¿SABÍAS ESTO?", "¡DETALLE OCULTO! 😱")
+    elif any(k in t_lower for k in ["trailer", "tráiler", "launch", "pre-order", "cover art"]):
+        return ("NOVEDAD OFICIAL GTA 6", "¡TIENES QUE VER ESTO!")
+
+    # Fallback estricto en español si el título viene en inglés o sin palabras clave reconocibles
+    is_spanish = any(w in t_lower for w in [" de ", " el ", " la ", " los ", " las ", " en ", " por ", " con ", " que "])
+    if is_spanish:
+        clean = re.sub(r"[#\[\].\-:!¡?¿]", "", title).strip()
+        words = clean.split()
+        if len(words) >= 4:
+            l1 = " ".join(words[:3]).upper()[:21].strip()
+            l2 = " ".join(words[3:6]).upper()[:20].strip()
+            if l1 and l2:
+                return (l1, l2)
+    return ("DETALLES DE GTA 6", "¡NO TE LO PIERDAS! 🔥")
 
 def fetch_own_channel_insights(limit: int = 8) -> List[Dict[str, Any]]:
     """

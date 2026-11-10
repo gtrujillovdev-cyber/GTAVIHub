@@ -9,6 +9,15 @@ from pathlib import Path
 # Asegurar path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
+try:
+    import certifi
+    for _cert_var in ("REQUESTS_CA_BUNDLE", "SSL_CERT_FILE", "CURL_CA_BUNDLE"):
+        _cv = os.environ.get(_cert_var)
+        if _cv and not os.path.exists(_cv):
+            os.environ[_cert_var] = certifi.where()
+except Exception:
+    pass
+
 from src.config import MAX_VIDEOS_PER_RUN, CHANNELS_FILE, is_quant_busy, get_max_videos_per_run
 from src.channels import fetch_channel_candidates
 from src.pipeline import process_single_video
@@ -340,10 +349,14 @@ def main():
         print(f"[!] Se encontraron {len(candidates)} vídeos candidatos.")
         
         from src.ai_selector import select_best_candidate_ai
+        from src.channels import filter_repetitive_candidates
         
         count = 0
         remaining = list(candidates)
         while remaining and count < effective_limit:
+            remaining = filter_repetitive_candidates(remaining)
+            if not remaining:
+                break
             chosen = select_best_candidate_ai(remaining, launch_mode=launch_active)
             if not chosen:
                 break
@@ -360,10 +373,10 @@ def main():
             res = process_single_video(
                 url=chosen["url"],
                 video_id=chosen["id"],
-                original_title=chosen.get("recommended_title") or chosen["title"],
-                creator_name=chosen.get("source_name") or chosen.get("uploader", ""),
+                original_title=chosen["title"],
+                creator_name=chosen.get("uploader") or chosen.get("source_name", ""),
                 source_lang=chosen.get("lang", "en"),
-                mode=args.mode,
+                mode=chosen.get("recommended_mode") or args.mode,
                 force_short=True if (args.publish_all or chosen.get("is_short") or force_short) else force_short,
                 auto_upload=args.upload,
                 privacy_status=args.privacy,
@@ -374,7 +387,8 @@ def main():
                 copilot_mode=False if args.no_copilot else None,
                 hook_override=custom_hook,
                 block_instagram=chosen.get("block_instagram", False),
-                allowed_platforms=chosen.get("allowed_platforms")
+                allowed_platforms=chosen.get("allowed_platforms"),
+                allow_official_commentary=bool(chosen.get("allow_official_commentary", False))
             )
             if res:
                 count += 1

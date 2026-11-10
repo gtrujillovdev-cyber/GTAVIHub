@@ -65,15 +65,13 @@ def _save_style(style: Dict[str, Any]) -> None:
 def _analyze_with_gemini(thumbnail_urls: list) -> Dict[str, Any]:
     """Usa Gemini Vision para analizar el estilo dominante de las miniaturas virales."""
     try:
-        import google.generativeai as genai
-        import os, base64
+        from google.genai import types
+        from .translator import get_gemini_client, generate_content_with_retry
 
-        api_key = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
-        if not api_key:
+        try:
+            client = get_gemini_client()
+        except Exception:
             return {}
-
-        genai.configure(api_key=api_key)
-        model = genai.GenerativeModel("gemini-2.0-flash")
 
         # Descargar y codificar miniaturas (máx 5)
         parts = []
@@ -81,12 +79,7 @@ def _analyze_with_gemini(thumbnail_urls: list) -> Dict[str, Any]:
             try:
                 with urllib.request.urlopen(url, timeout=5) as r:
                     img_bytes = r.read()
-                parts.append({
-                    "inline_data": {
-                        "mime_type": "image/jpeg",
-                        "data": base64.b64encode(img_bytes).decode()
-                    }
-                })
+                parts.append(types.Part.from_bytes(data=img_bytes, mime_type="image/jpeg"))
             except Exception:
                 continue
 
@@ -110,11 +103,7 @@ def _analyze_with_gemini(thumbnail_urls: list) -> Dict[str, Any]:
             "}"
         )
 
-        try:
-            response = model.generate_content([prompt] + parts, request_options={"timeout": 15})
-        except Exception:
-            # Fallback a llamada estándar sin request_options si la versión de SDK no soporta timeout
-            response = model.generate_content([prompt] + parts)
+        response = generate_content_with_retry(client, [prompt] + parts)
         raw = response.text.strip()
         # Extraer JSON del texto
         start = raw.find("{")

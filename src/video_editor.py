@@ -342,67 +342,82 @@ HOT_PINK_KEYWORDS = {
 
 def render_top_hook_headline(hook_text: str, output_path: Path) -> bool:
     """Renderiza una potente y espectacular tarjeta de gancho superior estilo Broadcast Viral (0.0 a 2.5s) con soporte composite de emojis."""
-    clean_hook = clean_text_preserve_emojis(hook_text).upper()
-    # Purgar interrogaciones para que el gancho superior sea siempre una afirmación rotunda y no compita con los subtítulos
-    clean_hook = clean_hook.replace("¿", "").replace("?", "").strip()
-    clean_hook = " ".join(clean_hook.split())
-    if not clean_hook:
-        return False
-    
-    words = clean_hook.split()
-    if len(words) >= 4:
-        mid = len(words) // 2
-        line1 = " ".join(words[:mid])
-        line2 = " ".join(words[mid:])
-    elif len(words) == 3:
-        line1 = words[0]
-        line2 = " ".join(words[1:])
-    else:
-        line1 = ""
-        line2 = clean_hook
+    raw_lines = [l.strip() for l in (hook_text or "").splitlines() if l.strip()]
+    cleaned_explicit = []
+    for rl in raw_lines:
+        c = clean_text_preserve_emojis(rl).upper().replace("¿", "").replace("?", "").strip()
+        c = " ".join(c.split())
+        if c:
+            cleaned_explicit.append(c)
 
-    font1 = get_best_font(size=46)
-    font2 = get_best_font(size=60)
-    
+    if not cleaned_explicit:
+        return False
+
+    if len(cleaned_explicit) >= 2:
+        line1 = cleaned_explicit[0]
+        line2 = " ".join(cleaned_explicit[1:])
+    else:
+        clean_hook = cleaned_explicit[0]
+        # Mantener unidos términos compuestos (GTA 6, GTA VI, RAGE 9) al dividir en dos líneas
+        protected = re.sub(r"\b(GTA|RAGE)\s+(6|VI|9|V|5)\b", r"\1_\2", clean_hook)
+        words = [w.replace("_", " ") for w in protected.split()]
+        if len(words) >= 4:
+            mid = (len(words) + 1) // 2
+            line1 = " ".join(words[:mid])
+            line2 = " ".join(words[mid:])
+        elif len(words) == 3:
+            line1 = words[0]
+            line2 = " ".join(words[1:])
+        else:
+            line1 = ""
+            line2 = clean_hook
+
     tokens1 = split_text_and_emojis(line1) if line1 else []
     tokens2 = split_text_and_emojis(line2)
 
-    w1, h1 = measure_composite_line(tokens1, font1, emoji_size=46) if line1 else (0, 0)
-    w2, h2 = measure_composite_line(tokens2, font2, emoji_size=56)
-
-    content_w = max(w1, w2)
-    pad_x = 52
+    pad_x = 46
     pad_y = 20
     spacing = 14 if line1 else 0
-    box_w = int(content_w + pad_x * 2)
+    size1 = 46
+    size2 = 60
+
+    while True:
+        font1 = get_best_font(size=size1)
+        font2 = get_best_font(size=size2)
+        w1, h1 = measure_composite_line(tokens1, font1, emoji_size=size1) if line1 else (0, 0)
+        w2, h2 = measure_composite_line(tokens2, font2, emoji_size=max(32, size2 - 4))
+        content_w = max(w1, w2)
+        box_w = int(content_w + pad_x * 2)
+        if box_w <= 980 or (size1 <= 30 and size2 <= 36):
+            break
+        size1 = max(30, size1 - 2)
+        size2 = max(36, size2 - 3)
+
     box_h = int(h1 + h2 + spacing + pad_y * 2)
 
     img = Image.new("RGBA", (box_w, box_h), (0, 0, 0, 0))
     d = ImageDraw.Draw(img)
 
-    # Tarjeta de cristal ahumado estilo eSports / YouTube Gaming con resplandor dorado
+    # Tarjeta de cristal ahumado sobria y minimalista estilo documental premium
     d.rounded_rectangle(
         [(0, 0), (box_w - 1, box_h - 1)],
-        radius=24,
-        fill=(8, 8, 14, 230),
-        outline=(255, 230, 0, 160),
-        width=3
+        radius=18,
+        fill=(10, 12, 18, 215),
+        outline=(255, 255, 255, 40),
+        width=2
     )
 
     cur_y = pad_y
     if line1:
         x1 = pad_x + (content_w - w1) / 2
-        # Sombra profunda para texto
-        draw_composite_line(img, d, tokens1, int(x1 + 3), int(cur_y + 3), font1, fill_color=(0, 0, 0, 240), stroke_width=0, emoji_size=46)
-        # Línea 1: Blanco Puro con trazo negro
-        draw_composite_line(img, d, tokens1, int(x1), int(cur_y), font1, fill_color=(255, 255, 255, 255), stroke_color=(0, 0, 0, 255), stroke_width=3, emoji_size=46)
+        draw_composite_line(img, d, tokens1, int(x1 + 2), int(cur_y + 2), font1, fill_color=(0, 0, 0, 210), stroke_width=0, emoji_size=size1)
+        draw_composite_line(img, d, tokens1, int(x1), int(cur_y), font1, fill_color=(250, 250, 252, 255), stroke_color=(0, 0, 0, 230), stroke_width=2, emoji_size=size1)
         cur_y += h1 + spacing
 
+    em2 = max(32, size2 - 4)
     x2 = pad_x + (content_w - w2) / 2
-    # Sombra profunda para texto
-    draw_composite_line(img, d, tokens2, int(x2 + 3), int(cur_y + 4), font2, fill_color=(0, 0, 0, 240), stroke_width=0, emoji_size=56)
-    # Línea 2: Amarillo Eléctrico Neón (#FFE600) con trazo negro de impacto
-    draw_composite_line(img, d, tokens2, int(x2), int(cur_y), font2, fill_color=(255, 230, 0, 255), stroke_color=(0, 0, 0, 255), stroke_width=4, emoji_size=56)
+    draw_composite_line(img, d, tokens2, int(x2 + 2), int(cur_y + 2), font2, fill_color=(0, 0, 0, 210), stroke_width=0, emoji_size=em2)
+    draw_composite_line(img, d, tokens2, int(x2), int(cur_y), font2, fill_color=(255, 215, 95, 255), stroke_color=(0, 0, 0, 230), stroke_width=2, emoji_size=em2)
 
     img.save(output_path, "PNG")
     return True
@@ -505,14 +520,14 @@ def render_karaoke_subtitle_state(words: List[str], active_idx: int, is_vertical
     img = Image.new("RGBA", (box_w, box_h), (0, 0, 0, 0))
     d = ImageDraw.Draw(img)
 
-    # 1. Píldora de Contraste Traslúcida (Dark Pill Backdrop con borde suave)
+    # 1. Píldora de Contraste Traslúcida Elegante (Look Cine / Documental Moderno)
     pill_top = emoji_room
     d.rounded_rectangle(
         [(0, pill_top), (box_w - 1, box_h - 1)],
-        radius=22,
-        fill=(10, 10, 16, 220),
-        outline=(255, 255, 255, 50),
-        width=2
+        radius=16,
+        fill=(12, 14, 20, 205),
+        outline=(255, 255, 255, 35),
+        width=1
     )
 
     # Detectar palabra activa y sus propiedades
@@ -521,8 +536,9 @@ def render_karaoke_subtitle_state(words: List[str], active_idx: int, is_vertical
     active_emoji = EMOJI_KEYWORDS.get(clean_active) if has_emoji_support else None
     is_hot_pink = clean_active in HOT_PINK_KEYWORDS
 
-    active_color = (255, 45, 135, 255) if is_hot_pink else (255, 230, 0, 255)
-    glow_color = (255, 45, 135, 140) if is_hot_pink else (255, 230, 0, 140)
+    # Paleta de alta gama: Blanco puro para base, Amarillo ámbar suave (#FFD15C) o Blanco iluminado
+    active_color = (255, 75, 145, 255) if is_hot_pink else (255, 215, 95, 255)
+    glow_color = (255, 75, 145, 90) if is_hot_pink else (255, 215, 95, 90)
 
     base_y = pill_top + pad_y
 
@@ -536,10 +552,10 @@ def render_karaoke_subtitle_state(words: List[str], active_idx: int, is_vertical
             bb_pop = d_temp.textbbox((0, 0), w, font=pop_font)
             ww_pop = bb_pop[2] - bb_pop[0]
             draw_x = cur_x + (cw - ww_pop) / 2
-            d_glow.text((draw_x, base_y - 2), w, font=pop_font, fill=glow_color, stroke_width=10, stroke_fill=glow_color)
+            d_glow.text((draw_x, base_y - 1), w, font=pop_font, fill=glow_color, stroke_width=6, stroke_fill=glow_color)
         cur_x += cw + space_w
 
-    glow = glow.filter(ImageFilter.GaussianBlur(6))
+    glow = glow.filter(ImageFilter.GaussianBlur(4))
     img = Image.alpha_composite(img, glow)
     d = ImageDraw.Draw(img)
 
@@ -549,18 +565,18 @@ def render_karaoke_subtitle_state(words: List[str], active_idx: int, is_vertical
         cw = cell_widths[idx]
         is_active = (idx == active_idx)
         current_font = pop_font if is_active else font
-        text_color = active_color if is_active else (255, 255, 255, 255)
-        stroke_w = 5 if is_active else 4
+        text_color = active_color if is_active else (245, 245, 250, 255)
+        stroke_w = 4 if is_active else 3
 
         bb_w = d_temp.textbbox((0, 0), w, font=current_font)
         ww_act = bb_w[2] - bb_w[0]
         draw_x = cur_x + (cw - ww_act) / 2
-        draw_y = base_y - (2 if is_active else 0)
+        draw_y = base_y - (1 if is_active else 0)
 
-        # Sombra de profundidad 3D
-        d.text((draw_x + 3, draw_y + 4), w, font=current_font, fill=(0, 0, 0, 240))
+        # Sombra cinematográfica suave
+        d.text((draw_x + 2, draw_y + 3), w, font=current_font, fill=(0, 0, 0, 210))
         # Trazo negro nítido + Relleno de color
-        d.text((draw_x, draw_y), w, font=current_font, fill=text_color, stroke_width=stroke_w, stroke_fill=(0, 0, 0, 255))
+        d.text((draw_x, draw_y), w, font=current_font, fill=text_color, stroke_width=stroke_w, stroke_fill=(0, 0, 0, 240))
 
         # Emoji contextual flotante encima si aplica
         if is_active and active_emoji:
@@ -648,14 +664,25 @@ def render_final_video(
     is_already_vertical = (height > width)
     is_vertical = force_short_format or is_already_vertical
 
-    # Determinar preset: Formato D (Pro-Cinema 83.3%) vs Formato C (Smart Frame 4:5 70.3%)
+    # Determinar preset: FIT (16:9 completo sin recorte lateral), D (Pro-Cinema 83.3%) o C (4:5 70.3%)
     effective_preset = (format_preset or "").upper()
     if not effective_preset:
-        action_archetypes = {"gameplay_puro", "analisis_tecnico", "rage9_physics", "weapons_shooting_rdr2", "fisicas"}
-        effective_preset = "D" if archetype in action_archetypes else "C"
+        action_archetypes = {"gameplay_puro", "rage9_physics", "weapons_shooting_rdr2", "fisicas"}
+        effective_preset = "D" if archetype in action_archetypes else "FIT"
 
     if is_vertical and not is_already_vertical:
-        if effective_preset == "D":
+        if effective_preset == "FIT":
+            # Formato FIT (16:9 completo sin perder contexto lateral: comparativas, análisis y reacciones)
+            fg_w = 1080
+            fg_h = 608
+            fg_y = 610
+            fg_bottom = 1218
+            is_cinema_layout = True
+            hook_y_expr = "340"
+            ret_y_expr = "400"
+            sub_y = "1280"
+            print(f"[*] Modo Formato FIT 16:9 Completo (sin recorte lateral): {fg_w}x{fg_h} @ y={fg_y} con Velvet Canvas.")
+        elif effective_preset == "D":
             # Formato D (Pro-Cinema 83.3% de cobertura de pantalla):
             # 1080x1600 centrado a y=160. Máxima presencia de pantalla sin cortar elementos clave.
             fg_w = 1080
@@ -837,14 +864,22 @@ def render_final_video(
 
     # A) Base de vídeo:
     if is_vertical and not is_already_vertical:
-        # Smart Frame Inmersivo: Fondo Velvet Blur reactivo + Plano aumentado 1080x1350 (70.3% pantalla)
-        # Filtro unsharp de nitidez 4K y corrección de contraste/saturación (transformación editorial Fair Use)
-        v_base = (
-            "[0:v]split[v1][v2];"
-            "[v1]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,boxblur=26:5,eq=brightness=-0.14:contrast=1.06:saturation=1.18[bg];"
-            f"[v2]scale={fg_w}:{fg_h}:force_original_aspect_ratio=increase,crop={fg_w}:{fg_h},unsharp=3:3:0.6:3:3:0.0,eq=contrast=1.06:saturation=1.12[fg];"
-            f"[bg][fg]overlay=0:{fg_y}[v_framed]"
-        )
+        if effective_preset == "FIT":
+            # Formato FIT: 16:9 completo sin recorte lateral sobre Velvet Blur reactivo
+            v_base = (
+                "[0:v]split[v1][v2];"
+                "[v1]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,boxblur=26:5,eq=brightness=-0.14:contrast=1.06:saturation=1.18[bg];"
+                f"[v2]scale={fg_w}:{fg_h}:force_original_aspect_ratio=decrease,pad={fg_w}:{fg_h}:(ow-iw)/2:(oh-ih)/2:color=black,unsharp=3:3:0.6:3:3:0.0,eq=contrast=1.06:saturation=1.12[fg];"
+                f"[bg][fg]overlay=0:{fg_y}[v_framed]"
+            )
+        else:
+            # Formato D / C: Plano recortado inmersivo sobre fondo Velvet Blur
+            v_base = (
+                "[0:v]split[v1][v2];"
+                "[v1]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,boxblur=26:5,eq=brightness=-0.14:contrast=1.06:saturation=1.18[bg];"
+                f"[v2]scale={fg_w}:{fg_h}:force_original_aspect_ratio=increase,crop={fg_w}:{fg_h},unsharp=3:3:0.6:3:3:0.0,eq=contrast=1.06:saturation=1.12[fg];"
+                f"[bg][fg]overlay=0:{fg_y}[v_framed]"
+            )
     elif is_vertical:
         # Formato C (Nativo Vertical 9:16): Pantalla completa sin bandas
         v_base = "[0:v]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,unsharp=3:3:0.6:3:3:0.0,eq=contrast=1.06:saturation=1.12[v_framed]"

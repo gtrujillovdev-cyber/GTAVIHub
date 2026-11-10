@@ -271,3 +271,140 @@ class ComplianceAuditor:
         print("  3. El 100% de los vídeos aportan valor transformativo: análisis, subtitulado dinámico y traducción.")
         print("═" * 72 + "\n")
         cls.record_audit_completed()
+
+
+LEAK_DISQUALIFIER_PATTERNS = [
+    r"\bleaks?\b",
+    r"\bfiltraci[oó]n(?:es)?\b",
+    r"\bfiltrad[oa]s?\b",
+    r"\bhacked\b",
+    r"\bhack(?:eo|er)?\b",
+    r"\bstolen\b",
+    r"\bsource\s*code\b",
+    r"\bc[oó]digo\s*fuente\b",
+    r"\bdev\s*build\b",
+    r"\bdebug\s*build\b",
+    r"\binternal\s*build\b",
+    r"\balpha\s*leak\b",
+    r"\bbanned\s*everywhere\b",
+    r"\billegal\s*footage\b"
+]
+
+COMPETITOR_MEDIA_BLACKLIST = {
+    "vandal", "3djuegos", "eurogamer", "eurogamer spain", "eurogamer españa",
+    "hobbyconsolas", "hobby consolas", "meristation", "ign spain", "ign españa",
+    "somosxbox", "areajugones"
+}
+
+LEGACY_SPAM_BLACKLIST = {
+    "florida joker"
+}
+
+SAFE_AUTHORITY_CREATORS = {
+    "gta series videos", "digital foundry", "elanalistadebits", "onespot gaming",
+    "rockstar games", "dan allen gaming", "tgg", "synth potato", "rockstar universe",
+    "gta 6 countdown", "gameranx", "ign", "playstation"
+}
+
+def is_safe_rrss_candidate(
+    title: str,
+    uploader: str = "",
+    duration_sec: float = 0.0,
+    description: str = "",
+    allow_long_clipping: bool = False,
+    allow_official_commentary: bool = False
+) -> Tuple[bool, str, Dict[str, Any]]:
+    """
+    Motor Estricto de Selección Anti-Ban y Cumplimiento 100% de Redes Sociales:
+    Evalúa si un vídeo cumple con las normativas de Copyright de Take-Two,
+    Fair Use de YouTube y Directrices de Originalidad de TikTok e Instagram.
+
+    - Permite reacciones frescas, gameplay y desgloses de detalles de creadores.
+    - Permite lanzamientos nuevos oficiales de Rockstar (ej. Pre-Load Now) CUANDO se transforman
+      con comentario analítico en español, subtítulos dinámicos y Formato D Pro-Cinema.
+    - Rechaza fulminantemente: leaks ilegales, reuploads antiguos de Trailer 1, prensa competidora
+      con logotipos quemados (Vandal/3DJuegos), conceptos CGI falsos y charlas lentas de podcast/radio.
+    """
+    import re
+    from .channels import is_strictly_gta6, is_official_or_reupload
+
+    text_to_check = f"{title} {description}".lower()
+    uploader_clean = (uploader or "").strip().lower()
+
+    # 1. Filtro Anti-Medios Competidores con Marcas de Agua (Anti-Plagio Vandal/3DJuegos)
+    for comp in COMPETITOR_MEDIA_BLACKLIST:
+        if comp in uploader_clean or comp in text_to_check:
+            return False, f"Rechazado por Anti-Plagio Shield: Proviene o cita medio de la competencia ({comp}) con logotipos incrustados o voz ajena", {}
+
+    # 2. Filtro Anti-Spam Antiguo / Conceptos CGI / Ensayos lentos de radio o podcast
+    for spam_term in LEGACY_SPAM_BLACKLIST:
+        if spam_term in uploader_clean or spam_term in text_to_check:
+            return False, f"Rechazado por Quality Shield: Temática antigua/repetitiva ({spam_term})", {}
+
+    if re.search(r"\b(?:concept|fan\s*made|radio\s*stations?|podcast|tier\s*list|unboxing)\b", text_to_check):
+        return False, "Rechazado por Quality Shield: Concepto fan-made o formato lento de podcast/radio", {}
+
+    # 3. Filtro Anti-Leaks (Tolerancia Cero a material confidencial o robado)
+    for pat in LEAK_DISQUALIFIER_PATTERNS:
+        if re.search(pat, text_to_check):
+            return False, f"Rechazado por Anti-Leak Shield: contiene referencia a material confidencial/robado ({pat})", {}
+
+    # 4. Filtro Anti-Oficial: rechaza Trailer 1 antiguo, teasers de agosto antiguos y reuploads sin transformación
+    is_legacy_trailer1 = bool(re.search(r"\btrailer\s*1\b|\bcover\s*art\b|\bcoming\s*august\b", text_to_check))
+    if is_legacy_trailer1:
+        return False, "Rechazado por Anti-Official Shield: tráiler o teaser antiguo desfasado", {}
+    if is_official_or_reupload(title, uploader):
+        if not allow_official_commentary:
+            return False, "Rechazado por Anti-Official Shield: es un tráiler oficial o reupload puro sin transformación", {}
+
+    # 5. Filtro Exclusivo GTA 6
+    if not is_strictly_gta6(title, description):
+        return False, "Rechazado: no trata exclusivamente de Grand Theft Auto VI", {}
+
+    # 6. Filtro de Duración para Shorts o Widescreen con Auto-Recorte
+    max_dur = 900.0 if allow_long_clipping else 65.0
+    if duration_sec > max_dur:
+        return False, f"Rechazado: duración ({duration_sec:.0f}s) excede el máximo permitido ({max_dur:.0f}s)", {}
+    if 0 < duration_sec < 8.0:
+        return False, f"Rechazado: duración ({duration_sec:.0f}s) es insuficiente para retención mínima (8s)", {}
+
+    # 7. Clasificación de Arquetipo de Fair Use y Cálculo de Índice de Seguridad (0-100)
+    score = 60
+    is_verified_authority = any(auth in uploader_clean for auth in SAFE_AUTHORITY_CREATORS)
+    if is_verified_authority:
+        score += 30
+
+    title_lower = title.lower()
+    is_comparison = bool(re.search(r"\b(?:vs|versus|comparaci[oó]n|comparativa|graphics|gr[aá]ficos|evolución|evolucion|antes|despues)\b", title_lower))
+    is_details = bool(re.search(r"\b(?:detalles?|secretos?|curiosidades?|cosas?|easter\s*eggs?|missed|hidden|descubr)\b", title_lower))
+    is_physics = bool(re.search(r"\b(?:f[ií]sicas?|physics|rage\s*9|water|deformaci[oó]n|agua)\b", title_lower))
+
+    if is_comparison:
+        score += 15
+        archetype = "Comparativa Gráfica en Loop"
+        recommended_mode = "gameplay"
+    elif is_physics:
+        score += 15
+        archetype = "Físicas RAGE 9"
+        recommended_mode = "gameplay" if duration_sec <= 20 else "short"
+    elif is_details:
+        score += 10
+        archetype = "Listicle de Curiosidades & Secretos"
+        recommended_mode = "short"
+    else:
+        archetype = "Novedades & Noticias GTA 6"
+        recommended_mode = "short"
+
+    score = min(100, score)
+
+    metadata_compliance = {
+        "safety_score": score,
+        "archetype": archetype,
+        "recommended_mode": recommended_mode,
+        "is_verified_authority": is_verified_authority,
+        "fair_use_justification": f"Transformación editorial de {archetype} bajo Sección 107 del US Copyright Act.",
+        "anti_strike_shield": "VERIFIED_100_PERCENT"
+    }
+
+    return True, "Cumple 100% con directrices de plataformas y Fair Use", metadata_compliance
+

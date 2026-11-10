@@ -53,6 +53,8 @@ data/sentinel_channel_state.json
 data/channel_analytics_history.json
 data/heartbeat.txt
 data/engagement_boost.json
+data/curated_queue.json
+data/scheduler_slots_state.json
 
 .codegraph/
 branding_token.json

@@ -1,11 +1,101 @@
 {
-  "updated_at": "2026-11-05T21:55:54.648692+00:00",
+  "updated_at": "2026-11-10T23:11:23.191615+00:00",
   "elapsed_seconds": 0.03,
-  "days_to_launch": 13,
+  "days_to_launch": 8,
   "launch_date_str": "19 de Noviembre de 2026",
-  "top_search_intents": [],
-  "youtube_suggestions": [],
-  "breaking_news": [],
-  "trending_keywords": [],
-  "dynamic_search_queries": []
+  "top_search_intents": [
+    "gta 6 fisicas rage 9 agua y colisiones",
+    "gta 6 gameplay filtrado mecanicas de tiroteo",
+    "gta 6 mapa vice city comparativa leonida",
+    "gta 6 novedades confirmadas rockstar games",
+    "gta 6 detalles ocultos lucia y jason"
+  ],
+  "youtube_suggestions": [
+    {
+      "term": "gta 6 fisicas rage 9 agua y colisiones",
+      "demand_score": 95,
+      "category": "fisicas_y_graficos"
+    },
+    {
+      "term": "gta 6 gameplay filtrado mecanicas de tiroteo",
+      "demand_score": 90,
+      "category": "gameplay_misiones"
+    },
+    {
+      "term": "gta 6 mapa vice city comparativa leonida",
+      "demand_score": 88,
+      "category": "mundo_y_secretos"
+    },
+    {
+      "term": "gta 6 novedades confirmadas rockstar games",
+      "demand_score": 84,
+      "category": "estreno_19_noviembre"
+    },
+    {
+      "term": "gta 6 detalles ocultos lucia y jason",
+      "demand_score": 80,
+      "category": "mundo_y_secretos"
+    },
+    {
+      "term": "gta 6 comparativa grafica ps5 pro vs ps5",
+      "demand_score": 78,
+      "category": "fisicas_y_graficos"
+    }
+  ],
+  "breaking_news": [
+    {
+      "title": "GTA 6 exprime la tecnología de iluminación global y densidad climática",
+      "source": "3DJuegos",
+      "pub_date": "",
+      "link": ""
+    },
+    {
+      "title": "Los fans analizan al detalle las físicas de colisión y agua en GTA 6",
+      "source": "Vandal",
+      "pub_date": "",
+      "link": ""
+    },
+    {
+      "title": "Filtraciones y secretos del mapa de Leonida ante el lanzamiento de GTA 6",
+      "source": "Eurogamer",
+      "pub_date": "",
+      "link": ""
+    },
+    {
+      "title": "Comparativa de expectativas gráficas y rendimiento en PS5 Pro para GTA 6",
+      "source": "MeriStation",
+      "pub_date": "",
+      "link": ""
+    }
+  ],
+  "trending_keywords": [
+    "comparativa",
+    "leonida",
+    "fisicas",
+    "rage",
+    "agua",
+    "colisiones",
+    "gameplay",
+    "filtrado",
+    "mecanicas",
+    "tiroteo",
+    "mapa",
+    "vice",
+    "city",
+    "novedades",
+    "confirmadas",
+    "rockstar",
+    "games",
+    "detalles",
+    "ocultos",
+    "lucia"
+  ],
+  "dynamic_search_queries": [
+    "ytsearch10:gta 6 fisicas rage 9 agua y colisiones #shorts",
+    "ytsearch10:gta 6 gameplay filtrado mecanicas de tiroteo #shorts",
+    "ytsearch10:gta 6 mapa vice city comparativa leonida #shorts",
+    "ytsearch10:gta 6 novedades confirmadas rockstar games #shorts",
+    "ytsearch10:gta 6 detalles ocultos lucia y jason #shorts",
+    "ytsearch10:gta 6 comparativa grafica ps5 pro vs ps5 #shorts"
+  ]
 }

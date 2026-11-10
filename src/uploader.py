@@ -197,8 +197,9 @@ def upload_to_youtube(
             except Exception as e:
                 print(f"[Info] Miniatura personalizada no asignada (requiere verificación telefónica del canal): {e}")
 
-        # Boost algorítmico natural: 1 de cada 2 Shorts (50% alternado)
-        apply_boost = should_toggle_engagement_boost()
+        # Boost algorítmico (solo si ENABLE_AUTO_PINNED_COMMENT=true; desactivado en canales nuevos anti-spam)
+        auto_engage_enabled = os.getenv("ENABLE_AUTO_PINNED_COMMENT", "false").strip().lower() in ("1", "true", "yes")
+        apply_boost = auto_engage_enabled and should_toggle_engagement_boost()
         if apply_boost:
             print(f"[*] [Boost Algorítmico 1 de cada 2] Activado para {video_id}: Primer Like + Comentario fijado...")
             # 1. Primer Like automático para romper el 0

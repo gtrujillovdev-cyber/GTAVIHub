@@ -6,6 +6,11 @@ set -e
 
 export PATH="/usr/local/bin:/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin:$PATH"
 
+# Unset variables de certificados residuales que apunten a rutas temporales inexistentes
+unset REQUESTS_CA_BUNDLE
+unset SSL_CERT_FILE
+unset CURL_CA_BUNDLE
+
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )/../.." >/dev/null 2>&1 && pwd )"
 PYTHON="$DIR/.venv/bin/python3"
 LOG_DIR="$DIR/logs"

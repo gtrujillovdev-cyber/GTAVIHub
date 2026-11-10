@@ -133,21 +133,24 @@ class TestEmojiAndFraming(unittest.TestCase):
         self.assertIsInstance(res, bool)
 
     def test_shorts_clean_description_anti_spam(self):
+        from unittest.mock import patch
         from src.translator import generate_video_metadata
-        meta_short = generate_video_metadata(
-            original_title="Lucia y Jason Gameplay Filtrado de GTA 6",
-            original_url="https://youtube.com/watch?v=abc123xyz",
-            is_short=True,
-            creator_name="Rockstar Games"
-        )
+        with patch.dict("os.environ", {"ENABLE_AFFILIATE_LINKS": "false"}):
+            meta_short = generate_video_metadata(
+                original_title="Lucia y Jason Gameplay Filtrado de GTA 6",
+                original_url="https://youtube.com/watch?v=abc123xyz",
+                is_short=True,
+                creator_name="Rockstar Games"
+            )
         desc = meta_short.get("description", "")
         # En Shorts NO debe haber bloques gigantes de afiliados con tag=gtavihub-21
         self.assertNotIn("tag=gtavihub-21", desc)
         # La descripción debe ser compacta (< 1200 caracteres para evitar spam)
         self.assertLess(len(desc), 1200)
-        # Pero el COMENTARIO FIJADO sí debe contener el enlace de monetización
+        # En modo orgánico (sin afiliados), el comentario fijado debe ser solo debate sin enlaces externos salientes
         self.assertIn("pinned_comment", meta_short)
-        self.assertIn("linktr.ee", meta_short["pinned_comment"].lower())
+        self.assertNotIn("linktr.ee", meta_short["pinned_comment"].lower())
+        self.assertNotIn("amazon.", meta_short["pinned_comment"].lower())
 
     def test_should_toggle_engagement_boost(self):
         from src.uploader import should_toggle_engagement_boost, BOOST_STATE_FILE

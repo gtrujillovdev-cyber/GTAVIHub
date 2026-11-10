@@ -104,6 +104,9 @@ def generate_voiceover(srt_path: Path, output_audio_path: Path, voice: str = DEF
         return False
 
     first_start = parse_first_cue_start(srt_path)
+    if first_start > 12.0:
+        print(f"[!] [Dubber] El primer subtítulo aparece demasiado tarde ({first_start:.1f}s > 12s). Abortando doblaje desfasado.")
+        return False
     raw_tts_path = output_audio_path.with_name(f"{output_audio_path.stem}_raw.mp3")
 
     print(f"[*] Sintetizando locución en español con voz '{voice}'...")

@@ -284,6 +284,195 @@ def snap_window_to_subtitles(
 
     return v_start, v_end
 
+
+def find_best_transcript_hook_window(
+    srt_path: Path,
+    title: str = "",
+    min_dur: int = 18,
+    max_dur: int = 36,
+    total_duration: float = 0.0,
+    use_ai: bool = True,
+) -> Optional[Tuple[float, float]]:
+    """
+    Analiza los subtítulos (.srt) de un vídeo largo sin heatmap para localizar
+    la ventana de 18-36s con mayor densidad de gancho/revelación/reacción,
+    descartando intros genéricas, llamadas a suscripción y segmentos patrocinados.
+    """
+    if not srt_path or not Path(srt_path).exists():
+        return None
+
+    try:
+        raw_srt = Path(srt_path).read_text(encoding="utf-8", errors="ignore")
+    except Exception:
+        return None
+
+    blocks = [b.strip() for b in raw_srt.strip().split("\n\n") if b.strip()]
+    cues: List[Tuple[float, float, str]] = []
+    for block in blocks:
+        lines = [l.strip() for l in block.splitlines() if l.strip()]
+        time_idx = next((idx for idx, l in enumerate(lines) if "-->" in l), -1)
+        if time_idx < 0 or time_idx + 1 >= len(lines):
+            continue
+        t_parts = lines[time_idx].split("-->")
+        if len(t_parts) != 2:
+            continue
+        s_sec = parse_srt_time(t_parts[0])
+        e_sec = parse_srt_time(t_parts[1].split()[0])
+        if e_sec <= s_sec:
+            continue
+        txt = " ".join(lines[time_idx + 1:])
+        txt = re.sub(r"<[^>]+>", "", txt)
+        txt = re.sub(r"\[[^\]]+\]", "", txt)
+        txt = " ".join(txt.split()).strip()
+        if txt:
+            cues.append((s_sec, e_sec, txt))
+
+    if len(cues) < 3:
+        return None
+
+    cues.sort(key=lambda c: c[0])
+    eff_total = float(total_duration or cues[-1][1])
+    if eff_total <= max_dur + 4:
+        return (0.0, round(eff_total, 2))
+
+    sponsor_re = re.compile(
+        r"\b(sponsor(?:ed)?|nord\s?vpn|surfshark|express\s?vpn|incogni|ridge\s?wallet|"
+        r"raid\s?shadow|raycon|factor|hello\s?fresh|patreon|discount\s?code|promo\s?code|"
+        r"use\s?code|c[oó]digo\s?de\s?descuento|patrocinad[oa]|enlace\s?en\s?la\s?descripci[oó]n|"
+        r"link\s?in\s?(?:the\s)?description)\b",
+        re.IGNORECASE,
+    )
+    cta_re = re.compile(
+        r"\b(before\s+we\s+(?:begin|start|jump\s+in)|welcome\s+back\s+to\s+(?:the\s+)?channel|"
+        r"don't\s+forget\s+to\s+(?:like|subscribe)|hit\s+that\s+like|subscribe\s+for\s+more|"
+        r"thanks\s+for\s+watching|make\s+sure\s+to\s+subscribe|suscr[ií]bete|antes\s+de\s+empezar|"
+        r"bienvenidos\s+al\s+canal|deja\s+tu\s+like)\b",
+        re.IGNORECASE,
+    )
+    hook_kw_re = re.compile(
+        r"\b(pre-?load|30\s?fps|60\s?fps|frame\s?rate|confirm(?:ed|ado)|official|oficial|"
+        r"rockstar|november\s?19|lucia|jason|vice\s?city|leonida|secret|hidden|oculto|"
+        r"detail|detalle|look\s+at|look\s+closely|pause|insane|crazy|brutal|wtf|no\s+way|"
+        r"oh\s+my\s+god|omg|gameplay|trailer|leak|map|size|gb|download|ray\s?tracing|"
+        r"physics|water|hair|mira|incre[ií]ble)\b",
+        re.IGNORECASE,
+    )
+
+    target_ideal = min(max_dur, max(min_dur, 26))
+    windows = []
+
+    for i in range(len(cues)):
+        w_start = cues[i][0]
+        w_end = cues[i][1]
+        texts = [cues[i][2]]
+
+        for j in range(i + 1, len(cues)):
+            # Cortar si hay silencio > 3.5s para evitar tiempo muerto
+            if cues[j][0] - w_end > 3.5:
+                break
+            next_dur = cues[j][1] - w_start
+            if next_dur > max_dur:
+                break
+            w_end = cues[j][1]
+            texts.append(cues[j][2])
+            if (w_end - w_start) >= target_ideal:
+                break
+
+        dur = w_end - w_start
+        if dur < min_dur or dur > max_dur + 2:
+            continue
+
+        joined = " ".join(texts)
+        words = joined.split()
+        if len(words) < 10:
+            continue
+
+        score = 0.0
+        if sponsor_re.search(joined):
+            score -= 120.0
+        if cta_re.search(joined):
+            score -= 45.0
+        if eff_total > 75 and w_start < 6.0:
+            score -= 18.0
+        if eff_total > 75 and w_end > eff_total - 8.0:
+            score -= 25.0
+
+        kw_hits = {m.group(0).lower() for m in hook_kw_re.finditer(joined)}
+        score += min(36.0, len(kw_hits) * 6.0)
+
+        num_hits = re.findall(r"\b\d+(?:\.\d+)?\b", joined)
+        score += min(12.0, len(num_hits) * 4.0)
+
+        punct_hits = joined.count("!") + joined.count("?")
+        score += min(12.0, punct_hits * 3.0)
+
+        wps = len(words) / max(dur, 1.0)
+        if 1.8 <= wps <= 4.3:
+            score += 8.0
+        if 22.0 <= dur <= 32.0:
+            score += 6.0
+
+        windows.append({
+            "start": round(w_start, 2),
+            "end": round(w_end, 2),
+            "score": round(score, 2),
+            "text": joined,
+        })
+
+    if not windows:
+        return None
+
+    windows.sort(key=lambda w: (-w["score"], w["start"]))
+    if windows[0]["score"] <= -20.0:
+        return None
+
+    # Deduplicar ventanas muy solapadas para ofrecer opciones distintas a Gemini si se consulta
+    top_candidates = []
+    for w in windows:
+        overlaps = any(
+            min(w["end"], existing["end"]) - max(w["start"], existing["start"]) > 0.55 * (w["end"] - w["start"])
+            for existing in top_candidates
+        )
+        if not overlaps:
+            top_candidates.append(w)
+        if len(top_candidates) >= 5:
+            break
+
+    chosen = top_candidates[0]
+    if use_ai and len(top_candidates) >= 2:
+        try:
+            from .config import GEMINI_API_KEY
+            if GEMINI_API_KEY:
+                from .translator import get_gemini_client, generate_content_with_retry
+                client = get_gemini_client()
+                options_txt = "\n".join(
+                    f"[{idx}] ({cand['start']:.1f}s-{cand['end']:.1f}s): {cand['text'][:240]}"
+                    for idx, cand in enumerate(top_candidates)
+                )
+                prompt = (
+                    f"Vídeo: '{title or 'GTA 6'}'\n"
+                    "Elige el ÚNICO fragmento con mayor retención para un YouTube Short/TikTok "
+                    "(el momento exacto donde hay un dato concreto, descubrimiento visual o reacción genuina; "
+                    "NUNCA intros, saludos ni sponsors).\n"
+                    f"{options_txt}\n\n"
+                    "Responde SOLO con el número de índice (ejemplo: 0)."
+                )
+                resp = generate_content_with_retry(client, prompt)
+                m = re.search(r"\b([0-4])\b", (resp.text or "").strip())
+                if m:
+                    idx = int(m.group(1))
+                    if 0 <= idx < len(top_candidates) and top_candidates[idx]["score"] > -20.0:
+                        chosen = top_candidates[idx]
+        except Exception:
+            pass
+
+    print(
+        f"[✓ Transcript Hook] Ventana inteligente seleccionada: "
+        f"{chosen['start']:.1f}s a {chosen['end']:.1f}s (score={chosen['score']})"
+    )
+    return (chosen["start"], chosen["end"])
+
+
 def find_viral_heatmap_segment(
     url: str,
     min_duration: int = GAMEPLAY_MIN_DURATION,
@@ -358,23 +547,199 @@ def find_viral_heatmap_segment(
             print(f"    • Rango: {best_start:.1f}s a {best_start + best_dur:.1f}s ({best_dur}s)")
             print(f"    • AVD Estimado: {best_avd_seconds:.1f}s de retención neta (Score AVD: {best_avd_score:.2f})")
             return (best_start, best_start + best_dur)
-            return (best_start, best_start + best_dur)
         else:
-            # Vídeo largo sin heatmap: saltar intro y aplicar duración orgánica determinista anti-robot
-            seed_val = sum(ord(c) for c in (video_id or url))
-            dur_jitter = (seed_val % (max_duration - min_duration + 1))
-            dynamic_dur = min_duration + dur_jitter
-            start_t = min(20.0, duration * 0.1)
-            print(f"[*] Vídeo largo ({duration}s) sin heatmap. Segmento dinámico orgánico: {start_t:.1f}s a {start_t + dynamic_dur:.1f}s ({dynamic_dur}s)...")
-            return (start_t, start_t + dynamic_dur)
+            # Sin heatmap real: devolver None para que el pipeline analice el transcript antes de caer en corte orgánico
+            print(f"[*] Vídeo largo ({duration}s) sin heatmap público en YouTube.")
+            return None
     except Exception as e:
         print(f"[!] Info detector: {e}")
         return None
 
+def suggest_video_strategy(
+    title: str,
+    duration_sec: int = 0,
+    uploader: str = "",
+    platform: str = "YouTube"
+) -> Dict[str, Any]:
+    """
+    Analiza un vídeo y determina la estrategia óptima de transformación editorial
+    para maximizar retención y cumplir estrictamente con Fair Use según su arquetipo.
+    """
+    title_lower = (title or "").lower()
+    uploader_lower = (uploader or "").lower()
+
+    # Detección de idioma español
+    spanish_markers = [
+        " de ", " el ", " la ", " los ", " las ", " en ", " y ", " que ", " por ", " para ",
+        "detalles", "alucinantes", "físico", "físicas", "gráfico", "gráficos", "tráiler",
+        "filtración", "noticia", "novedades", "secreto", "secretos", "jugabilidad", "español"
+    ]
+    is_spanish = any(m in f" {title_lower} " for m in spanish_markers) or any(
+        u in uploader_lower for u in ["vandal", "elanalistadebits", "eurogamer spain", "3djuegos", "vidaextra", "alfabetajuega"]
+    )
+
+    # 1. Arquetipo: Comparativa Gráfica en Loop (<= 16s o palabras clave de VS)
+    is_comparison = any(k in title_lower for k in ["vs", "versus", "comparativa", "comparison", "graphics vs", "gráfico vs", "trailer 2"])
+    if (0 < duration_sec <= 16) or (is_comparison and duration_sec <= 20):
+        return {
+            "recommended_opt": "gameplay",
+            "archetype": "Comparativa Visual en Loop",
+            "badge": "⚡ Loop Ultra-Corto",
+            "reason": "Vídeo corto de alto impacto visual. Un bucle continuo en Formato D Pro-Cinema con audio del juego maximiza el completion rate (>120%).",
+            "hook_text": "GTA 6 VS GTA 5 🤯"
+        }
+
+    # 2. Arquetipo: Listicle / Curiosidades y Top Detalles
+    is_listicle = bool(re.search(r"\b(\d+)\s*(detalles|cosas|secrets|things|details|easter eggs|curiosidades|secretos)\b", title_lower))
+    if is_listicle:
+        if is_spanish:
+            return {
+                "recommended_opt": "short",
+                "archetype": "Listicle de Detalles & Curiosidades",
+                "badge": "🔥 Retención Máxima (Listicle)",
+                "reason": "Contenido en español con ritmo enumerado. Recomendado Subtítulos Pop Karaoke dinámicos y píldora superior para disparar el CTR.",
+                "hook_text": "¡DETALLES ALUCINANTES! 🔥"
+            }
+        else:
+            return {
+                "recommended_opt": "dub",
+                "archetype": "Listicle en Inglés (Top Detalles)",
+                "badge": "🎙️ Doblaje Neural + Subtítulos",
+                "reason": "Top detalles en inglés. El Doblaje Neural al español con audio ducking elimina la barrera de idioma y captura la retención completa.",
+                "hook_text": "¡SECRETOS REVELADOS! 🔍"
+            }
+
+    # 3. Arquetipo: Físicas RAGE 9, Gameplay Puro, Accidentes o Demostración
+    is_physics_gameplay = any(k in title_lower for k in [
+        "rage 9", "physics", "físicas", "water physics", "crash", "car crash", "accident", "accidente",
+        "tiroteo", "gunplay", "shooting", "driving", "conducción", "npc behavior", "ia peatones"
+    ])
+    if is_physics_gameplay:
+        return {
+            "recommended_opt": "gameplay",
+            "archetype": "Físicas RAGE 9 & Gameplay",
+            "badge": "🎮 Pro-Cinema 83.3%",
+            "reason": "Metraje de acción/físicas. Se recomienda respetar los efectos acústicos del juego y aplicar reencuadre centrado cinematográfico.",
+            "hook_text": "¡FÍSICAS AL LÍMITE! 💥"
+        }
+
+    # 4. Si está en inglés (narrado por streamers o canales anglos)
+    if not is_spanish:
+        return {
+            "recommended_opt": "dub",
+            "archetype": "Contenido en Inglés",
+            "badge": "🎙️ Doblaje Neural Recomendado",
+            "reason": "Locución en inglés. Doblaje con voz neural en español y atenuación del audio original al 18% para monetización y audiencia hispana.",
+            "hook_text": "¡ANÁLISIS AL DETALLE! 🌴"
+        }
+
+    # 5. Contenido en español estándar / Noticias / Explicación
+    return {
+        "recommended_opt": "short",
+        "archetype": "Noticias & Novedades GTA 6",
+        "badge": "⚡ Short Vertical Hormozi",
+        "reason": "Clip en español. Reencuadre 9:16 con subtítulos dinámicos de alto contraste y gancho superior.",
+        "hook_text": "¡NOVEDAD EXCLUSIVA! 🌴"
+    }
+
+def get_url_metadata(url: str) -> Dict[str, Any]:
+    """
+    Extrae metadatos esenciales de una URL (YouTube, Twitter/X, TikTok, etc.)
+    de forma tolerante a fallos, detectando plataforma, título, duración y creador.
+    """
+    import time
+    is_twitter_or_x = any(d in url.lower() for d in ["twitter.com", "x.com"])
+    is_tiktok = "tiktok.com" in url.lower()
+    is_youtube = any(d in url.lower() for d in ["youtube.com", "youtu.be"])
+
+    platform_name = "Twitter/X" if is_twitter_or_x else ("TikTok" if is_tiktok else ("YouTube" if is_youtube else "Web"))
+
+    # Intentos de extracción: para Twitter/TikTok se prefiere llamada limpia sin impersonate chrome
+    cmd_attempts = []
+    base_cmd = [
+        sys.executable, "-m", "yt_dlp",
+        "--no-check-certificates",
+        "--no-playlist",
+        "--print", "%(id)s\t%(title)s\t%(duration)s\t%(uploader)s\t%(extractor_key)s\t%(channel_url)s\t%(uploader_url)s",
+        url
+    ]
+    if not is_twitter_or_x:
+        cmd_attempts.append([
+            sys.executable, "-m", "yt_dlp",
+            "--impersonate", "chrome",
+            "--no-check-certificates",
+            "--no-playlist",
+            "--print", "%(id)s\t%(title)s\t%(duration)s\t%(uploader)s\t%(extractor_key)s\t%(channel_url)s\t%(uploader_url)s",
+            url
+        ])
+    cmd_attempts.append(base_cmd)
+
+    stdout = ""
+    for cmd in cmd_attempts:
+        try:
+            res = subprocess.run(cmd, capture_output=True, text=True, timeout=25)
+            if res.returncode == 0 and res.stdout.strip():
+                stdout = res.stdout.strip()
+                break
+        except Exception:
+            continue
+
+    channel_url = ""
+    uploader_url = ""
+
+    if stdout:
+        parts = stdout.split("\t")
+        raw_id = parts[0].strip() if len(parts) > 0 and parts[0].strip() else f"vid_{int(time.time())}"
+        raw_title = parts[1].strip() if len(parts) > 1 and parts[1].strip() else "GTA 6 Clip"
+        dur_raw = parts[2].strip() if len(parts) > 2 else "0"
+        uploader = parts[3].strip() if len(parts) > 3 and parts[3].strip() else "Comunidad GTA 6"
+        extractor = parts[4].strip() if len(parts) > 4 else platform_name
+        channel_url = parts[5].strip() if len(parts) > 5 else ""
+        uploader_url = parts[6].strip() if len(parts) > 6 else ""
+    else:
+        raw_id = f"vid_{int(time.time())}"
+        raw_title = "GTA 6 Gameplay Clip"
+        dur_raw = "0"
+        uploader = "Comunidad GTA 6"
+        extractor = platform_name
+
+    try:
+        dur_sec = int(float(dur_raw))
+        dur_str = f"{dur_sec // 60}:{dur_sec % 60:02d} min"
+    except Exception:
+        dur_sec = 0
+        dur_str = "Auto"
+
+    clean_title = raw_title
+    if "gta" not in clean_title.lower():
+        clean_title = f"GTA 6: {clean_title}"
+
+    strategy = suggest_video_strategy(
+        title=clean_title,
+        duration_sec=dur_sec,
+        uploader=uploader,
+        platform=platform_name
+    )
+
+    return {
+        "id": raw_id,
+        "title": clean_title,
+        "duration_sec": dur_sec,
+        "duration_str": dur_str,
+        "uploader": uploader,
+        "platform": platform_name,
+        "extractor": extractor,
+        "url": url,
+        "channel_url": channel_url,
+        "uploader_url": uploader_url,
+        "strategy": strategy
+    }
+
 def download_video_and_subtitles(
     url: str,
     video_id: str,
-    source_lang: str = "es"
+    source_lang: str = "es",
+    trim_official_bumpers: bool = False
 ) -> Tuple[Optional[Path], Optional[Path], str]:
     """
     Descarga el video (limitado a 1080p), detecta picos virales si es largo (>60s)
@@ -382,31 +747,65 @@ def download_video_and_subtitles(
     Retorna: (video_path, srt_path, detected_lang)
     """
     output_template = str(TEMP_DIR / f"{video_id}.%(ext)s")
-    
-    # Paso 1: Descargar vídeo limpio
-    cmd_video = [
+    is_twitter_or_x = any(d in url.lower() for d in ["twitter.com", "x.com"])
+    is_tiktok = "tiktok.com" in url.lower()
+
+    # Formato resiliente: priorizar pista de audio original para evitar pistas auto-dobladas por YouTube
+    src_l = (source_lang or "es").strip().lower()
+    if is_twitter_or_x or is_tiktok:
+        format_selector = "best[ext=mp4]/bestvideo[height<=1080]+bestaudio/best"
+    elif src_l.startswith("es"):
+        format_selector = (
+            "bestvideo[height<=1440]+bestaudio[language^=es]/"
+            "bestvideo[height<=1440]+bestaudio/"
+            "bestvideo[height<=1080]+bestaudio[language^=es]/"
+            "bestvideo[height<=1080]+bestaudio/best[height<=1080]/best"
+        )
+    else:
+        format_selector = (
+            "bestvideo[height<=1440]+bestaudio[language^=en]/"
+            "bestvideo[height<=1440]+bestaudio/"
+            "bestvideo[height<=1080]+bestaudio[language^=en]/"
+            "bestvideo[height<=1080]+bestaudio/best[height<=1080]/best"
+        )
+
+    base_cmd = [
         sys.executable, "-m", "yt_dlp",
-        "--impersonate", "chrome",
         "--no-check-certificates",
         "--no-playlist",
-        "-f", "bestvideo[height<=1440]+bestaudio/bestvideo[height<=1080]+bestaudio/best[height<=1080]/best",
+        "-f", format_selector,
         "--merge-output-format", "mp4",
         "-o", output_template,
         url
     ]
 
+    cmd_attempts = []
+    # Para Twitter/X y TikTok NO usar impersonate chrome porque rompe su handshake
+    if not (is_twitter_or_x or is_tiktok):
+        cmd_attempts.append([
+            sys.executable, "-m", "yt_dlp",
+            "--impersonate", "chrome",
+            "--no-check-certificates",
+            "--no-playlist",
+            "-f", format_selector,
+            "--merge-output-format", "mp4",
+            "-o", output_template,
+            url
+        ])
+    cmd_attempts.append(base_cmd)
+
     print(f"[*] Descargando vídeo de {url}...")
-    try:
-        subprocess.run(cmd_video, check=True, capture_output=True, text=True, timeout=90)
-    except subprocess.TimeoutExpired:
-        print(f"[!] Timeout de 90s descargando vídeo {url}. Abortando para no bloquear el pipeline.")
-        return None, None, "unknown"
-    except subprocess.CalledProcessError as e:
-        print(f"[!] Error al descargar vídeo {url}: {e.stderr.strip() if e.stderr else e}")
-        return None, None, "unknown"
-    except Exception as e:
-        print(f"[!] Error inesperado descargando vídeo {url}: {e}")
-        return None, None, "unknown"
+    for attempt_idx, cmd in enumerate(cmd_attempts):
+        try:
+            subprocess.run(cmd, check=True, capture_output=True, text=True, timeout=90)
+            break
+        except subprocess.TimeoutExpired:
+            print(f"[!] Timeout de 90s descargando vídeo {url}.")
+        except subprocess.CalledProcessError as e:
+            err_msg = e.stderr.strip() if e.stderr else str(e)
+            print(f"[!] Intento {attempt_idx+1} falló al descargar vídeo {url}: {err_msg[:120]}")
+        except Exception as e:
+            print(f"[!] Error inesperado descargando vídeo {url}: {e}")
 
     # Encontrar archivo de video
     video_path = TEMP_DIR / f"{video_id}.mp4"
@@ -417,52 +816,64 @@ def download_video_and_subtitles(
                 video_path = m
                 break
 
-    # Paso 2: Intentar descargar subtítulos (español o inglés nativo/auto)
+    if not video_path or not video_path.exists():
+        print(f"[!] No se encontró ningún archivo de vídeo descargado para {video_id}.")
+        return None, None, "unknown"
+
+    # Paso 2: Intentar descargar subtítulos priorizando el idioma original (evita pistas auto-traducidas rotas como es-orig en vídeos en inglés)
     sub_output_template = str(TEMP_DIR / f"{video_id}.%(ext)s")
-    sub_langs_to_try = [
-        ("es", ["es-orig", "es"]),
-        ("en", ["en-orig", "en"])
-    ]
+    if src_l.startswith("es"):
+        sub_langs_to_try = [
+            ("es", ["es-orig", "es"]),
+            ("en", ["en-orig", "en"])
+        ]
+    else:
+        sub_langs_to_try = [
+            ("en", ["en-orig", "en"]),
+            ("es", ["es"])
+        ]
 
     detected_lang = source_lang
     srt_path = None
 
-    for lang_code, lang_candidates in sub_langs_to_try:
-        if srt_path:
-            break
-        for target_lang in lang_candidates:
-            cmd_subs = [
-                sys.executable, "-m", "yt_dlp",
-                "--impersonate", "chrome",
-                "--no-check-certificates",
-                "--no-playlist",
-                "--skip-download",
-                "--write-auto-subs",
-                "--write-subs",
-                "--sub-langs", target_lang,
-                "--convert-subs", "srt",
-                "-o", sub_output_template,
-                url
-            ]
-            try:
-                subprocess.run(cmd_subs, capture_output=True, text=True, timeout=30)
-                found_subs = list(TEMP_DIR.glob(f"{video_id}*.srt")) + list(TEMP_DIR.glob(f"{video_id}*.vtt"))
-                if found_subs:
-                    chosen = found_subs[0]
-                    if chosen.suffix.lower() == ".vtt":
-                        converted_srt = chosen.with_suffix(".srt")
-                        subprocess.run(["ffmpeg", "-y", "-i", str(chosen), str(converted_srt)], capture_output=True)
-                        if converted_srt.exists():
-                            chosen = converted_srt
-                    srt_path = chosen
-                    clean_and_deroll_srt(srt_path)
-                    detected_lang = lang_code
-                    print(f"[*] Subtítulos descargados con éxito ({target_lang} -> {detected_lang})")
-                    break
-            except Exception:
-                continue
+    # Si no es Twitter/TikTok (que no tienen subtítulos nativos en yt-dlp), buscar subtítulos
+    if not (is_twitter_or_x or is_tiktok):
+        for lang_code, lang_candidates in sub_langs_to_try:
+            if srt_path:
+                break
+            for target_lang in lang_candidates:
+                cmd_subs = [
+                    sys.executable, "-m", "yt_dlp",
+                    "--impersonate", "chrome",
+                    "--no-check-certificates",
+                    "--no-playlist",
+                    "--skip-download",
+                    "--write-auto-subs",
+                    "--write-subs",
+                    "--sub-langs", target_lang,
+                    "--convert-subs", "srt",
+                    "-o", sub_output_template,
+                    url
+                ]
+                try:
+                    subprocess.run(cmd_subs, capture_output=True, text=True, timeout=30)
+                    found_subs = list(TEMP_DIR.glob(f"{video_id}*.srt")) + list(TEMP_DIR.glob(f"{video_id}*.vtt"))
+                    if found_subs:
+                        chosen = found_subs[0]
+                        if chosen.suffix.lower() == ".vtt":
+                            converted_srt = chosen.with_suffix(".srt")
+                            subprocess.run(["ffmpeg", "-y", "-i", str(chosen), str(converted_srt)], capture_output=True)
+                            if converted_srt.exists():
+                                chosen = converted_srt
+                        srt_path = chosen
+                        clean_and_deroll_srt(srt_path)
+                        detected_lang = lang_code
+                        print(f"[*] Subtítulos descargados con éxito ({target_lang} -> {detected_lang})")
+                        break
+                except Exception:
+                    continue
 
-    # Paso 3: Análisis de picos virales si el vídeo es largo (> 58s)
+    # Paso 3: Análisis de picos virales si el vídeo es largo (> 58s) o recorte de intros/outros de spots oficiales
     if video_path and video_path.exists():
         viral_range = find_viral_heatmap_segment(
             url,
@@ -471,11 +882,46 @@ def download_video_and_subtitles(
             target_duration=SHORT_TARGET_DURATION,
             video_id=video_id
         )
+        raw_d = 0.0
+        try:
+            p_dur = subprocess.run(
+                ["ffprobe", "-v", "quiet", "-show_entries", "format=duration", "-of", "csv=p=0", str(video_path)],
+                capture_output=True, text=True, timeout=10
+            )
+            raw_d = float(p_dur.stdout.strip()) if p_dur.stdout.strip() else 0.0
+        except Exception:
+            raw_d = 0.0
+
+        if not viral_range and trim_official_bumpers:
+            # Quitar carteles estáticos iniciales (~3.0s) y outro PS5/Sony (~7.5s) de spots promocionales de 25-45s
+            if 24.0 <= raw_d <= 45.0:
+                viral_range = (3.0, max(16.0, raw_d - 7.5))
+                print(f"[*] Spot promocional oficial ({raw_d:.1f}s): limpiando intro/outro corporativo -> {viral_range[0]:.1f}s a {viral_range[1]:.1f}s")
+
+        if not viral_range and raw_d > SHORT_MAX_DURATION:
+            if srt_path and srt_path.exists() and not trim_official_bumpers:
+                viral_range = find_best_transcript_hook_window(
+                    srt_path,
+                    min_dur=max(GAMEPLAY_MIN_DURATION, 18),
+                    max_dur=min(SHORT_MAX_DURATION, 36),
+                    total_duration=raw_d,
+                )
+            if not viral_range:
+                seed_val = sum(ord(c) for c in (video_id or url))
+                sweet_min = max(GAMEPLAY_MIN_DURATION, 24)
+                sweet_max = min(SHORT_MAX_DURATION, 32)
+                dur_jitter = (seed_val % max(1, (sweet_max - sweet_min + 1)))
+                dynamic_dur = sweet_min + dur_jitter
+                start_t = min(20.0, raw_d * 0.1)
+                if start_t + dynamic_dur > raw_d:
+                    start_t = max(0.0, raw_d - dynamic_dur)
+                print(f"[*] Fallback orgánico sin subtítulos ({raw_d:.1f}s): {start_t:.1f}s a {start_t + dynamic_dur:.1f}s")
+                viral_range = (start_t, start_t + dynamic_dur)
         if viral_range:
             v_start, v_end = viral_range
 
-            # Paso 3b: Ajuste inteligente por frases/subtítulos para evitar cortes a media palabra
-            if srt_path and srt_path.exists():
+            # Paso 3b: Ajuste inteligente por frases/subtítulos para evitar cortes a media palabra (no expandir spots oficiales ya acotados)
+            if srt_path and srt_path.exists() and not trim_official_bumpers:
                 v_start, v_end = snap_window_to_subtitles(
                     srt_path=srt_path,
                     v_start=v_start,
@@ -514,6 +960,10 @@ def download_video_and_subtitles(
                             srt_path.unlink()
                             srt_path = trimmed_srt
                             print(f"[✓] Subtítulos resincronizados con el clip viral -> {trimmed_srt.name}")
+                        else:
+                            print("[!] El segmento recortado no contiene subtítulos válidos; descartando SRT completo para evitar desfase.")
+                            srt_path.unlink(missing_ok=True)
+                            srt_path = None
             except Exception as e:
                 print(f"[!] No se pudo recortar con VideoToolbox: {e}")
 

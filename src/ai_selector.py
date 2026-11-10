@@ -5,7 +5,7 @@ from datetime import datetime
 from typing import Dict, Any, List, Optional
 
 from .config import GEMINI_MODEL
-from .translator import get_gemini_client, clean_srt_response
+from .translator import get_gemini_client, clean_srt_response, FALLBACK_GEMINI_MODELS
 from .learning_engine import load_viral_playbook, generate_hook_card_texts
 from .channels import get_processed_ids
 
@@ -28,11 +28,22 @@ def select_best_candidate_ai(
     if not candidates:
         return {}
 
-    from .channels import is_strictly_gta6, is_official_or_reupload
-    candidates = [c for c in candidates if is_strictly_gta6(c.get("title", ""))]
-    candidates = [c for c in candidates if not is_official_or_reupload(c.get("title", ""), c.get("uploader", ""))]
+    from .compliance_auditor import is_safe_rrss_candidate
+    from .channels import filter_repetitive_candidates
+    safe_candidates = []
+    for c in candidates:
+        safe, _, _ = is_safe_rrss_candidate(
+            c.get("title", ""),
+            uploader=c.get("uploader") or c.get("source_name", ""),
+            duration_sec=float(c.get("duration") or 0.0),
+            allow_long_clipping=bool(c.get("allow_long_clipping", False)),
+            allow_official_commentary=bool(c.get("allow_official_commentary", False))
+        )
+        if safe:
+            safe_candidates.append(c)
+    candidates = filter_repetitive_candidates(safe_candidates)
     if not candidates:
-        print("[AI Selector] Todos los candidatos fueron descartados (no GTA 6 o contenido oficial/reupload).")
+        print("[AI Selector] Todos los candidatos fueron descartados por seguridad RRSS o anti-repetición.")
         return {}
 
     # Si solo hay un candidato, enriquecerlo y retornarlo
@@ -91,6 +102,8 @@ def select_best_candidate_ai(
             "title": c.get("title"),
             "duration": c.get("duration"),
             "views": views,
+            "views_per_hour": c.get("views_per_hour"),
+            "hours_old": c.get("hours_old"),
             "velocity_vpd": c.get("velocity_vpd") or c.get("velocity"),
             "days_old": c.get("days_old"),
             "engagement_rate": engagement_rate,
@@ -106,9 +119,9 @@ def select_best_candidate_ai(
                 "MODO: DÍA DEL ESTRENO (LAUNCH DAY 2026). Prioriza novedad absoluta, misiones iniciales, "
                 "gameplay real, descubrimientos en el mapa y velocidad explosiva de vistas por hora."
                 if launch_mode else
-                "MODO: COBERTURA VIRAL DE ALTO IMPACTO (GTA 6 PURO). Prioriza clips con ALTO VOLUMEN DE VISTAS, "
-                "análisis técnicos de gráficos, físicas RAGE 9, secretos del mapa de Leonida, novedades confirmadas y filtraciones creíbles. "
-                "ESTRICTAMENTE PROHIBIDO: parodias, memes, clips de GTA 5 o parodias tipo South Park."
+                "MODO: COBERTURA VIRAL DE ALTO IMPACTO (GTA 6 PURO). Prioriza clips con MÁXIMA VELOCIDAD ACTUAL (views_per_hour y hours_old <= 24), "
+                "reacciones genuinas, desgloses de detalles, gameplay real y análisis técnicos RAGE 9. "
+                "ESTRICTAMENTE PROHIBIDO: parodias, memes, clips de GTA 5 o rellenos viejos de semanas pasadas."
             )
 
             prompt = f"""Eres el Director de Estrategia de Contenidos y Algoritmos para 'GTA VI Hub Spain' (YouTube Shorts, TikTok, Instagram Reels).
@@ -116,7 +129,7 @@ def select_best_candidate_ai(
 {dynamic_editorial_context}
 
 OBJETIVO:
-Analiza los siguientes 15 vídeos candidatos pre-filtrados y SELECCIONA EL MEJOR CLIP ABSOLUTO para procesar y publicar ahora mismo.
+Analiza los siguientes {len(pool)} vídeos candidatos pre-filtrados y SELECCIONA EL MEJOR CLIP ABSOLUTO para conseguir visitas REALES ahora mismo.
 
 CANDIDATOS:
 {json.dumps(candidates_summary, indent=2, ensure_ascii=False)}
@@ -128,31 +141,32 @@ VÍDEOS RECIENTES YA PUBLICADOS (EVITA REPETIR ESTAS TEMÁTICAS):
 {json.dumps(recent_titles, indent=2, ensure_ascii=False)}
 
 CRITERIOS EDITORIALES DE VICTORIA (PLAYBOOK VIRAL):
-0. CERO METRAJE DEL TRÁILER DE 2023: DESCARTAR FULMINANTEMENTE cualquier corte o tráiler oficial antiguo de Rockstar Games (Trailer 1, 'Extended Look', o resubidas del teaser de 2023). La comunidad ya lo ha visto 500 millones de veces. Prioriza contenido fresco, streamers (reacciones/humor), análisis técnicos y descubrimientos reales.
-1. VELOCIDAD VIRAL (velocity_vpd): Prioriza vídeos con alta velocidad de crecimiento (vistas/día). El algoritmo de YouTube distribuye activamente el contenido en ascenso explosivo.
+0. PRIORIDAD ABSOLUTA A EXPLOSIÓN EN ÚLTIMAS 24H (views_per_hour Y hours_old):
+   - Prioriza al máximo vídeos con hours_old <= 24 y miles de views_per_hour: lanzamientos recién publicados por Rockstar Games (ej. 'Pre-Load Now', 'Launch Trailer', 'PS5 Features'), reacciones reales al nuevo tráiler, desgloses frame-a-frame de detalles ocultos y gameplay auténtico.
+   - Elige vídeos con VOZ Y EMOCIÓN REAL de creadores top o tráilers de alto impacto visual frente a vídeos antiguos de baja tracción.
+   - DESCARTAR tráileres antiguos de 2023 ('Trailer 1') y charlas lentas de radio/podcast sin ritmo visual.
+1. VELOCIDAD VIRAL REAL (views_per_hour / velocity_vpd): Prioriza vídeos en ascenso vertical ahora mismo. Un vídeo de hace 5 horas con 50,000 views/hora vale 10x más que uno de hace 2 semanas.
 2. MULTI-FUENTE (source_count > 1): Un vídeo detectado por múltiples fuentes/queries simultáneamente es una señal inequívoca de momento viral. Priorizarlo sobre candidatos únicos.
 3. ENGAGEMENT REAL (engagement_rate): Ratio likes/vistas como proxy de distribución activa por el algoritmo. Un ratio > 0.02 indica audiencia comprometida.
 4. ENGAGEMENT Y CURIOSIDAD: El vídeo debe provocar el deseo irrefrenable de comentar o ver hasta el final.
 5. CERO CLICKBAIT FALSO: Descarta conceptos abstractos o mods antiguos. Solo contenido real y de impacto.
 6. CONTENIDO 100% GTA 6 REAL: Prioriza clips con tracción real de vistas (demostraciones de RAGE 9, detalles del mapa de Leonida, mecánicas in-game, vehículos, comparativas con vida real). DESCALIFICAR AUTOMÁTICAMENTE cualquier parodia, meme, o gameplay de GTA 5.
-7. GANCHO DE 2 LÍNEAS (AFIRMACIÓN DE IMPACTO, NUNCA PREGUNTAS): Redacta dos líneas de titular afirmativo (Línea 1 en blanco max 24 caracteres, Línea 2 en amarillo neón max 22 caracteres). PROHIBIDO usar signos de interrogación ('¿' o '?') en el gancho superior; debe ser una afirmación o alerta rotunda (ej. 'FÍSICAS RAGE 9' / 'TORNADOS EXTREMOS' o 'DETALLE OCULTO' / 'SECRETOS DE LEONIDA').
+7. GANCHO DE 2 LÍNEAS EN ESPAÑOL (OBLIGATORIO ESPAÑOL, NUNCA INGLÉS): Redacta dos líneas de titular afirmativo en ESPAÑOL (Línea 1 en blanco max 20 caracteres, Línea 2 en amarillo neón max 20 caracteres). PROHIBIDO usar signos de interrogación ('¿' o '?') en el gancho superior.
+8. CERO LEAKS O FILTRACIONES ILEGALES (CUMPLIMIENTO ESTRICTO ANTI-DMCA): PROHIBIDO terminantemente seleccionar clips con código robado, filtraciones confidenciales de desarrollo de 2022 o marcas de debug. Prioriza análisis legítimos bajo Fair Use, comparativas gráficas, curiosidades de prensa y descubrimientos geográficos.
 
 RESPONDE EXCLUSIVAMENTE CON UN OBJETO JSON VÁLIDO:
 {{
   "selected_index": 0,
   "justification": "Explicación de por qué este clip es el ganador indiscutible frente a los otros.",
-  "recommended_title": "TÍTULO VIRAL EN MAYÚSCULAS CON EMOJIS Y #GTA6",
-  "hook_line1": "LÍNEA 1 CORTA",
-  "hook_line2": "LÍNEA 2 IMPACTANTE",
+  "recommended_title": "TÍTULO VIRAL EN ESPAÑOL Y MAYÚSCULAS CON EMOJIS Y #GTA6",
+  "hook_line1": "LÍNEA 1 EN ESPAÑOL",
+  "hook_line2": "LÍNEA 2 EN ESPAÑOL",
   "audience_appeal": "Razón del gancho en la audiencia hispanohablante"
 }}
 """
 
-            response = client.models.generate_content(
-                model=GEMINI_MODEL,
-                contents=prompt,
-                config={"response_mime_type": "application/json"}
-            )
+            from .translator import generate_content_with_retry
+            response = generate_content_with_retry(client=client, contents=prompt)
             cleaned = clean_srt_response(response.text)
             decision = json.loads(cleaned)
 
@@ -181,18 +195,41 @@ RESPONDE EXCLUSIVAMENTE CON UN OBJETO JSON VÁLIDO:
         except Exception as e:
             print(f"[AI Selector] Advertencia: Error en evaluación con IA ({e}). Usando fallback heurístico.")
 
-    # FALLBACK HEURÍSTICO ROBUSTO
-    # Ordenar por score base; en launch_mode dar prioridad extrema a velocity y frescura
+    # FALLBACK HEURÍSTICO ROBUSTO (penaliza charlas de radio/podcast lentas y premia espectáculo visual)
+    def _visual_priority_score(item: Dict[str, Any]) -> float:
+        base = float(item.get("score", 0))
+        vph = float(item.get("views_per_hour") or 0.0)
+        hours_old = float(item.get("hours_old") or 720.0)
+        if vph >= 10000:
+            base += 40.0
+        elif vph >= 1000:
+            base += 25.0
+        elif vph >= 200:
+            base += 12.0
+        if hours_old <= 6:
+            base += 25.0
+        elif hours_old <= 24:
+            base += 15.0
+        elif hours_old > 168:
+            base -= 20.0
+
+        tl = (item.get("title") or "").lower()
+        if any(k in tl for k in ("radio station", "podcast", "tier list", "unboxing")):
+            base -= 25.0
+        if any(k in tl for k in ("pre-load", "preload", "reaction", "reaccion", "reacciona", "breakdown", "details", "detalles", "physics", "rage 9", "graphics", "comparison", "gameplay", "trailer")):
+            base += 15.0
+        return base
+
     if launch_mode:
         sorted_pool = sorted(
             pool,
             key=lambda x: (
-                -(x.get("velocity") or 0) * 2 - x.get("score", 0),
-                x.get("days_old") or 999
+                -(x.get("views_per_hour") or x.get("velocity") or 0) - _visual_priority_score(x),
+                x.get("hours_old") or x.get("days_old") or 999
             )
         )
     else:
-        sorted_pool = sorted(pool, key=lambda x: -x.get("score", 0))
+        sorted_pool = sorted(pool, key=lambda x: -_visual_priority_score(x))
 
     chosen = dict(sorted_pool[0])
     l1, l2 = generate_hook_card_texts(chosen.get("title", ""))

@@ -12,7 +12,16 @@ from typing import Optional, Dict, Any, List
 
 import requests
 
-from .config import BASE_DIR, OUTPUT_DIR, TEMP_DIR, PROCESSED_FILE, is_quant_busy
+try:
+    import certifi
+    for _cert_var in ("REQUESTS_CA_BUNDLE", "SSL_CERT_FILE", "CURL_CA_BUNDLE"):
+        _cv = os.environ.get(_cert_var)
+        if _cv and not os.path.exists(_cv):
+            os.environ[_cert_var] = certifi.where()
+except Exception:
+    pass
+
+from .config import BASE_DIR, DATA_DIR, OUTPUT_DIR, TEMP_DIR, PROCESSED_FILE, is_quant_busy
 from .compliance_auditor import ComplianceAuditor
 from .telemetry import get_host_telemetry_report
 from .youtube_analytics import get_youtube_analytics_report
@@ -64,15 +73,11 @@ def get_api_url(method: str) -> Optional[str]:
     return f"https://api.telegram.org/bot{token}/{method}"
 
 def get_persistent_menu_keyboard() -> Dict[str, Any]:
-    """Retorna el teclado táctil persistente principal para la barra inferior."""
+    """Retorna el teclado táctil persistente simplificado y limpio."""
     return {
         "keyboard": [
-            [{"text": "🚀 Forzar Escaneo"}, {"text": "📊 Dashboard"}],
-            [{"text": "🎬 Último Clip"}, {"text": "🖥️ Estado Host / GaTDSEQ"}],
-            [{"text": "📈 Métricas YouTube"}, {"text": "⚙️ Canales"}],
-            [{"text": "🔥 Radar Viral"}, {"text": "🛒 Ofertas Amazon"}],
-            [{"text": "🛡️ Modo Co-Pilot"}, {"text": "🧠 Auto-Perfeccionar"}],
-            [{"text": "🌐 Mis Canales"}, {"text": "🧹 Limpiar Temp"}]
+            [{"text": "🚀 Forzar Escaneo"}, {"text": "🎬 Último Clip"}],
+            [{"text": "📊 Estado"}, {"text": "🛡️ Modo Co-Pilot"}]
         ],
         "resize_keyboard": True,
         "persistent": True
@@ -276,6 +281,8 @@ def send_telegram_video(
                     if thumb_file:
                         thumb_file.seek(0)
                     res = requests.post(url, data=data, files=files, timeout=120)
+                if res.status_code != 200:
+                    print(f"[Telegram] Error {res.status_code} enviando vídeo: {res.text}")
                 return res.status_code == 200
             finally:
                 if thumb_file:
@@ -331,19 +338,26 @@ def send_telegram_notification(
 # 2. KEYBOARDS INTERACTIVOS CONTEXTUALES
 # ═══════════════════════════════════════════════════════════════════
 
-def get_url_ingest_keyboard(token_id: str) -> Dict[str, Any]:
-    """Teclado interactivo para seleccionar el formato de ingesta de un enlace."""
+def get_url_ingest_keyboard(token_id: str, recommended_opt: str = "short") -> Dict[str, Any]:
+    """Teclado interactivo para seleccionar el formato de ingesta de un enlace con recomendación inteligente."""
+    star = "⭐ "
+    buttons = {
+        "short": {"text": f"{star if recommended_opt == 'short' else ''}⚡ Short Hormozi (Subs ES)", "callback_data": f"url_opt:short:{token_id}"},
+        "dub": {"text": f"{star if recommended_opt == 'dub' else ''}🎙️ Doblaje Neural (Voz ES)", "callback_data": f"url_opt:dub:{token_id}"},
+        "gameplay": {"text": f"{star if recommended_opt == 'gameplay' else ''}🎮 Gameplay / Físicas (Audio Juego)", "callback_data": f"url_opt:gameplay:{token_id}"},
+        "cancel": {"text": "❌ Cancelar", "callback_data": f"url_opt:cancel:{token_id}"}
+    }
+
+    # Fila 1: Opción recomendada en solitario para destacar
+    first_row = [buttons.get(recommended_opt, buttons["short"])]
+    # Fila 2: Las otras dos opciones
+    other_keys = [k for k in ["short", "dub", "gameplay"] if k != recommended_opt]
+    second_row = [buttons[other_keys[0]], buttons[other_keys[1]]]
+    # Fila 3: Cancelar
+    third_row = [buttons["cancel"]]
+
     return {
-        "inline_keyboard": [
-            [
-                {"text": "⚡ Short Vertical Hormozi", "callback_data": f"url_opt:short:{token_id}"},
-                {"text": "🎙️ Doblaje Neural + Subs", "callback_data": f"url_opt:dub:{token_id}"}
-            ],
-            [
-                {"text": "💬 Solo Subtítulos (Orig)", "callback_data": f"url_opt:subs:{token_id}"},
-                {"text": "❌ Cancelar", "callback_data": f"url_opt:cancel:{token_id}"}
-            ]
-        ]
+        "inline_keyboard": [first_row, second_row, third_row]
     }
 
 def get_copilot_approval_keyboard(video_id: str, original_url: Optional[str] = None) -> Dict[str, Any]:
@@ -403,15 +417,16 @@ def get_my_channels_inline_keyboard() -> Dict[str, Any]:
     return {
         "inline_keyboard": [
             [
-                {"text": "🔴 YouTube Shorts", "url": "https://www.youtube.com/channel/UCBOl2KuaHEoUWYWJqb7ID9Q/shorts"},
-                {"text": "📊 YouTube Studio", "url": "https://studio.youtube.com/channel/UCBOl2KuaHEoUWYWJqb7ID9Q"}
+                {"text": "🔴 YouTube Shorts (@gtavihubextra)", "url": "https://www.youtube.com/@gtavihubextra/shorts"},
+                {"text": "📊 YouTube Studio", "url": "https://studio.youtube.com/channel/UCB35xEmRUm64zgyYOUnqrUg"}
             ],
             [
                 {"text": "🎵 TikTok (@gtavihubspain)", "url": "https://www.tiktok.com/@gtavihubspain"},
                 {"text": "📸 Instagram (@gtavihubspain)", "url": "https://www.instagram.com/gtavihubspain/"}
             ],
             [
-                {"text": "🔴 Canal Principal YouTube", "url": "https://www.youtube.com/channel/UCBOl2KuaHEoUWYWJqb7ID9Q"}
+                {"text": "🔴 Canal Activo YouTube", "url": "https://www.youtube.com/@gtavihubextra"},
+                {"text": "🌐 Linktree Oficial", "url": "https://linktr.ee/gtavihubspain"}
             ]
         ]
     }
@@ -508,24 +523,35 @@ def send_copilot_approval_request(
     is_short: bool = True,
     mode: str = "subs",
     hook_text: str = "",
-    original_url: Optional[str] = None
+    original_url: Optional[str] = None,
+    video_path: Optional[Path] = None
 ) -> bool:
-    """Envía la tarjeta de revisión Co-Pilot a Telegram con botones de acción y enlace de origen."""
+    """Envía la previsualización del vídeo real (o miniatura) con botones de aprobación a Telegram."""
+    clean_title = str(title).replace("*", "").replace("`", "").replace("_", " ")
+    clean_creator = str(creator or "Rockstar Games").replace("*", "").replace("`", "").replace("_", " ")
+    clean_hook = str(hook_text or "GTA 6").replace("*", "").replace("`", "").replace("_", " ")
+
     caption = (
-        "🛡️ *CO-PILOT: VÍDEO EN ESPERA DE APROBACIÓN*\n"
-        + ("═" * 36) + "\n\n"
-        + f"🎬 *Título Propuesto:* `{title}`\n"
-        + f"👤 *Autor Original:* `{creator}`\n"
-        + f"⏱️ *Formato:* `{'Short 9:16 (Vertical)' if is_short else 'Vídeo 16:9'}`\n"
-        + f"🎙️ *Modo:* `{'Doblaje IA + Subs' if mode == 'dub' else 'Subtítulos Hormozi'}`\n"
-        + f"🎯 *Gancho Inicial:* `{hook_text or 'EXCLUSIVA GTA 6'}`\n"
-        + "⚖️ *Compliance:* `[✓ Fair Use y Atribución Listos]`\n\n"
-        + "⏱️ *Temporizador:* Si no respondes en 15 min, se auto-aprobará y publicará solo.\n\n"
-        + "👇 *Pulsa una opción para proceder:*"
+        "🎬 *VISTA PREVIA DEL VÍDEO*\n\n"
+        f"📌 *{clean_title[:80]}*\n"
+        f"👤 Fuente: `{clean_creator[:35]}` | 🎯 `{clean_hook[:30]}`\n\n"
+        "👇 ¿Aprobar y publicar en YouTube, TikTok e Instagram?"
     )
     keyboard = get_copilot_approval_keyboard(video_id, original_url=original_url)
 
+    # 1. Intentar enviar el archivo de vídeo renderizado para reproducirlo directamente en Telegram (<48MB)
+    if video_path and video_path.exists():
+        try:
+            if video_path.stat().st_size < 48 * 1024 * 1024:
+                print(f"[Telegram] Enviando archivo de vídeo renderizado a Telegram ({video_path.stat().st_size / (1024*1024):.1f} MB)...")
+                if send_telegram_video(video_path, caption, reply_markup=keyboard):
+                    return True
+        except Exception as e:
+            print(f"[Telegram] Error enviando vídeo de previsualización: {e}")
+
+    # 2. Fallback a miniatura con botones
     if thumbnail_path and thumbnail_path.exists():
+        print("[Telegram] Enviando miniatura con botones interactivos de Co-Pilot...")
         if send_telegram_photo(thumbnail_path, caption, reply_markup=keyboard):
             return True
 
@@ -536,29 +562,19 @@ def send_copilot_approval_request(
 # ═══════════════════════════════════════════════════════════════════
 
 def get_dashboard_text() -> str:
-    """Genera un reporte conciso del estado del pipeline para Telegram."""
+    """Genera un reporte conciso y limpio del estado del bot."""
     from .monitor import get_directory_size_mb
-    temp_mb = get_directory_size_mb(TEMP_DIR)
+    from .config import MAX_DAILY_UPLOADS
     output_mb = get_directory_size_mb(OUTPUT_DIR)
+    copilot_status = "🟢 Activo (Confirmación previa)" if is_copilot_enabled() else "⚡ Automático"
 
-    token_yt = BASE_DIR / "token.json"
-    tiktok_session = BASE_DIR / "assets" / ".browser_profiles" / "tiktok_user_data"
-    copilot_status = "🟢 Activo (Requiere Aprobación)" if is_copilot_enabled() else "⚡ 100% Autónomo"
-
-    msg = (
-        "📊 *GTA VI HUB SPAIN — ESTADO DEL PIPELINE*\n"
-        + ("═" * 36) + "\n\n"
-        + "📁 *Almacenamiento Pipeline:*\n"
-        + f"• Temp: `{temp_mb:.2f} MB` {'(✓ Limpio)' if temp_mb < 5 else '(!)'}\n"
-        + f"• Output Staging: `{output_mb:.2f} MB`\n\n"
-        + "🔐 *Sesiones y Redes:*\n"
-        + f"• YouTube Data API: {'✅ Activo' if token_yt.exists() else '❌ Desconectado'}\n"
-        + f"• TikTok / Instagram: {'✅ Perfil Configurado' if tiktok_session.exists() else 'ℹ️ Activo vía navegador'}\n"
-        + f"• Modo Co-Pilot: `{copilot_status}`\n\n"
-        + "⚖️ *Políticas Anti-Strike:* `[✓ Compliant]`\n"
-        + f"📡 *Canales Activos:* `{len(list_monitored_channels())} monitoreados`\n"
+    return (
+        "📊 *ESTADO DEL SISTEMA*\n\n"
+        f"• Modo: `{copilot_status}`\n"
+        f"• Límite Diario: `{MAX_DAILY_UPLOADS} vídeos/día`\n"
+        f"• Espacio en Staging: `{output_mb:.1f} MB`\n"
+        "• Redes: YouTube (`@GTAVIHubExtra`), TikTok, Instagram"
     )
-    return msg
 
 def get_my_channels_report() -> str:
     """
@@ -568,12 +584,13 @@ def get_my_channels_report() -> str:
     return (
         "🌐 *MIS CANALES Y REDES SOCIALES*\n"
         + ("═" * 36) + "\n\n"
-        + "🌴 *GTA VI HUB SPAIN*\n\n"
-        + "• 🔴 *YouTube:* [Canal Oficial](https://www.youtube.com/channel/UCBOl2KuaHEoUWYWJqb7ID9Q)\n"
-        + "  └ 🎬 *Shorts:* [Ver Feed de Shorts](https://www.youtube.com/channel/UCBOl2KuaHEoUWYWJqb7ID9Q/shorts)\n"
-        + "  └ ⚙️ *Studio:* [Abrir YouTube Studio](https://studio.youtube.com/channel/UCBOl2KuaHEoUWYWJqb7ID9Q)\n\n"
+        + "🌴 *GTA VI HUB SPAIN — CANALES ACTIVOS*\n\n"
+        + "• 🔴 *YouTube:* [@gtavihubextra](https://www.youtube.com/@gtavihubextra)\n"
+        + "  └ 🎬 *Shorts:* [Ver Feed de Shorts](https://www.youtube.com/@gtavihubextra/shorts)\n"
+        + "  └ ⚙️ *Studio:* [Abrir YouTube Studio](https://studio.youtube.com/channel/UCB35xEmRUm64zgyYOUnqrUg)\n\n"
         + "• 🎵 *TikTok:* [Ver Perfil en TikTok](https://www.tiktok.com/@gtavihubspain) (`@gtavihubspain`)\n\n"
         + "• 📸 *Instagram Reels:* [Ver Perfil en Instagram](https://www.instagram.com/gtavihubspain/) (`@gtavihubspain`)\n\n"
+        + "• 🌐 *Linktree Oficial:* [Abrir Linktree](https://linktr.ee/gtavihubspain)\n\n"
         + "• 🤖 *Bot de Control:* [Chat del Bot](https://t.me/gtavihub_spain_bot) (`@gtavihub_spain_bot`)\n\n"
         + "👇 _Toca cualquiera de los botones para abrir tu canal en su app oficial:_"
     )
@@ -590,30 +607,61 @@ def run_scan_in_background(chat_id: str, max_videos: int = 2):
     
     try:
         from .pipeline import process_single_video
-        send_telegram_alert("⏳ *Iniciando escaneo de canales en segundo plano...*")
+        from .ai_selector import select_best_candidate_ai
+        from .channels import filter_repetitive_candidates
+        send_telegram_alert("⏳ *Iniciando escaneo inteligente (Escudo Anti-Repetición + IA)...*")
         candidates = fetch_channel_candidates(max_per_channel=max_videos)
         
         if not candidates:
-            send_telegram_alert("✓ *Escaneo finalizado:* No hay vídeos nuevos pendientes.")
+            send_telegram_alert("✓ *Escaneo finalizado:* No hay vídeos nuevos ni distintos pendientes.")
             return
 
-        send_telegram_alert(f"🎯 *{len(candidates)} nuevo(s) vídeo(s) detectado(s).* Comenzando procesamiento...")
+        send_telegram_alert(f"🎯 *{len(candidates)} candidato(s) único(s) validado(s).* Seleccionando el mejor...")
         count = 0
-        for item in candidates[:max_videos]:
-            send_telegram_alert(f"🎬 *Procesando ({count+1}/{min(len(candidates), max_videos)}):* `{item['title'][:55]}`...")
+        remaining = list(candidates)
+        for _ in range(max_videos):
+            remaining = filter_repetitive_candidates(remaining)
+            if not remaining:
+                break
+            item = select_best_candidate_ai(remaining, launch_mode=False)
+            if not item:
+                break
+            remaining = [c for c in remaining if c.get("id") != item.get("id")]
+
+            raw_orig_title = item.get("title", "GTA 6 Clip")
+            title_display = item.get("recommended_title") or raw_orig_title
+            creator_clean = item.get("uploader") or item.get("source_name") or "Creador"
+            mode_clean = item.get("recommended_mode") or "subs"
+            hook_custom = None
+            if item.get("hook_line1") and item.get("hook_line2"):
+                hook_custom = f"{item['hook_line1']}\n{item['hook_line2']}"
+
+            send_telegram_alert(f"🎬 *Procesando ({count+1}/{max_videos}):* `{title_display[:55]}`...")
             res = process_single_video(
                 url=item["url"],
                 video_id=item["id"],
-                original_title=item["title"],
-                creator_name=item.get("source_name", "Rockstar"),
+                original_title=raw_orig_title,
+                creator_name=creator_clean,
                 source_lang=item.get("lang", "en"),
-                mode="subs",
+                mode=mode_clean,
                 force_short=True if item.get("is_short") else None,
                 auto_upload=True,
-                publish_all=True
+                publish_all=True,
+                hook_override=hook_custom,
+                block_instagram=item.get("block_instagram", False),
+                allowed_platforms=item.get("allowed_platforms"),
+                allow_official_commentary=bool(item.get("allow_official_commentary", False))
             )
             if res:
                 count += 1
+                yt_url = res.get("youtube_url")
+                if yt_url:
+                    send_telegram_alert(
+                        f"🚀 *¡Vídeo Publicado!*\n\n"
+                        f"📌 *{title_display}*\n"
+                        f"👤 Fuente: `{creator_clean}`\n"
+                        f"🔗 {yt_url}"
+                    )
                 
         send_telegram_alert(f"🎉 *Tanda finalizada con éxito.* Total procesados: `{count}` vídeos.")
     except Exception as e:
@@ -627,7 +675,8 @@ def run_ingest_in_background(
     vid_id: str,
     title: str,
     uploader: str,
-    format_choice: str
+    format_choice: str,
+    hook_override: Optional[str] = None
 ):
     """Ejecuta el procesamiento de un enlace bajo demanda en segundo plano."""
     global ACTIVE_TASK
@@ -636,10 +685,10 @@ def run_ingest_in_background(
 
     try:
         from .pipeline import process_single_video
-        is_short = True if format_choice == "short" or "/shorts/" in url.lower() else (False if format_choice == "normal" else None)
-        mode = "dub" if format_choice == "dub" else "subs"
+        is_short = True if format_choice in ["short", "dub", "gameplay", "subs"] or "/shorts/" in url.lower() else (False if format_choice == "normal" else None)
+        mode = "dub" if format_choice == "dub" else ("gameplay" if format_choice == "gameplay" else "subs")
 
-        send_telegram_alert(f"⏳ *Renderizando vídeo:* `{title[:50]}` en formato `{format_choice.upper()}`...")
+        send_telegram_alert(f"⏳ *Procesando vídeo:* `{title[:50]}`\nFormato: `{format_choice.upper()}`...")
 
         res = process_single_video(
             url=url,
@@ -649,10 +698,14 @@ def run_ingest_in_background(
             mode=mode,
             force_short=is_short,
             auto_upload=True,
-            publish_all=True
+            publish_all=True,
+            is_manual_ingest=True,
+            hook_override=hook_override
         )
         if res and res.get("status") != "staged_for_copilot":
-            send_telegram_alert(f"✓ *Vídeo procesado y subido:* `{title[:50]}`")
+            send_telegram_alert(f"✓ *Vídeo procesado y publicado:* `{title[:50]}`")
+        elif not res:
+            send_telegram_alert(f"⚠️ *No se pudo procesar el vídeo.* Revisa si el enlace está activo o tiene restricciones.")
     except Exception as e:
         send_telegram_alert(f"❌ *Error procesando enlace:* `{e}`")
     finally:
@@ -706,52 +759,61 @@ def run_viral_radar_in_background(chat_id: str):
 # ═══════════════════════════════════════════════════════════════════
 
 def handle_url_ingestion(url: str):
-    """Detecta un enlace pegado por el usuario, extrae metadatos y muestra botones."""
-    send_telegram_alert(f"🔍 *Analizando enlace de vídeo...*\n`{url}`")
+    """Detecta un enlace pegado por el usuario, evalúa la estrategia óptima y muestra botones con recomendación."""
+    send_telegram_alert(f"🔍 *Analizando vídeo y evaluando mejor estrategia de edición...*\n`{url}`")
     
-    # Extracción rápida con yt-dlp
-    try:
-        res = subprocess.run([
-            sys.executable, "-m", "yt_dlp",
-            "--impersonate", "chrome",
-            "--no-check-certificates",
-            "--print", "%(id)s\t%(title)s\t%(duration)s\t%(uploader)s",
-            url
-        ], capture_output=True, text=True, timeout=20)
-        
-        parts = res.stdout.strip().split("\t")
-        vid_id = parts[0] if len(parts) > 0 and parts[0] else "custom_vid"
-        title = parts[1] if len(parts) > 1 and parts[1] else "Vídeo GTA 6"
-        dur_raw = parts[2] if len(parts) > 2 else "0"
-        uploader = parts[3] if len(parts) > 3 and parts[3] else "Desconocido"
-        try:
-            dur_sec = int(float(dur_raw))
-            dur_str = f"{dur_sec // 60}:{dur_sec % 60:02d} min"
-        except Exception:
-            dur_str = "Desconocida"
-    except Exception as e:
-        vid_id = f"vid_{int(time.time())}"
-        title = "Clip Enlace Externo"
-        uploader = "Desconocido"
-        dur_str = "Auto"
+    from .downloader import get_url_metadata
+    from .channels import auto_register_source_from_metadata
+    meta = get_url_metadata(url)
+    source_reg = auto_register_source_from_metadata(meta)
+
+    vid_id = meta["id"]
+    title = meta["title"]
+    dur_str = meta["duration_str"]
+    uploader = meta["uploader"]
+    platform = meta["platform"]
+    strategy = meta.get("strategy", {})
+
+    recommended_opt = strategy.get("recommended_opt", "short")
+    archetype = strategy.get("archetype", "Noticias & Novedades")
+    badge = strategy.get("badge", "⚡ Short Vertical")
+    reason = strategy.get("reason", "Transformación optimizada para YouTube Shorts.")
+    suggested_hook = strategy.get("hook_text", "")
 
     token_id = uuid.uuid4().hex[:8]
     CACHED_INGEST_URLS[token_id] = {
         "url": url,
         "vid_id": vid_id,
         "title": title,
-        "uploader": uploader
+        "uploader": uploader,
+        "platform": platform,
+        "hook_override": suggested_hook,
+        "strategy": strategy
     }
 
+    clean_title = str(title).replace("*", "").replace("`", "").replace("_", " ")
+    clean_uploader = str(uploader).replace("*", "").replace("`", "").replace("_", " ")
+    clean_reason = str(reason).replace("*", "").replace("`", "").replace("_", " ")
+
+    source_notice = ""
+    if source_reg.get("success"):
+        if source_reg.get("is_new"):
+            source_notice = f"✨ *¡Nueva fuente auto-registrada para futuros escaneos!*\n👤 Creador: `@{clean_uploader}` (Añadido a canales monitoreados)\n\n"
+        else:
+            occ = source_reg.get("occurrences", 1)
+            source_notice = f"📚 *Fuente en radar:* `@{clean_uploader}` ({occ} clips catalogados)\n\n"
+
     caption = (
-        "📥 *ENLACE DETECTADO PARA INGESTA*\n"
-        + ("═" * 36) + "\n\n"
-        + f"🎬 *Título:* `{title[:65]}`\n"
-        + f"👤 *Canal:* `{uploader}`\n"
-        + f"⏱️ *Duración:* `{dur_str}`\n\n"
-        + "🎯 *Selecciona el formato de procesamiento deseado:*"
+        f"📥 *Vídeo detectado:* `{clean_title[:55]}`\n"
+        f"🌐 *Plataforma:* `{platform}` | 👤 `{clean_uploader[:30]}` | ⏱️ `{dur_str}`\n\n"
+        f"{source_notice}"
+        f"💡 *ESTRATEGIA SUGERIDA POR LA IA:*\n"
+        f"• *Arquetipo:* `{archetype}`\n"
+        f"• *Recomendación:* `{badge}`\n"
+        f"_{clean_reason}_\n\n"
+        "👇 *Elige el formato de transformación (sugerido con ⭐):*"
     )
-    keyboard = get_url_ingest_keyboard(token_id)
+    keyboard = get_url_ingest_keyboard(token_id, recommended_opt=recommended_opt)
     send_telegram_alert(caption, reply_markup=keyboard)
 
 # ═══════════════════════════════════════════════════════════════════
@@ -784,15 +846,22 @@ def handle_callback_query(cq: Dict[str, Any]):
             edit_telegram_message(msg_id, "⚠️ *Esta opción ya fue seleccionada o caducó.*")
             return
 
-        answer_callback_query(cq_id, f"Iniciando formato {opt.upper()}...")
+        labels = {
+            "short": "SHORT 9:16 (SUBS ES)",
+            "dub": "DOBLAJE NEURAL (VOZ ES)",
+            "gameplay": "GAMEPLAY / FÍSICAS",
+            "subs": "SUBTÍTULOS ORIGINALES"
+        }
+        lbl = labels.get(opt, opt.upper())
+        answer_callback_query(cq_id, f"Iniciando {lbl}...")
         edit_telegram_message(
             msg_id,
-            f"⏳ *Procesando `{item['title'][:40]}...` en segundo plano.* Te notificaremos con el resultado."
+            f"⏳ *Procesando `{item['title'][:40]}...` ({lbl})*\nTe notificaremos paso a paso y con la vista previa antes de publicar."
         )
 
         t = threading.Thread(
             target=run_ingest_in_background,
-            args=(item["url"], item["vid_id"], item["title"], item["uploader"], opt),
+            args=(item["url"], item["vid_id"], item["title"], item["uploader"], opt, item.get("hook_override")),
             daemon=True
         )
         t.start()
@@ -1072,7 +1141,7 @@ def start_telegram_bot_daemon():
             except Exception:
                 pass
 
-            # Revisión periódica de ofertas de Amazon (cada ~1h en el loop, ciclo real de 3 días)
+            # Revisión de métricas periódicas (cada ~1h en el loop)
             if not hasattr(start_telegram_bot_daemon, '_last_deals_check'):
                 start_telegram_bot_daemon._last_deals_check = 0
             if not hasattr(start_telegram_bot_daemon, '_last_metrics_check'):
@@ -1081,9 +1150,11 @@ def start_telegram_bot_daemon():
             if _now_ts - start_telegram_bot_daemon._last_deals_check > 3600:
                 start_telegram_bot_daemon._last_deals_check = _now_ts
                 try:
+                    from .affiliates import is_affiliates_enabled
                     from .deal_scanner import should_update_deals, scan_and_update_deals
-                    if should_update_deals():
-                        scan_and_update_deals(notify_telegram=True)
+                    # Solo sincroniza internamente si los afiliados están activos (cero spam a Telegram)
+                    if is_affiliates_enabled() and should_update_deals():
+                        scan_and_update_deals(notify_telegram=False)
                 except Exception as e:
                     print(f"[DealScanner] Error en chequeo automático: {e}")
 
@@ -1097,6 +1168,40 @@ def start_telegram_bot_daemon():
                         print(f"[PerformanceTracker] Métricas actualizadas para {fetched} vídeo(s).")
                 except Exception as e:
                     print(f"[PerformanceTracker] Error obteniendo métricas: {e}")
+
+            # Planificador 100% Autónomo: 4 Horas Punta Algorítmicas (10:45, 14:15, 17:45, 20:45 CET)
+            now_dt = datetime.now()
+            today_str = now_dt.strftime("%Y-%m-%d")
+            sched_file = DATA_DIR / "scheduler_slots_state.json"
+            slots = [(10, 45), (14, 15), (17, 45), (20, 45)]
+            for h, m in slots:
+                if now_dt.hour == h and m <= now_dt.minute <= m + 10:
+                    slot_key = f"{h:02d}:{m:02d}"
+                    slots_done = {}
+                    if sched_file.exists():
+                        try:
+                            with open(sched_file, "r", encoding="utf-8") as f:
+                                slots_done = json.load(f)
+                        except Exception:
+                            slots_done = {}
+                    today_slots = slots_done.get(today_str, [])
+                    if slot_key not in today_slots:
+                        with BACKGROUND_LOCK:
+                            busy = (ACTIVE_TASK is not None)
+                        if not busy:
+                            send_telegram_alert(
+                                f"⏰ *[HORA PUNTA ALGORÍTMICA {slot_key} CET]*\n"
+                                f"🚀 Disparando ciclo de publicación 100% autónoma..."
+                            )
+                            today_slots.append(slot_key)
+                            slots_done[today_str] = today_slots
+                            try:
+                                with open(sched_file, "w", encoding="utf-8") as f:
+                                    json.dump(slots_done, f, indent=2)
+                            except Exception:
+                                pass
+                            t = threading.Thread(target=run_scan_in_background, args=(allowed_chat_id, 1), daemon=True)
+                            t.start()
 
             params = {"offset": last_update_id + 1, "timeout": 10}
             res = requests.get(url_updates, params=params, timeout=15)
@@ -1166,6 +1271,7 @@ def start_telegram_bot_daemon():
                         + "• `/radar` o `/viral` — Ejecuta el Radar Viral de engagement.\n"
                         + "• `/copilot` — Configura la aprobación táctil de publicaciones.\n"
                         + "• `/audit` — Auditoría de directrices anti-strike y Fair Use.\n"
+                        + "• `/fuentes` o `/sources` — Radar de canales y creadores aprendidos automáticamente.\n"
                         + "• `/clean` — Limpieza inmediata de disco en el host.\n"
                         + "• `/guia` — Vuelve a mostrar este manual completo."
                     )
@@ -1178,8 +1284,8 @@ def start_telegram_bot_daemon():
                         t = threading.Thread(target=run_scan_in_background, args=(allowed_chat_id,), daemon=True)
                         t.start()
 
-                elif cmd in ["/status", "📊"] or text == "📊 Dashboard":
-                    send_telegram_alert(get_dashboard_text(), reply_markup=get_system_actions_inline_keyboard())
+                elif cmd in ["/status", "📊"] or text in ["📊 Dashboard", "📊 Estado"]:
+                    send_telegram_alert(get_dashboard_text(), reply_markup=get_persistent_menu_keyboard())
 
                 elif cmd in ["/host", "/telemetry", "🖥️"] or text == "🖥️ Estado Host / GaTDSEQ":
                     send_telegram_alert(get_host_telemetry_report(), reply_markup=get_system_actions_inline_keyboard())
@@ -1224,6 +1330,10 @@ def start_telegram_bot_daemon():
                         "⚙️ *GESTIÓN DE CANALES MONITOREADOS*\n_Pulsa sobre cualquier canal para activarlo/desactivarlo:_",
                         reply_markup=get_channels_inline_keyboard()
                     )
+
+                elif cmd in ["/fuentes", "/sources", "/learning", "/aprendizaje", "🧠"]:
+                    from .channels import get_discovered_sources_report
+                    send_telegram_alert(get_discovered_sources_report(), reply_markup=get_persistent_menu_keyboard())
 
                 elif cmd in ["/mychannels", "/miscanales", "/redes", "/perfiles", "/profiles", "🌐"] or text in ["🌐 Mis Canales", "🌐 Perfiles Oficiales"]:
                     send_telegram_alert(

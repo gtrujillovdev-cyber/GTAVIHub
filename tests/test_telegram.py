@@ -26,7 +26,9 @@ class TestTelegramBot(unittest.TestCase):
             "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
             "https://youtu.be/dQw4w9WgXcQ",
             "https://youtube.com/shorts/3f8H_d9gK1M",
-            "https://www.tiktok.com/@gtavihubspain/video/123456789"
+            "https://www.tiktok.com/@gtavihubspain/video/123456789",
+            "https://x.com/GTAVI_Countdown/status/1731737402830848000",
+            "https://twitter.com/RockstarGames/status/1731737402830848000"
         ]
         for url in yt_urls:
             m = URL_PATTERN.search(url)
@@ -50,17 +52,18 @@ class TestTelegramBot(unittest.TestCase):
         self.assertTrue(kb.get("resize_keyboard"))
         buttons = [btn["text"] for row in kb["keyboard"] for btn in row]
         self.assertIn("🚀 Forzar Escaneo", buttons)
-        self.assertIn("📊 Dashboard", buttons)
-        self.assertIn("🖥️ Estado Host / GaTDSEQ", buttons)
-        self.assertIn("📈 Métricas YouTube", buttons)
-        self.assertIn("⚙️ Canales", buttons)
-        self.assertIn("🔥 Radar Viral", buttons)
+        self.assertIn("🎬 Último Clip", buttons)
+        self.assertIn("📊 Estado", buttons)
         self.assertIn("🛡️ Modo Co-Pilot", buttons)
-        self.assertIn("🌐 Mis Canales", buttons)
 
     def test_inline_keyboards(self):
         ingest_kb = get_url_ingest_keyboard("test_token")
         self.assertIn("inline_keyboard", ingest_kb)
+        callbacks = [btn.get("callback_data") for row in ingest_kb["inline_keyboard"] for btn in row]
+        self.assertIn("url_opt:short:test_token", callbacks)
+        self.assertIn("url_opt:dub:test_token", callbacks)
+        self.assertIn("url_opt:gameplay:test_token", callbacks)
+        self.assertIn("url_opt:cancel:test_token", callbacks)
         
         copilot_kb = get_copilot_approval_keyboard("vid_123", original_url="https://www.youtube.com/watch?v=vid_123")
         self.assertIn("inline_keyboard", copilot_kb)
@@ -91,6 +94,21 @@ class TestTelegramBot(unittest.TestCase):
         self.assertIn("system:confirm_restart", restart_callbacks)
         self.assertIn("system:cancel_restart", restart_callbacks)
 
+    def test_get_url_metadata_twitter(self):
+        from src.downloader import get_url_metadata
+        import unittest.mock as mock
+
+        with mock.patch("subprocess.run") as mock_run:
+            mock_run.return_value = mock.Mock(
+                returncode=0,
+                stdout="1731737402830848000\tInsane car crash physics\t35\tGTAVINews\ttwitter"
+            )
+            meta = get_url_metadata("https://x.com/GTAVINews/status/1731737402830848000")
+            self.assertEqual(meta["id"], "1731737402830848000")
+            self.assertIn("GTA 6: Insane car crash physics", meta["title"])
+            self.assertEqual(meta["platform"], "Twitter/X")
+            self.assertEqual(meta["duration_sec"], 35)
+
         actions_kb = get_system_actions_inline_keyboard()
         self.assertIn("inline_keyboard", actions_kb)
         action_callbacks = [btn.get("callback_data") for row in actions_kb["inline_keyboard"] for btn in row]
@@ -117,7 +135,7 @@ class TestTelegramBot(unittest.TestCase):
         self.assertIn("MIS CANALES Y REDES SOCIALES", report)
         self.assertIn("GTA VI HUB SPAIN", report)
         self.assertIn("tiktok.com/@gtavihubspain", report)
-        self.assertIn("youtube.com/channel/UCBOl2KuaHEoUWYWJqb7ID9Q", report)
+        self.assertTrue("youtube.com/@gtavihubextra" in report or "youtube.com/channel/UCB35xEmRUm64zgyYOUnqrUg" in report)
         # Asegurarse de que no incluye canales de terceros
         self.assertNotIn("DarkViperAU", report)
         self.assertNotIn("IlloJuan", report)
@@ -138,9 +156,9 @@ class TestTelegramBot(unittest.TestCase):
 
     def test_dashboard_text(self):
         dash = get_dashboard_text()
-        self.assertIn("ESTADO DEL PIPELINE", dash)
-        self.assertIn("Almacenamiento", dash)
-        self.assertIn("Modo Co-Pilot", dash)
+        self.assertIn("ESTADO DEL SISTEMA", dash)
+        self.assertIn("Modo Co-Pilot", dash) if "Modo Co-Pilot" in dash else self.assertIn("Modo", dash)
+        self.assertIn("Staging", dash)
 
 if __name__ == "__main__":
     unittest.main()

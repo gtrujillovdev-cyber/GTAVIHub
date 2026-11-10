@@ -2,17 +2,19 @@ import re
 import json
 import shutil
 from pathlib import Path
-from typing import Optional, Dict
+from typing import Optional, Dict, Tuple
 from google import genai
 from .config import GEMINI_API_KEY, GEMINI_MODEL, BUSINESS_EMAIL, MONETIZATION_AFFILIATE_URL
 
 _client = None
 
-FALLBACK_GEMINI_MODELS = [
+FALLBACK_GEMINI_MODELS = list(dict.fromkeys([
     GEMINI_MODEL,
     "gemini-2.5-flash-lite",
-    "gemini-flash-lite-latest",
-]
+    "gemini-3.1-flash-lite",
+    "gemini-3.5-flash-lite",
+    "gemini-2.5-flash",
+]))
 
 def generate_content_with_retry(client, contents, models=None):
     """Ejecuta generate_content con rotación automática a modelos Flash-Lite si hay límite 429 de cuota."""
@@ -180,12 +182,94 @@ def translate_srt(
         # Si el idioma de origen no es español, no podemos pretender que los subtítulos en inglés son españoles
         return False
 
+def transcribe_and_translate_audio_gemini(
+    audio_path: Path,
+    output_srt_path: Path,
+    target_lang: str = "es"
+) -> Tuple[bool, bool]:
+    """
+    Transcribe un archivo de audio en cualquier idioma (especialmente inglés)
+    y lo traduce directamente al español generando un archivo SRT sincronizado
+    y desduplicado apto para subtítulos dinámicos y doblaje neural con Gemini Flash.
+
+    Retorna: (éxito: bool, tiene_voz_humana: bool)
+    - Si detecta solo sonido de juego/físicas/música sin narrador: (True, False).
+    - Si detecta y traduce locución humana con cues válidos: (True, True).
+    - Si ocurre un error irrecuperable: (False, False).
+    """
+    if not audio_path or not audio_path.exists():
+        print(f"[!] Archivo de audio para transcribir no existe: {audio_path}")
+        return False, False
+
+    try:
+        from google.genai import types
+        client = get_gemini_client()
+
+        with open(audio_path, "rb") as f:
+            audio_bytes = f.read()
+
+        if len(audio_bytes) < 1000:
+            print("[*] Archivo de audio casi vacío (<1KB). Sin voz perceptible.")
+            return True, False
+
+        audio_part = types.Part.from_bytes(
+            data=audio_bytes,
+            mime_type="audio/mp3"
+        )
+
+        prompt = (
+            "Eres un transcriptor y subtitulador profesional especializado en contenido viral de videojuegos y GTA 6 para YouTube Shorts, TikTok y Reels.\n"
+            "Escucha atentamente el audio adjunto:\n\n"
+            "1. Si el audio contiene ÚNICAMENTE efectos de sonido (ruido de coches, disparos, explosiones, música de fondo o silencio) y NO hay ninguna persona hablando, responde EXACTAMENTE y ÚNICAMENTE con la palabra: NO_SPEECH.\n\n"
+            "2. Si el audio contiene voz humana, diálogo, comentarios o narración (incluso en inglés o cualquier otro idioma):\n"
+            "   - Transcribe cada frase y TRADÚCELA directamente al español (España / neutro) de forma natural, dinámica y con gancho.\n"
+            "   - Genera un archivo con formato estándar SubRip (.srt) con numeración secuencial (1, 2, 3...) y marcas de tiempo exactas (00:00:01,200 --> 00:00:03,800).\n"
+            "   - Mantén cada bloque de subtítulo muy conciso: entre 2 y 5 palabras por bloque para un ritmo dinámico de lectura.\n"
+            "   - Elimina cualquier muletilla, tartamudeo o etiqueta de sonido como [música], [risas], etc.\n"
+            "   - Respeta nombres canónicos de GTA 6 (Lucia, Jason, Vice City, Leonida, Rockstar Games).\n"
+            "   - Devuelve ÚNICAMENTE el texto SRT puro, sin explicaciones ni bloques de código markdown extra (sin ```srt)."
+        )
+
+        print("[*] Enviando audio a Gemini Flash para transcripción y traducción al español...")
+        response = generate_content_with_retry(
+            client=client,
+            contents=[audio_part, prompt]
+        )
+
+        resp_text = (response.text or "").strip()
+        if "NO_SPEECH" in resp_text.upper():
+            print("[*] Gemini Flash determinó que el clip no contiene narración o voz humana (solo sonido de juego/ambiente).")
+            return True, False
+
+        cleaned_srt = clean_srt_response(resp_text)
+        cleaned_srt = sanitize_srt_content(cleaned_srt)
+        try:
+            from .downloader import deroll_and_clean_srt_content
+            cleaned_srt = deroll_and_clean_srt_content(cleaned_srt)
+        except Exception:
+            pass
+
+        # Verificar que el SRT tiene al menos un cue válido
+        if "-->" not in cleaned_srt:
+            print("[*] La respuesta de Gemini no contiene marcas de tiempo SRT válidas.")
+            return True, False
+
+        with open(output_srt_path, "w", encoding="utf-8") as f:
+            f.write(cleaned_srt)
+
+        print(f"[✓] Transcripción y traducción de audio generada con éxito -> {output_srt_path.name}")
+        return True, True
+    except Exception as e:
+        print(f"[!] Error transcribiendo/traduciendo audio con Gemini Flash: {e}")
+        return False, False
+
 def generate_video_metadata(
     original_title: str,
     original_url: str = "",
     is_short: bool = False,
     creator_name: str = "",
-    source_lang: str = "en"
+    source_lang: str = "en",
+    clip_transcript: str = ""
 ) -> Dict[str, str]:
     """
     Genera metadatos profesionales de alto impacto para YouTube siguiendo
@@ -207,12 +291,25 @@ def generate_video_metadata(
     except Exception:
         playbook_rules = ""
 
+    clean_excerpt = ""
+    if clip_transcript:
+        excerpt_lines = [
+            ln.strip() for ln in clip_transcript.splitlines()
+            if ln.strip() and not ln.strip().isdigit() and "-->" not in ln
+        ]
+        clean_excerpt = " ".join(excerpt_lines)[:550].strip()
+
+    clip_context_block = (
+        f'\nCONTENIDO REAL HABLADO EN ESTE FRAGMENTO RECORTADO:\n"{clean_excerpt}"\n'
+        f'(MUY IMPORTANTE: El "viral_title", "hook" y "debate_question" DEBEN reflejar específicamente lo que se dice/muestra en este fragmento concreto, no generalidades vagas del vídeo completo).\n'
+        if clean_excerpt else ""
+    )
+
     context_phase = (
         "FASE: LANZAMIENTO OFICIAL & GAMEPLAY REAL (GTA 6 ya está disponible). "
-        "Enfócate en jugabilidad real, misiones, mundo abierto de Vice City, persecuciones policiales, físicas extremas, "
-        "reacciones en directo de streamers y momentos graciosos o impactantes."
+        "Enfócate estrictamente en el tema REAL descrito en el Título Original y en el fragmento recortado."
         if is_launched else
-        "FASE: PRE-LANZAMIENTO. Enfócate en novedades, comparativas, filtraciones reales y anticipación de GTA 6."
+        "FASE: PRE-LANZAMIENTO. Enfócate estrictamente en el tema REAL descrito en el Título Original."
     )
 
     prompt = f"""Actúa como el mejor estratega de YouTube Gaming y viralidad en español.
@@ -221,27 +318,26 @@ Estamos analizando contenido sobre Grand Theft Auto VI (GTA 6).
 Tipo de formato: {tipo}.
 Título original: "{original_title}"
 Creador/Fuente original: "{creator_name or 'Rockstar Games'}"
-
+{clip_context_block}
 {playbook_rules}
 
-Usa terminología del GLOSARIO OFICIAL Y VIRAL DE GTA 6 cuando sea pertinente:
-- Protagonistas: Lucía (primera protagonista femenina), Jason (pareja criminal), Stefanie (consejera), Mud Girl, Florida Joker.
-- Ubicaciones de Leonida: Vice City, Port Gellhorn, Ocean Drive, Grassrivers (Everglades), Los Cayos (Keys), Vice Beach.
-- Físicas & Jugabilidad: Físicas de agua realistas, IA de peatones/multitudes, motor RAGE 9, sistema de saqueo, animaciones al agacharse, interiores explorables, atracos a restaurantes, caimanes.
-- Gameplay & Reacciones: Misiones, tiroteos, conducción, persecuciones 5 estrellas, easter eggs, streamers jugando en directo.
+REGLA ESTRICTA ANTI-ALUCINACIÓN Y GRAMÁTICA PERFECTA:
+- Basa el título, resumen, hook y pregunta de debate EXCLUSIVAMENTE en el tema real del Título Original ("{original_title}") y su fragmento hablado.
+- PROHIBIDO inventar elementos que NO aparecen (no inventes streamers, persecuciones policiales, atracos ni caimanes si el clip trata sobre FPS, tanques de agua, radios o comparativas).
+- Cuida la ortografía y concordancia gramatical en español (género y número). Jamás uses 'CONCEPTO', 'CGI', 'FAN-MADE' o 'UNREAL ENGINE'.
 
 Tu tarea es ADAPTAR EL TONO Y FORMATO AL CONTENIDO REAL:
 1. "archetype": Clasifica el contenido exactamente en uno de estos 6 arquetipos:
-   - "humor_parodia" (parodias como South Park, sketches, memes, risas, situaciones absurdas)
-   - "analisis_tecnico" (físicas de agua/vehículos, motor RAGE 9, gráficos, comparativas de frames/resolución)
-   - "filtracion_misterio" (secretos del mapa, easter eggs, patentes, archivos ocultos)
-   - "noticia_oficial" (comunicados de Rockstar, trailers, fechas oficiales, novedades de Take-Two)
-   - "reaccion_streamer" (momentos de streamers, hype, sorpresa o incredulidad en directo)
-   - "gameplay_puro" (misiones, persecuciones policiales, tiroteos, mundo abierto)
-2. "viral_title": Un título ULTRA LLAMATIVO completamente en MAYÚSCULAS con emojis acordes al arquetipo y etiqueta #GTA6 (máx 80 caracteres). El tono debe adaptarse: cómico para parodias, riguroso/asombro para técnica, misterio para filtraciones, épico para noticias. REGLA DE ORO: Jamás uses palabras como 'CONCEPTO', 'CGI', 'FAN-MADE' o 'UNREAL ENGINE'.
-3. "summary": Un resumen apasionante de 2 párrafos en español explicando qué ocurre en el clip y por qué la comunidad de GTA 6 está reaccionando.
-4. "hook": Una frase o titular rotundo y afirmativo de MÁXIMO IMPACTO para los primeros 2 segundos (máx 3-4 palabras en MAYÚSCULAS, máx 22 caracteres, ej: '¡FÍSICAS AL LÍMITE!', '¡SECRETO REVELADO!', '¡NUEVA MECÁNICA!'). IMPORTANTE: NUNCA utilices signos de interrogación ('¿' o '?') en el hook; las preguntas se reservan exclusivamente para el debate de comentarios.
-5. "debate_question": Una pregunta directa, polarizante y picante para la comunidad adaptada al arquetipo que genere aluvión de comentarios en los primeros minutos.
+   - "humor_parodia" (parodias, sketches, humor)
+   - "analisis_tecnico" (físicas RAGE 9, gráficos, comparativas técnicas, iluminación, FPS)
+   - "filtracion_misterio" (secretos del mapa, easter eggs, detalles ocultos)
+   - "noticia_oficial" (comunicados de Rockstar, capturas oficiales, portadas, fechas)
+   - "reaccion_streamer" (momentos de streamers)
+   - "gameplay_puro" (misiones, jugabilidad real, capturas in-game, mundo abierto)
+2. "viral_title": Un título ULTRA LLAMATIVO en ESPAÑOL completamente en MAYÚSCULAS acorde al clip real, con emojis y #GTA6 (máx 78 caracteres).
+3. "summary": Un resumen apasionante de 2 párrafos en español fiel al contenido real del vídeo.
+4. "hook": Una frase afirmativa en ESPAÑOL para los primeros 2 segundos (máx 3-4 palabras en MAYÚSCULAS, máx 20 caracteres, sin '¿' ni '?').
+5. "debate_question": Una pregunta directa para comentarios sobre este tema específico.
 
 Devuelve tu respuesta EXACTAMENTE en este formato JSON (sin texto extra):
 {{
@@ -340,24 +436,21 @@ Devuelve tu respuesta EXACTAMENTE en este formato JSON (sin texto extra):
         )
 
     try:
-        from .affiliates import format_description_affiliate_block, format_pinned_comment_affiliates
-        affiliate_block = format_description_affiliate_block()
-        pinned_comment = format_pinned_comment_affiliates(debate_question)
+        from .affiliates import (
+            format_description_affiliate_block,
+            format_pinned_comment_affiliates,
+            format_pinned_comment_clean,
+            is_affiliates_enabled
+        )
+        if is_affiliates_enabled():
+            affiliate_block = format_description_affiliate_block()
+            pinned_comment = format_pinned_comment_affiliates(debate_question)
+        else:
+            affiliate_block = ""
+            pinned_comment = format_pinned_comment_clean(debate_question)
     except Exception as e:
-        affiliate_block = (
-            f"🎮 {to_unicode_bold('RESERVA OFICIAL GTA VI & ACCESORIOS:')}\n"
-            f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-            f"👉 Reserva oficial garantizada y mejores ofertas de consolas PS5 / Xbox:\n"
-            f"{MONETIZATION_AFFILIATE_URL}"
-        )
-        pinned_comment = (
-            f"🌴 💬 {to_unicode_bold('DEBATE GTA 6:')}\n"
-            f"{debate_question}\n"
-            f"👇 ¡Déjanos tu teoría en los comentarios!\n\n"
-            f"🌐 𝗧𝗢𝗗𝗔𝗦 𝗡𝗨𝗘𝗦𝗧𝗥𝗔𝗦 𝗥𝗘𝗗𝗘𝗦 👉 https://linktr.ee/gtavihubextra\n"
-            f"🎮 𝗥𝗘𝗦𝗘𝗥𝗩𝗔 𝗢𝗙𝗜𝗖𝗜𝗔𝗟 𝗚𝗧𝗔 𝟲 👉 {MONETIZATION_AFFILIATE_URL}\n"
-            f"📩 Contacto Business: {BUSINESS_EMAIL}"
-        )
+        affiliate_block = ""
+        pinned_comment = f"🌴 💬 DEBATE GTA 6:\n{debate_question}\n👇 ¡Déjanos tu teoría en los comentarios!"
 
     if is_short:
         # Formato optimizado para YouTube Shorts: limpio, natural y libre de spam de enlaces
@@ -445,3 +538,77 @@ Grand Theft Auto VI, GTA VI, Vice City y los logotipos asociados son marcas regi
         "archetype": archetype,
         "tags": tags
     }
+
+
+def generate_editorial_commentary_srt(
+    video_path: Path,
+    original_title: str,
+    creator_name: str,
+    output_srt: Path,
+    duration_sec: float = 30.0
+) -> bool:
+    """
+    Para clips visuales puros de gameplay/capturas sin narración hablada (ej. comparativas o galerías 4K),
+    extrae 3 fotogramas clave y usa Gemini Flash multimodal para redactar un comentario analítico original
+    en español sincronizado en bloques SRT cortos (0.4s hasta fin del clip).
+    Aporta valor editorial real bajo Fair Use en lugar de publicar metraje sin voz.
+    """
+    import subprocess
+    if not video_path or not video_path.exists():
+        return False
+
+    extracted_frames = []
+    try:
+        from google.genai import types
+        client = get_gemini_client()
+
+        eff_dur = max(12.0, min(float(duration_sec or 28.0), 45.0))
+        sample_times = [max(0.5, eff_dur * 0.15), eff_dur * 0.50, max(1.0, eff_dur * 0.80)]
+        contents = []
+
+        for idx, t in enumerate(sample_times):
+            tmp_jpg = video_path.parent / f"_editorial_frame_{video_path.stem}_{idx}.jpg"
+            cmd = [
+                "ffmpeg", "-y", "-ss", f"{t:.2f}", "-i", str(video_path),
+                "-vframes", "1", "-q:v", "4", "-vf", "scale=720:-1", str(tmp_jpg)
+            ]
+            res = subprocess.run(cmd, capture_output=True, timeout=10)
+            if res.returncode == 0 and tmp_jpg.exists():
+                extracted_frames.append(tmp_jpg)
+                contents.append(types.Part.from_bytes(data=tmp_jpg.read_bytes(), mime_type="image/jpeg"))
+
+        target_speech_end = round(min(eff_dur - 1.5, 26.0), 1)
+        prompt = (
+            f"Eres el presentador y analista técnico experto en Rockstar Games de 'GTA VI Hub Extra'.\n"
+            f"Estás viendo fotogramas reales de un clip de gameplay/imágenes de '{original_title}' (créditos a {creator_name}).\n"
+            f"Duración del clip: {eff_dur:.1f} segundos.\n\n"
+            f"TAREA:\n"
+            f"Redacta un comentario editorial original, informativo y con alto gancho de retención en ESPAÑOL para locutarlo sobre estas imágenes.\n"
+            f"- Describe lo que realmente se ve en las escenas y analiza su iluminación, detalles gráficos o ambientación en Vice City / Leonida (SIN inventar historias falsas de streamers ni mentir sobre lo que aparece en pantalla).\n"
+            f"- Empieza en 00:00:00,400 con un gancho potente en la primera frase.\n"
+            f"- Distribuye entre 6 y 9 bloques SRT desde 00:00:00,400 hasta 00:00:{int(target_speech_end):02d},000 (aprox 3-5 palabras por bloque, lectura natural y ágil ~2.5 palabras/segundo).\n"
+            f"- Formato ESTRICTO SubRip (.srt) puro (1, 2, 3... con 'HH:MM:SS,mmm --> HH:MM:SS,mmm').\n"
+            f"- Devuelve ÚNICAMENTE el texto SRT puro, sin markdown (```) ni comentarios."
+        )
+        contents.append(prompt)
+
+        print(f"[*] Generando guion de análisis original en español para metraje visual ({len(extracted_frames)} frames)...")
+        response = generate_content_with_retry(client=client, contents=contents)
+        cleaned = clean_srt_response(response.text or "")
+        cleaned = sanitize_srt_content(cleaned)
+
+        if not cleaned or "-->" not in cleaned:
+            return False
+
+        output_srt.write_text(cleaned.strip() + "\n", encoding="utf-8")
+        print(f"[✓] Guion editorial SRT generado con éxito -> {output_srt.name}")
+        return True
+    except Exception as e:
+        print(f"[Warning] No se pudo generar comentario editorial visual: {e}")
+        return False
+    finally:
+        for f in extracted_frames:
+            try:
+                f.unlink(missing_ok=True)
+            except Exception:
+                pass

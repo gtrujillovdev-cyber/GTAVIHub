@@ -30,9 +30,27 @@ def get_amazon_tag() -> str:
     data = _load_affiliates_data()
     return data.get("amazon_associate_tag", "gtavihub-21")
 
+def is_affiliates_enabled() -> bool:
+    """
+    Indica si la inyección de enlaces comerciales y avisos de Amazon está habilitada.
+    Por defecto está DESACTIVADA (False) para proteger las cuentas nuevas contra penalizaciones
+    de spam algorítmico en YouTube, TikTok e Instagram (Modo Orgánico Anti-Ban).
+    """
+    val = os.getenv("ENABLE_AFFILIATE_LINKS", "false").strip().lower()
+    return val in ("true", "1", "yes")
+
+def format_pinned_comment_clean(debate_question: str) -> str:
+    """
+    Genera un comentario anclado 100% orgánico enfocado solo en debate comunitario,
+    libre de enlaces externos salientes (protección anti-spam en canales nuevos de Shorts).
+    """
+    return f"""🌴 💬 𝗗𝗘𝗕𝗔𝗧𝗘 𝗚𝗧𝗔 𝟲:
+{debate_question}
+👇 ¡Déjanos tu opinión en los comentarios!"""
+
 def get_hub_linktree() -> str:
     """Obtiene la URL central de Linktree / Hub de enlaces."""
-    return os.getenv("MONETIZATION_AFFILIATE_URL", os.getenv("LINKTREE_URL", "https://linktr.ee/gtavihubspain"))
+    return os.getenv("MONETIZATION_AFFILIATE_URL", os.getenv("LINKTREE_URL", "https://linktr.ee/gtavihubextra"))
 
 def build_amazon_url(base_or_search: str, tag: Optional[str] = None) -> str:
     """
@@ -210,9 +228,9 @@ def get_channel_branding_kit() -> Dict[str, Any]:
             },
             {
                 "order": 6,
-                "title": "🔴 Canal Oficial de YouTube Shorts",
-                "subtitle": "Suscríbete y activa la campana",
-                "url": "https://youtube.com/@GTAVIHubSpain?sub_confirmation=1",
+                "title": "🔴 Canal Oficial de YouTube Shorts (@gtavihubextra)",
+                "subtitle": "Suscríbete y activa la campana para nuevos clips",
+                "url": "https://youtube.com/@gtavihubextra?sub_confirmation=1",
                 "badge": "Comunidad"
             },
             {
@@ -221,6 +239,13 @@ def get_channel_branding_kit() -> Dict[str, Any]:
                 "subtitle": "Clips diarios y directos",
                 "url": "https://tiktok.com/@gtavihubspain",
                 "badge": "Viral"
+            },
+            {
+                "order": 8,
+                "title": "📸 Instagram Oficial (@gtavihubspain)",
+                "subtitle": "Reels y noticias de última hora",
+                "url": "https://instagram.com/gtavihubspain",
+                "badge": "Reels"
             }
         ]
     }

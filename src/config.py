@@ -33,17 +33,17 @@ PROCESSED_FILE = DATA_DIR / "processed.json" if (DATA_DIR / "processed.json").ex
 
 # Gemini API Configuration
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
-GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
+GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash-lite")
 
-# Defaults & Duración Dinámica Orgánica (Anti-Fingerprinting y Anti-Spam: 1 clip por tanda)
+# Defaults & Duración Orgánica Nativa (Shorts nativos 100% íntegros, sin cortes arbitrarios)
 MAX_VIDEOS_PER_RUN = int(os.getenv("MAX_VIDEOS_PER_RUN", "1"))
-MAX_DAILY_UPLOADS = int(os.getenv("MAX_DAILY_UPLOADS", "3"))
+MAX_DAILY_UPLOADS = int(os.getenv("MAX_DAILY_UPLOADS", "2"))
 DEFAULT_TTS_VOICE = os.getenv("DEFAULT_TTS_VOICE", "es-ES-AlvaroNeural")
-AUTO_DUB_ENGLISH = os.getenv("AUTO_DUB_ENGLISH", "true").lower() in ("1", "true", "yes")
-SHORT_MIN_DURATION = int(os.getenv("SHORT_MIN_DURATION", "12"))
-GAMEPLAY_MIN_DURATION = int(os.getenv("GAMEPLAY_MIN_DURATION", "19"))
+AUTO_DUB_ENGLISH = os.getenv("AUTO_DUB_ENGLISH", "false").lower() in ("1", "true", "yes")
+SHORT_MIN_DURATION = int(os.getenv("SHORT_MIN_DURATION", "10"))
+GAMEPLAY_MIN_DURATION = int(os.getenv("GAMEPLAY_MIN_DURATION", "12"))
 SHORT_MAX_DURATION = int(os.getenv("SHORT_MAX_DURATION", "58"))
-SHORT_TARGET_DURATION = int(os.getenv("SHORT_TARGET_DURATION", "24"))
+SHORT_TARGET_DURATION = int(os.getenv("SHORT_TARGET_DURATION", "30"))
 
 # FFmpeg Hardware Acceleration (VideoToolbox para Apple Silicon e Intel)
 FFMPEG_VIDEO_CODEC = "h264_videotoolbox"
