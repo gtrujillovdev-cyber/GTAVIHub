@@ -750,23 +750,20 @@ def download_video_and_subtitles(
     is_twitter_or_x = any(d in url.lower() for d in ["twitter.com", "x.com"])
     is_tiktok = "tiktok.com" in url.lower()
 
-    # Formato resiliente: priorizar pista de audio original para evitar pistas auto-dobladas por YouTube
+    # Formato resiliente: limitar a 1080p evitando AV1/1440p pesados en CPU Haswell y priorizando pista de audio original
     src_l = (source_lang or "es").strip().lower()
+    audio_lang = "es" if src_l.startswith("es") else "en"
     if is_twitter_or_x or is_tiktok:
         format_selector = "best[ext=mp4]/bestvideo[height<=1080]+bestaudio/best"
-    elif src_l.startswith("es"):
-        format_selector = (
-            "bestvideo[height<=1440]+bestaudio[language^=es]/"
-            "bestvideo[height<=1440]+bestaudio/"
-            "bestvideo[height<=1080]+bestaudio[language^=es]/"
-            "bestvideo[height<=1080]+bestaudio/best[height<=1080]/best"
-        )
     else:
         format_selector = (
-            "bestvideo[height<=1440]+bestaudio[language^=en]/"
-            "bestvideo[height<=1440]+bestaudio/"
-            "bestvideo[height<=1080]+bestaudio[language^=en]/"
-            "bestvideo[height<=1080]+bestaudio/best[height<=1080]/best"
+            f"bestvideo[height<=1080][vcodec^=avc1]+bestaudio[language^={audio_lang}]/"
+            f"bestvideo[height<=1080][vcodec!=av01]+bestaudio[language^={audio_lang}]/"
+            f"bestvideo[height<=1080]+bestaudio[language^={audio_lang}]/"
+            "bestvideo[height<=1080][vcodec^=avc1]+bestaudio/"
+            "bestvideo[height<=1080][vcodec!=av01]+bestaudio/"
+            "bestvideo[height<=1080]+bestaudio/"
+            "best[height<=1080]/best"
         )
 
     base_cmd = [
@@ -933,13 +930,20 @@ def download_video_and_subtitles(
             trimmed_video = TEMP_DIR / f"{video_id}_viral.mp4"
             print(f"[*] Recortando clip dinámico ({v_start:.1f}s a {v_end:.1f}s, duración: {v_end - v_start:.1f}s)...")
             
-            # Recorte preciso frame-accurate con aceleración VideoToolbox (input antes de seek para evitar desync de keyframe con SRT)
+            # Seek híbrido en dos pasos: salto rápido por keyframes hasta 10s antes + ajuste frame-accurate
+            # Evita decodificar 10+ minutos de vídeo por CPU desde 0.0s (coexistencia GaTDSEQ)
+            fast_seek = max(0.0, round(v_start - 10.0, 3))
+            inner_ss = max(0.0, round(v_start - fast_seek, 3))
+            clip_dur = max(1.0, round(v_end - v_start, 3))
+            n_threads = str(get_ffmpeg_threads())
             cmd_trim = [
                 "ffmpeg", "-y",
+                "-threads", n_threads,
+                "-ss", str(fast_seek),
                 "-i", str(video_path),
-                "-ss", str(v_start),
-                "-to", str(v_end),
-                "-threads", str(get_ffmpeg_threads()),
+                "-ss", str(inner_ss),
+                "-t", str(clip_dur),
+                "-threads", n_threads,
                 "-c:v", "h264_videotoolbox",
                 "-b:v", "8M",
                 "-c:a", "aac",
@@ -947,7 +951,7 @@ def download_video_and_subtitles(
                 str(trimmed_video)
             ]
             try:
-                subprocess.run(cmd_trim, check=True, capture_output=True)
+                subprocess.run(cmd_trim, check=True, capture_output=True, timeout=120)
                 if trimmed_video.exists():
                     video_path.unlink()  # Eliminar archivo largo pesado
                     video_path = trimmed_video
