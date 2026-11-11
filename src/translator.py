@@ -324,7 +324,7 @@ Creador/Fuente original: "{creator_name or 'Rockstar Games'}"
 REGLA ESTRICTA ANTI-ALUCINACIÓN Y GRAMÁTICA PERFECTA:
 - Basa el título, resumen, hook y pregunta de debate EXCLUSIVAMENTE en el tema real del Título Original ("{original_title}") y su fragmento hablado.
 - PROHIBIDO inventar elementos que NO aparecen (no inventes streamers, persecuciones policiales, atracos ni caimanes si el clip trata sobre FPS, tanques de agua, radios o comparativas).
-- Cuida la ortografía y concordancia gramatical en español (género y número). Jamás uses 'CONCEPTO', 'CGI', 'FAN-MADE' o 'UNREAL ENGINE'.
+- Cuida la ortografía, los géneros ("la pre-descarga", nunca "el pre-descarga") y la concordancia gramatical en español. Jamás uses 'CONCEPTO', 'CGI', 'FAN-MADE' o 'UNREAL ENGINE'.
 
 Tu tarea es ADAPTAR EL TONO Y FORMATO AL CONTENIDO REAL:
 1. "archetype": Clasifica el contenido exactamente en uno de estos 6 arquetipos:
@@ -336,7 +336,7 @@ Tu tarea es ADAPTAR EL TONO Y FORMATO AL CONTENIDO REAL:
    - "gameplay_puro" (misiones, jugabilidad real, capturas in-game, mundo abierto)
 2. "viral_title": Un título ULTRA LLAMATIVO en ESPAÑOL completamente en MAYÚSCULAS acorde al clip real, con emojis y #GTA6 (máx 78 caracteres).
 3. "summary": Un resumen apasionante de 2 párrafos en español fiel al contenido real del vídeo.
-4. "hook": Una frase afirmativa en ESPAÑOL para los primeros 2 segundos (máx 3-4 palabras en MAYÚSCULAS, máx 20 caracteres, sin '¿' ni '?').
+4. "hook": Titular visual en ESPAÑOL de 2 líneas cortas separado por '\\n' (máx 18 chars por línea, en MAYÚSCULAS, SIN '¿' ni '?') que revele EL DATO CONCRETO del clip en los primeros segundos (ej. "GTA 6 A 30 FPS\\nINCLUSO EN PS5 PRO" o "PRE-CARGA ACTIVA\\nYA SE DESCARGA"). PROHIBIDO hooks genéricos vacíos como "IMPRESIONANTE" o "GRÁFICOS TOP".
 5. "debate_question": Una pregunta directa para comentarios sobre este tema específico.
 
 Devuelve tu respuesta EXACTAMENTE en este formato JSON (sin texto extra):

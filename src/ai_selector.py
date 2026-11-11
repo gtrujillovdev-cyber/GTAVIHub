@@ -141,9 +141,9 @@ VÍDEOS RECIENTES YA PUBLICADOS (EVITA REPETIR ESTAS TEMÁTICAS):
 {json.dumps(recent_titles, indent=2, ensure_ascii=False)}
 
 CRITERIOS EDITORIALES DE VICTORIA (PLAYBOOK VIRAL):
-0. PRIORIDAD ABSOLUTA A EXPLOSIÓN EN ÚLTIMAS 24H (views_per_hour Y hours_old):
-   - Prioriza al máximo vídeos con hours_old <= 24 y miles de views_per_hour: lanzamientos recién publicados por Rockstar Games (ej. 'Pre-Load Now', 'Launch Trailer', 'PS5 Features'), reacciones reales al nuevo tráiler, desgloses frame-a-frame de detalles ocultos y gameplay auténtico.
-   - Elige vídeos con VOZ Y EMOCIÓN REAL de creadores top o tráilers de alto impacto visual frente a vídeos antiguos de baja tracción.
+0. PRIORIDAD ABSOLUTA — EQUILIBRIO ANTI-REUSED CONTENT Y RETENCIÓN (<24H):
+   - PRIORIZA EN PRIMER LUGAR análisis frescos (<24h), desgloses técnicos, gameplay comentado y reacciones con VOZ HUMANA REAL en inglés (ej. '30 FPS', 'Fuel System', 'New Gameplay', 'Breakdown', 'Everything You Missed', TGG, IGN, Digital Car Addict) frente a spots promocionales solo con música de Rockstar: los análisis hablados transformados al español en formato 16:9 FIT aportan dato real desde el segundo 0, retienen el doble y evitan reclamaciones de 'Reused Content'.
+   - Solo elige spots musicales oficiales sin voz ('Pre-Load Now', 'The Festival') si no hay análisis/breakdowns hablados frescos disponibles con alta tracción.
    - DESCARTAR tráileres antiguos de 2023 ('Trailer 1') y charlas lentas de radio/podcast sin ritmo visual.
 1. VELOCIDAD VIRAL REAL (views_per_hour / velocity_vpd): Prioriza vídeos en ascenso vertical ahora mismo. Un vídeo de hace 5 horas con 50,000 views/hora vale 10x más que uno de hace 2 semanas.
 2. MULTI-FUENTE (source_count > 1): Un vídeo detectado por múltiples fuentes/queries simultáneamente es una señal inequívoca de momento viral. Priorizarlo sobre candidatos únicos.

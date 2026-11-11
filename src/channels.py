@@ -802,6 +802,10 @@ def fetch_channel_candidates(max_per_channel: int = 2) -> List[Dict[str, Any]]:
             if hours_old > 720:
                 continue
 
+        # Anti-Plagio: nunca copiar Shorts verticales ya en español de otros creadores (solo traducir inglés o recortar análisis 16:9 largos)
+        if (c.get("lang") or "").lower().startswith("es") and 0 < dur_c <= 65 and not is_rockstar_official:
+            continue
+
         # Si venía de búsqueda strict-short y la API revela duración > 65s (sin clipping permitido), descartar
         if c.get("only_shorts") and not c.get("allow_long_clipping") and dur_c > 65:
             continue

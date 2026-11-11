@@ -893,10 +893,10 @@ def download_video_and_subtitles(
             raw_d = 0.0
 
         if not viral_range and trim_official_bumpers:
-            # Quitar carteles estáticos iniciales (~3.0s) y outro PS5/Sony (~7.5s) de spots promocionales de 25-45s
+            # Quitar solo fade inicial (1.0s) y logo legal final (1.5s) sin mutilar el cartel informativo de salida
             if 24.0 <= raw_d <= 45.0:
-                viral_range = (3.0, max(16.0, raw_d - 7.5))
-                print(f"[*] Spot promocional oficial ({raw_d:.1f}s): limpiando intro/outro corporativo -> {viral_range[0]:.1f}s a {viral_range[1]:.1f}s")
+                viral_range = (1.0, max(16.0, raw_d - 1.5))
+                print(f"[*] Spot promocional oficial ({raw_d:.1f}s): conservando anuncio completo -> {viral_range[0]:.1f}s a {viral_range[1]:.1f}s")
 
         if not viral_range and raw_d > SHORT_MAX_DURATION:
             if srt_path and srt_path.exists() and not trim_official_bumpers:

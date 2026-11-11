@@ -172,10 +172,10 @@ def create_video_thumbnail(
 
     temp_frame = output_thumb_path.with_suffix(".tmp_frame.jpg")
 
-    # Multi-keyframe: extraer varios candidatos y elegir el de mayor energía visual
+    # Multi-keyframe: extraer varios candidatos tras desaparecer el gancho (t>4s) y elegir el de mayor contraste/brillo
     best_frame = None
-    best_energy = -1
-    candidate_timestamps = [3.0, 6.0, 10.0]
+    best_energy = -1.0
+    candidate_timestamps = [4.5, 8.0, 12.0]
 
     # Obtener duración total para añadir un candidato a mitad del vídeo
     try:
@@ -185,20 +185,21 @@ def create_video_thumbnail(
         )
         total_dur = float(dur_probe.stdout.strip()) if dur_probe.stdout.strip() else 0
         if total_dur > 14:
-            candidate_timestamps.append(total_dur / 2)
+            candidate_timestamps.append(round(total_dur / 2, 1))
+        elif total_dur > 4:
+            candidate_timestamps = [round(total_dur * 0.25, 1), round(total_dur * 0.55, 1), round(total_dur * 0.8, 1)]
     except Exception:
         pass
 
+    from PIL import ImageStat
     for ts in candidate_timestamps:
         cand_frame = output_thumb_path.with_suffix(f".cand_{ts:.0f}.jpg")
         if extract_keyframe(video_path, cand_frame, timestamp_sec=ts) and cand_frame.exists():
             try:
                 cand_img = Image.open(cand_frame).convert("RGB").resize((320, 180), Image.Resampling.LANCZOS)
-                import numpy as np
-                arr = np.array(cand_img, dtype=float)
-                # Energía visual = varianza de luminancia + saturación media
-                lum = 0.299 * arr[:,:,0] + 0.587 * arr[:,:,1] + 0.114 * arr[:,:,2]
-                energy = float(lum.var()) + float(arr.std()) * 2
+                stat = ImageStat.Stat(cand_img)
+                # Energía visual nativa con Pillow (cero dependencia numpy): contraste + luminosidad saludable
+                energy = sum(stat.stddev) * 2.0 + sum(stat.mean) * 0.35
                 if energy > best_energy:
                     best_energy = energy
                     if best_frame and best_frame.exists():

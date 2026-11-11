@@ -321,10 +321,10 @@ def process_single_video(
         source_lang=lang_to_use,
         clip_transcript=clip_transcript_text
     )
-    if clip_transcript_text and not is_manual_ingest and metadata.get("hook"):
-        hook_text = metadata.get("hook")
+    if is_manual_ingest and hook_override:
+        hook_text = hook_override
     else:
-        hook_text = hook_override if hook_override else metadata.get("hook", "¡ANÁLISIS AL DETALLE!")
+        hook_text = metadata.get("hook") or hook_override or "¡ANÁLISIS AL DETALLE!"
 
     # 5a. Filtro adaptativo anti-cliché: solo purga clichés genéricos que no encajan con el arquetipo real
     # Si el contenido genuinamente trata sobre algo "brutal" (gameplay_puro, reaccion_streamer), se respeta.

@@ -733,20 +733,8 @@ def render_final_video(
         if not rendered_hook:
             hook_png = None
 
-    # 2b. Segundo gancho de retención (5.0 a 7.0s) — solo en Cinema layout adaptado
+    # 2b. Micro-tarjeta secundaria desactivada para evitar aspecto de plantilla automática ("ATENCION")
     retention_png = None
-    _archetypes_need_retention = {"filtracion_misterio", "analisis_tecnico", "noticia_oficial"}
-    if hook_text and is_vertical and not is_already_vertical and archetype in _archetypes_need_retention:
-        retention_png = temp_dir / f"{base_name}_retention.png"
-        _retention_by_archetype = {
-            "filtracion_misterio": ["OJO CON ESTO", "MIRA BIEN", "EL DETALLE CLAVE"],
-            "analisis_tecnico": ["ATENCION A ESTO", "COMPARA BIEN", "FIJATE AQUI"],
-            "noticia_oficial": ["ESTO ES OFICIAL", "CONFIRMADO", "ATENCION"],
-        }
-        _phrases = _retention_by_archetype.get(archetype, ["MIRA ESTO"])
-        rendered_ret = render_retention_hook(retention_png, text=random.choice(_phrases))
-        if not rendered_ret:
-            retention_png = None
 
     # 3. Generación de estados de Karaoke palabra por palabra
     # En audio doblado neural, la sincronía fonética es directa (offset=0.0s).
@@ -830,10 +818,11 @@ def render_final_video(
         if ambient_idx is not None:
             audio_filter = (
                 f"[{ambient_idx}:a]volume=0.08[amb];"
-                f"[0:a][amb]amix=inputs=2:duration=first,loudnorm=I=-14:LRA=7:TP=-1.5[aout]"
+                f"[0:a]highpass=f=60,lowpass=f=15500[a_eq];"
+                f"[a_eq][amb]amix=inputs=2:duration=first,loudnorm=I=-14:LRA=7:TP=-1.5[aout]"
             )
         else:
-            audio_filter = f"[0:a]loudnorm=I=-14:LRA=7:TP=-1.5[aout]"
+            audio_filter = f"[0:a]highpass=f=60,lowpass=f=15500,loudnorm=I=-14:LRA=7:TP=-1.5[aout]"
 
     # Viñeta discreta
     cmd.extend(["-i", str(vignette_png)])
@@ -893,9 +882,9 @@ def render_final_video(
     filter_chains.append(f"[{current_v}][{vignette_idx}:v]overlay=0:0[v_vignetted]")
     current_v = "v_vignetted"
 
-    # C) Superponer Gancho Superior (0.0 a 2.5s)
+    # C) Superponer Gancho Superior (0.0 a 4.0s para lectura completa sin prisas)
     if hook_idx is not None:
-        filter_chains.append(f"[{current_v}][{hook_idx}:v]overlay=(W-w)/2:{hook_y_expr}:enable='between(t,0,2.5)'[v_hooked]")
+        filter_chains.append(f"[{current_v}][{hook_idx}:v]overlay=(W-w)/2:{hook_y_expr}:enable='between(t,0,4.0)'[v_hooked]")
         current_v = "v_hooked"
 
     # C2) Superponer segundo gancho de retención (5.0 a 7.0s) — frena el swipe mid-scroll
