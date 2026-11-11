@@ -94,19 +94,17 @@ def get_playbook_context_for_prompt() -> str:
     lines = [
         "--- DIRECTRICES APRENDIDAS DEL CANAL (OPTIMIZACIÓN CONTINUA) ---",
         "1. ESTRUCTURAS DE TÍTULO COMPROBADAS CON MAYOR RETENCIÓN Y CTR:",
+        "   • Fiel 100% al dato real del clip (FPS, tamaño, mecánica o declaración concreta del creador).",
+        "   • Prohibido copiar ejemplos o inventar mecánicas ajenas (nada de RDR2, NPCs ni cámaras si no salen en el clip).",
+        "2. GANCHOS SUPERIORES (0-4.0s) DE MÁXIMO IMPACTO VISUAL:",
+        "   • Línea 1 (Blanco): Contexto claro y directo | Línea 2 (Amarillo): El dato o revelación exacta del clip.",
     ]
-    for t in templates[:4]:
-        lines.append(f"   • {t}")
-
-    lines.append("2. GANCHOS SUPERIORES (0-2.5s) DE MÁXIMO IMPACTO VISUAL:")
-    for h in hooks[:3]:
-        lines.append(f"   • {h}")
 
     if forbidden:
         lines.append("3. PALABRAS Y CLICHÉS PROHIBIDOS (HAN FRACASADO EN NUESTRO CANAL):")
         lines.append(f"   ❌ Evita estrictamente: {', '.join(forbidden)}")
 
-    lines.append("4. REGLA EDITORIAL: Enfócate en la curiosidad concreta y la acción inmediata, no en adjetivos vacíos.")
+    lines.append("4. REGLA EDITORIAL: Enfócate en la curiosidad concreta y la fidelidad al fragmento real, sin alucinar ni usar adjetivos vacíos.")
     lines.append("-----------------------------------------------------------------")
     return "\n".join(lines)
 

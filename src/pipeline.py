@@ -143,10 +143,8 @@ def process_single_video(
     generated_editorial_script = False
     es_srt_path = None
     if allow_official_commentary and srt_path and srt_path.exists():
-        # En spots oficiales, evitar subtítulos de letras musicales genéricas
-        print("[*] Spot oficial detectado: limpiando posibles letras musicales para preservar visual y gancho limpio...")
-        srt_path.unlink(missing_ok=True)
-        srt_path = None
+        # Conservar pistas de subtítulos reales para traducir y dar contexto exacto a metadatos (sin alucinar títulos)
+        print("[*] Spot oficial con rótulos/subtítulos detectados: conservando pistas para contexto fiel en español...")
 
     if srt_path and srt_path.exists():
         es_srt_path = TEMP_DIR / f"{video_id}_es.srt"
@@ -395,11 +393,12 @@ def process_single_video(
     thumb_path = OUTPUT_DIR / f"{slug}_{video_id}_thumb.jpg"
     meta_path = OUTPUT_DIR / f"{slug}_{video_id}_info.json"
 
-    # Formato D (83.3%) para gameplay puro/físicas/spots oficiales; Formato FIT (16:9 completo) para breakdowns, comparativas y reacciones
+    # Formato D (83.3%) para gameplay puro/físicas/spots Rockstar sin textos laterales;
+    # Formato FIT (16:9 completo) para breakdowns, comparativas, reacciones y spots PlayStation/Xbox con texto en pantalla
     is_comparison_or_breakdown = any(
         kw in title_lower
-        for kw in (" vs ", "comparison", "comparativa", "breakdown", "missed", "reaction", "reacciona", "reacción", "fps", "analysis", "review")
-    )
+        for kw in (" vs ", "comparison", "comparativa", "breakdown", "missed", "reaction", "reacciona", "reacción", "fps", "analysis", "review", "features")
+    ) or any(ch_k in creator_lower for ch_k in ("playstation", "xbox", "ign", "digital foundry", "elanalistadebits"))
     if is_comparison_or_breakdown or (not allow_official_commentary and archetype in {"analisis_tecnico", "reaccion_streamer", "noticia_oficial", "filtracion_misterio", "humor_parodia"}):
         target_preset = "FIT"
     elif allow_official_commentary or archetype in {"gameplay_puro", "rage9_physics", "weapons_shooting_rdr2", "fisicas"}:
@@ -407,10 +406,12 @@ def process_single_video(
     else:
         target_preset = "FIT"
 
+    render_srt = None if (mode == "gameplay" and allow_official_commentary) else es_srt_path
+
     success_render = render_final_video(
         input_video=video_path,
         output_video=output_path,
-        srt_subtitles=es_srt_path,
+        srt_subtitles=render_srt,
         dub_audio=dub_audio_path,
         force_short_format=is_short,
         hook_text=hook_text,

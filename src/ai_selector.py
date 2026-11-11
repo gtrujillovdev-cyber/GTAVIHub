@@ -56,8 +56,22 @@ def select_best_candidate_ai(
         chosen["hook_line2"] = l2
         return chosen
 
+    # Priorizar análisis/breakdowns/reacciones reales con voz (>=75s) sobre spots promocionales mudos oficiales (<=65s)
+    # para garantizar contenido transformado en español, formato FIT 16:9 y cero riesgo de Reused Content.
+    def _is_short_promo_spot(item: Dict[str, Any]) -> bool:
+        dur = float(item.get("duration") or 0)
+        return bool(item.get("allow_official_commentary")) and (0 < dur <= 65)
+
+    spoken_breakdowns = [
+        c for c in candidates
+        if not _is_short_promo_spot(c)
+        and float(c.get("duration") or 0) >= 75
+        and float(c.get("views_per_hour") or 0) >= 200
+    ]
+    base_pool = spoken_breakdowns if spoken_breakdowns else candidates
+
     # Limitar a los 15 mejores según virality_score para la IA
-    pool = candidates[:15]
+    pool = base_pool[:15]
 
     # Cargar playbook si no se suministró
     if playbook is None:
