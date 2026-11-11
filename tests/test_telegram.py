@@ -133,8 +133,8 @@ class TestTelegramBot(unittest.TestCase):
     def test_my_channels_report(self):
         report = get_my_channels_report()
         self.assertIn("MIS CANALES Y REDES SOCIALES", report)
-        self.assertIn("GTA VI HUB SPAIN", report)
-        self.assertIn("tiktok.com/@gtavihubspain", report)
+        self.assertIn("GTA VI HUB", report)
+        self.assertIn("tiktok.com/@gtavihubextra", report)
         self.assertTrue("youtube.com/@gtavihubextra" in report or "youtube.com/channel/UCB35xEmRUm64zgyYOUnqrUg" in report)
         # Asegurarse de que no incluye canales de terceros
         self.assertNotIn("DarkViperAU", report)

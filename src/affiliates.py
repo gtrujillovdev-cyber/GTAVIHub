@@ -143,52 +143,44 @@ def get_channel_branding_kit() -> Dict[str, Any]:
     
     return {
         "youtube": {
-            "channel_name": "GTA VI Hub Spain",
-            "handle": "@GTAVIHubSpain",
-            "tagline": "Tu canal definitivo de Grand Theft Auto VI en España y en español 🇪🇸",
+            "channel_name": "GTA VI Hub",
+            "handle": "@gtavihubextra",
+            "tagline": "Tu espacio diario en español sobre Grand Theft Auto VI, Vice City y Leonida 🇪🇸",
             "description": (
-                "🌴 Bienvenido a GTA VI Hub Spain, el canal oficial y de referencia sobre Grand Theft Auto VI (GTA 6) "
-                "para la comunidad hispanohablante.\n\n"
-                "🎮 Aquí encontrarás:\n"
-                "• Cobertura diaria de novedades, filtraciones reales y análisis al milímetro del motor RAGE 9.\n"
-                "• Desgloses escena por escena de trailers y comunicados oficiales de Rockstar Games.\n"
-                "• Físicas de Leonida, mapa completo de Vice City, misiones con Lucía y Jason y secretos ocultos.\n"
-                "• Los momentos más virales y reacciones de la comunidad y streamers.\n"
-                "• Comparativas técnicas de rendimiento en PS5, PS5 Pro y Xbox Series X.\n\n"
-                "🔔 ¡Suscríbete y activa la campana para no perderte ni un solo segundo del camino hacia el estreno más esperado de la historia!\n\n"
-                f"🌐 Enlaces oficiales, reserva de GTA 6 y ofertas de hardware: {hub}\n\n"
-                "📩 Contacto comercial / Business: gabtru@hotmail.com\n\n"
-                "#GTA6 #GrandTheftAutoVI #RockstarGames #ViceCity #GamingEspaña"
+                "🌴 Bienvenido a GTA VI Hub, tu espacio diario en español sobre Grand Theft Auto VI.\n\n"
+                "🎮 Cobertura rápida, directa y contrastada sobre Vice City y Leonida:\n"
+                "• Análisis técnicos del motor RAGE 9, comparativas gráficas y rendimiento en consolas.\n"
+                "• Desgloses detalle a detalle de cada tráiler, mecánica confirmada y novedad oficial de Rockstar Games.\n"
+                "• Curiosidades del mapa, secretos ocultos y los descubrimientos más relevantes de la comunidad.\n\n"
+                "📌 Todos los vídeos se publican con fines informativos, de análisis y traducción comentada bajo Fair Use (Art. 107 Copyright Act), acreditando siempre a cada fuente original.\n\n"
+                "🔔 Suscríbete y activa la campanita para no perderte ninguna novedad rumbo al estreno.\n\n"
+                "📩 Contacto / Business / Copyright: gabtru@hotmail.com\n\n"
+                "#GTA6 #GrandTheftAutoVI #RockstarGames #ViceCity #Leonida #Gaming"
             ),
             "links": [
-                {"title": "🔥 Reserva GTA 6 (Amazon)", "url": build_amazon_url("https://www.amazon.es/s?k=gta+6+playstation+5", tag=tag)},
-                {"title": "🌐 Hub de Enlaces & Ofertas", "url": hub},
-                {"title": "🎬 TikTok Oficial", "url": "https://tiktok.com/@gtavihubspain"},
-                {"title": "📸 Instagram Reels", "url": "https://instagram.com/gtavihubspain"}
+                {"title": "🔴 YouTube Oficial", "url": "https://www.youtube.com/@gtavihubextra"},
+                {"title": "🌐 Hub de Enlaces", "url": hub},
+                {"title": "🎬 TikTok Oficial", "url": "https://tiktok.com/@gtavihubextra"}
             ]
         },
         "tiktok": {
-            "display_name": "GTA VI Hub Spain 🌴",
-            "username": "@gtavihubspain",
-            "bio": (
-                "🌴 Tu canal #1 de GTA VI en España 🇪🇸\n"
-                "🎮 Filtraciones, físicas & secretos diarios\n"
-                "👇 Reserva oficial de GTA 6 y ofertas PS5:"
-            ),
-            "bio_link": hub,
+            "display_name": "GTA VI Hub 🌴",
+            "username": "@gtavihubextra",
+            "bio": "GTA VI en español 🌴 Análisis RAGE 9, noticias y gameplay de Vice City 🎮",
+            "bio_link": "",
             "category": "Videojuegos / Gaming"
         },
         "instagram": {
-            "name": "GTA VI Hub Spain | Noticias & Gameplay",
-            "username": "@gtavihubspain",
+            "name": "GTA VI Hub | Noticias & Gameplay",
+            "username": "@gtavihubextra",
             "category": "Creador de contenido de videojuegos",
             "bio": (
-                "🌴 La mayor comunidad de GTA 6 en España 🇪🇸\n"
-                "🚨 Filtraciones reales, físicas RAGE 9 y noticias diarias\n"
-                "🎮 Cobertura 24/7 hacia el estreno en PS5 & Xbox\n"
-                "👇 Reserva tu edición y hardware con descuento ⬇️"
+                "🌴 Comunidad de GTA VI en español 🇪🇸\n"
+                "⚡ Análisis RAGE 9, noticias y gameplay de Vice City\n"
+                "🎮 Cobertura diaria rumbo al estreno en PS5 & Xbox\n"
+                "📺 YouTube & TikTok: @gtavihubextra"
             ),
-            "bio_link": hub
+            "bio_link": ""
         },
         "linktree_buttons": [
             {
@@ -235,16 +227,16 @@ def get_channel_branding_kit() -> Dict[str, Any]:
             },
             {
                 "order": 7,
-                "title": "🎬 TikTok Oficial (@gtavihubspain)",
-                "subtitle": "Clips diarios y directos",
-                "url": "https://tiktok.com/@gtavihubspain",
+                "title": "🎬 TikTok Oficial (@gtavihubextra)",
+                "subtitle": "Clips diarios y análisis de Vice City",
+                "url": "https://tiktok.com/@gtavihubextra",
                 "badge": "Viral"
             },
             {
                 "order": 8,
-                "title": "📸 Instagram Oficial (@gtavihubspain)",
+                "title": "📸 Instagram Oficial (@gtavihubextra)",
                 "subtitle": "Reels y noticias de última hora",
-                "url": "https://instagram.com/gtavihubspain",
+                "url": "https://instagram.com/gtavihubextra",
                 "badge": "Reels"
             }
         ]

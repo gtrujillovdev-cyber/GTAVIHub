@@ -223,9 +223,28 @@ class SocialPublisher:
                     import json as _json
                     state = _json.loads(storage_state_file.read_text())
                     if state.get("cookies"):
+                        browser.clear_cookies()
                         browser.add_cookies(state["cookies"])
                 page = browser.new_page()
-                page.goto("https://www.tiktok.com/creator-center/upload?from=upload", wait_until="load", timeout=60000)
+
+                # Guardia Anti-Ban: verificar cuenta activa en TikTok Studio antes de subir
+                try:
+                    page.goto("https://www.tiktok.com/tiktokstudio", wait_until="load", timeout=30000)
+                    time.sleep(3)
+                    studio_head = (page.inner_text("body") or "")[:400].lower()
+                    if "gtavihubspain" in studio_head and "gtavihubextra" not in studio_head:
+                        print("[!] BLOQUEADO [Anti-Ban]: Sesión de TikTok sigue conectada a la cuenta heredada @gtavihubspain.")
+                        print("    Ejecuta 'scripts/setup_tiktok_session.py --fresh' con @gtavihubextra y sincroniza storage_state.json.")
+                        self._notify_telegram(
+                            "🛑 *TikTok bloqueado por seguridad:* la sesión del servidor sigue conectada a `@gtavihubspain` (cuenta antigua).\n"
+                            "👉 Ejecuta `scripts/setup_tiktok_session.py --fresh` iniciando sesión en `@gtavihubextra`."
+                        )
+                        browser.close()
+                        return None
+                except Exception:
+                    pass
+
+                page.goto("https://www.tiktok.com/tiktokstudio/upload?from=upload", wait_until="load", timeout=60000)
                 time.sleep(3)
                 
                 # Si requiere inicio de sesión manual la primera vez
@@ -508,6 +527,13 @@ class SocialPublisher:
         if not ig_user or not ig_pass:
             print("[Instagram] Faltan INSTAGRAM_USERNAME / INSTAGRAM_PASSWORD en .env")
             return None
+        if ig_user.strip().lower() == "gtavihubspain" and os.getenv("ALLOW_LEGACY_INSTAGRAM", "").lower() != "true":
+            print("[!] BLOQUEADO [Anti-Ban]: INSTAGRAM_USERNAME apunta a la cuenta heredada @gtavihubspain. Actualiza .env a gtavihubextra.")
+            self._notify_telegram(
+                "🛑 *Instagram bloqueado por seguridad:* `.env` sigue apuntando a `@gtavihubspain` (estancada).\n"
+                "👉 Actualiza `INSTAGRAM_USERNAME=gtavihubextra` y su sesión cuando quieras activar Instagram."
+            )
+            return None
 
         session_file = BROWSER_PROFILE_DIR / "instagrapi_session.json"
         BROWSER_PROFILE_DIR.mkdir(parents=True, exist_ok=True)
@@ -708,14 +734,19 @@ class SocialPublisher:
                 debate_block = f"💬 {bold_debate}\n{debate_q}\n👇 ¡Déjanos tu teoría en los comentarios!\n\n" if debate_q else ""
                 cta_block = AFFILIATE_CTA_INSTAGRAM if ENABLE_AFFILIATE_CTAS else "🌴 Cobertura diaria de GTA VI y noticias oficiales en @gtavihubextra."
 
+                links_block = (
+                    f"🌐 {bold_redes}\n"
+                    f"👉 Hub Central: https://linktr.ee/gtavihubextra\n"
+                    f"👉 Síguenos en @gtavihubextra\n\n"
+                    if ENABLE_AFFILIATE_CTAS else
+                    "🌐 Síguenos en @gtavihubextra\n\n"
+                )
                 creator_clean = creator_name or "Rockstar Games"
                 caption = (
                     f"{title}\n\n"
                     f"{debate_block}"
                     f"{desc[:900]}\n\n"
-                    f"🌐 {bold_redes}\n"
-                    f"👉 Hub Central: https://linktr.ee/gtavihubextra\n"
-                    f"👉 Síguenos en @gtavihubextra\n\n"
+                    f"{links_block}"
                     f"{cta_block}\n\n"
                     f"📌 {bold_creditos} Vía {creator_clean}. Todo el crédito al autor original.\n"
                     f"📩 {bold_contacto} {BUSINESS_EMAIL}\n\n"

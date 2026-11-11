@@ -10,6 +10,7 @@ Uso:
     .venv/bin/python3 scripts/setup_tiktok_session.py
 """
 
+import sys
 from pathlib import Path
 from playwright.sync_api import sync_playwright
 
@@ -18,6 +19,15 @@ PROFILE_DIR = BASE_DIR / "assets" / ".browser_profiles" / "tiktok_user_data"
 STORAGE_STATE = BASE_DIR / "assets" / ".browser_profiles" / "storage_state.json"
 PROFILE_DIR.mkdir(parents=True, exist_ok=True)
 
+FRESH = "--fresh" in sys.argv
+if FRESH:
+    import shutil
+    shutil.rmtree(PROFILE_DIR, ignore_errors=True)
+    PROFILE_DIR.mkdir(parents=True, exist_ok=True)
+    if STORAGE_STATE.exists():
+        STORAGE_STATE.unlink()
+    print("[*] Sesión anterior borrada (--fresh) para iniciar limpio en @gtavihubextra.")
+
 # Eliminar locks de sesiones anteriores
 for lock in ["SingletonLock", "SingletonSocket", "SingletonCookie"]:
     lock_file = PROFILE_DIR / lock
@@ -25,7 +35,7 @@ for lock in ["SingletonLock", "SingletonSocket", "SingletonCookie"]:
         lock_file.unlink()
 
 print("=" * 60)
-print(" SETUP DE SESION TIKTOK / INSTAGRAM — GTA VI Hub Spain")
+print(" SETUP DE SESION TIKTOK — GTA VI Hub (@gtavihubextra)")
 print("=" * 60)
 print(f"\n[*] Perfil: {PROFILE_DIR}")
 print("[*] Abriendo Chromium en modo visible...\n")
@@ -44,10 +54,9 @@ with sync_playwright() as p:
     page.goto("https://www.tiktok.com/login")
 
     print("INSTRUCCIONES:")
-    print("  1. Inicia sesion en TikTok (@gtavihubspain)")
-    print("  2. Abre una nueva pestana y ve a instagram.com")
-    print("  3. Inicia sesion en Instagram (@gtavihubspain)")
-    print("  4. Vuelve aqui y pulsa ENTER para guardar las cookies\n")
+    print("  1. Inicia sesion en TikTok con la cuenta limpia (@gtavihubextra)")
+    print("  2. Comprueba que aparece el panel de @gtavihubextra (NO @gtavihubspain)")
+    print("  3. Vuelve aqui y pulsa ENTER para guardar las cookies\n")
     print("  >>> NO CIERRES EL NAVEGADOR — pulsa ENTER aqui cuando termines <<<")
 
     input()  # Espera Enter con el navegador aún abierto

@@ -330,8 +330,8 @@ def send_telegram_notification(
 
     tiktok_reels_copy = (
         f"{clean_title} 🤯🌴\n\n"
-        f"Todo sobre GTA 6 en español en @gtavihubspain 🇪🇸\n"
-        f"#GTA6 #GTAVI #ViceCity #GTA6Leaks #RockstarGames #Gaming #Shorts #Reels"
+        f"Todo sobre GTA 6 en español en @gtavihubextra 🇪🇸\n"
+        f"#GTA6 #GTAVI #ViceCity #RockstarGames #Gaming #Shorts #Reels"
     )
 
     caption = (
@@ -440,12 +440,11 @@ def get_my_channels_inline_keyboard() -> Dict[str, Any]:
                 {"text": "📊 YouTube Studio", "url": "https://studio.youtube.com/channel/UCB35xEmRUm64zgyYOUnqrUg"}
             ],
             [
-                {"text": "🎵 TikTok (@gtavihubspain)", "url": "https://www.tiktok.com/@gtavihubspain"},
-                {"text": "📸 Instagram (@gtavihubspain)", "url": "https://www.instagram.com/gtavihubspain/"}
+                {"text": "🎵 TikTok (@gtavihubextra)", "url": "https://www.tiktok.com/@gtavihubextra"},
+                {"text": "📸 Instagram (@gtavihubextra)", "url": "https://www.instagram.com/gtavihubextra/"}
             ],
             [
-                {"text": "🔴 Canal Activo YouTube", "url": "https://www.youtube.com/@gtavihubextra"},
-                {"text": "🌐 Linktree Oficial", "url": "https://linktr.ee/gtavihubspain"}
+                {"text": "🔴 Canal Activo YouTube", "url": "https://www.youtube.com/@gtavihubextra"}
             ]
         ]
     }
@@ -598,18 +597,17 @@ def get_dashboard_text() -> str:
 def get_my_channels_report() -> str:
     """
     Genera el informe exclusivo con los enlaces a las redes y canales
-    propios de GTA VI Hub Spain.
+    propios de GTA VI Hub.
     """
     return (
         "🌐 *MIS CANALES Y REDES SOCIALES*\n"
         + ("═" * 36) + "\n\n"
-        + "🌴 *GTA VI HUB SPAIN — CANALES ACTIVOS*\n\n"
+        + "🌴 *GTA VI HUB — CANALES ACTIVOS*\n\n"
         + "• 🔴 *YouTube:* [@gtavihubextra](https://www.youtube.com/@gtavihubextra)\n"
         + "  └ 🎬 *Shorts:* [Ver Feed de Shorts](https://www.youtube.com/@gtavihubextra/shorts)\n"
         + "  └ ⚙️ *Studio:* [Abrir YouTube Studio](https://studio.youtube.com/channel/UCB35xEmRUm64zgyYOUnqrUg)\n\n"
-        + "• 🎵 *TikTok:* [Ver Perfil en TikTok](https://www.tiktok.com/@gtavihubspain) (`@gtavihubspain`)\n\n"
-        + "• 📸 *Instagram Reels:* [Ver Perfil en Instagram](https://www.instagram.com/gtavihubspain/) (`@gtavihubspain`)\n\n"
-        + "• 🌐 *Linktree Oficial:* [Abrir Linktree](https://linktr.ee/gtavihubspain)\n\n"
+        + "• 🎵 *TikTok:* [Ver Perfil en TikTok](https://www.tiktok.com/@gtavihubextra) (`@gtavihubextra`)\n\n"
+        + "• 📸 *Instagram Reels:* [Ver Perfil en Instagram](https://www.instagram.com/gtavihubextra/) (`@gtavihubextra`)\n\n"
         + "• 🤖 *Bot de Control:* [Chat del Bot](https://t.me/gtavihub_spain_bot) (`@gtavihub_spain_bot`)\n\n"
         + "👇 _Toca cualquiera de los botones para abrir tu canal en su app oficial:_"
     )
@@ -1548,7 +1546,7 @@ def start_telegram_bot_daemon():
                                 creator_name = info_data.get("creator") or creator_name
                                 yt_meta = info_data.get("youtube_metadata") or {}
                                 video_title = yt_meta.get("title") or info_data.get("original_title") or video_title
-                                hook_text = yt_meta.get("hook") or "¡NUEVA FILTRACIÓN!"
+                                hook_text = yt_meta.get("hook") or "¡NOVEDAD GTA 6!"
                             except Exception as e:
                                 print(f"[Telegram] Error leyendo info.json: {e}")
 
@@ -1563,8 +1561,8 @@ def start_telegram_bot_daemon():
                         # Generar texto viral único para TikTok e Instagram
                         tiktok_reels_copy = (
                             f"{hook_text} {clean_title} 🤯🌴\n\n"
-                            f"Todo sobre GTA 6 en español en @gtavihubspain 🇪🇸\n"
-                            f"#GTA6 #GTAVI #ViceCity #GTA6Leaks #RockstarGames #Gaming #Shorts #Reels"
+                            f"Todo sobre GTA 6 en español en @gtavihubextra 🇪🇸\n"
+                            f"#GTA6 #GTAVI #ViceCity #RockstarGames #Gaming #Shorts #Reels"
                         )
 
                         caption = (

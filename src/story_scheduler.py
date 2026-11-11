@@ -166,7 +166,7 @@ def build_content_teaser_story(
 
     caption = (
         f"🚨 Nuevo vídeo en el canal: {video_title[:60]}\n"
-        f"Toca la historia o entra a @gtavihubspain para verlo completo 🌴\n"
+        f"Toca la historia o entra a @gtavihubextra para verlo completo 🌴\n"
         f"#GTA6 #GTAVI #RockstarGames #ViceCity"
     )
 
@@ -197,9 +197,9 @@ def publish_scheduled_story(
         thumbs = sorted(OUTPUT_DIR.glob("*_thumb.jpg"), key=lambda f: f.stat().st_mtime, reverse=True)
         thumb_path = thumbs[0] if thumbs else None
         img_path, link_url, caption = build_content_teaser_story(
-            video_title="FILTRACION Y NOVEDADES GTA 6",
+            video_title="NOVEDADES Y GAMEPLAY GTA 6",
             video_thumb_path=thumb_path,
-            reel_url="https://linktr.ee/gtavihubspain"
+            reel_url="https://linktr.ee/gtavihubextra"
         )
         item_desc = "Noticia / Gameplay Teaser GTA VI"
 

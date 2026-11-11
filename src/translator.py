@@ -475,12 +475,11 @@ Devuelve tu respuesta EXACTAMENTE en este formato JSON (sin texto extra):
 {debate_question}
 👇 ¿Cuál es tu teoría? ¡Te leemos en los comentarios!
 
-🌴 {to_unicode_bold("GTA VI HUB EXTRA | REDES OFICIALES:")}
+🌴 {to_unicode_bold("GTA VI HUB | REDES OFICIALES:")}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-🌐 Hub Central & Enlaces: https://linktr.ee/gtavihubextra
-🎬 TikTok Oficial: https://tiktok.com/@gtavihubextra
+{f"🌐 Hub Central & Enlaces: https://linktr.ee/gtavihubextra{chr(10)}" if affiliate_block else ""}🎬 TikTok Oficial: https://tiktok.com/@gtavihubextra
 📸 Instagram Reels: https://instagram.com/gtavihubextra
-🔴 Suscríbete al Canal: https://youtube.com/@GTAVIHubExtra?sub_confirmation=1
+🔴 Suscríbete al Canal: https://youtube.com/@gtavihubextra?sub_confirmation=1
 
 {affiliate_block}
 

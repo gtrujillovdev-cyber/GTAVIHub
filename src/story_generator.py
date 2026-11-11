@@ -283,7 +283,7 @@ def build_hardware_deal_story(deal_key: str = "volante_logitech_g29") -> Tuple[P
             "img": "logitech_g29.png",
             "cta": "TOCAR PARA VER EN AMAZON >",
             "url": build_amazon_url("https://www.amazon.es/s?k=logitech+g29+ps5", tag=tag),
-            "caption": "Volante Logitech G29 en oferta para GTA VI y Leonida.\nEnlace directo en la historia y bio @gtavihubspain\n#GTA6 #GTAVI #LogitechG29 #AmazonDeals #PS5"
+            "caption": "Volante Logitech G29 en oferta para GTA VI y Leonida.\nEnlace directo en la historia y bio @gtavihubextra\n#GTA6 #GTAVI #LogitechG29 #AmazonDeals #PS5"
         },
         "ps5_pro": {
             "badge": "POTENCIA 4K 60 FPS",
@@ -293,7 +293,7 @@ def build_hardware_deal_story(deal_key: str = "volante_logitech_g29") -> Tuple[P
             "img": "ps5.png",
             "cta": "TOCAR PARA VER EN AMAZON >",
             "url": build_amazon_url("https://www.amazon.es/s?k=playstation+5+pro+consola", tag=tag),
-            "caption": "Consola PlayStation 5 Pro lista para Grand Theft Auto VI.\nEnlace directo en la historia y bio @gtavihubspain\n#GTA6 #GTAVI #PS5Pro #Leonida"
+            "caption": "Consola PlayStation 5 Pro lista para Grand Theft Auto VI.\nEnlace directo en la historia y bio @gtavihubextra\n#GTA6 #GTAVI #PS5Pro #Leonida"
         },
         "ssd_ps5_2tb": {
             "badge": "ALMACENAMIENTO GTA VI",
@@ -303,7 +303,7 @@ def build_hardware_deal_story(deal_key: str = "volante_logitech_g29") -> Tuple[P
             "img": "ssd_m2.jpg",
             "cta": "TOCAR PARA VER EN AMAZON >",
             "url": build_amazon_url("https://www.amazon.es/s?k=wd+black+sn850x+2tb+ps5", tag=tag),
-            "caption": "SSD M.2 2TB ultra-rápido para los +200GB de GTA VI.\nEnlace directo en la historia y bio @gtavihubspain\n#GTA6 #GTAVI #SSD #PS5"
+            "caption": "SSD M.2 2TB ultra-rápido para los +200GB de GTA VI.\nEnlace directo en la historia y bio @gtavihubextra\n#GTA6 #GTAVI #SSD #PS5"
         }
     }
 

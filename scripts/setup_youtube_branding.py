@@ -23,28 +23,26 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 CLIENT_SECRETS_FILE = BASE_DIR / "client_secrets.json"
 # Token separado para no invalidar el token de upload
 BRANDING_TOKEN_FILE = BASE_DIR / "branding_token.json"
-BANNER_FILE = BASE_DIR / "assets" / "banner.jpg"
+BANNER_FILE = BASE_DIR / "assets" / "banner_extra.jpg"
 
 # Scope completo necesario para channelBanners.insert y channels.update
 SCOPES = ["https://www.googleapis.com/auth/youtube"]
 
 CHANNEL_DESCRIPTION = """\
-GTA VI Hub Espana - El canal en espanol dedicado a Grand Theft Auto VI.
+🌴 Bienvenido a GTA VI Hub, tu espacio diario en español sobre Grand Theft Auto VI.
 
-Publicamos cada dia los mejores clips, filtraciones, reacciones y novedades de GTA 6 comentadas en espanol.
+🎮 Cobertura rápida, directa y contrastada sobre Vice City y Leonida:
+• Análisis técnicos del motor RAGE 9, comparativas gráficas y rendimiento en consolas.
+• Desgloses detalle a detalle de cada tráiler, mecánica confirmada y novedad oficial de Rockstar Games.
+• Curiosidades del mapa, secretos ocultos y los descubrimientos más relevantes de la comunidad.
 
-Lo que encontraras aqui:
-  Filtraciones y rumores verificados de Rockstar Games
-  Gameplay, trailers y escenas ineditas comentadas en espanol
-  Reacciones de la comunidad gaming hispanohablante
-  Los mejores clips cortos en formato Short para no perderte nada
+📌 Todos los vídeos se publican con fines informativos, de análisis y traducción comentada bajo Fair Use (Art. 107 Copyright Act), acreditando siempre a cada fuente original.
 
-Activa la campanita para recibir cada nuevo clip al instante.
-Siguenos tambien como @GTAVIHubSpain en TikTok e Instagram.
+🔔 Suscríbete y activa la campanita para no perderte ninguna novedad rumbo al estreno.
 
----
-Canal de caracter informativo y editorial. El material original pertenece a sus respectivos autores.
-Uso conforme a la doctrina Fair Use / Art. 107 Copyright Act.
+📩 Contacto / Business / Copyright: gabtru@hotmail.com
+
+#GTA6 #GrandTheftAutoVI #RockstarGames #ViceCity #Leonida #Gaming
 """
 
 

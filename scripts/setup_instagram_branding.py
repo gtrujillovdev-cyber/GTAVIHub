@@ -1,5 +1,5 @@
 """
-Actualiza el perfil de Instagram (@gtavihubspain) via instagrapi:
+Actualiza el perfil de Instagram (@gtavihubextra) via instagrapi:
   - Bio / descripcion
   - Foto de perfil (avatar)
 
@@ -22,13 +22,13 @@ load_dotenv(BASE_DIR / ".env")
 SESSION_FILE = BASE_DIR / "assets" / ".browser_profiles" / "instagrapi_session.json"
 AVATAR_FILE = BASE_DIR / "assets" / "avatar.jpg"
 
-USERNAME = os.getenv("INSTAGRAM_USERNAME", "gtavihubspain")
+USERNAME = os.getenv("INSTAGRAM_USERNAME", "gtavihubextra")
 PASSWORD = os.getenv("INSTAGRAM_PASSWORD", "")
 
 INSTAGRAM_BIO = (
-    "GTA VI Hub Espana\n"
-    "Filtraciones, clips y reacciones en espanol\n"
-    "YouTube & TikTok: @GTAVIHubSpain\n"
+    "GTA VI Hub 🌴\n"
+    "Análisis RAGE 9, noticias y gameplay en español\n"
+    "YouTube & TikTok: @gtavihubextra\n"
     "#GTA6 #GrandTheftAutoVI"
 )
 
