@@ -110,6 +110,15 @@ def approve_and_publish_video(video_id: str) -> Optional[Dict[str, Any]]:
     if not data:
         print(f"[Co-Pilot] No se encontró el vídeo pendiente {video_id}")
         return None
+    if data.get("status") == "publishing":
+        print(f"[Co-Pilot] El vídeo {video_id} ya se encuentra en proceso de publicación.")
+        return None
+
+    try:
+        data["status"] = "publishing"
+        (PENDING_DIR / f"{video_id}.json").write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
+    except Exception:
+        pass
 
     video_path = Path(data["output_video"])
     thumb_path = Path(data["thumbnail"]) if data.get("thumbnail") else None

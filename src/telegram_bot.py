@@ -147,7 +147,26 @@ def edit_telegram_message(
 
     try:
         res = requests.post(url, json=payload, timeout=10)
-        return res.status_code == 200
+        if res.status_code == 200:
+            return True
+        if res.status_code == 400:
+            # Si el mensaje original tiene vídeo/foto, editMessageText falla y debe usarse editMessageCaption
+            cap_url = get_api_url("editMessageCaption")
+            cap_payload: Dict[str, Any] = {
+                "chat_id": chat_id,
+                "message_id": message_id,
+                "caption": text[:1024],
+                "parse_mode": parse_mode,
+            }
+            if reply_markup is not None:
+                cap_payload["reply_markup"] = reply_markup
+            cap_res = requests.post(cap_url, json=cap_payload, timeout=10)
+            if cap_res.status_code == 200:
+                return True
+            cap_payload.pop("parse_mode", None)
+            cap_res2 = requests.post(cap_url, json=cap_payload, timeout=10)
+            return cap_res2.status_code == 200
+        return False
     except Exception as e:
         print(f"[Telegram] Error editando mensaje {message_id}: {e}")
         return False
@@ -877,8 +896,19 @@ def handle_callback_query(cq: Dict[str, Any]):
     # B) Aprobación / Rechazo Co-Pilot
     if data.startswith("copilot:approve:"):
         video_id = data.split(":", 2)[2]
-        answer_callback_query(cq_id, "Aprobando y publicando...")
-        edit_telegram_message(msg_id, f"🚀 *Vídeo `{video_id}` aprobado.* Publicando en segundo plano...")
+        from .copilot import get_pending_video
+        pending_item = get_pending_video(video_id)
+        if not pending_item or pending_item.get("status") == "publishing":
+            answer_callback_query(cq_id, "Este vídeo ya se está publicando o ya fue procesado.")
+            edit_telegram_message(msg_id, f"ℹ️ *Vídeo `{video_id}` ya en curso o publicado.*", reply_markup={"inline_keyboard": []})
+            return
+        answer_callback_query(cq_id, "Aprobado. Iniciando subida a YouTube...")
+        edit_telegram_message(
+            msg_id,
+            f"🚀 *Vídeo `{video_id}` aprobado.*\n⏳ Subiendo a YouTube Shorts y programando TikTok...",
+            reply_markup={"inline_keyboard": []}
+        )
+        send_telegram_alert(f"⏳ *Aprobado `{video_id}`*: iniciando subida a YouTube Shorts...")
         t = threading.Thread(target=run_approval_publish_in_background, args=(video_id,), daemon=True)
         t.start()
         return
@@ -888,9 +918,9 @@ def handle_callback_query(cq: Dict[str, Any]):
         answer_callback_query(cq_id, "Descartando vídeo...")
         success = reject_and_purge_video(video_id)
         if success:
-            edit_telegram_message(msg_id, f"🗑️ *Vídeo `{video_id}` descartado y purgado del disco con éxito.*")
+            edit_telegram_message(msg_id, f"🗑️ *Vídeo `{video_id}` descartado y purgado del disco con éxito.*", reply_markup={"inline_keyboard": []})
         else:
-            edit_telegram_message(msg_id, f"ℹ️ *El vídeo `{video_id}` ya había sido descartado.*")
+            edit_telegram_message(msg_id, f"ℹ️ *El vídeo `{video_id}` ya había sido descartado.*", reply_markup={"inline_keyboard": []})
         return
 
     # C) Toggle de Estado Co-Pilot
