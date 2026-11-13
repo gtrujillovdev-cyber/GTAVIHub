@@ -15,10 +15,17 @@ AFFILIATE_CTA_TIKTOK = os.getenv("AFFILIATE_CTA_TIKTOK", "🎮 Saldo PSN/Xbox co
 AFFILIATE_CTA_INSTAGRAM = os.getenv("AFFILIATE_CTA_INSTAGRAM", "🔥 Consigue saldo PSN/Xbox con descuento y hardware para GTA 6 en el link de la bio 🔗")
 ENABLE_AUTO_PINNED_COMMENT = os.getenv("ENABLE_AUTO_PINNED_COMMENT", "true").lower() in ("1", "true", "yes")
 
+def _resolve_project_path(raw: str, default_subdir: str) -> Path:
+    """Resuelve rutas relativas respecto a BASE_DIR (inmune al cwd de cron/watchdog)."""
+    if not raw:
+        return (BASE_DIR / default_subdir).resolve()
+    p = Path(raw).expanduser()
+    return p.resolve() if p.is_absolute() else (BASE_DIR / p).resolve()
+
 CONFIG_DIR = BASE_DIR / "config"
 DATA_DIR = BASE_DIR / "data"
-OUTPUT_DIR = Path(os.getenv("OUTPUT_DIR", BASE_DIR / "output")).resolve()
-TEMP_DIR = Path(os.getenv("TEMP_DIR", BASE_DIR / "temp")).resolve()
+OUTPUT_DIR = _resolve_project_path(os.getenv("OUTPUT_DIR", ""), "output")
+TEMP_DIR = _resolve_project_path(os.getenv("TEMP_DIR", ""), "temp")
 LOGS_DIR = BASE_DIR / "logs"
 
 CONFIG_DIR.mkdir(parents=True, exist_ok=True)
@@ -39,15 +46,15 @@ GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash-lite")
 MAX_VIDEOS_PER_RUN = int(os.getenv("MAX_VIDEOS_PER_RUN", "1"))
 MAX_DAILY_UPLOADS = int(os.getenv("MAX_DAILY_UPLOADS", "2"))
 DEFAULT_TTS_VOICE = os.getenv("DEFAULT_TTS_VOICE", "es-ES-AlvaroNeural")
-AUTO_DUB_ENGLISH = os.getenv("AUTO_DUB_ENGLISH", "false").lower() in ("1", "true", "yes")
+AUTO_DUB_ENGLISH = os.getenv("AUTO_DUB_ENGLISH", "true").lower() in ("1", "true", "yes")
 SHORT_MIN_DURATION = int(os.getenv("SHORT_MIN_DURATION", "10"))
 GAMEPLAY_MIN_DURATION = int(os.getenv("GAMEPLAY_MIN_DURATION", "12"))
 SHORT_MAX_DURATION = int(os.getenv("SHORT_MAX_DURATION", "58"))
-SHORT_TARGET_DURATION = int(os.getenv("SHORT_TARGET_DURATION", "30"))
+SHORT_TARGET_DURATION = int(os.getenv("SHORT_TARGET_DURATION", "28"))
 
 # FFmpeg Hardware Acceleration (VideoToolbox para Apple Silicon e Intel)
 FFMPEG_VIDEO_CODEC = "h264_videotoolbox"
-FFMPEG_BITRATE = os.getenv("FFMPEG_BITRATE", "10M")
+FFMPEG_BITRATE = os.getenv("FFMPEG_BITRATE", "4500k")
 
 # Sincronización y calibración de subtítulos (offset negativo para compensar el retardo intrínseco de YouTube ASR captions)
 SUBTITLE_OFFSET = float(os.getenv("SUBTITLE_OFFSET", "-0.45"))
@@ -75,7 +82,9 @@ def is_gameplay_enabled() -> bool:
         return False
 
 def get_max_videos_per_run() -> int:
-    """1 vídeo por tanda en cada hora punta para asegurar una cadencia orgánica estricta (máx 3-4 al día)."""
+    """En launch mode (>= 19 nov) usa LAUNCH_MAX_VIDEOS_PER_RUN; el resto del tiempo MAX_VIDEOS_PER_RUN."""
+    if is_gameplay_enabled():
+        return LAUNCH_MAX_VIDEOS_PER_RUN
     return MAX_VIDEOS_PER_RUN
 
 def get_ffmpeg_threads() -> int:
