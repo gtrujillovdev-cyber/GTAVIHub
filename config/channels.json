@@ -2,13 +2,13 @@
   "channels": [
     {
       "name": "Gameranx",
-      "url": "https://www.youtube.com/@gameranx/videos",
+      "url": "https://www.youtube.com/@gameranxTV/videos",
       "type": "gta_news",
       "lang": "en",
       "filter_keywords": true,
-      "enabled": true,
+      "enabled": false,
       "allow_long_clipping": true,
-      "description": "Gameplay details y análisis de novedades de GTA 6"
+      "description": "Gameplay details y análisis de novedades de GTA 6 (DESACTIVADO: presentador en cámara en estudio)"
     },
     {
       "name": "IGN",
@@ -27,9 +27,9 @@
       "type": "gta_authority",
       "lang": "en",
       "filter_keywords": true,
-      "enabled": true,
+      "enabled": false,
       "allow_long_clipping": true,
-      "description": "Desgloses de tráilers, detalles ocultos y reacciones de TGG"
+      "description": "Desgloses de TGG (DESACTIVADO: facecam fija y superposiciones en esquina)"
     },
     {
       "name": "Rockstar Games (Oficial)",
@@ -59,10 +59,32 @@
       "type": "official",
       "lang": "en",
       "filter_keywords": false,
-      "enabled": true,
-      "description": "Shorts oficiales de Rockstar Games",
+      "enabled": false,
+      "description": "Duplicado de Rockstar Games (Oficial) (Shorts)",
       "allow_official_commentary": true,
       "allow_long_clipping": true
+    },
+    {
+      "name": "PlayStation",
+      "url": "https://www.youtube.com/@PlayStation/videos",
+      "type": "official",
+      "lang": "en",
+      "filter_keywords": true,
+      "enabled": true,
+      "allow_official_commentary": true,
+      "allow_long_clipping": true,
+      "description": "Features trailers y anuncios oficiales de GTA 6 en PlayStation"
+    },
+    {
+      "name": "PlayStation España",
+      "url": "https://www.youtube.com/@PlayStationES/videos",
+      "type": "official",
+      "lang": "es",
+      "filter_keywords": true,
+      "enabled": true,
+      "allow_official_commentary": true,
+      "allow_long_clipping": true,
+      "description": "Tráilers y clips oficiales en español de PlayStation España"
     },
     {
       "name": "GTA Series Videos (Shorts)",
@@ -89,9 +111,9 @@
       "type": "gta_authority",
       "lang": "en",
       "filter_keywords": true,
-      "enabled": true,
+      "enabled": false,
       "allow_long_clipping": true,
-      "description": "Análisis técnicos y detalles ocultos 16:9 de GTA 6"
+      "description": "Análisis y reacciones talking-head de Synth Potato (DESACTIVADO: facecam/opinión)"
     },
     {
       "name": "ElAnalistaDeBits",
@@ -104,13 +126,33 @@
       "description": "Comparativas gráficas 4K limpias 16:9 sin facecam ni logos ajenos"
     },
     {
+      "name": "Onespot Gaming",
+      "url": "https://www.youtube.com/@OnespotGaming/videos",
+      "type": "technical_analysis",
+      "lang": "en",
+      "filter_keywords": true,
+      "enabled": true,
+      "allow_long_clipping": true,
+      "description": "Comparativas visuales 16:9 puras (GTA 6 vs RDR 2 / GTA V) sin facecam"
+    },
+    {
+      "name": "Cycu1",
+      "url": "https://www.youtube.com/@Cycu1/videos",
+      "type": "technical_analysis",
+      "lang": "en",
+      "filter_keywords": true,
+      "enabled": true,
+      "allow_long_clipping": true,
+      "description": "Comparativas gráficas 4K limpias PS5/PC sin presentadores"
+    },
+    {
       "name": "TGG (Shorts)",
       "url": "https://www.youtube.com/@TGG_/shorts",
       "type": "gta_authority",
       "lang": "en",
       "filter_keywords": true,
-      "enabled": true,
-      "description": "Shorts de noticias y detalles de TGG"
+      "enabled": false,
+      "description": "Shorts de noticias y detalles de TGG (DESACTIVADO: facecam 50% + subtítulos ingleses quemados)"
     },
     {
       "name": "LegacyKillaHD (Shorts)",
@@ -136,7 +178,7 @@
       "type": "breakdowns",
       "lang": "en",
       "filter_keywords": true,
-      "enabled": false,
+      "enabled": true,
       "description": "Shorts de físicas, mapa y secretos de Sonny Evans"
     },
     {
@@ -154,7 +196,7 @@
       "type": "lore_and_details",
       "lang": "en",
       "filter_keywords": true,
-      "enabled": false,
+      "enabled": true,
       "description": "Shorts de Easter Eggs y secretos ocultos de Rockstar"
     },
     {
@@ -163,7 +205,7 @@
       "type": "breakdowns",
       "lang": "en",
       "filter_keywords": true,
-      "enabled": false,
+      "enabled": true,
       "description": "Shorts de detalles del mundo abierto y lore"
     },
     {
@@ -172,7 +214,7 @@
       "type": "breakdowns",
       "lang": "en",
       "filter_keywords": true,
-      "enabled": false,
+      "enabled": true,
       "description": "Shorts de comparativas visuales y físicas"
     },
     {
@@ -217,7 +259,7 @@
       "type": "breakdowns",
       "lang": "en",
       "filter_keywords": true,
-      "enabled": false,
+      "enabled": true,
       "description": "Análisis técnico de vehículos, armas y físicas"
     },
     {
@@ -226,7 +268,7 @@
       "type": "breakdowns",
       "lang": "en",
       "filter_keywords": true,
-      "enabled": false,
+      "enabled": true,
       "description": "Documentales de diseño y detalles de mundo abierto"
     },
     {
@@ -235,8 +277,8 @@
       "type": "technical_analysis",
       "lang": "en",
       "filter_keywords": true,
-      "enabled": true,
-      "description": "Shorts de análisis técnico y gráficos de Digital Foundry"
+      "enabled": false,
+      "description": "Shorts de Digital Foundry (DESACTIVADO: sin pestaña /shorts activa; se escanea /videos)"
     },
     {
       "name": "Digital Foundry",
@@ -530,8 +572,8 @@
       "type": "gta_news",
       "lang": "en",
       "filter_keywords": true,
-      "enabled": true,
-      "description": "Shorts de noticias rápidas y detalles de Gameranx"
+      "enabled": false,
+      "description": "Shorts de Gameranx (DESACTIVADO: HTTP 404 sin pestaña /shorts; se escanea @gameranxTV/videos)"
     },
     {
       "name": "Dexerto (Shorts)",
@@ -584,8 +626,8 @@
       "type": "media_global",
       "lang": "en",
       "filter_keywords": true,
-      "enabled": true,
-      "description": "Shorts globales de IGN"
+      "enabled": false,
+      "description": "Shorts globales de IGN (DESACTIVADO: barras negras + banner rojo en inglés quemado)"
     },
     {
       "name": "GameSpot (Shorts)",
@@ -602,8 +644,8 @@
       "type": "gta_authority",
       "lang": "en",
       "filter_keywords": true,
-      "enabled": true,
-      "description": "Shorts de noticias, filtraciones y opiniones de Synth Potato"
+      "enabled": false,
+      "description": "Shorts talking-head de Synth Potato (DESACTIVADO: facecam 50% + subtítulos ingleses quemados)"
     },
     {
       "name": "Dan Allen Gaming (Shorts)",
@@ -620,7 +662,7 @@
       "type": "gta_authority",
       "lang": "en",
       "filter_keywords": true,
-      "enabled": false,
+      "enabled": true,
       "description": "Noticias comunitarias oficiales de Rockstar Universe"
     },
     {
@@ -629,7 +671,7 @@
       "type": "countdown_news",
       "lang": "en",
       "filter_keywords": true,
-      "enabled": false,
+      "enabled": true,
       "description": "Cuenta atrás y novedades de GTA 6 Countdown"
     },
     {
@@ -725,8 +767,8 @@
       "type": "gameplay_guides",
       "lang": "en",
       "filter_keywords": true,
-      "enabled": true,
-      "description": "Guías de trofeos y ubicaciones secretas de PowerPyx"
+      "enabled": false,
+      "description": "Shorts de PowerPyx (DESACTIVADO: el canal no dispone de pestaña /shorts activa)"
     },
     {
       "name": "GameRant (Shorts)",
@@ -776,53 +818,55 @@
   ],
   "search_queries": [
     {
-      "query": "ytsearch15:GTA 6 graficos comparativa RAGE 9",
+      "query": "ytsearch15:GTA 6 graficos comparativa RAGE 9 #shorts",
+      "sp": "EgYIBBABGAE=",
       "lang": "es",
       "only_shorts": true,
-      "sp": "EgQIAxAB",
       "enabled": true,
-      "description": "Comparativas gráficas y físicas RAGE 9 esta semana"
+      "description": "Comparativas gráficas y físicas RAGE 9 (<4m este mes) en español"
     },
     {
-      "query": "ytsearch15:GTA 6 Rubius TheGrefg Ibai reaccion",
+      "query": "ytsearch15:GTA 6 30 fps vs 60 fps comparison",
+      "sp": "EgYIBBABGAE=",
+      "lang": "en",
+      "only_shorts": false,
+      "allow_long_clipping": true,
+      "enabled": true,
+      "description": "Comparativas técnicas FPS / consola (<4m este mes, auto-clipping 16:9)"
+    },
+    {
+      "query": "ytsearch15:GTA 6 gameplay vs RDR 2 comparison",
+      "sp": "EgYIBBABGAE=",
+      "lang": "en",
+      "only_shorts": false,
+      "allow_long_clipping": true,
+      "enabled": true,
+      "description": "Comparativas visuales y mecánicas GTA 6 vs RDR2/GTA5 (<4m este mes)"
+    },
+    {
+      "query": "ytsearch15:GTA 6 curiosidades secretos mapa #shorts",
+      "sp": "EgYIBBABGAE=",
       "lang": "es",
-      "only_shorts": false,
-      "sp": "EgQIAxAB",
+      "only_shorts": true,
       "enabled": true,
-      "block_instagram": true,
-      "description": "Reacciones frescas de esta semana de streamers hispanos (solo YouTube/TikTok)"
+      "description": "Curiosidades y secretos dinámicos (<4m este mes) en español"
     },
     {
-      "query": "ytsearch15:GTA 6 gameplay PS5 Pro physics details",
-      "lang": "en",
-      "only_shorts": false,
-      "sp": "EgQIAxAB",
-      "enabled": true,
-      "description": "Gameplay y detalles de rendimiento PS5 Pro esta semana"
-    },
-    {
-      "query": "ytsearch15:GTA 6 Pre-Load Now trailer details",
-      "lang": "en",
-      "only_shorts": false,
-      "sp": "EgQIAhAB",
-      "enabled": true,
-      "description": "Última hora HOY sobre el tráiler Pre-Load Now de Rockstar"
-    },
-    {
-      "query": "ytsearch15:GTA 6 nuevo trailer reaccion detalles gameplay",
+      "query": "ytsearch15:GTA 6 gameplay conduccion fisicas detalles #shorts",
+      "sp": "EgYIBBABGAE=",
       "lang": "es",
-      "only_shorts": false,
-      "sp": "EgQIAhAB",
+      "only_shorts": true,
       "enabled": true,
-      "description": "Reacciones y análisis en español publicados HOY"
+      "description": "Gameplay real y físicas (<4m este mes) en español"
     },
     {
-      "query": "ytsearch15:GTA 6 trailer reaction breakdown details",
+      "query": "ytsearch15:GTA 6 vs GTA 5 graphics comparison",
+      "sp": "EgYIBBABGAE=",
       "lang": "en",
       "only_shorts": false,
-      "sp": "EgQIAhAB",
+      "allow_long_clipping": true,
       "enabled": true,
-      "description": "Reacciones y desgloses publicados HOY a nuevos tráilers de GTA 6"
+      "description": "Comparativas visuales puras GTA 6 vs GTA 5/RDR2 (<4m este mes, auto-clipping)"
     },
     {
       "query": "ytsearch15:GTA 6 South Park parodia #shorts",
