@@ -77,7 +77,8 @@ def get_persistent_menu_keyboard() -> Dict[str, Any]:
     return {
         "keyboard": [
             [{"text": "🚀 Forzar Escaneo"}, {"text": "🎬 Último Clip"}],
-            [{"text": "📊 Estado"}, {"text": "🛡️ Modo Co-Pilot"}]
+            [{"text": "📊 Estado"}, {"text": "🛡️ Modo Co-Pilot"}],
+            [{"text": "🐦 X Scout GTA6"}],
         ],
         "resize_keyboard": True,
         "persistent": True
@@ -433,6 +434,7 @@ def get_channels_inline_keyboard() -> Dict[str, Any]:
 
 def get_my_channels_inline_keyboard() -> Dict[str, Any]:
     """Teclado interactivo con botones URL directos a los canales y redes propios."""
+    ig_handle = (os.getenv("INSTAGRAM_USERNAME") or "gtavihubextra").strip().lstrip("@")
     return {
         "inline_keyboard": [
             [
@@ -441,7 +443,7 @@ def get_my_channels_inline_keyboard() -> Dict[str, Any]:
             ],
             [
                 {"text": "🎵 TikTok (@gtavihubextra)", "url": "https://www.tiktok.com/@gtavihubextra"},
-                {"text": "📸 Instagram (@gtavihubextra)", "url": "https://www.instagram.com/gtavihubextra/"}
+                {"text": f"📸 Instagram (@{ig_handle})", "url": f"https://www.instagram.com/{ig_handle}/"}
             ],
             [
                 {"text": "🔴 Canal Activo YouTube", "url": "https://www.youtube.com/@gtavihubextra"}
@@ -599,6 +601,7 @@ def get_my_channels_report() -> str:
     Genera el informe exclusivo con los enlaces a las redes y canales
     propios de GTA VI Hub.
     """
+    ig_handle = (os.getenv("INSTAGRAM_USERNAME") or "gtavihubextra").strip().lstrip("@")
     return (
         "🌐 *MIS CANALES Y REDES SOCIALES*\n"
         + ("═" * 36) + "\n\n"
@@ -607,7 +610,7 @@ def get_my_channels_report() -> str:
         + "  └ 🎬 *Shorts:* [Ver Feed de Shorts](https://www.youtube.com/@gtavihubextra/shorts)\n"
         + "  └ ⚙️ *Studio:* [Abrir YouTube Studio](https://studio.youtube.com/channel/UCB35xEmRUm64zgyYOUnqrUg)\n\n"
         + "• 🎵 *TikTok:* [Ver Perfil en TikTok](https://www.tiktok.com/@gtavihubextra) (`@gtavihubextra`)\n\n"
-        + "• 📸 *Instagram Reels:* [Ver Perfil en Instagram](https://www.instagram.com/gtavihubextra/) (`@gtavihubextra`)\n\n"
+        + f"• 📸 *Instagram Reels:* [Ver Perfil en Instagram](https://www.instagram.com/{ig_handle}/) (`@{ig_handle}`)\n\n"
         + "• 🤖 *Bot de Control:* [Chat del Bot](https://t.me/gtavihub_spain_bot) (`@gtavihub_spain_bot`)\n\n"
         + "👇 _Toca cualquiera de los botones para abrir tu canal en su app oficial:_"
     )
@@ -744,15 +747,17 @@ def run_approval_publish_in_background(video_id: str):
             mp = res.get("multiplatform") or {}
             yt_line = f"🔗 *YouTube Shorts:* {res.get('youtube_url')}" if res.get("youtube_url") else "⚠️ *YouTube:* falló (revisar cuota/token)"
             tt_val = mp.get("tiktok")
-            tt_line = f"\n🎵 *TikTok:* {tt_val}" if tt_val else "\n⚠️ *TikTok:* no publicado / quedó en borrador"
+            tt_line = f"\n🎵 *TikTok:* {tt_val}" if tt_val else "\n⚠️ *TikTok:* no publicado / requiere sesión"
+            ig_val = mp.get("instagram")
+            ig_line = f"\n📸 *Instagram:* {ig_val}" if ig_val else "\n⚠️ *Instagram:* omitido o bloqueado por Compliance/sesión"
             send_telegram_alert(
                 f"🚀 *¡Publicación Finalizada!*\n\n"
                 f"🎬 *Título:* `{res.get('title')}`\n"
-                f"{yt_line}{tt_line}\n\n"
+                f"{yt_line}{tt_line}{ig_line}\n\n"
                 f"🧹 _Archivos pesados purgados del disco._"
             )
         else:
-            send_telegram_alert("⚠️ *No se pudo publicar en YouTube/TikTok.* Revisa credenciales o logs en mbp1.")
+            send_telegram_alert("⚠️ *No se pudo publicar en YouTube/TikTok/Instagram.* Revisa credenciales o logs en mbp1.")
     except Exception as e:
         send_telegram_alert(f"❌ *Error al publicar vídeo aprobado:* `{e}`")
     finally:
@@ -903,7 +908,7 @@ def handle_callback_query(cq: Dict[str, Any]):
         answer_callback_query(cq_id, "Aprobado. Iniciando subida a YouTube...")
         edit_telegram_message(
             msg_id,
-            f"🚀 *Vídeo `{video_id}` aprobado.*\n⏳ Subiendo a YouTube Shorts y programando TikTok...",
+            f"🚀 *Vídeo `{video_id}` aprobado.*\n⏳ Subiendo a YouTube Shorts, TikTok e Instagram Reels...",
             reply_markup={"inline_keyboard": []}
         )
         send_telegram_alert(f"⏳ *Aprobado `{video_id}`*: iniciando subida a YouTube Shorts...")
@@ -1238,8 +1243,10 @@ def start_telegram_bot_daemon():
                             t = threading.Thread(target=run_scan_in_background, args=(allowed_chat_id, 1), daemon=True)
                             t.start()
 
-            params = {"offset": last_update_id + 1, "timeout": 10}
-            res = requests.get(url_updates, params=params, timeout=15)
+            params = {"offset": last_update_id + 1, "timeout": 20}
+            if not hasattr(start_telegram_bot_daemon, "_session"):
+                start_telegram_bot_daemon._session = requests.Session()
+            res = start_telegram_bot_daemon._session.get(url_updates, params=params, timeout=(8, 30))
             if res.status_code != 200:
                 time.sleep(4)
                 continue
@@ -1267,10 +1274,14 @@ def start_telegram_bot_daemon():
                 if str(chat_id) != str(allowed_chat_id) or not text:
                     continue
 
-                # A) Detección de URLs pegadas para ingesta inmediata
+                # A) Detección de URLs pegadas para ingesta inmediata (no bloquear el loop mientras yt-dlp analiza)
                 url_match = URL_PATTERN.search(text)
                 if url_match and not text.startswith("/"):
-                    handle_url_ingestion(url_match.group(0))
+                    threading.Thread(
+                        target=handle_url_ingestion,
+                        args=(url_match.group(0),),
+                        daemon=True
+                    ).start()
                     continue
 
                 # Normalización de comandos y botones táctiles
@@ -1499,6 +1510,59 @@ def start_telegram_bot_daemon():
                         else:
                             send_telegram_alert(f"⚠️ No se encontró ningún canal que coincida con `{target}`.")
 
+                elif cmd in ["/xscout", "🐦"] or text == "🐦 X Scout GTA6":
+                    if ACTIVE_TASK:
+                        send_telegram_alert(f"⚠️ *Tarea activa en curso:* `{ACTIVE_TASK}`. Espera a que finalice.")
+                    else:
+                        def _run_x_scout(chat_id: str):
+                            global ACTIVE_TASK
+                            with BACKGROUND_LOCK:
+                                ACTIVE_TASK = "X Scout GTA6"
+                            try:
+                                send_telegram_alert("🐦 *Escaneando tu timeline de X en busca de vídeos GTA6...*\n_(Los tweets con like tuyo puntúan +15 pts)_")
+                                from .x_scout import scan_x_timeline, print_x_leaderboard
+                                candidates = scan_x_timeline(max_candidates=20)
+                                if not candidates:
+                                    send_telegram_alert("🐦 *X Scout:* Sin vídeos GTA6 encontrados en el timeline. ¿Está configurada la sesión?\n`python scripts/setup_x_session.py --sync`")
+                                    return
+                                liked = [c for c in candidates if c.get("is_liked")]
+                                lines = [f"🐦 *X SCOUT — {len(candidates)} vídeos GTA6 encontrados*"]
+                                if liked:
+                                    lines.append(f"⭐ *{len(liked)} con tu like* (prioridad máxima)\n")
+                                for i, c in enumerate(candidates[:5], 1):
+                                    tag = " ⭐" if c.get("is_liked") else ""
+                                    lines.append(f"{i}. `[{c['score']}/100]`{tag} {c['title'][:50]}")
+                                    lines.append(f"   ↳ {c['url']}")
+                                send_telegram_alert("\n".join(lines))
+                                # Procesar el mejor candidato vía pipeline normal
+                                from .ai_selector import select_best_candidate_ai
+                                from .pipeline import process_single_video
+                                from .channels import mark_video_processed
+                                chosen = select_best_candidate_ai(candidates)
+                                if chosen:
+                                    send_telegram_alert(f"🎬 *Procesando candidato X:*\n`{chosen.get('title','')[:60]}`")
+                                    res = process_single_video(
+                                        url=chosen["url"],
+                                        video_id=chosen["id"],
+                                        original_title=chosen["title"],
+                                        creator_name=chosen.get("uploader", "X Timeline"),
+                                        mode="subs",
+                                        force_short=True,
+                                        auto_upload=True,
+                                        publish_all=True,
+                                        copilot_mode=None,
+                                        is_manual_ingest=True,
+                                    )
+                                    if res is None:
+                                        mark_video_processed({"id": chosen["id"], "title": chosen["title"], "creator": "", "status": "skipped", "reason": "processing_failed"})
+                            except Exception as e:
+                                send_telegram_alert(f"❌ *Error en X Scout:* `{e}`")
+                            finally:
+                                with BACKGROUND_LOCK:
+                                    ACTIVE_TASK = None
+                        t = threading.Thread(target=_run_x_scout, args=(allowed_chat_id,), daemon=True)
+                        t.start()
+
                 elif cmd in ["/copilot", "🛡️"] or text == "🛡️ Modo Co-Pilot":
                     enabled = is_copilot_enabled()
                     state_text = "🟢 ACTIVO (Requiere tu aprobación táctil)" if enabled else "⚡ DESACTIVADO (100% Autónomo)"
@@ -1588,6 +1652,16 @@ def start_telegram_bot_daemon():
         except KeyboardInterrupt:
             print("\n[*] Bot detenido por el usuario.")
             break
+        except requests.exceptions.ReadTimeout:
+            time.sleep(1)
+        except requests.exceptions.ConnectionError:
+            if hasattr(start_telegram_bot_daemon, "_session"):
+                try:
+                    start_telegram_bot_daemon._session.close()
+                except Exception:
+                    pass
+                delattr(start_telegram_bot_daemon, "_session")
+            time.sleep(3)
         except Exception as e:
             print(f"[Telegram Bot] Error en loop: {e}")
             time.sleep(3)

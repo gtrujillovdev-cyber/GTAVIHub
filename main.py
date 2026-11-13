@@ -163,6 +163,11 @@ def main():
         action="store_true",
         help="Sincroniza y actualiza las ofertas de hardware y periféricos de Amazon para GTA VI (ciclo de 3 días)."
     )
+    parser.add_argument(
+        "--x-scout",
+        action="store_true",
+        help="Escanea el timeline de X (Twitter) en busca de vídeos GTA6 y procesa el mejor candidato."
+    )
 
     args = parser.parse_args()
 
@@ -218,6 +223,47 @@ def main():
         print("[*] Iniciando escaneo del Radar Viral de GTA 6...")
         candidates = scan_viral_radar(max_candidates=10)
         print_viral_leaderboard(candidates)
+        return
+
+    if args.x_scout:
+        from src.x_scout import scan_x_timeline, print_x_leaderboard
+        from src.ai_selector import select_best_candidate_ai
+        from src.channels import mark_video_processed
+        print("[*] Escaneando timeline de X (Twitter) en busca de vídeos GTA6...")
+        candidates = scan_x_timeline(max_candidates=20)
+        print_x_leaderboard(candidates)
+        if not candidates:
+            return
+        if not args.publish_all and not args.upload:
+            args.publish_all = True
+            args.upload = True
+        chosen = select_best_candidate_ai(candidates)
+        if not chosen:
+            print("[!] Ningún candidato de X pasó el filtro editorial.")
+            return
+        print(f"[X Scout] Procesando: '{chosen['title'][:60]}' (Score: {chosen['score']}/100)")
+        res = process_single_video(
+            url=chosen["url"],
+            video_id=chosen["id"],
+            original_title=chosen["title"],
+            creator_name=chosen.get("uploader", "X Timeline"),
+            mode=args.mode,
+            force_short=True,
+            auto_upload=args.upload,
+            privacy_status=args.privacy,
+            keep_local_video=args.keep_local_video,
+            publish_all=args.publish_all,
+            dry_run=args.dry_run,
+            stagger_delay=args.stagger_delay,
+            copilot_mode=False if args.no_copilot else None,
+            is_manual_ingest=True,
+        )
+        if res is None:
+            mark_video_processed({
+                "id": chosen["id"], "title": chosen["title"],
+                "creator": chosen.get("uploader", ""), "status": "skipped",
+                "reason": "processing_failed"
+            })
         return
 
     if args.auto_viral:
