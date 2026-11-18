@@ -135,7 +135,8 @@ def process_single_video(
     block_instagram: bool = False,
     allowed_platforms: Optional[list] = None,
     is_manual_ingest: bool = False,
-    allow_official_commentary: bool = False
+    allow_official_commentary: bool = False,
+    candidate_score: int = 0
 ) -> Optional[Dict[str, Any]]:
     """
     Ejecuta el ciclo de vida completo de un vídeo con transformación editorial real:
@@ -678,8 +679,22 @@ def process_single_video(
     with open(meta_path, "w", encoding="utf-8") as f:
         json.dump(full_info, f, indent=2, ensure_ascii=False)
 
-    # 7. Co-Pilot Mode: Aprobación previa humana antes de publicar
-    effective_copilot = is_copilot_enabled() if copilot_mode is None else copilot_mode
+    # 7. Co-Pilot Mode: Aprobación previa humana antes de publicar (o Launch Autopilot opt-in)
+    from .config import LAUNCH_AUTOPILOT, LAUNCH_AUTOPILOT_MIN_SCORE, is_gameplay_enabled
+    if copilot_mode is None:
+        effective_copilot = is_copilot_enabled()
+        if (
+            effective_copilot
+            and LAUNCH_AUTOPILOT
+            and is_gameplay_enabled()
+            and not is_manual_ingest
+            and (auto_upload or publish_all)
+            and candidate_score >= LAUNCH_AUTOPILOT_MIN_SCORE
+        ):
+            print(f"[*] [Launch Autopilot] Score {candidate_score} >= {LAUNCH_AUTOPILOT_MIN_SCORE}: publicando en estreno sin pausa Co-Pilot.")
+            effective_copilot = False
+    else:
+        effective_copilot = copilot_mode
     if effective_copilot:
         print(f"[*] Modo Co-Pilot ACTIVO: Pausando publicación a la espera de aprobación en Telegram...")
         stage_pending_video(

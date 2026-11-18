@@ -332,8 +332,9 @@ Devuelve tu respuesta EXACTAMENTE en este formato JSON (sin texto extra fuera de
 """
 
     try:
-        response = client.models.generate_content(
-            model=GEMINI_MODEL,
+        from .translator import generate_content_with_retry
+        response = generate_content_with_retry(
+            client=client,
             contents=prompt,
             config={"response_mime_type": "application/json"}
         )

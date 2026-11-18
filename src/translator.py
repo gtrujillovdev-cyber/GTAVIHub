@@ -2,18 +2,18 @@ import re
 import json
 import shutil
 from pathlib import Path
-from typing import Optional, Dict, Tuple
+from typing import Optional, Dict, Tuple, Any
 from google import genai
-from .config import GEMINI_API_KEY, GEMINI_MODEL, BUSINESS_EMAIL, MONETIZATION_AFFILIATE_URL
+from .config import GEMINI_API_KEY, GEMINI_MODEL, GEMINI_FALLBACK_MODELS, BUSINESS_EMAIL, MONETIZATION_AFFILIATE_URL
 
 _client = None
 
 FALLBACK_GEMINI_MODELS = list(dict.fromkeys([
     GEMINI_MODEL,
-    "gemini-2.5-flash-lite",
-    "gemini-3.1-flash-lite",
-    "gemini-3.5-flash-lite",
+    *GEMINI_FALLBACK_MODELS,
+    "gemini-4-hydrogen",
     "gemini-2.5-flash",
+    "gemini-2.5-flash-lite",
 ]))
 
 def _fix_es_title_grammar(txt: str) -> str:
@@ -24,18 +24,25 @@ def _fix_es_title_grammar(txt: str) -> str:
     return "\n".join(" ".join(ln.split()) for ln in t.splitlines() if ln.strip()).strip()
 
 
-def generate_content_with_retry(client, contents, models=None):
-    """Ejecuta generate_content con rotación automática a modelos Flash-Lite si hay límite 429 de cuota."""
+def generate_content_with_retry(client, contents, models=None, config=None):
+    """Ejecuta generate_content con rotación automática (Hydrogen -> Flash -> Flash-Lite) ante 429/404/403/503."""
     if models is None:
         models = FALLBACK_GEMINI_MODELS
     last_err = None
+    retryable_tokens = (
+        "429", "RESOURCE_EXHAUSTED", "404", "NOT_FOUND", "503", "UNAVAILABLE",
+        "500", "403", "PERMISSION_DENIED", "400", "INVALID_ARGUMENT", "overloaded",
+    )
     for model_name in models:
         try:
-            return client.models.generate_content(model=model_name, contents=contents)
+            kwargs = {"model": model_name, "contents": contents}
+            if config is not None:
+                kwargs["config"] = config
+            return client.models.generate_content(**kwargs)
         except Exception as e:
             last_err = e
             err_msg = str(e)
-            if "429" in err_msg or "RESOURCE_EXHAUSTED" in err_msg or "404" in err_msg or "503" in err_msg:
+            if any(tok in err_msg for tok in retryable_tokens):
                 print(f"[*] Modelo '{model_name}' con limitación ({err_msg[:45]}...). Rotando a modelo alternativo...")
                 continue
             raise e

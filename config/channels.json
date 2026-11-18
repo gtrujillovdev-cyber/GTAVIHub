@@ -1274,84 +1274,64 @@
       "description": "Insane police AI tactics and wanted system"
     },
     {
-      "query": "ytsearch15:GTA 6 primera mision gameplay espanol #shorts",
+      "query": "ytsearch15:GTA 6 gameplay primera mision espanol",
+      "sp": "EgQIAhAB",
       "lang": "es",
-      "only_shorts": true,
+      "only_shorts": false,
+      "allow_long_clipping": true,
       "enabled": false,
       "active_after": "2026-11-19",
-      "description": "Primera misión y prólogo de GTA 6 en español"
+      "description": "Lanzamiento HOY: primera misión y prólogo de GTA 6 en español (auto-clipping)"
     },
     {
-      "query": "ytsearch15:GTA 6 gameplay conduccion disparos atraco #shorts",
-      "lang": "es",
-      "only_shorts": true,
+      "query": "ytsearch15:GTA 6 gameplay secrets details vice city",
+      "sp": "EgQIAhAB",
+      "lang": "en",
+      "only_shorts": false,
+      "allow_long_clipping": true,
       "enabled": false,
       "active_after": "2026-11-19",
-      "description": "Atracos y persecuciones en gameplay real"
+      "description": "Lanzamiento HOY: secretos y mecánicas reales descubiertas en Vice City/Leonida"
     },
     {
-      "query": "ytsearch15:GTA 6 nivel 5 estrellas persecucion swat #shorts",
-      "lang": "es",
-      "only_shorts": true,
+      "query": "ytsearch15:GTA 6 PS5 Pro vs Xbox Series X fps comparison",
+      "sp": "EgQIAhAB",
+      "lang": "en",
+      "only_shorts": false,
+      "allow_long_clipping": true,
       "enabled": false,
       "active_after": "2026-11-19",
-      "description": "Máximo nivel de búsqueda policial en gameplay"
+      "description": "Lanzamiento HOY: comparativa real de FPS y gráficos en consolas"
     },
     {
-      "query": "ytsearch15:GTA 6 final explicado gameplay #shorts",
+      "query": "ytsearch15:GTA 6 fisicas detalles mundo abierto gameplay",
+      "sp": "EgQIAhAB",
       "lang": "es",
-      "only_shorts": true,
+      "only_shorts": false,
+      "allow_long_clipping": true,
       "enabled": false,
       "active_after": "2026-11-19",
-      "description": "Final de la historia y revelaciones de GTA 6"
+      "description": "Lanzamiento HOY: físicas, conducción y detalles de mundo abierto en español"
     },
     {
-      "query": "ytsearch15:GTA 6 secretos mapa gameplay libre #shorts",
-      "lang": "es",
-      "only_shorts": true,
+      "query": "ytsearch15:GTA 6 gameplay combat police chase wanted",
+      "sp": "EgQIAhAB",
+      "lang": "en",
+      "only_shorts": false,
+      "allow_long_clipping": true,
       "enabled": false,
       "active_after": "2026-11-19",
-      "description": "Exploración libre de secretos por Leonida"
+      "description": "Lanzamiento HOY: tiroteos, persecuciones policiales y sistema de búsqueda"
     },
     {
-      "query": "ytsearch15:GTA 6 todos los vehiculos gameplay #shorts",
+      "query": "ytsearch15:GTA 6 curiosidades secretos mapa leonida",
+      "sp": "EgQIAhAB",
       "lang": "es",
-      "only_shorts": true,
+      "only_shorts": false,
+      "allow_long_clipping": true,
       "enabled": false,
       "active_after": "2026-11-19",
-      "description": "Showcase de todos los coches y aviones en gameplay"
-    },
-    {
-      "query": "ytsearch15:GTA 6 armas tiendas tiroteo gameplay #shorts",
-      "lang": "es",
-      "only_shorts": true,
-      "enabled": false,
-      "active_after": "2026-11-19",
-      "description": "Ammu-Nation y personalización de armas en acción"
-    },
-    {
-      "query": "ytsearch15:GTA 6 bugs momentos divertidos gameplay #shorts",
-      "lang": "es",
-      "only_shorts": true,
-      "enabled": false,
-      "active_after": "2026-11-19",
-      "description": "Fails y físicas hilarantes de los primeros días"
-    },
-    {
-      "query": "ytsearch15:GTA 6 ps5 pro vs series x gameplay comparativa #shorts",
-      "lang": "es",
-      "only_shorts": true,
-      "enabled": false,
-      "active_after": "2026-11-19",
-      "description": "Comparativa de frames y gráficos en consolas next-gen"
-    },
-    {
-      "query": "ytsearch15:GTA 6 mundo abierto actividades minijuegos #shorts",
-      "lang": "es",
-      "only_shorts": true,
-      "enabled": false,
-      "active_after": "2026-11-19",
-      "description": "Minijuegos y actividades secundarias en Leonida"
+      "description": "Lanzamiento HOY: curiosidades y ubicaciones reales exploradas hoy en Leonida"
     }
   ]
 }

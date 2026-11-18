@@ -624,7 +624,8 @@ def run_scan_in_background(chat_id: str, max_videos: int = 2, window_id: Optiona
     global ACTIVE_TASK
     with BACKGROUND_LOCK:
         ACTIVE_TASK = "Escaneo de Canales"
-    
+
+    count = 0
     try:
         from .pipeline import process_single_video
         from .ai_selector import select_best_candidate_ai
@@ -634,11 +635,13 @@ def run_scan_in_background(chat_id: str, max_videos: int = 2, window_id: Optiona
         candidates = fetch_channel_candidates(max_per_channel=max_videos)
         
         if not candidates:
+            if window_id:
+                mark_window_completed(window_id)
+                window_id = None
             send_telegram_alert("✓ *Escaneo finalizado:* No hay vídeos nuevos ni distintos pendientes.")
             return
 
         send_telegram_alert(f"🎯 *{len(candidates)} candidato(s) único(s) validado(s).* Seleccionando el mejor...")
-        count = 0
         remaining = list(candidates)
         max_attempts = min(len(remaining), max_videos + 4)
         for _ in range(max_attempts):
@@ -675,7 +678,8 @@ def run_scan_in_background(chat_id: str, max_videos: int = 2, window_id: Optiona
                 hook_override=hook_custom,
                 block_instagram=item.get("block_instagram", False),
                 allowed_platforms=item.get("allowed_platforms"),
-                allow_official_commentary=bool(item.get("allow_official_commentary", False))
+                allow_official_commentary=bool(item.get("allow_official_commentary", False)),
+                candidate_score=int(item.get("score") or 0)
             )
             if res:
                 count += 1
@@ -691,10 +695,19 @@ def run_scan_in_background(chat_id: str, max_videos: int = 2, window_id: Optiona
                         f"🔗 {yt_url}"
                     )
                 
+        if window_id:
+            # Evitar que una tanda sin candidatos re-dispare en bucle cada 20s durante 45m
+            mark_window_completed(window_id)
         send_telegram_alert(f"🎉 *Tanda finalizada con éxito.* Total procesados: `{count}` vídeos.")
     except Exception as e:
         send_telegram_alert(f"❌ *Error durante el escaneo autónomo:* `{e}`")
     finally:
+        if window_id and count == 0:
+            try:
+                from .adaptive_scheduler import mark_window_completed
+                mark_window_completed(window_id)
+            except Exception:
+                pass
         with BACKGROUND_LOCK:
             ACTIVE_TASK = None
 
@@ -1214,6 +1227,32 @@ def start_telegram_bot_daemon():
                 except Exception as e:
                     print(f"[PerformanceTracker] Error obteniendo métricas: {e}")
 
+            # Transición automática a Fase Estreno al cruzar las 00:00 CET (comprobación cada 5 min)
+            if not hasattr(start_telegram_bot_daemon, '_last_phase_check'):
+                start_telegram_bot_daemon._last_phase_check = 0
+            if _now_ts - start_telegram_bot_daemon._last_phase_check > 300:
+                start_telegram_bot_daemon._last_phase_check = _now_ts
+                try:
+                    from .config import is_gameplay_enabled
+                    from .knowledge_recycler import load_dynamic_knowledge, recycle_knowledge
+                    from .traffic_sentinel import scan_realtime_traffic
+                    if is_gameplay_enabled():
+                        dk_state = load_dynamic_knowledge()
+                        if dk_state.get("current_phase") == "pre_launch":
+                            def _activate_launch_phase():
+                                try:
+                                    recycle_knowledge(force=True)
+                                    scan_realtime_traffic(save=True)
+                                    send_telegram_alert(
+                                        "🚀 *FASE DE ESTRENO ACTIVADA (2026-11-19)*\n"
+                                        "Conocimiento editorial y radar de tráfico actualizados automáticamente para gameplay real."
+                                    )
+                                except Exception as ph_err:
+                                    print(f"[PhaseTransition] Error actualizando fase: {ph_err}")
+                            threading.Thread(target=_activate_launch_phase, daemon=True).start()
+                except Exception as e:
+                    print(f"[PhaseTransition] Error comprobando transición de fase: {e}")
+
             # Planificador Adaptativo Anti-Detección (Horarios Aleatorios en Franjas Orgánicas)
             now_dt = datetime.now()
             try:
@@ -1224,7 +1263,7 @@ def start_telegram_bot_daemon():
                 if due_win:
                     if get_daily_published_count() >= MAX_DAILY_UPLOADS:
                         print(f"[Scheduler] Cuota diaria alcanzada ({MAX_DAILY_UPLOADS}); ventana '{due_win['name']}' omitida.")
-                        mark_window_completed(due_win["id"], now_dt)
+                        mark_window_completed(due_win["id"], target_date=now_dt.date())
                         due_win = None
                 if due_win:
                     win_id = due_win["id"]
@@ -1381,7 +1420,7 @@ def start_telegram_bot_daemon():
                     )
 
                 elif cmd in ["/aiselect", "/ai_select", "/seleccion_ia", "🤖"]:
-                    send_telegram_alert("🤖 *Consultando al Motor de Selección con IA (Gemini Flash)...*\nEvaluando candidatos en tiempo real entre 72 canales y 64 queries...")
+                    send_telegram_alert("🤖 *Consultando al Motor de Selección con IA (Hydrogen / Gemini)...*\nEvaluando candidatos en tiempo real entre canales, búsquedas y TrafficRadar...")
                     def _run_ai_sel():
                         try:
                             from .channels import fetch_channel_candidates

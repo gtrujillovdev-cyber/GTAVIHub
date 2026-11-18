@@ -834,9 +834,8 @@ def fetch_channel_candidates(max_per_channel: int = 2) -> List[Dict[str, Any]]:
                 for cand in future.result():
                     _merge_candidate(cand)
 
-    # Si tras escanear canales base y queries tenemos muy pocos candidatos (<2),
-    # recurrir a un lote selecto del Directorio Maestro (autoridades técnicas)
-    if len(candidates_by_id) < 2:
+    # Nivel 3 (Solo rescate): si Niveles 1 y 2 devolvieron 0 candidatos, muestrear Directorio Maestro
+    if len(candidates_by_id) == 0:
         try:
             from .channel_directory import get_channel_directory
             c_dir = get_channel_directory()

@@ -30,9 +30,9 @@ from src.traffic_sentinel import get_latest_traffic_radar
 KNOWLEDGE_STATE_FILE = DATA_DIR / "gta6_dynamic_knowledge.json"
 CANON_FILE = BASE_DIR / "docs" / "GTA6_LORE_AND_CANON.md"
 
-# Fechas de transición de fases
-LAUNCH_DATE = datetime(2026, 11, 19, 0, 0, 0, tzinfo=timezone.utc)
-POST_LAUNCH_DATE = datetime(2026, 11, 26, 0, 0, 0, tzinfo=timezone.utc)
+# Fechas de transición de fases alineadas con 00:00 CET (UTC+1 en noviembre = 23:00 UTC)
+LAUNCH_DATE = datetime(2026, 11, 18, 23, 0, 0, tzinfo=timezone.utc)
+POST_LAUNCH_DATE = datetime(2026, 11, 25, 23, 0, 0, tzinfo=timezone.utc)
 
 PHASE_CONFIGS = {
     "pre_launch": {

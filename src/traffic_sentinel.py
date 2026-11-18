@@ -84,7 +84,8 @@ DEFAULT_CURATED_NEWS = [
     {"title": "Comparativa de expectativas gráficas y rendimiento en PS5 Pro para GTA 6", "source": "MeriStation", "pub_date": "", "link": ""}
 ]
 
-LAUNCH_DATE = datetime(2026, 11, 19, 0, 0, 0, tzinfo=timezone.utc)
+# 2026-11-19 00:00 CET = 2026-11-18 23:00 UTC
+LAUNCH_DATE = datetime(2026, 11, 18, 23, 0, 0, tzinfo=timezone.utc)
 
 
 def fetch_youtube_search_suggest(max_queries: int = 25) -> List[Dict[str, Any]]:

@@ -66,6 +66,29 @@ TARGET_WINDOWS = [
     }
 ]
 
+# Ventanas extraordinarias activadas automáticamente en las noches de estreno (19 y 20 nov)
+LAUNCH_NIGHT_DATES = (date(2026, 11, 19), date(2026, 11, 20))
+LAUNCH_NIGHT_WINDOWS = [
+    {
+        "id": "midnight_drop",
+        "name": "🚀 Estreno Mundial GTA 6 (00:00 CET)",
+        "start_hour": 0,
+        "start_minute": 10,
+        "end_hour": 0,
+        "end_minute": 40,
+        "target_label": "00:10 - 00:40 CET"
+    },
+    {
+        "id": "late_night_wave",
+        "name": "🔥 Oleada Gameplay Madrugada",
+        "start_hour": 1,
+        "start_minute": 30,
+        "end_hour": 2,
+        "end_minute": 20,
+        "target_label": "01:30 - 02:20 CET"
+    },
+]
+
 
 def _generate_random_time_in_range(start_h: int, start_m: int, end_h: int, end_m: int) -> tuple[int, int]:
     """Genera una hora y minuto pseudoaleatorios uniformes dentro de una franja."""
@@ -73,6 +96,27 @@ def _generate_random_time_in_range(start_h: int, start_m: int, end_h: int, end_m
     total_end = end_h * 60 + end_m
     random_minute = random.randint(total_start, total_end)
     return (random_minute // 60, random_minute % 60)
+
+
+def _build_window_plan(win: Dict[str, Any]) -> Dict[str, Any]:
+    """Construye una entrada estocástica de ventana a partir de su definición."""
+    h, m = _generate_random_time_in_range(
+        win["start_hour"], win["start_minute"],
+        win["end_hour"], win["end_minute"]
+    )
+    return {
+        "id": win["id"],
+        "name": win["name"],
+        "scheduled_time": f"{h:02d}:{m:02d}",
+        "hour": h,
+        "minute": m,
+        "jitter_sec": random.randint(-180, 180),
+        "window_start": f"{win['start_hour']:02d}:{win['start_minute']:02d}",
+        "window_end": f"{win['end_hour']:02d}:{win['end_minute']:02d}",
+        "completed": False,
+        "completed_at": None,
+        "published_url": None,
+    }
 
 
 def generate_daily_schedule(target_date: Optional[date] = None, force_regenerate: bool = False) -> Dict[str, Any]:
@@ -88,30 +132,12 @@ def generate_daily_schedule(target_date: Optional[date] = None, force_regenerate
     if not force_regenerate and date_str in existing:
         return existing[date_str]
 
-    windows_plan = []
-    for win in TARGET_WINDOWS:
-        h, m = _generate_random_time_in_range(
-            win["start_hour"], win["start_minute"],
-            win["end_hour"], win["end_minute"]
-        )
-        scheduled_time_str = f"{h:02d}:{m:02d}"
-        
-        # Añadir jitter individual extra de -3 a +3 minutos
-        jitter_sec = random.randint(-180, 180)
-
-        windows_plan.append({
-            "id": win["id"],
-            "name": win["name"],
-            "scheduled_time": scheduled_time_str,
-            "hour": h,
-            "minute": m,
-            "jitter_sec": jitter_sec,
-            "window_start": f"{win['start_hour']:02d}:{win['start_minute']:02d}",
-            "window_end": f"{win['end_hour']:02d}:{win['end_minute']:02d}",
-            "completed": False,
-            "completed_at": None,
-            "published_url": None
-        })
+    source_windows = (
+        LAUNCH_NIGHT_WINDOWS + TARGET_WINDOWS
+        if target_date in LAUNCH_NIGHT_DATES
+        else TARGET_WINDOWS
+    )
+    windows_plan = [_build_window_plan(win) for win in source_windows]
 
     day_schedule = {
         "date": date_str,
@@ -146,13 +172,21 @@ def save_all_schedules(data: Dict[str, Any]):
 
 
 def get_daily_schedule(target_date: Optional[date] = None) -> Dict[str, Any]:
-    """Obtiene la planificación para el día, generándola aleatoriamente si no existe."""
+    """Obtiene la planificación para el día, inyectando ventanas de estreno si faltasen."""
     if target_date is None:
         target_date = date.today()
     date_str = target_date.isoformat()
     existing = load_all_schedules()
     if date_str in existing:
-        return existing[date_str]
+        day_sched = existing[date_str]
+        if target_date in LAUNCH_NIGHT_DATES:
+            present_ids = {w.get("id") for w in day_sched.get("windows", [])}
+            added = [_build_window_plan(w) for w in LAUNCH_NIGHT_WINDOWS if w["id"] not in present_ids]
+            if added:
+                day_sched["windows"] = added + day_sched.get("windows", [])
+                existing[date_str] = day_sched
+                save_all_schedules(existing)
+        return day_sched
     return generate_daily_schedule(target_date)
 
 

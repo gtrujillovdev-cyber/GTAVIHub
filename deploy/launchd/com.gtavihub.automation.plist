@@ -13,14 +13,14 @@
     </dict>
     <key>ProgramArguments</key>
     <array>
-        <string>/Users/gabrieltrujillovallejo/Documents/GtrujilloMacDoc/GitHub/GitGa/Developer/Projects/GTA6Channel/.venv/bin/python3</string>
+        <string>/Users/gabrieltrujillovallejo/projects/Web/GTA6Channel/.venv/bin/python3</string>
         <string>-u</string>
-        <string>/Users/gabrieltrujillovallejo/Documents/GtrujilloMacDoc/GitHub/GitGa/Developer/Projects/GTA6Channel/main.py</string>
+        <string>/Users/gabrieltrujillovallejo/projects/Web/GTA6Channel/main.py</string>
         <string>--auto</string>
         <string>--publish-all</string>
     </array>
     <key>WorkingDirectory</key>
-    <string>/Users/gabrieltrujillovallejo/Documents/GtrujilloMacDoc/GitHub/GitGa/Developer/Projects/GTA6Channel</string>
+    <string>/Users/gabrieltrujillovallejo/projects/Web/GTA6Channel</string>
     <key>StartCalendarInterval</key>
     <array>
         <!-- Ejecución 1: 14:00 (Hora punta de almuerzo España) -->
@@ -39,9 +39,9 @@
         </dict>
     </array>
     <key>StandardOutPath</key>
-    <string>/Users/gabrieltrujillovallejo/Documents/GtrujilloMacDoc/GitHub/GitGa/Developer/Projects/GTA6Channel/logs/launchd_stdout.log</string>
+    <string>/Users/gabrieltrujillovallejo/projects/Web/GTA6Channel/logs/launchd_stdout.log</string>
     <key>StandardErrorPath</key>
-    <string>/Users/gabrieltrujillovallejo/Documents/GtrujilloMacDoc/GitHub/GitGa/Developer/Projects/GTA6Channel/logs/launchd_stderr.log</string>
+    <string>/Users/gabrieltrujillovallejo/projects/Web/GTA6Channel/logs/launchd_stderr.log</string>
     <key>RunAtLoad</key>
     <false/>
     <key>Nice</key>

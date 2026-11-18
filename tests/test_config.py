@@ -80,6 +80,11 @@ class TestConfig(unittest.TestCase):
         for q in cfg["search_queries"]:
             if q.get("enabled") and q.get("only_shorts", True):
                 self.assertNotIn(q.get("sp"), ("EgQIAxAB", "EgQIAhAB"))
+        launch_qs = [q for q in cfg["search_queries"] if q.get("active_after") == "2026-11-19"]
+        self.assertGreaterEqual(len(launch_qs), 4)
+        for q in launch_qs:
+            self.assertFalse(q.get("only_shorts", True))
+            self.assertEqual(q.get("sp"), "EgQIAhAB")
 
 if __name__ == "__main__":
     unittest.main()

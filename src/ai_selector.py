@@ -231,7 +231,11 @@ RESPONDE EXCLUSIVAMENTE CON UN OBJETO JSON VÁLIDO:
 """
 
             from .translator import generate_content_with_retry, _fix_es_title_grammar
-            response = generate_content_with_retry(client=client, contents=prompt)
+            response = generate_content_with_retry(
+                client=client,
+                contents=prompt,
+                config={"response_mime_type": "application/json"}
+            )
             cleaned = clean_srt_response(response.text)
             decision = json.loads(cleaned)
 

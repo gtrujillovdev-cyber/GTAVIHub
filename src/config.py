@@ -38,9 +38,11 @@ LOGS_DIR.mkdir(parents=True, exist_ok=True)
 CHANNELS_FILE = CONFIG_DIR / "channels.json" if (CONFIG_DIR / "channels.json").exists() else (BASE_DIR / "channels.json")
 PROCESSED_FILE = DATA_DIR / "processed.json" if (DATA_DIR / "processed.json").exists() else (BASE_DIR / "processed.json")
 
-# Gemini API Configuration
+# Gemini / Hydrogen API Configuration
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
-GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash-lite")
+GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-4-hydrogen")
+_raw_fallbacks = os.getenv("GEMINI_FALLBACK_MODELS", "gemini-4-hydrogen,gemini-2.5-flash,gemini-2.5-flash-lite")
+GEMINI_FALLBACK_MODELS = [m.strip() for m in _raw_fallbacks.split(",") if m.strip()]
 
 # Defaults & Duración Orgánica Nativa (Shorts nativos 100% íntegros, sin cortes arbitrarios)
 MAX_VIDEOS_PER_RUN = int(os.getenv("MAX_VIDEOS_PER_RUN", "1"))
@@ -51,6 +53,10 @@ SHORT_MIN_DURATION = int(os.getenv("SHORT_MIN_DURATION", "10"))
 GAMEPLAY_MIN_DURATION = int(os.getenv("GAMEPLAY_MIN_DURATION", "12"))
 SHORT_MAX_DURATION = int(os.getenv("SHORT_MAX_DURATION", "58"))
 SHORT_TARGET_DURATION = int(os.getenv("SHORT_TARGET_DURATION", "28"))
+
+# Política nocturna para lanzamiento: por defecto Co-Pilot sigue exigiendo confirmación manual
+LAUNCH_AUTOPILOT = os.getenv("LAUNCH_AUTOPILOT", "false").lower() in ("1", "true", "yes")
+LAUNCH_AUTOPILOT_MIN_SCORE = int(os.getenv("LAUNCH_AUTOPILOT_MIN_SCORE", "65"))
 
 # FFmpeg Hardware Acceleration (VideoToolbox para Apple Silicon e Intel)
 FFMPEG_VIDEO_CODEC = "h264_videotoolbox"

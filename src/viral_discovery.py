@@ -14,19 +14,16 @@ from .channels import get_processed_ids, list_monitored_channels, add_monitored_
 DISCOVERED_CHANNELS_FILE = DATA_DIR / "discovered_channels.json"
 
 DEFAULT_VIRAL_QUERIES = [
-    # Noticias, Leaks & Primicias de Creadores
-    "ytsearch15:GTA 6 new update leak rockstar #shorts",
+    # Secretos y Easter Eggs
     "ytsearch15:GTA 6 things you missed #shorts",
     "ytsearch15:GTA 6 fecha lanzamiento noticias #shorts",
-    "ytsearch15:GTA 6 nueva informacion filtrada mapa #shorts",
-    # Secretos y Easter Eggs
     "ytsearch15:GTA 6 gameplay secrets easter eggs #shorts",
     "ytsearch15:GTA 6 hidden details leonida #shorts",
     "ytsearch15:GTA 6 mapa Leonida comparativa miami #shorts",
     "ytsearch15:GTA 6 secretos ocultos vice city #shorts",
     "ytsearch15:GTA 6 cosas ocultas que no viste #shorts",
     # Físicas de Nueva Generación y RAGE 9
-    "ytsearch15:GTA 6 graphics comparison real life #shorts",
+    "ytsearch15:GTA 6 graphics comparison ps5 #shorts",
     "ytsearch15:GTA 6 rage engine water physics #shorts",
     "ytsearch15:GTA 6 fisicas coches deformacion #shorts",
     "ytsearch15:GTA 6 inteligencia artificial npcs reacciones #shorts",
@@ -40,24 +37,22 @@ DEFAULT_VIRAL_QUERIES = [
     "ytsearch15:GTA 6 Eurogamer Espana detalles #shorts",
     "ytsearch15:GTA 6 Vandal curiosidades #shorts",
     "ytsearch15:GTA 6 3DJuegos detalles #shorts",
-    # Global Virality & High-Impact Breakdowns (Cero Parodias ni Anuncios)
+    # Global Virality & High-Impact Breakdowns (Cero Parodias ni Leaks)
     "ytsearch20:GTA 6 breakdown analysis secrets",
     "ytsearch20:GTA 6 crazy realistic details #shorts",
     "ytsearch20:GTA 6 mind blowing physics rage engine",
-    "ytsearch20:GTA 6 realistic graphics reaction #shorts",
     "ytsearch20:GTA 6 map size comparison vice city",
-    "ytsearch20:GTA 6 leaked gameplay mechanics details",
     "ytsearch20:GTA 6 secrets you completely missed",
     "ytsearch20:GTA 6 cosas ocultas detalles analisis"
 ]
 
 # Consultas específicas de Gameplay Puro activas a partir del 19 de Noviembre
 GAMEPLAY_VIRAL_QUERIES = [
-    "ytsearch20:GTA 6 gameplay real mission #shorts",
-    "ytsearch20:GTA 6 gameplay espanol momentos #shorts",
-    "ytsearch20:GTA 6 gameplay conduccion disparos #shorts",
-    "ytsearch20:GTA 6 gameplay mundo abierto detalles #shorts",
-    "ytsearch20:GTA 6 gameplay tiroteo policia #shorts",
+    "ytsearch15:GTA 6 gameplay primera mision espanol",
+    "ytsearch15:GTA 6 gameplay real mission secrets",
+    "ytsearch15:GTA 6 gameplay conduccion fisicas detalles",
+    "ytsearch15:GTA 6 ps5 pro vs xbox series x gameplay",
+    "ytsearch15:GTA 6 gameplay mundo abierto detalles",
 ]
 
 VIRAL_KEYWORDS = [

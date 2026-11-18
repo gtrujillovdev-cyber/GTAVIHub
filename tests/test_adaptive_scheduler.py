@@ -64,5 +64,25 @@ class TestAdaptiveScheduler(unittest.TestCase):
         self.assertIn("Planificador Adaptativo", summary)
         self.assertIn("CET", summary)
 
+    def test_launch_night_windows_injected_and_backfilled(self):
+        launch_day = date(2026, 11, 19)
+        sched = generate_daily_schedule(target_date=launch_day, force_regenerate=True)
+        ids = [w["id"] for w in sched["windows"]]
+        self.assertEqual(ids[:2], ["midnight_drop", "late_night_wave"])
+        self.assertEqual(len(ids), 6)
+
+        # Simular horario cacheado antiguo de 4 ventanas para el 19-N y verificar backfill automático
+        from src.adaptive_scheduler import load_all_schedules, save_all_schedules
+        all_sched = load_all_schedules()
+        all_sched[launch_day.isoformat()]["windows"] = [
+            w for w in sched["windows"] if w["id"] not in ("midnight_drop", "late_night_wave")
+        ]
+        save_all_schedules(all_sched)
+
+        reloaded = get_daily_schedule(launch_day)
+        reloaded_ids = [w["id"] for w in reloaded["windows"]]
+        self.assertIn("midnight_drop", reloaded_ids)
+        self.assertIn("late_night_wave", reloaded_ids)
+
 if __name__ == "__main__":
     unittest.main()

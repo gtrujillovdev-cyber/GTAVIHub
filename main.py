@@ -18,7 +18,7 @@ try:
 except Exception:
     pass
 
-from src.config import MAX_VIDEOS_PER_RUN, CHANNELS_FILE, is_quant_busy, get_max_videos_per_run
+from src.config import MAX_VIDEOS_PER_RUN, CHANNELS_FILE, is_quant_busy, get_max_videos_per_run, is_gameplay_enabled
 from src.channels import fetch_channel_candidates
 from src.pipeline import process_single_video
 
@@ -382,9 +382,9 @@ def main():
         if not args.publish_all and not args.upload:
             args.publish_all = True
             args.upload = True
-        launch_active = args.launch_mode or (datetime.now() >= datetime.fromisoformat("2026-11-19"))
+        launch_active = args.launch_mode or is_gameplay_enabled()
         tag = "🚀 [MODO DÍA DEL ESTRENO]" if launch_active else "[*]"
-        print(f"{tag} Iniciando escaneo autónomo multi-fuente (72 canales + 64 queries)...")
+        print(f"{tag} Iniciando escaneo autónomo multi-fuente (canales + búsquedas + TrafficRadar)...")
         effective_limit = args.max_videos if args.max_videos != MAX_VIDEOS_PER_RUN else get_max_videos_per_run()
         candidates = fetch_channel_candidates(max_per_channel=effective_limit)
         
@@ -434,7 +434,8 @@ def main():
                 hook_override=custom_hook,
                 block_instagram=chosen.get("block_instagram", False),
                 allowed_platforms=chosen.get("allowed_platforms"),
-                allow_official_commentary=bool(chosen.get("allow_official_commentary", False))
+                allow_official_commentary=bool(chosen.get("allow_official_commentary", False)),
+                candidate_score=int(chosen.get("score") or 0)
             )
             if res:
                 count += 1
