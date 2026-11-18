@@ -12,6 +12,8 @@ FALLBACK_GEMINI_MODELS = list(dict.fromkeys([
     GEMINI_MODEL,
     *GEMINI_FALLBACK_MODELS,
     "gemini-4-hydrogen",
+    "gemini-3.8-flash",
+    "gemini-3.5-flash-lite",
     "gemini-2.5-flash",
     "gemini-2.5-flash-lite",
 ]))
@@ -31,6 +33,7 @@ def generate_content_with_retry(client, contents, models=None, config=None):
     last_err = None
     retryable_tokens = (
         "429", "RESOURCE_EXHAUSTED", "404", "NOT_FOUND", "503", "UNAVAILABLE",
+        "504", "DEADLINE_EXCEEDED", "Deadline",
         "500", "403", "PERMISSION_DENIED", "400", "INVALID_ARGUMENT", "overloaded",
         "timeout", "timed out", "Timeout",
     )
