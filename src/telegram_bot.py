@@ -317,35 +317,54 @@ def send_telegram_notification(
     multiplatform_urls: Dict[str, Optional[str]],
     thumbnail_path: Optional[Path] = None
 ) -> bool:
-    """Envía un anuncio de publicación exitosa con enlaces, miniatura y texto para TikTok/Reels."""
-    yt_url = multiplatform_urls.get("youtube") or "Pendiente"
-    tt_url = multiplatform_urls.get("tiktok") or "Pendiente"
-    ig_url = multiplatform_urls.get("instagram") or "Pendiente"
-
+    """Envía un anuncio claro y visual de publicación con enlaces directos a cada red."""
     clean_title = (
         title.replace("¡BRUTAL! 🔥 ", "")
         .replace("REACCIÓN Y ANÁLISIS DE GTA 6: ", "")
         .replace("REACCIÓN Y ANÁLISIS: ", "")
+        .replace("#Shorts", "")
+        .replace("#shorts", "")
         .strip()
     )
+    clean_creator = str(creator or "Rockstar Games").replace("*", "").replace("`", "").strip()
+
+    yt_url = multiplatform_urls.get("youtube")
+    tt_url = multiplatform_urls.get("tiktok")
+    ig_url = multiplatform_urls.get("instagram")
+
+    lines_rrss = []
+    if yt_url and yt_url.startswith("http"):
+        lines_rrss.append(f"• 🔴 *YouTube Shorts:* [Abrir Short]({yt_url})")
+    else:
+        lines_rrss.append(f"• 🔴 *YouTube:* [Canal @GTAVIHubExtra](https://www.youtube.com/@gtavihubextra/shorts)")
+
+    if tt_url and tt_url.startswith("http"):
+        lines_rrss.append(f"• 🎵 *TikTok:* [Abrir Clip]({tt_url})")
+    else:
+        lines_rrss.append(f"• 🎵 *TikTok:* [Perfil @gtavihubextra](https://www.tiktok.com/@gtavihubextra)")
+
+    if ig_url and ig_url.startswith("http"):
+        lines_rrss.append(f"• 📸 *Instagram:* [Abrir Reel]({ig_url})")
+    else:
+        lines_rrss.append(f"• 📸 *Instagram:* [Perfil @gtavihubextra](https://www.instagram.com/gtavihubextra/)")
+
+    rrss_block = "\n".join(lines_rrss)
 
     tiktok_reels_copy = (
         f"{clean_title} 🤯🌴\n\n"
         f"Todo sobre GTA 6 en español en @gtavihubextra 🇪🇸\n"
-        f"#GTA6 #GTAVI #ViceCity #RockstarGames #Gaming #Shorts #Reels"
+        f"#GTA6 #GTAVI #GTA6Gameplay #ViceCity #Gaming"
     )
 
     caption = (
-        "🌴 *¡NUEVO VÍDEO PUBLICADO EN GTA VI HUB!* 🎮\n\n"
-        f"🎬 *Título:* `{title}`\n"
-        f"👤 *Autor Original:* `{creator}`\n\n"
-        "🔗 *Enlaces a Plataformas:*\n"
-        f"• 🔴 *YouTube Shorts:* [Ver en YouTube]({yt_url})\n"
-        f"• 🎵 *TikTok:* [Ver en TikTok]({tt_url})\n"
-        f"• 📸 *Instagram Reels:* [Ver en Instagram]({ig_url})\n\n"
-        "📋 *Texto para TikTok / Reels (1 toque para copiar):*\n"
+        "🚀 *¡VÍDEO PUBLICADO CON ÉXITO!*\n\n"
+        f"🎬 *{clean_title}*\n"
+        f"👤 *Creador original:* {clean_creator}\n\n"
+        f"🔗 *ENLACES DIRECTOS A TUS REDES:*\n"
+        f"{rrss_block}\n\n"
+        "📋 *Texto preparado para TikTok / Reels (toca para copiar):*\n"
         f"`{tiktok_reels_copy}`\n\n"
-        "⚖️ _Fair Use (Art. 107) verificado y créditos asignados._"
+        "✨ _Vídeo optimizado en 9:16 vertical con subtítulos y Fair Use acreditado._"
     )
 
     if thumbnail_path and thumbnail_path.exists():
@@ -381,16 +400,21 @@ def get_url_ingest_keyboard(token_id: str, recommended_opt: str = "short") -> Di
     }
 
 def get_copilot_approval_keyboard(video_id: str, original_url: Optional[str] = None) -> Dict[str, Any]:
-    """Teclado interactivo de aprobación/descarte en modo Co-Pilot con enlace directo al vídeo."""
+    """Teclado interactivo de aprobación/descarte en modo Co-Pilot con enlaces limpios."""
     source_url = original_url or f"https://www.youtube.com/watch?v={video_id}"
     return {
         "inline_keyboard": [
             [
-                {"text": "✅ Aprobar y Publicar", "callback_data": f"copilot:approve:{video_id}"},
-                {"text": "❌ Descartar y Purgar", "callback_data": f"copilot:reject:{video_id}"}
+                {"text": "✅ Publicar en Todas las Redes", "callback_data": f"copilot:approve:{video_id}"},
+                {"text": "❌ Descartar y Borrar", "callback_data": f"copilot:reject:{video_id}"}
             ],
             [
-                {"text": "👁️ Ver Vídeo Original en YouTube", "url": source_url}
+                {"text": "👁️ Ver Fuente Original en YouTube", "url": source_url}
+            ],
+            [
+                {"text": "🔴 YouTube Shorts", "url": "https://www.youtube.com/@gtavihubextra/shorts"},
+                {"text": "🎵 TikTok", "url": "https://www.tiktok.com/@gtavihubextra"},
+                {"text": "📸 Instagram", "url": "https://www.instagram.com/gtavihubextra/"}
             ]
         ]
     }
@@ -546,16 +570,29 @@ def send_copilot_approval_request(
     original_url: Optional[str] = None,
     video_path: Optional[Path] = None
 ) -> bool:
-    """Envía la previsualización del vídeo real (o miniatura) con botones de aprobación a Telegram."""
-    clean_title = str(title).replace("*", "").replace("`", "").replace("_", " ")
-    clean_creator = str(creator or "Rockstar Games").replace("*", "").replace("`", "").replace("_", " ")
-    clean_hook = str(hook_text or "GTA 6").replace("*", "").replace("`", "").replace("_", " ")
+    """Envía la previsualización del vídeo real (o miniatura) con formato claro y enlaces directos."""
+    clean_title = str(title).replace("*", "").replace("`", "").replace("_", " ").strip()
+    clean_creator = str(creator or "Rockstar Games").replace("*", "").replace("`", "").replace("_", " ").strip()
+    clean_hook = str(hook_text or "GTA 6").replace("*", "").replace("`", "").replace("_", " ").strip()
+
+    mode_label = {
+        "gameplay": "🎮 Audio Real del Juego (Sin voz encima)",
+        "dub": "🎙️ Doblaje Neural en Español",
+        "subs": "💬 Subtítulos Pop Karaoke",
+        "clean": "⚡ Vídeo Original Limpio"
+    }.get(mode.lower(), f"🎬 {mode.capitalize()}")
 
     caption = (
-        "🎬 *VISTA PREVIA DEL VÍDEO*\n\n"
-        f"📌 *{clean_title[:80]}*\n"
-        f"👤 Fuente: `{clean_creator[:35]}` | 🎯 `{clean_hook[:30]}`\n\n"
-        "👇 ¿Aprobar y publicar en YouTube, TikTok e Instagram?"
+        "🎬 *VISTA PREVIA DE CLIP EDITADO*\n\n"
+        f"📌 *Título:* {clean_title[:80]}\n"
+        f"👤 *Creador original:* {clean_creator[:40]}\n"
+        f"🎯 *Gancho:* {clean_hook[:35]}\n"
+        f"⚙️ *Estilo de edición:* {mode_label}\n\n"
+        "🔗 *Enlaces rápidos de tus canales:*\n"
+        "• [YouTube Shorts](https://www.youtube.com/@gtavihubextra/shorts) | "
+        "[TikTok](https://www.tiktok.com/@gtavihubextra) | "
+        "[Instagram](https://www.instagram.com/gtavihubextra/)\n\n"
+        "👇 *¿Publicar ahora en tus redes?*"
     )
     keyboard = get_copilot_approval_keyboard(video_id, original_url=original_url)
 
@@ -589,11 +626,14 @@ def get_dashboard_text() -> str:
     copilot_status = "🟢 Activo (Confirmación previa)" if is_copilot_enabled() else "⚡ Automático"
 
     return (
-        "📊 *ESTADO DEL SISTEMA*\n\n"
-        f"• Modo: `{copilot_status}`\n"
-        f"• Límite Diario: `{MAX_DAILY_UPLOADS} vídeos/día`\n"
-        f"• Espacio en Staging: `{output_mb:.1f} MB`\n"
-        "• Redes: YouTube (`@GTAVIHubExtra`), TikTok, Instagram"
+        "📊 *ESTADO DEL SISTEMA Y CANALES*\n\n"
+        f"• *Modo:* {copilot_status}\n"
+        f"• *Límite diario:* {MAX_DAILY_UPLOADS} vídeos/día\n"
+        f"• *Archivos en Staging (espera):* {output_mb:.1f} MB\n\n"
+        "🔗 *TUS CANALES OFICIALES:*\n"
+        "• 🔴 [YouTube Shorts (@gtavihubextra)](https://www.youtube.com/@gtavihubextra/shorts)\n"
+        "• 🎵 [TikTok (@gtavihubextra)](https://www.tiktok.com/@gtavihubextra)\n"
+        "• 📸 [Instagram Reels (@gtavihubextra)](https://www.instagram.com/gtavihubextra/)"
     )
 
 def get_my_channels_report() -> str:
@@ -763,19 +803,38 @@ def run_approval_publish_in_background(video_id: str):
         res = approve_and_publish_video(video_id)
         if res and (res.get("youtube_url") or res.get("multiplatform")):
             mp = res.get("multiplatform") or {}
-            yt_line = f"🔗 *YouTube Shorts:* {res.get('youtube_url')}" if res.get("youtube_url") else "⚠️ *YouTube:* falló (revisar cuota/token)"
+            yt_val = res.get("youtube_url")
             tt_val = mp.get("tiktok")
-            tt_line = f"\n🎵 *TikTok:* {tt_val}" if tt_val else "\n⚠️ *TikTok:* no publicado / requiere sesión"
             ig_val = mp.get("instagram")
-            ig_line = f"\n📸 *Instagram:* {ig_val}" if ig_val else "\n⚠️ *Instagram:* omitido o bloqueado por Compliance/sesión"
+
+            lines_rrss = []
+            if yt_val and str(yt_val).startswith("http"):
+                lines_rrss.append(f"• 🔴 *YouTube Shorts:* [Abrir Vídeo]({yt_val})")
+            else:
+                lines_rrss.append("• 🔴 *YouTube Shorts:* [Canal @GTAVIHubExtra](https://www.youtube.com/@gtavihubextra/shorts)")
+
+            if tt_val and str(tt_val).startswith("http"):
+                lines_rrss.append(f"• 🎵 *TikTok:* [Abrir Clip]({tt_val})")
+            else:
+                lines_rrss.append("• 🎵 *TikTok:* [Perfil @gtavihubextra](https://www.tiktok.com/@gtavihubextra)")
+
+            if ig_val and str(ig_val).startswith("http"):
+                lines_rrss.append(f"• 📸 *Instagram:* [Abrir Reel]({ig_val})")
+            else:
+                lines_rrss.append("• 📸 *Instagram:* [Perfil @gtavihubextra](https://www.instagram.com/gtavihubextra/)")
+
+            rrss_block = "\n".join(lines_rrss)
+            clean_res_title = str(res.get("title", "")).replace("*", "").replace("`", "").strip()
+
             send_telegram_alert(
-                f"🚀 *¡Publicación Finalizada!*\n\n"
-                f"🎬 *Título:* `{res.get('title')}`\n"
-                f"{yt_line}{tt_line}{ig_line}\n\n"
-                f"🧹 _Archivos pesados purgados del disco._"
+                f"🚀 *¡VÍDEO PUBLICADO EN REDES!*\n\n"
+                f"🎬 *{clean_res_title}*\n\n"
+                f"🔗 *ENLACES DIRECTOS A CADA RED:*\n"
+                f"{rrss_block}\n\n"
+                f"🧹 _Archivos temporales pesados purgados del disco._"
             )
         else:
-            send_telegram_alert("⚠️ *No se pudo publicar en YouTube/TikTok/Instagram.* Revisa credenciales o logs en mbp1.")
+            send_telegram_alert("⚠️ *No se pudo publicar en las redes.* Revisa credenciales o logs en mbp1.")
     except Exception as e:
         send_telegram_alert(f"❌ *Error al publicar vídeo aprobado:* `{e}`")
     finally:
