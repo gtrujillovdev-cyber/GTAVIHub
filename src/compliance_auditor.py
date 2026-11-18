@@ -311,7 +311,8 @@ LEGACY_SPAM_BLACKLIST = {
 SAFE_AUTHORITY_CREATORS = {
     "gta series videos", "digital foundry", "elanalistadebits", "onespot gaming",
     "rockstar games", "dan allen gaming", "tgg", "synth potato", "rockstar universe",
-    "gta 6 countdown", "gameranx", "ign", "playstation"
+    "gta 6 countdown", "gameranx", "ign", "playstation", "powerpyx", "cycu1",
+    "gameriot", "gamev"
 }
 
 def is_safe_rrss_candidate(
@@ -375,8 +376,13 @@ def is_safe_rrss_candidate(
     if not is_strictly_gta6(title, description):
         return False, "Rechazado: no trata exclusivamente de Grand Theft Auto VI", {}
 
-    # 6. Filtro de Duración para Shorts o Widescreen con Auto-Recorte
-    max_dur = 900.0 if allow_long_clipping else 65.0
+    # 6. Filtro de Directos en Curso y Duración para Shorts o Widescreen con Auto-Recorte por Segmentos
+    if "🔴" in title or re.search(r"\b(?:en\s*directo|live\s*stream|livestream|24/7)\b", title.lower()) or (
+        duration_sec <= 0 and re.search(r"\blive\b", title.lower())
+    ):
+        return False, "Rechazado: emisión en directo activa (no recortable de forma determinista)", {}
+
+    max_dur = 7200.0 if allow_long_clipping else 65.0
     if duration_sec > max_dur:
         return False, f"Rechazado: duración ({duration_sec:.0f}s) excede el máximo permitido ({max_dur:.0f}s)", {}
     if 0 < duration_sec < 8.0:
@@ -390,12 +396,17 @@ def is_safe_rrss_candidate(
 
     title_lower = title.lower()
     is_comparison = bool(re.search(r"\b(?:vs|versus|comparaci[oó]n|comparativa|graphics|gr[aá]ficos|evolución|evolucion|antes|despues)\b", title_lower))
+    is_gameplay_action = bool(re.search(r"\b(?:gameplay|free\s*roam|first\s*mission|primera\s*misi[oó]n|open\s*world|mundo\s*abierto|police\s*chase|walkthrough|no\s*commentary)\b", title_lower))
     is_details = bool(re.search(r"\b(?:detalles?|secretos?|curiosidades?|cosas?|easter\s*eggs?|missed|hidden|descubr)\b", title_lower))
     is_physics = bool(re.search(r"\b(?:f[ií]sicas?|physics|rage\s*9|water|deformaci[oó]n|agua)\b", title_lower))
 
     if is_comparison:
         score += 15
         archetype = "Comparativa Gráfica en Loop"
+        recommended_mode = "gameplay"
+    elif is_gameplay_action:
+        score += 15
+        archetype = "Gameplay Real & Mundo Abierto"
         recommended_mode = "gameplay"
     elif is_physics:
         score += 15

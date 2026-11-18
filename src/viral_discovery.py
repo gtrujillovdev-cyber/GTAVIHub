@@ -46,8 +46,11 @@ DEFAULT_VIRAL_QUERIES = [
     "ytsearch20:GTA 6 cosas ocultas detalles analisis"
 ]
 
-# Consultas específicas de Gameplay Puro activas a partir del 19 de Noviembre
+# Consultas específicas de Gameplay Puro activas en fase de lanzamiento/gameplay
 GAMEPLAY_VIRAL_QUERIES = [
+    "https://www.youtube.com/results?search_query=GTA+6+gameplay&sp=EgQIAhAB",
+    "https://www.youtube.com/results?search_query=GTA+6+gameplay+ps5+pro&sp=EgQIAhAB",
+    "https://www.youtube.com/results?search_query=GTA+6+open+world+free+roam+gameplay&sp=EgQIAhAB",
     "ytsearch15:GTA 6 gameplay primera mision espanol",
     "ytsearch15:GTA 6 gameplay real mission secrets",
     "ytsearch15:GTA 6 gameplay conduccion fisicas detalles",
@@ -91,7 +94,7 @@ CREATOR_KEYWORDS = [
 # purgar parodias / memes / GTA 5 y filtrar conceptos abstractos/CGI/Unreal Engine que no son GTA 6 real
 EXCLUDED_KEYWORDS = [
     "soundtrack", "ost", "full album", "vevo", "remix song", "cover song",
-    "trap beat", "rap beat", "no commentary walkthrough", "full movie",
+    "trap beat", "rap beat", "full movie",
     "cancion oficial", "canción oficial", "tema musical",
     # Parodias, Memes, South Park y Creadores Vetados (CERO CONTENIDO DE BROMA O GTA 5)
     "south park", "southpark", "parodia", "parody", "satira", "sátira", "sketch",
@@ -298,8 +301,13 @@ def calculate_virality_score(
         bonus = min(10, bonus + 3)
 
     from .config import is_gameplay_enabled
-    if is_gameplay_enabled() and "gameplay" in title_lower:
-        bonus = min(10, bonus + 3)
+    if is_gameplay_enabled() and any(
+        gp in title_lower for gp in (
+            "gameplay", "free roam", "first mission", "primera mision",
+            "police chase", "open world", "mundo abierto", "walkthrough", "ps5 pro"
+        )
+    ):
+        bonus = min(10, bonus + 5)
 
     # 7. Freshness Decay: penalización por antigüedad excesiva (>14 días = -5 pts)
     freshness_penalty = 0
@@ -354,7 +362,7 @@ def scan_viral_radar(
 
         from .config import is_gameplay_enabled
         if is_gameplay_enabled():
-            queries.extend(GAMEPLAY_VIRAL_QUERIES)
+            queries = list(GAMEPLAY_VIRAL_QUERIES) + queries
 
     processed_ids = get_processed_ids()
     existing_channels = list_monitored_channels()

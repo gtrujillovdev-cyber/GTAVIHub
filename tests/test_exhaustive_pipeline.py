@@ -370,6 +370,101 @@ class TestExhaustivePipeline(unittest.TestCase):
         self.assertIn("status", data)
         self.assertEqual(data["status"], "ready")
 
+    # -------------------------------------------------------------------------
+    # 10. PIPELINE DE GAMEPLAY REAL (Gameplays Largos, Sin Directos y Formato D)
+    # -------------------------------------------------------------------------
+    def test_gameplay_safety_allows_long_and_blocks_livestreams(self):
+        """Acepta gameplays largos (45m) para recorte por sección y bloquea directos 🔴."""
+        from src.compliance_auditor import is_safe_rrss_candidate
+        safe_long, reason_long, meta = is_safe_rrss_candidate(
+            "GTA 6 Gameplay Walkthrough Part 1 - INTRO (PS5 PRO 4K)",
+            uploader="GameRiot",
+            duration_sec=2990.0,
+            allow_long_clipping=True
+        )
+        self.assertTrue(safe_long, f"Debió aprobar gameplay de 50m con clipping: {reason_long}")
+        self.assertEqual(meta.get("recommended_mode"), "gameplay")
+
+        safe_live, reason_live, _ = is_safe_rrss_candidate(
+            "🔴 GTA VI GAMEPLAY EN DIRECTO (primeras horas de juego)",
+            uploader="Sinapsis",
+            duration_sec=0.0,
+            allow_long_clipping=True
+        )
+        self.assertFalse(safe_live, "Debe bloquear emisiones en directo para no colgar yt-dlp")
+        self.assertIn("directo", reason_live.lower())
+
+    def test_pure_gameplay_preserves_game_audio_and_uses_preset_d(self):
+        """Gameplay real (ej. IGN Primera Misión) conserva audio auténtico y usa Formato D 83.3%."""
+        en_dialogue = (
+            "Hey Lucia keep your head down while we cross the bridge near Vice Beach, "
+            "cops are blocking every exit across Leonida right now."
+        )
+        srt_file = self._create_synthetic_srt("mission_dialogue.srt", en_dialogue)
+        fake_video = self.mock_temp / "ign_mission.mp4"
+        fake_video.write_bytes(b"dummy_mp4_bytes")
+
+        captured_render = {}
+
+        def _mock_trans(src, dst, source_lang="en"):
+            dst.write_text("1\n00:00:00,500 --> 00:00:02,500\nEh Lucía agacha la cabeza al cruzar el puente.\n\n", encoding="utf-8")
+            return True
+
+        def _mock_render(input_video, output_video, **kwargs):
+            captured_render.update(kwargs)
+            output_video.write_bytes(b"rendered_mp4_data")
+            return True
+
+        fake_sub_res = MagicMock(
+            stdout="22.0",
+            stderr="pts_time: 1.2\npts_time: 5.4\npts_time: 9.8\npts_time: 14.1\n",
+            returncode=0
+        )
+
+        with patch.object(pl, "TEMP_DIR", self.mock_temp), \
+             patch.object(pl, "OUTPUT_DIR", self.mock_output), \
+             patch.object(pl, "AUTO_DUB_ENGLISH", True), \
+             patch.object(pl, "download_video_and_subtitles", return_value=(fake_video, srt_file, "en")), \
+             patch.object(pl, "get_video_dimensions", return_value=(1920, 1080)), \
+             patch.object(pl, "detect_horizontal_split_screen", return_value=False), \
+             patch.object(pl, "translate_srt", side_effect=_mock_trans), \
+             patch.object(pl, "generate_voiceover") as mock_dub, \
+             patch.object(pl, "generate_video_metadata", return_value={
+                 "title": "PRIMERA MISION GTA 6 EN PS5 PRO",
+                 "description": "Gameplay real",
+                 "tags": ["GTA6"],
+                 "hook": "¡PRIMER GAMEPLAY!"
+             }), \
+             patch.object(pl, "render_final_video", side_effect=_mock_render), \
+             patch.object(pl, "create_video_thumbnail"), \
+             patch.object(pl, "clean_temp_directory"), \
+             patch.object(pl, "enforce_storage_limits"), \
+             patch.object(pl, "mark_video_processed"), \
+             patch("src.audio_shield.validate_audio_and_speech_vitality", return_value=(True, "OK", {})), \
+             patch.object(subprocess, "run", return_value=fake_sub_res):
+
+            res = pl.process_single_video(
+                url="https://youtube.com/watch?v=3PiR0G3rVw8",
+                video_id="3PiR0G3rVw8",
+                original_title="GTA 6 PS5 Pro Gameplay - 15 Minutes of The First Mission",
+                creator_name="IGN",
+                source_lang="en",
+                mode="gameplay",
+                dry_run=True,
+                copilot_mode=False
+            )
+
+            self.assertIsNotNone(res)
+            self.assertEqual(res["mode"], "subs", "Gameplay con diálogo de misión debe usar subs en ES y audio auténtico")
+            mock_dub.assert_not_called()
+            self.assertEqual(captured_render.get("format_preset"), "D", "Gameplay real debe usar Formato D 83.3% incluso si viene de IGN")
+
+    def test_early_gameplay_wave_injected_on_nov18(self):
+        """Hoy 18-N debe incluir la franja de captura inmediata de gameplay."""
+        sched_18 = get_daily_schedule(date(2026, 11, 18))
+        ids_18 = [w["id"] for w in sched_18.get("windows", [])]
+        self.assertIn("early_gameplay_wave", ids_18)
+
 
 if __name__ == "__main__":
     unittest.main()

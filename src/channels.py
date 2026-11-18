@@ -287,12 +287,12 @@ def is_strictly_gta6(title: str, description: str = "") -> bool:
 is_strictly_gta = is_strictly_gta6
 
 def get_daily_published_count() -> int:
-    """Cuenta cuántos vídeos han sido completados o publicados vía Co-Pilot en las últimas 24 horas."""
+    """Cuenta cuántos vídeos han sido completados o publicados vía Co-Pilot en el día natural actual."""
     if not PROCESSED_FILE.exists():
         return 0
     try:
-        from datetime import datetime, timedelta
-        cutoff = datetime.now() - timedelta(hours=24)
+        from datetime import datetime
+        today = datetime.now().date()
         with open(PROCESSED_FILE, "r", encoding="utf-8") as f:
             data = json.load(f)
             count = 0
@@ -301,8 +301,8 @@ def get_daily_published_count() -> int:
                     date_str = v.get("approved_at") or v.get("date")
                     if date_str:
                         try:
-                            v_date = datetime.fromisoformat(date_str)
-                            if v_date >= cutoff:
+                            v_date = datetime.fromisoformat(date_str.replace("Z", "+00:00"))
+                            if v_date.date() == today:
                                 count += 1
                         except Exception:
                             pass
@@ -639,7 +639,7 @@ def fetch_channel_candidates(max_per_channel: int = 2) -> List[Dict[str, Any]]:
         query = q.get("query", "")
         sp_filter = q.get("sp", "")
         is_today_breaking = (sp_filter == "EgQIAhAB")
-        allow_long = not q.get("only_shorts", True)
+        allow_long = bool(q.get("allow_long_clipping", not q.get("only_shorts", True)))
         results = []
 
         # Los filtros sp=EgQIAxAB / EgQIAhAB fuerzan 'Solo Vídeos 16:9' en /results y ocultan Shorts;
@@ -862,6 +862,8 @@ def fetch_channel_candidates(max_per_channel: int = 2) -> List[Dict[str, Any]]:
     # Re-validar seguridad/antigüedad con metadatos exactos de YouTube API
     fresh_candidates = []
     for c in candidates:
+        if c.get("is_live"):
+            continue
         title_c = c.get("title", "")
         uploader_c = c.get("uploader", "")
         dur_c = float(c.get("duration") or 0.0)
@@ -917,11 +919,11 @@ def fetch_channel_candidates(max_per_channel: int = 2) -> List[Dict[str, Any]]:
         # pero SÍ permitir comparativas técnicas explícitas y no-commentary puro (para edición SPLIT/D).
         is_pure_visual_es = any(
             kw in f"{title_c} {uploader_c}".lower()
-            for kw in ("fps", " vs ", "comparativa", "comparison", "no commentary", "sin comentarios", "pure gameplay", "elanalistadebits", "digital foundry")
+            for kw in ("fps", " vs ", "comparativa", "comparison", "no commentary", "sin comentarios", "pure gameplay", "elanalistadebits")
         )
         if (c.get("lang") or "").lower().startswith("es") and 0 < dur_c <= 65 and not is_rockstar_official and not is_pure_visual_es:
             continue
-        if is_pure_visual_es and not c.get("recommended_mode"):
+        if is_pure_visual_es and not c.get("recommended_mode") and "tech review" not in title_c.lower():
             c["recommended_mode"] = "gameplay"
 
         # Si venía de búsqueda strict-short y la API revela duración > 65s (sin clipping permitido), descartar
@@ -974,7 +976,23 @@ def fetch_channel_candidates(max_per_channel: int = 2) -> List[Dict[str, Any]]:
         if source_type == "breaking_today" and hours_old <= 24:
             eng_pts += 4.0
 
-        c["score"] = min(100, int(round(vph_pts + recency_pts + eng_pts)))
+        # Impulso editorial a GAMEPLAY REAL de GTA 6 sobre charlas/preguntas sin acción
+        tl_low = title_c.lower()
+        is_real_gameplay_clip = any(
+            gp in tl_low for gp in (
+                "gameplay", "free roam", "first mission", "primera mision",
+                "primera misión", "police chase", "open world", "mundo abierto",
+                "walkthrough", "no commentary"
+            )
+        )
+        if is_real_gameplay_clip:
+            eng_pts += 8.0
+            if any(nc in tl_low for nc in ("no commentary", "sin comentarios", "free roam", "police chase", "open world")) and not c.get("recommended_mode"):
+                c["recommended_mode"] = "gameplay"
+        elif any(chat in tl_low for chat in ("how long is", "should you buy", "worth it", "opening intro")):
+            eng_pts -= 18.0
+
+        c["score"] = min(100, max(0, int(round(vph_pts + recency_pts + eng_pts))))
         fresh_candidates.append(c)
 
     # Escudo Anti-Repetición Temática y Cooldown de Creador
@@ -1048,6 +1066,8 @@ def enrich_candidates_with_yt_api(candidates: List[Dict[str, Any]]) -> List[Dict
 
             if snippet.get("title"):
                 c["title"] = snippet["title"]
+            if snippet.get("liveBroadcastContent") == "live":
+                c["is_live"] = True
             yt_lang = snippet.get("defaultAudioLanguage") or snippet.get("defaultLanguage") or ""
             if yt_lang:
                 c["yt_lang"] = yt_lang

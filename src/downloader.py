@@ -470,12 +470,78 @@ def find_best_transcript_hook_window(
     return (chosen["start"], chosen["end"])
 
 
+def _inspect_remote_video_info(url: str) -> Dict[str, Any]:
+    """Obtiene metadatos ligeros remotos (duración, heatmap, live_status) sin descargar vídeo."""
+    try:
+        cmd = [
+            sys.executable, "-m", "yt_dlp",
+            "--impersonate", "chrome",
+            "--no-check-certificates",
+            "--skip-download",
+            "--dump-single-json",
+            url
+        ]
+        res = subprocess.run(cmd, capture_output=True, text=True, timeout=25)
+        if res.returncode == 0 and (res.stdout or "").strip():
+            return json.loads(res.stdout)
+    except Exception as e:
+        print(f"[!] Info inspector remoto: {e}")
+    return {}
+
+
+def _select_heatmap_window(
+    heatmap: Any,
+    duration: float,
+    target_duration: int = SHORT_TARGET_DURATION
+) -> Optional[Tuple[float, float]]:
+    """Calcula la ventana óptima por AVD sobre un heatmap de YouTube ya cargado."""
+    if not heatmap or not isinstance(heatmap, list) or len(heatmap) <= 5 or duration <= 60:
+        return None
+    candidate_durations = [19, 24, 30, 36, 42, 50, 56, 58]
+    best_avd_score = -1.0
+    best_start = 15.0
+    best_dur = target_duration
+    best_avd_seconds = 0.0
+
+    for c_dur in candidate_durations:
+        if c_dur > duration:
+            continue
+        for pt in heatmap:
+            start_t = float(pt.get("start_time", 0.0))
+            end_t = start_t + c_dur
+            if end_t > duration:
+                break
+            window_pts = [float(p.get("value", 0.0)) for p in heatmap if start_t <= float(p.get("start_time", 0.0)) <= end_t]
+            if not window_pts:
+                continue
+            avg_retention = sum(window_pts) / len(window_pts)
+            peak_retention = max(window_pts)
+            min_retention = min(window_pts)
+
+            estimated_avd_s = c_dur * avg_retention * (1.0 + peak_retention * 0.35)
+            cliff_penalty = max(0.5, min(1.0, (min_retention / (avg_retention + 1e-4))))
+            duration_penalty = 1.0 if c_dur <= 28 else (0.85 if c_dur <= 36 else 0.70)
+            avd_score = estimated_avd_s * (0.7 + 0.3 * cliff_penalty) * duration_penalty
+
+            if avd_score > best_avd_score:
+                best_avd_score = avd_score
+                best_start = start_t
+                best_dur = c_dur
+                best_avd_seconds = estimated_avd_s
+
+    print("[⚡ AVD Engine] Segmento óptimo por Average View Duration:")
+    print(f"    • Rango: {best_start:.1f}s a {best_start + best_dur:.1f}s ({best_dur}s)")
+    print(f"    • AVD Estimado: {best_avd_seconds:.1f}s de retención neta (Score AVD: {best_avd_score:.2f})")
+    return (best_start, best_start + best_dur)
+
+
 def find_viral_heatmap_segment(
     url: str,
     min_duration: int = GAMEPLAY_MIN_DURATION,
     max_duration: int = SHORT_MAX_DURATION,
     target_duration: int = SHORT_TARGET_DURATION,
-    video_id: str = ""
+    video_id: str = "",
+    prefetched_info: Optional[Dict[str, Any]] = None
 ) -> Optional[Tuple[float, float]]:
     """
     Analiza el mapa de calor de YouTube ('most replayed' heatmap) con yt-dlp
@@ -483,73 +549,20 @@ def find_viral_heatmap_segment(
     Si el vídeo original ya es corto (<= 58s), preserva su duración original sin recortar.
     """
     try:
-        cmd = [
-            sys.executable, "-m", "yt_dlp",
-            "--impersonate", "chrome",
-            "--skip-download",
-            "--dump-single-json",
-            url
-        ]
-        res = subprocess.run(cmd, capture_output=True, text=True, timeout=25)
-        if res.returncode != 0:
+        info = prefetched_info if prefetched_info is not None else _inspect_remote_video_info(url)
+        if not info:
             return None
-        info = json.loads(res.stdout)
-        duration = info.get("duration", 0)
+        duration = float(info.get("duration") or 0)
 
-        # Si ya es un vídeo corto optimizado (<= 60 segundos), NUNCA recortar:
-        # Se respeta íntegramente la duración orgánica del creador para no cortar frases a la mitad.
         if duration <= 60:
             print(f"[*] Vídeo ya en formato Short orgánico ({duration:.1f}s <= 60s). Duración original preservada (cero cortes).")
             return None
 
-        heatmap = info.get("heatmap")
-        if heatmap and isinstance(heatmap, list) and len(heatmap) > 5:
-            # Duraciones candidatas context-aware (de 19s hasta 58s)
-            candidate_durations = [19, 24, 30, 36, 42, 50, 56, 58]
-            best_avd_score = -1.0
-            best_start = 15.0
-            best_dur = target_duration
-            best_avd_seconds = 0.0
-
-            for c_dur in candidate_durations:
-                if c_dur > duration:
-                    continue
-                for pt in heatmap:
-                    start_t = float(pt.get("start_time", 0.0))
-                    end_t = start_t + c_dur
-                    if end_t > duration:
-                        break
-                    window_pts = [float(p.get("value", 0.0)) for p in heatmap if start_t <= float(p.get("start_time", 0.0)) <= end_t]
-                    if not window_pts:
-                        continue
-                    avg_retention = sum(window_pts) / len(window_pts)
-                    peak_retention = max(window_pts)
-                    min_retention = min(window_pts)
-
-                    # --- AVD (Average View Duration) Engine ---
-                    # 1. Tiempo de visualización esperado en segundos absolutos:
-                    estimated_avd_s = c_dur * avg_retention * (1.0 + peak_retention * 0.35)
-                    # 2. Factor de consistencia (penaliza acantilados donde el usuario abandona a la mitad):
-                    cliff_penalty = max(0.5, min(1.0, (min_retention / (avg_retention + 1e-4))))
-                    # 3. Sweet-spot de retención Shorts/TikTok (18-28s): penalizar duraciones excesivas (>32s)
-                    duration_penalty = 1.0 if c_dur <= 28 else (0.85 if c_dur <= 36 else 0.70)
-                    # 4. Puntuación final centrada en AVD absoluto optimizado para algoritmo de YouTube/TikTok:
-                    avd_score = estimated_avd_s * (0.7 + 0.3 * cliff_penalty) * duration_penalty
-
-                    if avd_score > best_avd_score:
-                        best_avd_score = avd_score
-                        best_start = start_t
-                        best_dur = c_dur
-                        best_avd_seconds = estimated_avd_s
-
-            print(f"[⚡ AVD Engine] Segmento óptimo por Average View Duration:")
-            print(f"    • Rango: {best_start:.1f}s a {best_start + best_dur:.1f}s ({best_dur}s)")
-            print(f"    • AVD Estimado: {best_avd_seconds:.1f}s de retención neta (Score AVD: {best_avd_score:.2f})")
-            return (best_start, best_start + best_dur)
-        else:
-            # Sin heatmap real: devolver None para que el pipeline analice el transcript antes de caer en corte orgánico
-            print(f"[*] Vídeo largo ({duration}s) sin heatmap público en YouTube.")
-            return None
+        seg = _select_heatmap_window(info.get("heatmap"), duration, target_duration=target_duration)
+        if seg:
+            return seg
+        print(f"[*] Vídeo largo ({duration}s) sin heatmap público en YouTube.")
+        return None
     except Exception as e:
         print(f"[!] Info detector: {e}")
         return None
@@ -620,19 +633,21 @@ def suggest_video_strategy(
             "hook_text": fps_hook
         }
 
-    # 4. Arquetipo: Físicas RAGE 9, Gameplay Puro, Accidentes o Demostración
+    # 4. Arquetipo: Físicas RAGE 9, Gameplay Puro, Misiones o Demostración
     is_physics_gameplay = any(k in title_lower for k in [
         "rage 9", "physics", "físicas", "water physics", "crash", "car crash", "accident", "accidente",
         "tiroteo", "gunplay", "shooting", "driving", "conducción", "npc behavior", "ia peatones",
-        "pure gameplay", "gameplay clip"
+        "pure gameplay", "gameplay clip", "free roam", "first mission", "primera mision",
+        "primera misión", "open world", "mundo abierto", "police chase", "walkthrough",
+        "no commentary", "gameplay"
     ])
     if is_physics_gameplay:
         return {
             "recommended_opt": "gameplay",
-            "archetype": "Físicas RAGE 9 & Gameplay",
+            "archetype": "Gameplay Real & Físicas RAGE 9",
             "badge": "🎮 Pro-Cinema 83.3%",
-            "reason": "Metraje de acción/físicas. Se recomienda respetar los efectos acústicos del juego y aplicar reencuadre centrado cinematográfico.",
-            "hook_text": "¡FÍSICAS AL LÍMITE! 💥"
+            "reason": "Metraje de gameplay real. Se recomienda respetar el audio auténtico del juego y aplicar reencuadre centrado cinematográfico.",
+            "hook_text": "¡GAMEPLAY REAL GTA 6! 🎮"
         }
 
     # 4. Si está en inglés (narrado por streamers o canales anglos)
@@ -748,6 +763,113 @@ def get_url_metadata(url: str) -> Dict[str, Any]:
         "strategy": strategy
     }
 
+def _fetch_subtitles_yt(
+    url: str,
+    video_id: str,
+    source_lang: str
+) -> Tuple[Optional[Path], str]:
+    """Descarga únicamente los subtítulos originales más fiables antes de descargar el vídeo."""
+    sub_output_template = str(TEMP_DIR / f"{video_id}.%(ext)s")
+    src_l = (source_lang or "es").strip().lower()
+    if src_l.startswith("es"):
+        sub_langs_to_try = [
+            ("es", ["es-orig", "es"]),
+            ("en", ["en-orig", "en"]),
+        ]
+    else:
+        sub_langs_to_try = [
+            ("en", ["en-orig", "en"]),
+            ("es", ["es"]),
+        ]
+
+    for lang_code, lang_candidates in sub_langs_to_try:
+        for target_lang in lang_candidates:
+            cmd_subs = [
+                sys.executable, "-m", "yt_dlp",
+                "--impersonate", "chrome",
+                "--no-check-certificates",
+                "--no-playlist",
+                "--skip-download",
+                "--write-auto-subs",
+                "--write-subs",
+                "--sub-langs", target_lang,
+                "--convert-subs", "srt",
+                "-o", sub_output_template,
+                url
+            ]
+            try:
+                subprocess.run(cmd_subs, capture_output=True, text=True, timeout=30)
+                found_subs = list(TEMP_DIR.glob(f"{video_id}*.srt")) + list(TEMP_DIR.glob(f"{video_id}*.vtt"))
+                if found_subs:
+                    chosen = found_subs[0]
+                    if chosen.suffix.lower() == ".vtt":
+                        converted_srt = chosen.with_suffix(".srt")
+                        subprocess.run(["ffmpeg", "-y", "-i", str(chosen), str(converted_srt)], capture_output=True)
+                        if converted_srt.exists():
+                            chosen = converted_srt
+                    clean_and_deroll_srt(chosen)
+                    print(f"[*] Subtítulos descargados con éxito ({target_lang} -> {lang_code})")
+                    return chosen, lang_code
+            except Exception:
+                continue
+    return None, source_lang
+
+
+def _pick_window_for_long_video(
+    raw_d: float,
+    heatmap: Any,
+    srt_path: Optional[Path],
+    trim_official_bumpers: bool,
+    video_id: str,
+    url: str,
+    is_social_clip: bool
+) -> Optional[Tuple[float, float]]:
+    """Determina la mejor ventana de 24-36s para clips o gameplays largos."""
+    if trim_official_bumpers and 24.0 <= raw_d <= 45.0:
+        win = (1.0, max(16.0, raw_d - 1.5))
+        print(f"[*] Spot promocional oficial ({raw_d:.1f}s): conservando anuncio completo -> {win[0]:.1f}s a {win[1]:.1f}s")
+        return win
+
+    if raw_d <= SHORT_MAX_DURATION:
+        return None
+
+    viral_range = _select_heatmap_window(heatmap, raw_d, target_duration=SHORT_TARGET_DURATION)
+    if not viral_range and srt_path and srt_path.exists() and not trim_official_bumpers:
+        viral_range = find_best_transcript_hook_window(
+            srt_path,
+            min_dur=max(GAMEPLAY_MIN_DURATION, 18),
+            max_dur=min(SHORT_MAX_DURATION, 36),
+            total_duration=raw_d,
+        )
+    if not viral_range:
+        seed_val = sum(ord(c) for c in (video_id or url))
+        sweet_min = max(GAMEPLAY_MIN_DURATION, 24)
+        sweet_max = min(SHORT_MAX_DURATION, 32)
+        dur_jitter = (seed_val % max(1, (sweet_max - sweet_min + 1)))
+        dynamic_dur = sweet_min + dur_jitter
+        if is_social_clip or raw_d <= 150.0:
+            start_t = 0.0
+        elif raw_d >= 300.0:
+            # Saltar intros/cinemáticas iniciales en gameplays largos (entre 35s y 95s según semilla)
+            start_t = min(raw_d * 0.12, 35.0 + float(seed_val % 60))
+        else:
+            start_t = min(20.0, raw_d * 0.1)
+        if start_t + dynamic_dur > raw_d:
+            start_t = max(0.0, raw_d - dynamic_dur)
+        print(f"[*] Ventana orgánica de acción ({raw_d:.1f}s): {start_t:.1f}s a {start_t + dynamic_dur:.1f}s")
+        viral_range = (start_t, start_t + dynamic_dur)
+
+    if viral_range and srt_path and srt_path.exists() and not trim_official_bumpers:
+        viral_range = snap_window_to_subtitles(
+            srt_path=srt_path,
+            v_start=viral_range[0],
+            v_end=viral_range[1],
+            min_duration=GAMEPLAY_MIN_DURATION,
+            max_duration=SHORT_MAX_DURATION
+        )
+    return viral_range
+
+
 def download_video_and_subtitles(
     url: str,
     video_id: str,
@@ -755,18 +877,19 @@ def download_video_and_subtitles(
     trim_official_bumpers: bool = False
 ) -> Tuple[Optional[Path], Optional[Path], str]:
     """
-    Descarga el video (limitado a 1080p), detecta picos virales si es largo (>60s)
-    y extrae los subtítulos disponibles sincronizados con el clip recortado.
+    Descarga el video (limitado a 1080p), detecta picos virales ANTES de descargar
+    vídeos largos (>90s) usando --download-sections para ahorrar ancho de banda/SSD,
+    y sincroniza los subtítulos disponibles con el clip recortado.
     Retorna: (video_path, srt_path, detected_lang)
     """
     output_template = str(TEMP_DIR / f"{video_id}.%(ext)s")
     is_twitter_or_x = any(d in url.lower() for d in ["twitter.com", "x.com"])
     is_tiktok = "tiktok.com" in url.lower()
+    is_social_clip = (is_twitter_or_x or is_tiktok)
 
-    # Formato resiliente: limitar a 1080p evitando AV1/1440p pesados en CPU Haswell y priorizando pista de audio original
     src_l = (source_lang or "es").strip().lower()
     audio_lang = "es" if src_l.startswith("es") else "en"
-    if is_twitter_or_x or is_tiktok:
+    if is_social_clip:
         format_selector = "best[ext=mp4]/bestvideo[height<=1080]+bestaudio/best"
     else:
         format_selector = (
@@ -779,44 +902,93 @@ def download_video_and_subtitles(
             "best[height<=1080]/best"
         )
 
-    base_cmd = [
-        sys.executable, "-m", "yt_dlp",
-        "--force-ipv4",
-        "--no-check-certificates",
-        "--no-playlist",
-        "-f", format_selector,
-        "--merge-output-format", "mp4",
-        "-o", output_template,
-        url
-    ]
+    detected_lang = source_lang
+    srt_path: Optional[Path] = None
+    remote_info: Dict[str, Any] = {}
+    section_range: Optional[Tuple[float, float]] = None
 
-    cmd_attempts = []
-    # Para Twitter/X y TikTok NO usar impersonate chrome porque rompe su handshake
-    if not (is_twitter_or_x or is_tiktok):
+    # Pre-inspección ligera en YouTube: abortar directos, bajar subtítulos antes y elegir sección en gameplays largos
+    if not is_social_clip:
+        remote_info = _inspect_remote_video_info(url)
+        if remote_info.get("is_live") or remote_info.get("live_status") == "is_live":
+            print(f"[!] Emisión en directo detectada para {video_id}. Abortando descarga infinita.")
+            return None, None, "unknown"
+
+        srt_path, detected_lang = _fetch_subtitles_yt(url, video_id, source_lang)
+        remote_dur = float(remote_info.get("duration") or 0.0)
+        if remote_dur > 90.0:
+            section_range = _pick_window_for_long_video(
+                raw_d=remote_dur,
+                heatmap=remote_info.get("heatmap"),
+                srt_path=srt_path,
+                trim_official_bumpers=trim_official_bumpers,
+                video_id=video_id,
+                url=url,
+                is_social_clip=False
+            )
+
+    def _run_ytdlp_download(section_arg: Optional[Tuple[float, float]]) -> bool:
+        extra_args = []
+        if section_arg:
+            s0 = max(0.0, round(section_arg[0], 2))
+            s1 = max(s0 + 8.0, round(section_arg[1], 2))
+            extra_args = ["--download-sections", f"*{s0:.2f}-{s1:.2f}"]
+            print(f"[⚡ Fast Section] Descargando solo segmento {s0:.1f}s - {s1:.1f}s (sin bajar vídeo completo)...")
+
+        cmd_attempts = []
+        if not is_social_clip:
+            cmd_attempts.append([
+                sys.executable, "-m", "yt_dlp",
+                "--impersonate", "chrome",
+                "--no-check-certificates",
+                "--no-playlist",
+                "-f", format_selector,
+                *extra_args,
+                "--merge-output-format", "mp4",
+                "-o", output_template,
+                url
+            ])
         cmd_attempts.append([
             sys.executable, "-m", "yt_dlp",
-            "--impersonate", "chrome",
+            "--force-ipv4",
             "--no-check-certificates",
             "--no-playlist",
             "-f", format_selector,
+            *extra_args,
             "--merge-output-format", "mp4",
             "-o", output_template,
             url
         ])
-    cmd_attempts.append(base_cmd)
+
+        for attempt_idx, cmd in enumerate(cmd_attempts):
+            try:
+                subprocess.run(cmd, check=True, capture_output=True, text=True, timeout=90)
+                return True
+            except subprocess.TimeoutExpired:
+                print(f"[!] Timeout de 90s descargando vídeo {url}.")
+            except subprocess.CalledProcessError as e:
+                err_msg = e.stderr.strip() if e.stderr else str(e)
+                print(f"[!] Intento {attempt_idx+1} falló al descargar vídeo {url}: {err_msg[:120]}")
+            except Exception as e:
+                print(f"[!] Error inesperado descargando vídeo {url}: {e}")
+        return False
 
     print(f"[*] Descargando vídeo de {url}...")
-    for attempt_idx, cmd in enumerate(cmd_attempts):
-        try:
-            subprocess.run(cmd, check=True, capture_output=True, text=True, timeout=90)
-            break
-        except subprocess.TimeoutExpired:
-            print(f"[!] Timeout de 90s descargando vídeo {url}.")
-        except subprocess.CalledProcessError as e:
-            err_msg = e.stderr.strip() if e.stderr else str(e)
-            print(f"[!] Intento {attempt_idx+1} falló al descargar vídeo {url}: {err_msg[:120]}")
-        except Exception as e:
-            print(f"[!] Error inesperado descargando vídeo {url}: {e}")
+    downloaded_by_section = False
+    if section_range:
+        downloaded_by_section = _run_ytdlp_download(section_range)
+        if not downloaded_by_section:
+            # Limpiar parciales antes de decidir fallback
+            for partial in TEMP_DIR.glob(f"{video_id}*"):
+                if partial.suffix.lower() in (".mp4", ".mkv", ".webm", ".part"):
+                    partial.unlink(missing_ok=True)
+            remote_dur = float(remote_info.get("duration") or 0.0)
+            if remote_dur > 600.0:
+                print(f"[!] Gameplay largo ({remote_dur:.0f}s) no soportó descarga parcial; abortando para proteger SSD/GaTDSEQ.")
+                return None, None, "unknown"
+            _run_ytdlp_download(None)
+    else:
+        _run_ytdlp_download(None)
 
     # Encontrar archivo de video
     video_path = TEMP_DIR / f"{video_id}.mp4"
@@ -831,68 +1003,22 @@ def download_video_and_subtitles(
         print(f"[!] No se encontró ningún archivo de vídeo descargado para {video_id}.")
         return None, None, "unknown"
 
-    # Paso 2: Intentar descargar subtítulos priorizando el idioma original (evita pistas auto-traducidas rotas como es-orig en vídeos en inglés)
-    sub_output_template = str(TEMP_DIR / f"{video_id}.%(ext)s")
-    if src_l.startswith("es"):
-        sub_langs_to_try = [
-            ("es", ["es-orig", "es"]),
-            ("en", ["en-orig", "en"])
-        ]
-    else:
-        sub_langs_to_try = [
-            ("en", ["en-orig", "en"]),
-            ("es", ["es"])
-        ]
+    # Si se descargó por sección parcial ya recortada (~15-58s), resincronizar SRT sin re-descargar ni re-encodear
+    if downloaded_by_section and section_range:
+        v_start, v_end = section_range
+        if srt_path and srt_path.exists():
+            trimmed_srt = TEMP_DIR / f"{video_id}_viral.srt"
+            if slice_srt_file(srt_path, v_start, v_end, trimmed_srt):
+                srt_path.unlink(missing_ok=True)
+                srt_path = trimmed_srt
+                print(f"[✓] Subtítulos resincronizados con sección viral -> {trimmed_srt.name}")
+            else:
+                srt_path.unlink(missing_ok=True)
+                srt_path = None
+        return video_path, srt_path, detected_lang
 
-    detected_lang = source_lang
-    srt_path = None
-
-    # Si no es Twitter/TikTok (que no tienen subtítulos nativos en yt-dlp), buscar subtítulos
-    if not (is_twitter_or_x or is_tiktok):
-        for lang_code, lang_candidates in sub_langs_to_try:
-            if srt_path:
-                break
-            for target_lang in lang_candidates:
-                cmd_subs = [
-                    sys.executable, "-m", "yt_dlp",
-                    "--impersonate", "chrome",
-                    "--no-check-certificates",
-                    "--no-playlist",
-                    "--skip-download",
-                    "--write-auto-subs",
-                    "--write-subs",
-                    "--sub-langs", target_lang,
-                    "--convert-subs", "srt",
-                    "-o", sub_output_template,
-                    url
-                ]
-                try:
-                    subprocess.run(cmd_subs, capture_output=True, text=True, timeout=30)
-                    found_subs = list(TEMP_DIR.glob(f"{video_id}*.srt")) + list(TEMP_DIR.glob(f"{video_id}*.vtt"))
-                    if found_subs:
-                        chosen = found_subs[0]
-                        if chosen.suffix.lower() == ".vtt":
-                            converted_srt = chosen.with_suffix(".srt")
-                            subprocess.run(["ffmpeg", "-y", "-i", str(chosen), str(converted_srt)], capture_output=True)
-                            if converted_srt.exists():
-                                chosen = converted_srt
-                        srt_path = chosen
-                        clean_and_deroll_srt(srt_path)
-                        detected_lang = lang_code
-                        print(f"[*] Subtítulos descargados con éxito ({target_lang} -> {detected_lang})")
-                        break
-                except Exception:
-                    continue
-
-    # Paso 3: Análisis de picos virales si el vídeo es largo (> 58s) o recorte de intros/outros de spots oficiales
+    # Paso 3 (videos completos locales <= 10 min o redes sociales): recorte por ffmpeg
     if video_path and video_path.exists():
-        viral_range = find_viral_heatmap_segment(
-            url,
-            min_duration=GAMEPLAY_MIN_DURATION,
-            max_duration=SHORT_MAX_DURATION,
-            target_duration=SHORT_TARGET_DURATION,
-            video_id=video_id
-        )
         raw_d = 0.0
         try:
             p_dur = subprocess.run(
@@ -903,44 +1029,17 @@ def download_video_and_subtitles(
         except Exception:
             raw_d = 0.0
 
-        if not viral_range and trim_official_bumpers:
-            # Quitar solo fade inicial (1.0s) y logo legal final (1.5s) sin mutilar el cartel informativo de salida
-            if 24.0 <= raw_d <= 45.0:
-                viral_range = (1.0, max(16.0, raw_d - 1.5))
-                print(f"[*] Spot promocional oficial ({raw_d:.1f}s): conservando anuncio completo -> {viral_range[0]:.1f}s a {viral_range[1]:.1f}s")
-
-        if not viral_range and raw_d > SHORT_MAX_DURATION:
-            if srt_path and srt_path.exists() and not trim_official_bumpers:
-                viral_range = find_best_transcript_hook_window(
-                    srt_path,
-                    min_dur=max(GAMEPLAY_MIN_DURATION, 18),
-                    max_dur=min(SHORT_MAX_DURATION, 36),
-                    total_duration=raw_d,
-                )
-            if not viral_range:
-                seed_val = sum(ord(c) for c in (video_id or url))
-                sweet_min = max(GAMEPLAY_MIN_DURATION, 24)
-                sweet_max = min(SHORT_MAX_DURATION, 32)
-                dur_jitter = (seed_val % max(1, (sweet_max - sweet_min + 1)))
-                dynamic_dur = sweet_min + dur_jitter
-                # En clips cortos sociales (ej. X/Twitter 60-150s) sin intro larga, arrancar desde 0.0s captura el gancho de acción inicial
-                start_t = 0.0 if (is_twitter_or_x or is_tiktok or raw_d <= 150.0) else min(20.0, raw_d * 0.1)
-                if start_t + dynamic_dur > raw_d:
-                    start_t = max(0.0, raw_d - dynamic_dur)
-                print(f"[*] Fallback orgánico sin subtítulos ({raw_d:.1f}s): {start_t:.1f}s a {start_t + dynamic_dur:.1f}s")
-                viral_range = (start_t, start_t + dynamic_dur)
+        viral_range = _pick_window_for_long_video(
+            raw_d=raw_d,
+            heatmap=remote_info.get("heatmap"),
+            srt_path=srt_path,
+            trim_official_bumpers=trim_official_bumpers,
+            video_id=video_id,
+            url=url,
+            is_social_clip=is_social_clip
+        )
         if viral_range:
             v_start, v_end = viral_range
-
-            # Paso 3b: Ajuste inteligente por frases/subtítulos para evitar cortes a media palabra (no expandir spots oficiales ya acotados)
-            if srt_path and srt_path.exists() and not trim_official_bumpers:
-                v_start, v_end = snap_window_to_subtitles(
-                    srt_path=srt_path,
-                    v_start=v_start,
-                    v_end=v_end,
-                    min_duration=GAMEPLAY_MIN_DURATION,
-                    max_duration=SHORT_MAX_DURATION
-                )
 
             trimmed_video = TEMP_DIR / f"{video_id}_viral.mp4"
             print(f"[*] Recortando clip dinámico ({v_start:.1f}s a {v_end:.1f}s, duración: {v_end - v_start:.1f}s)...")

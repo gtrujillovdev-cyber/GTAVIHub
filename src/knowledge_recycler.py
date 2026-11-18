@@ -78,8 +78,11 @@ PHASE_CONFIGS = {
 
 
 def determine_current_phase(now: Optional[datetime] = None) -> str:
-    """Determina la fase editorial activa según la fecha UTC actual."""
+    """Determina la fase editorial activa según la fecha UTC actual o activación de gameplay."""
     if now is None:
+        from .config import is_gameplay_enabled
+        if is_gameplay_enabled():
+            return "launch_day"
         now = datetime.now(timezone.utc)
     if now < LAUNCH_DATE:
         return "pre_launch"
@@ -149,7 +152,7 @@ def recycle_knowledge(force: bool = False) -> Dict[str, Any]:
     """
     state = load_dynamic_knowledge()
     now_utc = datetime.now(timezone.utc)
-    new_phase = determine_current_phase(now_utc)
+    new_phase = determine_current_phase()
     phase_changed = (new_phase != state.get("current_phase"))
 
     cfg = PHASE_CONFIGS[new_phase]

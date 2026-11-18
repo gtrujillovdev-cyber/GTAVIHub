@@ -69,15 +69,16 @@ SUBTITLE_OFFSET = float(os.getenv("SUBTITLE_OFFSET", "-0.45"))
 FFMPEG_THREADS = int(os.getenv("FFMPEG_THREADS", "2"))
 CHECK_QUANT_BUSY = os.getenv("CHECK_QUANT_BUSY", "true").lower() in ("1", "true", "yes")
 
-# Fase de Shorts de Gameplay (Apertura automática a partir del 19 de Noviembre o vía override explícito)
+# Fase de Shorts de Gameplay (Activada por disponibilidad real de gameplay de GTA 6)
 GAMEPLAY_RELEASE_DATE = os.getenv("GAMEPLAY_RELEASE_DATE", "2026-11-19")
-FORCE_ENABLE_GAMEPLAY = os.getenv("FORCE_ENABLE_GAMEPLAY", "false").lower() in ("1", "true", "yes")
+FORCE_ENABLE_GAMEPLAY = os.getenv("FORCE_ENABLE_GAMEPLAY", "true").lower() in ("1", "true", "yes")
 
-# Cadencia Anti-Spam y Protección de Algoritmo (1 vídeo por ejecución en hora punta)
+# Cadencia Anti-Spam y Protección de Algoritmo
 LAUNCH_MAX_VIDEOS_PER_RUN = int(os.getenv("LAUNCH_MAX_VIDEOS_PER_RUN", "1"))
+LAUNCH_MAX_DAILY_UPLOADS = int(os.getenv("LAUNCH_MAX_DAILY_UPLOADS", "4"))
 
 def is_gameplay_enabled() -> bool:
-    """Verifica si la fase de Shorts de Gameplay está activa (automáticamente desde el 19 de Noviembre o vía override)."""
+    """Verifica si la fase de Shorts de Gameplay está activa (vía override o desde la fecha objetivo)."""
     if FORCE_ENABLE_GAMEPLAY:
         return True
     try:
@@ -88,10 +89,16 @@ def is_gameplay_enabled() -> bool:
         return False
 
 def get_max_videos_per_run() -> int:
-    """En launch mode (>= 19 nov) usa LAUNCH_MAX_VIDEOS_PER_RUN; el resto del tiempo MAX_VIDEOS_PER_RUN."""
+    """En launch/gameplay mode usa LAUNCH_MAX_VIDEOS_PER_RUN; el resto del tiempo MAX_VIDEOS_PER_RUN."""
     if is_gameplay_enabled():
         return LAUNCH_MAX_VIDEOS_PER_RUN
     return MAX_VIDEOS_PER_RUN
+
+def get_daily_upload_cap() -> int:
+    """Cuota diaria del planificador adaptativo (elevada en fase de gameplay/estreno)."""
+    if is_gameplay_enabled():
+        return max(MAX_DAILY_UPLOADS, LAUNCH_MAX_DAILY_UPLOADS)
+    return MAX_DAILY_UPLOADS
 
 def get_ffmpeg_threads() -> int:
     """Hilos de FFmpeg: 1 si GaTDSEQ esta activo (Modo Cortesia), si no FFMPEG_THREADS (2)."""

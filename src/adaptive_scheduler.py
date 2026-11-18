@@ -89,6 +89,20 @@ LAUNCH_NIGHT_WINDOWS = [
     },
 ]
 
+# Ventana de captura inmediata para los primeros gameplays reales (18 nov tarde)
+EARLY_GAMEPLAY_DATE = date(2026, 11, 18)
+EARLY_GAMEPLAY_WINDOWS = [
+    {
+        "id": "early_gameplay_wave",
+        "name": "🎮 Oleada Primer Gameplay GTA 6",
+        "start_hour": 15,
+        "start_minute": 50,
+        "end_hour": 16,
+        "end_minute": 35,
+        "target_label": "15:50 - 16:35 CET"
+    },
+]
+
 
 def _generate_random_time_in_range(start_h: int, start_m: int, end_h: int, end_m: int) -> tuple[int, int]:
     """Genera una hora y minuto pseudoaleatorios uniformes dentro de una franja."""
@@ -132,11 +146,12 @@ def generate_daily_schedule(target_date: Optional[date] = None, force_regenerate
     if not force_regenerate and date_str in existing:
         return existing[date_str]
 
-    source_windows = (
-        LAUNCH_NIGHT_WINDOWS + TARGET_WINDOWS
-        if target_date in LAUNCH_NIGHT_DATES
-        else TARGET_WINDOWS
-    )
+    if target_date in LAUNCH_NIGHT_DATES:
+        source_windows = LAUNCH_NIGHT_WINDOWS + TARGET_WINDOWS
+    elif target_date == EARLY_GAMEPLAY_DATE:
+        source_windows = TARGET_WINDOWS + EARLY_GAMEPLAY_WINDOWS
+    else:
+        source_windows = TARGET_WINDOWS
     windows_plan = [_build_window_plan(win) for win in source_windows]
 
     day_schedule = {
@@ -184,6 +199,13 @@ def get_daily_schedule(target_date: Optional[date] = None) -> Dict[str, Any]:
             added = [_build_window_plan(w) for w in LAUNCH_NIGHT_WINDOWS if w["id"] not in present_ids]
             if added:
                 day_sched["windows"] = added + day_sched.get("windows", [])
+                existing[date_str] = day_sched
+                save_all_schedules(existing)
+        elif target_date == EARLY_GAMEPLAY_DATE:
+            present_ids = {w.get("id") for w in day_sched.get("windows", [])}
+            added = [_build_window_plan(w) for w in EARLY_GAMEPLAY_WINDOWS if w["id"] not in present_ids]
+            if added:
+                day_sched["windows"] = day_sched.get("windows", []) + added
                 existing[date_str] = day_sched
                 save_all_schedules(existing)
         return day_sched

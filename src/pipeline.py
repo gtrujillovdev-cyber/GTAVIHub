@@ -46,9 +46,30 @@ def _is_pure_visual_title(title: str) -> bool:
         kw in tl
         for kw in (
             " vs ", "fps", "comparison", "comparativa",
-            "no commentary", "sin comentarios", "pure gameplay", "gameplay only"
+            "no commentary", "sin comentarios", "pure gameplay", "gameplay only",
+            "free roam", "open world", "mundo abierto", "police chase", "walkthrough"
         )
     )
+
+
+def _is_pure_gameplay_action(title: str) -> bool:
+    """Detecta gameplay real in-game (misiones, free roam, persecuciones) frente a reviews o breakdowns hablados."""
+    tl = f" {(title or '').lower()} "
+    has_gp = any(
+        kw in tl
+        for kw in (
+            "gameplay", "free roam", "first mission", "primera mision", "primera misión",
+            "police chase", "open world", "mundo abierto", "walkthrough", "no commentary"
+        )
+    )
+    has_analysis = any(
+        kw in tl
+        for kw in (
+            "breakdown", "review", "tech review", "analysis", "análisis",
+            "analisis", "differences", "diferencias", "how long", " vs ", "comparison"
+        )
+    )
+    return has_gp and not has_analysis
 
 
 def _evaluate_gray_frames_retention(frames: list, width: int = 160) -> tuple:
@@ -306,8 +327,12 @@ def process_single_video(
         # Conservar pistas de subtítulos reales para traducir y dar contexto exacto a metadatos (sin doblar música de tráilers)
         print("[*] Spot oficial con rótulos/subtítulos detectados: conservando audio original de Rockstar y subtítulos en español...")
 
+    is_pure_gameplay = _is_pure_gameplay_action(original_title)
+    skip_tts_for_gameplay = False
+
     # Guardia Anti-Inglés: si IA eligió 'gameplay'/'clean' en autónomo sobre vídeo en inglés con locución real,
-    # forzar traducción + autodoblaje (no publicar inglés crudo salvo comparativas split o spots oficiales).
+    # forzar traducción + autodoblaje — PERO si es gameplay real (ej. primera misión/free roam), usar subtítulos
+    # en español conservando las voces y el sonido auténtico del juego (sin doblaje TTS encima).
     allow_pure_gameplay = (
         is_manual_ingest
         or is_split_comparison
@@ -316,7 +341,17 @@ def process_single_video(
     )
     if mode in ("gameplay", "clean") and not allow_pure_gameplay:
         srt_spoken_words = _count_spoken_words_in_srt(srt_path)
-        if srt_spoken_words >= 12:
+        if is_pure_gameplay:
+            if srt_spoken_words >= 8:
+                print(
+                    f"[*] [Gameplay Real + Diálogos] Detectadas {srt_spoken_words} palabras in-game: "
+                    "activando subtítulos dinámicos ES preservando audio auténtico de GTA 6."
+                )
+                mode = "subs"
+                skip_tts_for_gameplay = True
+            else:
+                print("[*] [Gameplay Puro] Conservando audio auténtico del juego sin TTS ni subtítulos inventados.")
+        elif srt_spoken_words >= 12:
             target_mode = "dub" if AUTO_DUB_ENGLISH else "subs"
             print(
                 f"[!] [Guardia Anti-Inglés] Detectada locución ({srt_spoken_words} palabras en {lang_to_use.upper()}) "
@@ -450,6 +485,9 @@ def process_single_video(
     dub_audio_path = None
     if allow_official_commentary and not is_manual_ingest:
         print("[*] Anuncio oficial de Rockstar: preservando banda sonora/audio original sin doblar canciones con TTS.")
+        should_dub = False
+    elif skip_tts_for_gameplay:
+        print("[*] Gameplay con audio auténtico preservado: usando subtítulos en español sin doblaje TTS encima.")
         should_dub = False
     else:
         should_dub = (mode in ["dub", "voice"]) or (
@@ -587,10 +625,16 @@ def process_single_video(
     # - SPLIT: comparativas lado-a-lado 50/50 apiladas verticalmente (93.8% pantalla)
     # - D (83.3%): gameplay puro, físicas, acción, trailers/spots sin textos laterales
     # - C (4:5 / 70.3%): análisis técnicos y comparativas full-frame (2.2x más área visual que FIT)
-    is_comparison_or_breakdown = any(
-        kw in title_lower
-        for kw in (" vs ", "comparison", "comparativa", "breakdown", "missed", "reaction", "reacciona", "reacción", "fps", "analysis", "review", "features")
-    ) or any(ch_k in creator_lower for ch_k in ("playstation", "xbox", "ign", "digital foundry", "elanalistadebits"))
+    is_comparison_or_breakdown = (
+        not is_pure_gameplay
+        and (
+            any(
+                kw in title_lower
+                for kw in (" vs ", "comparison", "comparativa", "breakdown", "missed", "reaction", "reacciona", "reacción", "fps", "analysis", "review", "features")
+            )
+            or any(ch_k in creator_lower for ch_k in ("playstation", "xbox", "ign", "digital foundry", "elanalistadebits"))
+        )
+    )
 
     if is_split_comparison:
         target_preset = "SPLIT"

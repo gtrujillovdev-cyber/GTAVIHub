@@ -275,6 +275,16 @@
       "description": "Documentales de diseño y detalles de mundo abierto (@enxgma_yt)"
     },
     {
+      "name": "PowerPyx",
+      "url": "https://www.youtube.com/@PowerPyx/videos",
+      "type": "gameplay_guides",
+      "lang": "en",
+      "filter_keywords": true,
+      "allow_long_clipping": true,
+      "enabled": true,
+      "description": "Guías y gameplays de misiones iniciales y secretos (@PowerPyx)"
+    },
+    {
       "name": "Digital Foundry (Shorts)",
       "url": "https://www.youtube.com/@DigitalFoundry/shorts",
       "type": "technical_analysis",
@@ -289,6 +299,7 @@
       "type": "technical_analysis",
       "lang": "en",
       "filter_keywords": true,
+      "allow_long_clipping": true,
       "enabled": true,
       "description": "Análisis técnico de rendimiento y tecnología RAGE",
       "allow_long_clipping": true
@@ -1279,7 +1290,7 @@
       "lang": "es",
       "only_shorts": false,
       "allow_long_clipping": true,
-      "enabled": false,
+      "enabled": true,
       "active_after": "2026-11-19",
       "description": "Lanzamiento HOY: primera misión y prólogo de GTA 6 en español (auto-clipping)"
     },
@@ -1289,7 +1300,7 @@
       "lang": "en",
       "only_shorts": false,
       "allow_long_clipping": true,
-      "enabled": false,
+      "enabled": true,
       "active_after": "2026-11-19",
       "description": "Lanzamiento HOY: secretos y mecánicas reales descubiertas en Vice City/Leonida"
     },
@@ -1299,7 +1310,7 @@
       "lang": "en",
       "only_shorts": false,
       "allow_long_clipping": true,
-      "enabled": false,
+      "enabled": true,
       "active_after": "2026-11-19",
       "description": "Lanzamiento HOY: comparativa real de FPS y gráficos en consolas"
     },
@@ -1309,7 +1320,7 @@
       "lang": "es",
       "only_shorts": false,
       "allow_long_clipping": true,
-      "enabled": false,
+      "enabled": true,
       "active_after": "2026-11-19",
       "description": "Lanzamiento HOY: físicas, conducción y detalles de mundo abierto en español"
     },
@@ -1319,7 +1330,7 @@
       "lang": "en",
       "only_shorts": false,
       "allow_long_clipping": true,
-      "enabled": false,
+      "enabled": true,
       "active_after": "2026-11-19",
       "description": "Lanzamiento HOY: tiroteos, persecuciones policiales y sistema de búsqueda"
     },
@@ -1329,9 +1340,36 @@
       "lang": "es",
       "only_shorts": false,
       "allow_long_clipping": true,
-      "enabled": false,
+      "enabled": true,
       "active_after": "2026-11-19",
       "description": "Lanzamiento HOY: curiosidades y ubicaciones reales exploradas hoy en Leonida"
+    },
+    {
+      "query": "ytsearch15:GTA 6 gameplay PS5 Pro",
+      "sp": "EgQIAhAB",
+      "lang": "en",
+      "only_shorts": false,
+      "allow_long_clipping": true,
+      "enabled": true,
+      "description": "Breaking HOY: gameplay real de GTA 6 en PS5 Pro (auto-clipping por sección)"
+    },
+    {
+      "query": "ytsearch15:GTA 6 open world free roam gameplay",
+      "sp": "EgQIAhAB",
+      "lang": "en",
+      "only_shorts": false,
+      "allow_long_clipping": true,
+      "enabled": true,
+      "description": "Breaking HOY: mundo abierto / free roam real de GTA 6"
+    },
+    {
+      "query": "ytsearch15:GTA 6 no commentary gameplay 4K",
+      "sp": "EgQIAhAB",
+      "lang": "en",
+      "only_shorts": false,
+      "allow_long_clipping": true,
+      "enabled": true,
+      "description": "Breaking HOY: gameplay puro sin comentaristas (audio auténtico del juego)"
     }
   ]
 }

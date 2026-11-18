@@ -10,37 +10,60 @@ from .learning_engine import load_viral_playbook, generate_hook_card_texts
 from .channels import get_processed_ids
 
 def _resolve_recommended_mode(raw_mode: str, item: Dict[str, Any]) -> str:
-    """Normaliza recommended_mode evitando etiquetar locuciones en español/inglés como 'gameplay' salvo comparativa visual explícita."""
+    """Normaliza recommended_mode preservando audio auténtico en gameplays y comparativas visuales."""
     norm = (raw_mode or "").strip().lower()
     if norm in ("gameplay", "dub", "subs", "clean", "short"):
         return norm
     tl = f" {(item.get('title') or '').lower()} "
     is_es_src = (item.get("lang") or "en").lower().startswith("es")
     is_explicit_visual = any(
-        k in tl for k in ("fps", " vs ", "comparison", "comparativa", "no commentary", "sin comentarios", "pure gameplay")
+        k in tl for k in (
+            "fps", " vs ", "comparison", "comparativa", "no commentary",
+            "sin comentarios", "pure gameplay", "free roam", "first mission",
+            "police chase", "open world", "walkthrough"
+        )
     )
-    if is_explicit_visual:
+    is_spoken_analysis = any(
+        k in tl for k in ("breakdown", "tech review", "analysis", "how long", "differences", "explained")
+    )
+    if is_explicit_visual and not is_spoken_analysis:
+        return "gameplay"
+    if "gameplay" in tl and not is_spoken_analysis:
         return "gameplay"
     return "subs" if is_es_src else "dub"
 
 
 def _visual_appeal_adjustment(item: Dict[str, Any]) -> float:
-    """Ajuste compartido de prioridad editorial: premia comparativas/gameplay puro y penaliza tertulias/reacciones."""
+    """Ajuste de prioridad editorial: premia gameplay real/comparativas y penaliza cháchara/tertulias."""
     delta = 0.0
     tl = f" {(item.get('title') or '').lower()} "
     upl = (item.get("uploader") or item.get("source_name") or "").lower()
     dur = float(item.get("duration") or 0)
-    if 12 <= dur <= 62 or item.get("is_short"):
+    has_gameplay_kw = any(
+        k in tl for k in (
+            "gameplay", "free roam", "first mission", "primera mision", "primera misión",
+            "police chase", "open world", "mundo abierto", "walkthrough",
+            "fps", " vs ", "comparison", "comparativa", "physics", "físicas", "fisicas", "rage 9", "graphics"
+        )
+    )
+    if 12 <= dur <= 62:
         delta += 18.0
+    elif item.get("allow_long_clipping") and has_gameplay_kw:
+        # Los gameplays 16:9 largos se recortan al instante por sección viral (--download-sections)
+        delta += 12.0
     elif dur > 360:
         delta -= 18.0
     if (item.get("lang") or "").lower() == "es":
         delta += 12.0
-    if any(a in upl for a in ("elanalistadebits", "onespot gaming", "cycu1", "digital foundry", "gta series videos")):
+    if any(a in upl for a in ("elanalistadebits", "onespot gaming", "cycu1", "digital foundry", "gta series videos", "powerpyx", "gameriot", "gamev")):
         delta += 24.0
-    if any(k in tl for k in ("fps", " vs ", "comparison", "comparativa", "physics", "físicas", "fisicas", "rage 9", "graphics", "gameplay")):
-        delta += 20.0
-    if any(k in tl for k in ("daily fix", "reaction", "reaccion", "reacciona", "thoughts", "debate", "review", "things we found", "opinion", "pissed", "don't buy")):
+    if has_gameplay_kw:
+        delta += 24.0
+    if any(k in tl for k in (
+        "how long is", "worth it", "should you buy", "opening intro",
+        "daily fix", "reaction", "reaccion", "reacciona", "thoughts",
+        "debate", "things we found", "opinion", "pissed", "don't buy"
+    )) or ("review" in tl and "digital foundry" not in upl and "gameplay" not in tl):
         delta -= 42.0
     return delta
 
@@ -203,25 +226,24 @@ DEMANDA DE BÚSQUEDA Y TRÁFICO EN TIEMPO REAL (LO QUE INTERNET BUSCA AHORA MISM
 VÍDEOS RECIENTES YA PUBLICADOS (EVITA REPETIR ESTAS TEMÁTICAS):
 {json.dumps(recent_titles, indent=2, ensure_ascii=False)}
 
-CRITERIOS EDITORIALES DE VICTORIA (PLAYBOOK VIRAL):
-0. PRIORIDAD ABSOLUTA — RITMO VISUAL, GAMEPLAY PURO Y CERO FACECAM/TALKING-HEAD/PLATÓ:
-   - ELIGE SIEMPRE comparativas visuales directas ('GTA 6 vs RDR 2', '30 FPS vs 60 FPS', gráficos, PS5 Pro, RAGE 9), físicas reales y gameplay puro (Onespot Gaming, ElAnalistaDeBits, Cycu1, GTA Series Videos) INCLUSO AUNQUE tengan menos views_per_hour que un noticiero o reacción en cámara.
-   - RECHAZA/EVITA vídeos donde un presentador habla en plató o webcam con diapositivas de citas de texto en inglés ('Daily Fix', reacciones, 'Full Thoughts', opiniones estáticas), vídeos largos (>5 min) y promos sin gameplay ('The Festival').
-   - Solo elige spots musicales oficiales sin voz si no hay clips de gameplay o comparativa disponibles.
+CRITERIOS EDITORIALES DE VICTORIA (PLAYBOOK GAMEPLAY ACTIVO):
+0. PRIORIDAD #1 ABSOLUTA — GAMEPLAY REAL IN-GAME Y COMPARATIVAS TÉCNICAS:
+   - YA HAY GAMEPLAY REAL DE GTA 6. Elige SIEMPRE gameplay real (primera misión, free roam, persecuciones policiales, open world, PS5 Pro vs Xbox Series X, físicas RAGE 9) INCLUSO si el vídeo fuente dura 10, 30 o 60 minutos (el sistema extrae automáticamente el tramo viral de 25-35s).
+   - RECHAZA/EVITA charlas en plató/webcam, vídeos de opinión ('How Long is GTA 6?', 'Worth It?', 'Daily Fix', 'Full Thoughts') y promos musicales si existe cualquier candidato de gameplay real o comparativa técnica.
    - DESCARTAR tráileres antiguos de 2023 ('Trailer 1').
-1. VELOCIDAD VIRAL REAL (views_per_hour / velocity_vpd): Prioriza vídeos en ascenso vertical ahora mismo. Un vídeo de hace 5 horas con 50,000 views/hora vale 10x más que uno de hace 2 semanas.
+1. VELOCIDAD VIRAL REAL (views_per_hour / velocity_vpd): Prioriza vídeos en ascenso vertical ahora mismo. Un gameplay recién subido con 20,000+ views/hora vale 10x más que un resumen viejo.
 2. MULTI-FUENTE (source_count > 1): Un vídeo detectado por múltiples fuentes/queries simultáneamente es una señal inequívoca de momento viral. Priorizarlo sobre candidatos únicos.
 3. ENGAGEMENT REAL (engagement_rate): Ratio likes/vistas como proxy de distribución activa por el algoritmo. Un ratio > 0.02 indica audiencia comprometida.
 4. ENGAGEMENT Y CURIOSIDAD: El vídeo debe provocar el deseo irrefrenable de comentar o ver hasta el final.
 5. CERO CLICKBAIT NI HASHTAGS DE CONSOLA EQUIVOCADA: Solo contenido real y coherente (jamás pongas #PS5PRO si el vídeo trata de Xbox, ni viceversa).
-6. CONTENIDO 100% GTA 6 REAL: Prioriza clips con tracción real de vistas (demostraciones de RAGE 9, detalles del mapa de Leonida, mecánicas in-game, vehículos, comparativas con vida real). DESCALIFICAR AUTOMÁTICAMENTE cualquier parodia, meme, o gameplay de GTA 5.
+6. CONTENIDO 100% GTA 6 REAL: Prioriza clips con tracción real de vistas (misiones iniciales, mundo abierto de Leonida, mecánicas in-game, vehículos, comparativas PS5 Pro / RDR2). DESCALIFICAR AUTOMÁTICAMENTE cualquier parodia, meme, o gameplay de GTA 5.
 7. GANCHO DE 2 LÍNEAS EN ESPAÑOL (OBLIGATORIO ESPAÑOL, NUNCA INGLÉS): Redacta dos líneas de titular afirmativo en ESPAÑOL (Línea 1 en blanco max 20 caracteres, Línea 2 en amarillo neón max 20 caracteres). PROHIBIDO usar signos de interrogación ('¿' o '?') en el gancho superior.
-8. CERO LEAKS O FILTRACIONES ILEGALES (CUMPLIMIENTO ESTRICTO ANTI-DMCA): PROHIBIDO terminantemente seleccionar clips con código robado, filtraciones confidenciales de desarrollo de 2022 o marcas de debug. Prioriza análisis legítimos bajo Fair Use, comparativas gráficas, curiosidades de prensa y descubrimientos geográficos.
+8. CERO LEAKS O FILTRACIONES ILEGALES (CUMPLIMIENTO ESTRICTO ANTI-DMCA): PROHIBIDO terminantemente seleccionar clips con código robado, filtraciones confidenciales de desarrollo de 2022 o marcas de debug. Prioriza gameplays oficiales levantados de embargo, medios autorizados (IGN, Digital Foundry, ElAnalistaDeBits, GTA Series Videos, PowerPyx) y creadores jugando al juego real.
 
 RESPONDE EXCLUSIVAMENTE CON UN OBJETO JSON VÁLIDO:
 {{
   "selected_index": 0,
-  "recommended_mode": "gameplay o dub (usa 'gameplay' SOLO para comparativas 30fps vs 60fps o gameplay sin narrador; usa 'dub' siempre que haya voz en inglés incluso si muestra gráficos, NPCs o RAGE 9)",
+  "recommended_mode": "gameplay o dub (usa 'gameplay' SIEMPRE para gameplay puro/misiones/persecuciones/comparativas FPS para respetar el audio real del juego; usa 'dub' SOLO para análisis o reviews narrados por un presentador en inglés)",
   "justification": "Explicación de por qué este clip es el ganador indiscutible frente a los otros.",
   "recommended_title": "TÍTULO VIRAL EN ESPAÑOL Y MAYÚSCULAS CON EMOJIS Y #GTA6",
   "hook_line1": "LÍNEA 1 EN ESPAÑOL",

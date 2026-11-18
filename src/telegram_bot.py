@@ -1257,12 +1257,13 @@ def start_telegram_bot_daemon():
             now_dt = datetime.now()
             try:
                 from .adaptive_scheduler import get_due_window, mark_window_completed
-                from .config import get_max_videos_per_run, MAX_DAILY_UPLOADS
+                from .config import get_max_videos_per_run, get_daily_upload_cap
                 from .channels import get_daily_published_count
                 due_win = get_due_window(now_dt)
+                daily_cap = get_daily_upload_cap()
                 if due_win:
-                    if get_daily_published_count() >= MAX_DAILY_UPLOADS:
-                        print(f"[Scheduler] Cuota diaria alcanzada ({MAX_DAILY_UPLOADS}); ventana '{due_win['name']}' omitida.")
+                    if get_daily_published_count() >= daily_cap:
+                        print(f"[Scheduler] Cuota diaria alcanzada ({daily_cap}); ventana '{due_win['name']}' omitida.")
                         mark_window_completed(due_win["id"], target_date=now_dt.date())
                         due_win = None
                 if due_win:
