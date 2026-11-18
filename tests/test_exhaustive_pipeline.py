@@ -94,17 +94,18 @@ class TestExhaustivePipeline(unittest.TestCase):
             "Minecraft 1.22 New Biomes Revealed",
             "Call of Duty Warzone Season 2 Patch Notes"
         ]
-        for title in off_topic_titles:
-            self.assertFalse(is_strictly_gta6(title), f"Debería rechazar '{title}'")
-            res = pl.process_single_video(
-                url=f"https://youtube.com/watch?v=mock_{hash(title)}",
-                video_id=f"off_{abs(hash(title)) % 10000}",
-                original_title=title,
-                creator_name="Random Gaming",
-                dry_run=True,
-                copilot_mode=False
-            )
-            self.assertIsNone(res, f"El pipeline debió abortar inmediatamente con '{title}'")
+        with patch("src.telegram_bot.send_telegram_alert"):
+            for title in off_topic_titles:
+                self.assertFalse(is_strictly_gta6(title), f"Debería rechazar '{title}'")
+                res = pl.process_single_video(
+                    url=f"https://youtube.com/watch?v=mock_{hash(title)}",
+                    video_id=f"off_{abs(hash(title)) % 10000}",
+                    original_title=title,
+                    creator_name="Random Gaming",
+                    dry_run=True,
+                    copilot_mode=False
+                )
+                self.assertIsNone(res, f"El pipeline debió abortar inmediatamente con '{title}'")
 
     def test_gatekeeper_accepts_valid_gta6_content(self):
         """El filtro debe permitir títulos legítimos de GTA 6."""
@@ -193,6 +194,7 @@ class TestExhaustivePipeline(unittest.TestCase):
              patch.object(pl, "enforce_storage_limits"), \
              patch.object(pl, "mark_video_processed"), \
              patch("src.audio_shield.validate_audio_and_speech_vitality", return_value=(True, "OK", {})), \
+             patch("src.telegram_bot.send_telegram_alert"), \
              patch.object(subprocess, "run", return_value=fake_sub_res):
 
             res = pl.process_single_video(
@@ -441,6 +443,7 @@ class TestExhaustivePipeline(unittest.TestCase):
              patch.object(pl, "enforce_storage_limits"), \
              patch.object(pl, "mark_video_processed"), \
              patch("src.audio_shield.validate_audio_and_speech_vitality", return_value=(True, "OK", {})), \
+             patch("src.telegram_bot.send_telegram_alert"), \
              patch.object(subprocess, "run", return_value=fake_sub_res):
 
             res = pl.process_single_video(
