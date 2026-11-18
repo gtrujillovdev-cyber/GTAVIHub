@@ -901,8 +901,8 @@ def _pick_window_for_long_video(
     if not viral_range and srt_path and srt_path.exists() and not trim_official_bumpers:
         viral_range = find_best_transcript_hook_window(
             srt_path,
-            min_dur=max(GAMEPLAY_MIN_DURATION, 18),
-            max_dur=min(SHORT_MAX_DURATION, 30),
+            min_dur=max(GAMEPLAY_MIN_DURATION, 16),
+            max_dur=min(SHORT_MAX_DURATION, 26),
             total_duration=raw_d,
         )
     if not viral_range:
@@ -929,7 +929,7 @@ def _pick_window_for_long_video(
             v_start=viral_range[0],
             v_end=viral_range[1],
             min_duration=GAMEPLAY_MIN_DURATION,
-            max_duration=SHORT_MAX_DURATION
+            max_duration=min(SHORT_MAX_DURATION, 32)
         )
     return viral_range
 

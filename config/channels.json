@@ -301,8 +301,7 @@
       "filter_keywords": true,
       "allow_long_clipping": true,
       "enabled": true,
-      "description": "Análisis técnico de rendimiento y tecnología RAGE",
-      "allow_long_clipping": true
+      "description": "Análisis técnico de rendimiento y tecnología RAGE"
     },
     {
       "name": "ElAnalistaDeBits (Shorts)",
@@ -889,53 +888,11 @@
       "description": "Comparativas visuales puras GTA 6 vs GTA 5/RDR2 de esta semana (auto-clipping)"
     },
     {
-      "query": "ytsearch15:GTA 6 South Park parodia #shorts",
-      "lang": "es",
-      "only_shorts": true,
-      "enabled": false,
-      "description": "Parodias y menciones de South Park a GTA 6 en formato vertical"
-    },
-    {
-      "query": "ytsearch15:GTA 6 South Park parody #shorts",
-      "lang": "en",
-      "only_shorts": true,
-      "enabled": false,
-      "description": "South Park GTA 6 parody and pop culture crossovers"
-    },
-    {
-      "query": "ytsearch15:GTA 6 parodia viral risas #shorts",
-      "lang": "es",
-      "only_shorts": true,
-      "enabled": false,
-      "description": "Parodias virales y sketches de humor sobre GTA 6"
-    },
-    {
-      "query": "ytsearch15:GTA 6 meme viral tiktok #shorts",
-      "lang": "es",
-      "only_shorts": true,
-      "enabled": false,
-      "description": "Memes virales de TikTok sobre GTA 6"
-    },
-    {
-      "query": "ytsearch15:GTA 6 funny moments fails #shorts",
-      "lang": "en",
-      "only_shorts": true,
-      "enabled": false,
-      "description": "Viral funny moments and fails in GTA 6"
-    },
-    {
       "query": "ytsearch15:GTA 6 referencias peliculas series #shorts",
       "lang": "es",
       "only_shorts": true,
       "enabled": false,
       "description": "Referencias a películas y series en GTA 6"
-    },
-    {
-      "query": "ytsearch15:GTA 6 humor momentos comedia #shorts",
-      "lang": "es",
-      "only_shorts": true,
-      "enabled": false,
-      "description": "Momentos de humor y comedia en GTA 6"
     },
     {
       "query": "ytsearch15:GTA 6 graficos rage 9 realismo agua #shorts",
@@ -1200,18 +1157,6 @@
       ]
     },
     {
-      "query": "ytsearch15:GTA 6 Ibai novedades risas #shorts",
-      "lang": "es",
-      "only_shorts": true,
-      "enabled": false,
-      "description": "Comentarios y risas de Ibai sobre GTA 6",
-      "block_instagram": true,
-      "allowed_platforms": [
-        "youtube",
-        "tiktok"
-      ]
-    },
-    {
       "query": "ytsearch15:GTA 6 TheGrefg filtracion reaccion #shorts",
       "lang": "es",
       "only_shorts": true,
@@ -1370,6 +1315,42 @@
       "allow_long_clipping": true,
       "enabled": true,
       "description": "Breaking HOY: gameplay puro sin comentaristas (audio auténtico del juego)"
+    },
+    {
+      "query": "ytsearch15:GTA 6 gameplay vs GTA 5 physics comparison",
+      "lang": "en",
+      "only_shorts": false,
+      "sp": "EgQIAhAB",
+      "enabled": true,
+      "allow_long_clipping": true,
+      "description": "Comparativas de físicas y motor RAGE 9 de GTA 6 vs GTA 5 subidas hoy"
+    },
+    {
+      "query": "ytsearch15:GTA 6 gameplay espanol ps5 pro mision",
+      "lang": "es",
+      "only_shorts": false,
+      "sp": "EgQIAhAB",
+      "enabled": true,
+      "allow_long_clipping": true,
+      "description": "Gameplay puro en español en PS5 Pro subido hoy"
+    },
+    {
+      "query": "ytsearch15:GTA 6 easter eggs secretos detalles ocultos",
+      "lang": "es",
+      "only_shorts": false,
+      "sp": "EgQIAhAB",
+      "enabled": true,
+      "allow_long_clipping": true,
+      "description": "Secretos, detalles y easter eggs de gameplay subidos hoy"
+    },
+    {
+      "query": "ytsearch15:GTA 6 water physics crashes RAGE 9 gameplay",
+      "lang": "en",
+      "only_shorts": false,
+      "sp": "EgQIAhAB",
+      "enabled": true,
+      "allow_long_clipping": true,
+      "description": "Pruebas de físicas del agua y colisiones RAGE 9 en GTA 6"
     }
   ]
 }

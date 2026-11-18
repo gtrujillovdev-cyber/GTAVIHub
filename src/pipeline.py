@@ -137,6 +137,39 @@ def _inspect_clip_motion_and_slides(video_path: Path, clip_dur_sec: float) -> tu
         return True, "OK"
 
 
+def _should_reject_static_visuals(
+    scene_cuts: int,
+    ok_motion: bool,
+    motion_reason: str,
+    clip_dur_sec: float,
+    original_title: str = "",
+    mode: str = "",
+) -> tuple:
+    """Evalúa si un clip carece de dinamismo real sin penalizar gameplay continuo ni comparativas."""
+    if not ok_motion:
+        return "skipped_static_slides", f"Retención visual insuficiente: {motion_reason}"
+
+    tl = f" {(original_title or '').lower()} "
+    is_visual_motion_content = (
+        (mode or "").strip().lower() == "gameplay"
+        or _is_pure_gameplay_action(original_title)
+        or any(
+            kw in tl
+            for kw in (
+                "fps", " vs ", "comparison", "comparativa", "ps5", "xbox",
+                "physics", "físicas", "fisicas", "rage 9", "graphics",
+                "gráficos", "graficos", "free roam", "police", "chase",
+            )
+        )
+    )
+    if scene_cuts < 3:
+        if is_visual_motion_content:
+            return "", ""
+        if scene_cuts == 0:
+            return "skipped_static_visuals", f"Vídeo demasiado estático (0 cortes en {clip_dur_sec:.1f}s)"
+    return "", ""
+
+
 def process_single_video(
     url: str,
     video_id: str,
@@ -272,16 +305,17 @@ def process_single_video(
                 capture_output=True, text=True, timeout=25
             )
             scene_cuts = sum(1 for ln in (sc_res.stderr or "").splitlines() if "pts_time:" in ln)
-            reject_status = ""
-            reject_msg = ""
-            if scene_cuts < 3:
-                reject_status = "skipped_static_visuals"
-                reject_msg = f"Vídeo demasiado estático ({scene_cuts} cortes en {clip_dur_sec:.1f}s)"
-            else:
-                ok_motion, motion_reason = _inspect_clip_motion_and_slides(video_path, clip_dur_sec)
-                if not ok_motion:
-                    reject_status = "skipped_static_slides"
-                    reject_msg = f"Retención visual insuficiente: {motion_reason}"
+            ok_motion, motion_reason = _inspect_clip_motion_and_slides(video_path, clip_dur_sec)
+            reject_status, reject_msg = _should_reject_static_visuals(
+                scene_cuts=scene_cuts,
+                ok_motion=ok_motion,
+                motion_reason=motion_reason,
+                clip_dur_sec=clip_dur_sec,
+                original_title=original_title,
+                mode=mode,
+            )
+            if not reject_status and scene_cuts < 3:
+                print(f"[✓ Quality Visual Shield] Plano continuo con movimiento real ({scene_cuts} cortes, dinamismo OK).")
             if reject_status:
                 print(f"[!] [Quality Visual Shield] {reject_msg}. Descartando...")
                 mark_video_processed({

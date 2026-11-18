@@ -680,6 +680,28 @@ class TestCompliance(unittest.TestCase):
         ok_move, _ = pl._evaluate_gray_frames_retention(moving_frames)
         self.assertTrue(ok_move)
 
+        # Un plano secuencia real de gameplay / comparativa FPS con movimiento real no debe ser rechazado por pocos cortes
+        st_gp, _ = pl._should_reject_static_visuals(
+            scene_cuts=1, ok_motion=True, motion_reason="OK",
+            clip_dur_sec=24.0, original_title="GTA 6 Gameplay Español Parte 1 | PS5 PRO 4K", mode="gameplay"
+        )
+        self.assertEqual(st_gp, "")
+        st_fps, _ = pl._should_reject_static_visuals(
+            scene_cuts=2, ok_motion=True, motion_reason="OK",
+            clip_dur_sec=24.0, original_title="GTA 6 Confirmed At 30FPS On All Systems + PS5 Pro", mode="dub"
+        )
+        self.assertEqual(st_fps, "")
+        st_talk, _ = pl._should_reject_static_visuals(
+            scene_cuts=0, ok_motion=True, motion_reason="OK",
+            clip_dur_sec=24.0, original_title="Podcast Opinion About Rockstar News", mode="dub"
+        )
+        self.assertEqual(st_talk, "skipped_static_visuals")
+        st_slide, _ = pl._should_reject_static_visuals(
+            scene_cuts=4, ok_motion=False, motion_reason="plano fijo sin movimiento",
+            clip_dur_sec=24.0, original_title="GTA 6 Gameplay", mode="gameplay"
+        )
+        self.assertEqual(st_slide, "skipped_static_slides")
+
     def test_portuguese_and_clickbait_rejection_and_prelaunch_flags(self):
         import os
         from datetime import datetime
