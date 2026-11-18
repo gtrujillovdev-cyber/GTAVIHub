@@ -361,32 +361,33 @@ Tu tarea es ADAPTAR EL TONO Y FORMATO AL CONTENIDO REAL:
    - "noticia_oficial" (comunicados de Rockstar, capturas oficiales, portadas, fechas)
    - "reaccion_streamer" (momentos de streamers)
    - "gameplay_puro" (misiones, jugabilidad real, capturas in-game, mundo abierto)
-2. "viral_title": Un título ULTRA LLAMATIVO en ESPAÑOL completamente en MAYÚSCULAS acorde al clip real, con emojis y #GTA6 (máx 78 caracteres).
+2. "viral_title": Título limpio y muy atractivo para búsqueda y móvil en ESPAÑOL (estilo natural mixto, NO todo en mayúsculas gritonas), máx 68 caracteres, con 1 emoji relevante y "#GTA6" opcional al final. NUNCA pongas "#Shorts" ni "#SHORTS" en el título ni promesas falsas de "fecha confirmada".
 3. "summary": Un resumen apasionante de 2 párrafos en español fiel al contenido real del vídeo.
-4. "hook": Titular visual en ESPAÑOL de 2 líneas cortas separado por '\\n' (máx 18 chars por línea, en MAYÚSCULAS, SIN '¿' ni '?') que revele EL DATO CONCRETO del clip en los primeros segundos (ej. "GTA 6 A 30 FPS\\nINCLUSO EN PS5 PRO" o "PRE-CARGA ACTIVA\\nYA SE DESCARGA"). PROHIBIDO hooks genéricos vacíos como "IMPRESIONANTE" o "GRÁFICOS TOP".
-5. "debate_question": Una pregunta directa para comentarios sobre este tema específico.
+4. "hook": Titular visual en ESPAÑOL de 2 líneas cortas separado por '\\n' (máx 18 chars por línea, en MAYÚSCULAS, SIN '¿' ni '?') que revele EL DATO CONCRETO del clip en los primeros segundos (ej. "GTA 6 EN PS5 PRO\\nPRIMERA MISIÓN" o "FÍSICAS RAGE 9\\nIMPACTO EN EL AGUA"). PROHIBIDO hooks genéricos vacíos como "IMPRESIONANTE" o "GRÁFICOS TOP".
+5. "debate_question": Una pregunta binaria/directa sobre lo que se ve en el clip para disparar comentarios en los primeros 30 minutos.
 
 Devuelve tu respuesta EXACTAMENTE en este formato JSON (sin texto extra):
 {{
   "archetype": "humor_parodia | analisis_tecnico | filtracion_misterio | noticia_oficial | reaccion_streamer | gameplay_puro",
-  "viral_title": "TITULO EN MAYUSCULAS CON EMOJIS Y #GTA6",
+  "viral_title": "Título atractivo natural en español 🎮 #GTA6",
   "summary": "Resumen en español...",
   "hook": "GANCHO EN MAYUSCULAS",
-  "debate_question": "¿Pregunta de debate polarizante para comentarios? 👇"
+  "debate_question": "¿Pregunta de debate directa para comentarios? 👇"
 }}
 """
     try:
         response = generate_content_with_retry(
             client=client,
-            contents=prompt
+            contents=prompt,
+            config={"response_mime_type": "application/json"}
         )
         cleaned = clean_srt_response(response.text)
         data = json.loads(cleaned)
-        archetype = data.get("archetype", "filtracion_misterio").strip().lower()
-        viral_title = data.get("viral_title", "").strip().upper()
+        archetype = data.get("archetype", "gameplay_puro" if is_launched else "filtracion_misterio").strip().lower()
+        viral_title = data.get("viral_title", "").strip()
         summary = data.get("summary", "").strip()
-        hook = data.get("hook", "¡INCREÍBLE!").strip().upper()
-        debate_question = data.get("debate_question", "¿Qué opinas tú de esta filtración de GTA 6? ¡Te leemos abajo! 👇").strip()
+        hook = data.get("hook", "GAMEPLAY REAL GTA 6").strip().upper()
+        debate_question = data.get("debate_question", "¿Qué nota le das a estas físicas y gráficos de GTA 6 del 1 al 10? 👇").strip()
     except Exception as e:
         print(f"[Warning] Error consultando IA para metadatos: {e}")
         # Inferencia heurística de arquetipo si falla la IA
@@ -406,32 +407,27 @@ Devuelve tu respuesta EXACTAMENTE en este formato JSON (sin texto extra):
         else:
             archetype = "gameplay_puro" if is_launched else "filtracion_misterio"
             fallback_hook = "GAMEPLAY REAL\nASÍ SE VE GTA 6" if is_launched else "DETALLE OCULTO\nLO QUE NADIE VIO"
-        viral_title = f"ASÍ SE VE GTA 6 EN ACCIÓN: {original_title[:42].upper()} #GTA6" if is_launched else f"LO QUE NO VISTE DE GTA 6: {original_title[:42].upper()} #GTA6"
+        viral_title = f"Gameplay real de GTA 6: {original_title[:45]} #GTA6" if is_launched else f"Lo que no viste de GTA 6: {original_title[:45]} #GTA6"
         summary = f"Cobertura y mejores momentos de Grand Theft Auto VI a partir del contenido de {creator_name or 'la comunidad'}."
         hook = fallback_hook
-        debate_question = "¿Qué os parece este gameplay de GTA 6? ¿Cumple con lo esperado? ¡Comenta abajo! 👇" if is_launched else "¿Crees que GTA 6 cumplirá todas las expectativas? ¡Comenta abajo! 👇"
+        debate_question = "¿Qué te parece este gameplay de GTA 6? ¿Supera lo que esperabas? 👇" if is_launched else "¿Crees que GTA 6 cumplirá todas las expectativas? ¡Comenta abajo! 👇"
 
     # Sanitización gramatical y estética determinista de título y gancho
     hook = _fix_es_title_grammar(hook).replace("¿", "").replace("?", "").strip()
     viral_title = _fix_es_title_grammar(viral_title)
 
-    # Evitar hashtags incrustados en mitad de frase (ej. "DE #GTA6 🤯")
+    # Limpiar ruido spam (#Shorts en título y hashtags intermedios; #Shorts se queda solo en descripción)
     if viral_title:
-        vt_upper = viral_title.upper()
-        # Si hay texto tras #GTA6 (sin contar #Shorts), reemplazar #GTA6 intermedio por GTA 6
-        vt_no_shorts = re.sub(r"#SHORTS\b", "", vt_upper, flags=re.IGNORECASE).strip()
-        if "#GTA6" in vt_no_shorts and not vt_no_shorts.endswith("#GTA6"):
-            vt_no_shorts = re.sub(r"#GTA6\b", "GTA 6", vt_no_shorts).strip()
-            vt_upper = f"{vt_no_shorts} #GTA6"
-        viral_title = " ".join(vt_upper.split()).strip()
+        vt_clean = re.sub(r"#SHORTS\b", "", viral_title, flags=re.IGNORECASE).strip()
+        if "#GTA6" in vt_clean.upper() and not vt_clean.upper().endswith("#GTA6"):
+            vt_clean = re.sub(r"#GTA6\b", "GTA 6", vt_clean, flags=re.IGNORECASE).strip()
+            vt_clean = f"{vt_clean} #GTA6"
+        viral_title = " ".join(vt_clean.split()).strip(" -–—|:")
 
-    # Asegurar que el título siempre esté en mayúsculas y contenga #Shorts para el crawler
     if not viral_title:
-        viral_title = f"DETALLES DE GTA 6: {original_title[:45].upper()} #GTA6 #Shorts"
-    else:
-        viral_title = viral_title.upper()
-        if "#SHORTS" not in viral_title and len(viral_title) <= 90:
-            viral_title = f"{viral_title} #Shorts"
+        viral_title = f"GTA 6 en acción: {original_title[:48]} #GTA6"
+    elif "#GTA6" not in viral_title.upper() and len(viral_title) <= 78:
+        viral_title = f"{viral_title} #GTA6"
 
     # Desduplicación Estricta de Títulos (Anti-Spam Shield: CERO títulos repetidos)
     try:
@@ -447,10 +443,10 @@ Devuelve tu respuesta EXACTAMENTE en este formato JSON (sin texto extra):
                 clean_candidate = viral_title.upper().replace("#SHORTS", "").replace("#GTA6", "").strip()
                 if clean_candidate in recent_titles or any(len(clean_candidate) > 12 and clean_candidate == t for t in recent_titles):
                     print(f"[Anti-Duplicate] Título '{viral_title}' ya publicado en los últimos 30 clips. Diferenciando variante...")
-                    short_tag = re.sub(r'[^A-Z0-9 ]', '', original_title.upper()).strip()
-                    short_tag = short_tag.split()[0] if short_tag else "NUEVO"
-                    base_vt = viral_title.replace("#SHORTS", "").strip()
-                    viral_title = f"{base_vt} ({short_tag}) #Shorts"
+                    short_tag = re.sub(r'[^A-Za-z0-9 ]', '', original_title).strip()
+                    short_tag = short_tag.split()[0] if short_tag else "Clip"
+                    base_vt = re.sub(r"#GTA6\b", "", viral_title, flags=re.IGNORECASE).strip()
+                    viral_title = f"{base_vt} ({short_tag}) #GTA6"
     except Exception as e:
         print(f"[Anti-Duplicate] Nota: {e}")
 

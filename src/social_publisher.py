@@ -482,6 +482,7 @@ class SocialPublisher:
                     ]
 
                     posted = False
+                    retry_clicks = 0
                     start_post_wait = time.time()
                     while time.time() - start_post_wait < 150 and not posted:
                         try:
@@ -544,6 +545,18 @@ class SocialPublisher:
                                     print("[*] Click en botón publicar ejecutado con éxito vía DOM JS")
                                     posted = True
                                     break
+                            except Exception:
+                                pass
+
+                        if not posted and retry_clicks < 2:
+                            try:
+                                r_btn = page.locator("button:has-text('Reintentar'), button:has-text('Retry')").first
+                                if r_btn.count() > 0 and r_btn.is_visible() and r_btn.is_enabled():
+                                    r_btn.evaluate("b => b.click()")
+                                    retry_clicks += 1
+                                    print(f"[*] TikTok Studio mostró 'Reintentar'. Auto-recuperación {retry_clicks}/2...")
+                                    time.sleep(5)
+                                    continue
                             except Exception:
                                 pass
 

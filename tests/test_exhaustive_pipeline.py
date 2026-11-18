@@ -237,8 +237,9 @@ class TestExhaustivePipeline(unittest.TestCase):
             output_video=output_vid,
             srt_subtitles=srt_file,
             force_short_format=True,
-            hook_text="FÍSICAS RAGE 9",
-            format_preset="FIT"
+            hook_text="FÍSICAS RAGE 9\nDETALLE INCREÍBLE",
+            archetype="gameplay_puro",
+            format_preset="D"
         )
         self.assertTrue(success, "El renderizado FFmpeg debe completarse con éxito")
         self.assertTrue(output_vid.exists(), "El archivo de salida debe existir")
@@ -467,6 +468,40 @@ class TestExhaustivePipeline(unittest.TestCase):
         sched_18 = get_daily_schedule(date(2026, 11, 18))
         ids_18 = [w["id"] for w in sched_18.get("windows", [])]
         self.assertIn("early_gameplay_wave", ids_18)
+
+    def test_chapter_selection_skips_intro_and_picks_action(self):
+        """Debe ignorar capítulos de intro/menú y extraer el tramo de persecución policial."""
+        from src.downloader import _select_action_chapter_window
+        chapters = [
+            {"title": "Intro & Settings Menu", "start_time": 0.0, "end_time": 90.0},
+            {"title": "Sponsor Message", "start_time": 90.0, "end_time": 140.0},
+            {"title": "Vice City Police Chase Combat", "start_time": 140.0, "end_time": 260.0},
+            {"title": "Outro & Subscribe", "start_time": 260.0, "end_time": 300.0},
+        ]
+        win = _select_action_chapter_window(chapters, duration=300.0, target_duration=24)
+        self.assertIsNotNone(win)
+        self.assertGreaterEqual(win[0], 140.0)
+        self.assertLessEqual(win[1], 260.0)
+        self.assertGreaterEqual(win[1] - win[0], 18.0)
+
+    def test_clean_title_no_shorts_spam_and_upload_cooldown(self):
+        """Los títulos de YouTube no deben llevar #Shorts spam y cooldown debe frenar subidas <45m."""
+        meta = generate_video_metadata(
+            original_title="GTA 6 Police Chase Free Roam Gameplay PS5 Pro",
+            original_url="https://youtube.com/watch?v=9TLwyuGDSmI",
+            is_short=True,
+            creator_name="GameV"
+        )
+        self.assertNotIn("#shorts", meta["title"].lower())
+        self.assertIn("#shorts", meta["description"].lower())
+
+        import src.uploader as up
+        cooldown_tmp = self.mock_temp / "test_cooldown.json"
+        with patch.object(up, "UPLOAD_COOLDOWN_FILE", cooldown_tmp):
+            up._record_youtube_upload("yt123", meta["title"], "public")
+            blocked, reason = up._is_youtube_upload_blocked_by_cooldown("Otro título nuevo de GTA 6", "public")
+            self.assertTrue(blocked, "Debe bloquear subidas en menos de 45 minutos")
+            self.assertIn("cooldown", reason.lower())
 
 
 if __name__ == "__main__":

@@ -20,6 +20,66 @@ SCOPES = [
 TOKEN_FILE = BASE_DIR / "token.json"
 TOKEN_EXTRA_FILE = BASE_DIR / "token_extra.json"
 BOOST_STATE_FILE = BASE_DIR / "data" / "engagement_boost.json"
+UPLOAD_COOLDOWN_FILE = BASE_DIR / "data" / "upload_cooldown.json"
+
+
+def _is_youtube_upload_blocked_by_cooldown(title: str, privacy_status: str) -> tuple[bool, str]:
+    """Evita dobles subidas en <45 min o títulos duplicados/similares en <3h en YouTube."""
+    if privacy_status != "public" or not UPLOAD_COOLDOWN_FILE.exists():
+        return False, ""
+    try:
+        import difflib
+        import re
+        from datetime import datetime
+        records = json.loads(UPLOAD_COOLDOWN_FILE.read_text(encoding="utf-8"))
+        if not isinstance(records, list) or not records:
+            return False, ""
+        now = datetime.now()
+        norm_new = re.sub(r"[^a-z0-9 ]", "", (title or "").lower()).strip()
+        for rec in records[-10:]:
+            ts_str = rec.get("uploaded_at")
+            if not ts_str:
+                continue
+            try:
+                prev_dt = datetime.fromisoformat(ts_str)
+            except Exception:
+                continue
+            elapsed_min = (now - prev_dt).total_seconds() / 60.0
+            if elapsed_min < 0:
+                continue
+            prev_norm = re.sub(r"[^a-z0-9 ]", "", (rec.get("title") or "").lower()).strip()
+            sim = difflib.SequenceMatcher(None, norm_new, prev_norm).ratio() if (norm_new and prev_norm) else 0.0
+            if elapsed_min < 180.0 and sim >= 0.82:
+                return True, f"Título casi idéntico subido hace {elapsed_min:.0f}m (sim={sim:.2f})."
+            if elapsed_min < 45.0:
+                return True, f"Cooldown anti-spam activo: último vídeo subido hace {elapsed_min:.0f}m (<45m)."
+    except Exception:
+        return False, ""
+    return False, ""
+
+
+def _record_youtube_upload(video_id: str, title: str, privacy_status: str) -> None:
+    if privacy_status != "public" or not video_id:
+        return
+    try:
+        from datetime import datetime
+        UPLOAD_COOLDOWN_FILE.parent.mkdir(parents=True, exist_ok=True)
+        records = []
+        if UPLOAD_COOLDOWN_FILE.exists():
+            try:
+                data = json.loads(UPLOAD_COOLDOWN_FILE.read_text(encoding="utf-8"))
+                if isinstance(data, list):
+                    records = data
+            except Exception:
+                records = []
+        records.append({
+            "video_id": video_id,
+            "title": title[:100],
+            "uploaded_at": datetime.now().isoformat()
+        })
+        UPLOAD_COOLDOWN_FILE.write_text(json.dumps(records[-20:], indent=2, ensure_ascii=False), encoding="utf-8")
+    except Exception:
+        pass
 
 
 def should_toggle_engagement_boost() -> bool:
@@ -138,6 +198,11 @@ def upload_to_youtube(
         print(f"[!] Archivo de vídeo no encontrado: {video_path}")
         return None
 
+    blocked, block_reason = _is_youtube_upload_blocked_by_cooldown(title, privacy_status)
+    if blocked:
+        print(f"🛡️ [YouTube Cooldown] Subida abortada para proteger alcance: {block_reason}")
+        return None
+
     if tags is None:
         tags = [
             "GTA 6", "Grand Theft Auto VI", "Rockstar Games",
@@ -183,6 +248,7 @@ def upload_to_youtube(
                 print(f"  -> Progreso de subida: {int(status.progress() * 100)}%")
 
         video_id = response.get("id")
+        _record_youtube_upload(video_id, title, privacy_status)
         yt_url = f"https://youtu.be/{video_id}"
         print(f"[✓✓] ¡VÍDEO SUBIDO A YOUTUBE CON ÉXITO!")
         print(f"    ID: {video_id}")

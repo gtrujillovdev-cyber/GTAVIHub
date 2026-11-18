@@ -535,6 +535,38 @@ def render_retention_hook(output_path: Path, text: str = "ESPERA A VER ESTO") ->
     img.save(output_path, "PNG")
     return True
 
+
+def render_persistent_context_badge(output_path: Path, text: str = "GTA 6 • GAMEPLAY REAL") -> bool:
+    """
+    Píldora editorial compacta y discreta visible tras desaparecer el gancho inicial (>= 2.8s).
+    Da contexto inmediato a espectadores que entran a mitad del clip o en loop sin tapar gameplay.
+    """
+    clean = clean_text_preserve_emojis(text).upper()[:34]
+    if not clean:
+        clean = "GTA 6 • GAMEPLAY REAL"
+
+    font = get_best_font(size=28)
+    tokens = split_text_and_emojis(clean)
+    tw, th = measure_composite_line(tokens, font, emoji_size=28)
+
+    pad_x, pad_y = 26, 10
+    box_w = tw + pad_x * 2
+    box_h = th + pad_y * 2
+
+    img = Image.new("RGBA", (box_w, box_h), (0, 0, 0, 0))
+    d = ImageDraw.Draw(img)
+    d.rounded_rectangle(
+        [(0, 0), (box_w - 1, box_h - 1)],
+        radius=16,
+        fill=(10, 12, 18, 175),
+        outline=(255, 215, 95, 190),
+        width=2
+    )
+    draw_composite_line(img, d, tokens, pad_x, pad_y, font, fill_color=(245, 245, 250, 255), stroke_color=(0, 0, 0, 220), stroke_width=1, emoji_size=28)
+    img.save(output_path, "PNG")
+    return True
+
+
 def render_karaoke_subtitle_state(words: List[str], active_idx: int, is_vertical: bool, output_path: Path) -> bool:
     """
     Renderiza subtítulos Pop Broadcast limpios y transparentes (estilo Shorts/TikTok viral):
@@ -816,19 +848,36 @@ def render_final_video(
     vignette_png = temp_dir / f"{base_name}_vignette.png"
     create_subtle_vignette(vignette_png, fg_top=fg_y, fg_bottom=fg_bottom, is_cinema=is_cinema_layout)
 
-    # 2. Gancho textual superior (0 a 2.5s)
-    # En Cinema layout (vídeo horizontal adaptado a 9:16): se coloca en la zona superior libre (y=120) sobre el Velvet Blur.
-    # En vídeo vertical nativo (is_already_vertical): NO colocar tarjeta opaca superior porque colisiona frontalmente
-    # con el HUD, logotipos de Rockstar y rostros ya encuadrados en vertical.
+    # 2. Gancho textual superior (0 a 2.8s) y Badge persistente editorial (>= 2.8s)
+    # En vídeo vertical nativo (is_already_vertical) o SPLIT (toca arriba), mantener limpio arriba.
     hook_png = None
+    badge_png = None
     if hook_text and is_vertical and not is_already_vertical:
         hook_png = temp_dir / f"{base_name}_hook.png"
         rendered_hook = render_top_hook_headline(hook_text, hook_png)
         if not rendered_hook:
             hook_png = None
 
-    # 2b. Micro-tarjeta secundaria desactivada para evitar aspecto de plantilla automática ("ATENCION")
+        if effective_preset != "SPLIT":
+            first_hook_line = [ln.strip() for ln in hook_text.splitlines() if ln.strip()]
+            badge_label = first_hook_line[0] if first_hook_line else "GTA 6 • GAMEPLAY REAL"
+            badge_png = temp_dir / f"{base_name}_badge.png"
+            if not render_persistent_context_badge(badge_png, text=badge_label):
+                badge_png = None
+
+    # 2b. Micro-tarjeta secundaria de retención mid-scroll (5.0 a 7.2s) específica por arquetipo
     retention_png = None
+    if is_vertical and not is_already_vertical and effective_preset != "SPLIT":
+        arch_low = (archetype or "").lower()
+        if "tecnico" in arch_low or "analisis" in arch_low:
+            ret_text = "MIRA EL DETALLE GRÁFICO"
+        elif "gameplay" in arch_low or not srt_subtitles:
+            ret_text = "NO TE PIERDAS EL CLÍMAX ⚡"
+        else:
+            ret_text = "ESPERA A VER EL FINAL 🔥"
+        retention_png = temp_dir / f"{base_name}_ret.png"
+        if not render_retention_hook(retention_png, text=ret_text):
+            retention_png = None
 
     # 3. Generación de estados de Karaoke palabra por palabra
     # En audio doblado neural, la sincronía fonética es directa (offset=0.0s).
@@ -954,6 +1003,13 @@ def render_final_video(
         hook_idx = input_idx
         input_idx += 1
 
+    # Badge contextual persistente si existe
+    badge_idx = None
+    if badge_png and badge_png.exists():
+        cmd.extend(["-i", str(badge_png)])
+        badge_idx = input_idx
+        input_idx += 1
+
     # Segundo gancho de retención si existe
     retention_idx = None
     if retention_png and retention_png.exists():
@@ -1010,14 +1066,20 @@ def render_final_video(
     filter_chains.append(f"[{current_v}][{vignette_idx}:v]overlay=0:0[v_vignetted]")
     current_v = "v_vignetted"
 
-    # C) Superponer Gancho Superior (0.0 a 2.5s dinámico sin tapar de forma eterna)
+    # C) Superponer Gancho Superior (0.0 a 2.8s)
     if hook_idx is not None:
-        filter_chains.append(f"[{current_v}][{hook_idx}:v]overlay=(W-w)/2:{hook_y_expr}:enable='between(t,0,2.5)'[v_hooked]")
+        filter_chains.append(f"[{current_v}][{hook_idx}:v]overlay=(W-w)/2:{hook_y_expr}:enable='between(t,0,2.8)'[v_hooked]")
         current_v = "v_hooked"
 
-    # C2) Superponer segundo gancho de retención (5.0 a 7.0s) — frena el swipe mid-scroll
+    # C1) Superponer Badge contextual discreto (>= 2.8s, pausado brevemente en 5.0-7.2s si hay retención)
+    if badge_idx is not None:
+        badge_enable = "gte(t,2.8)*lt(t,5.0)+gte(t,7.2)" if retention_idx is not None else "gte(t,2.8)"
+        filter_chains.append(f"[{current_v}][{badge_idx}:v]overlay=(W-w)/2:54:enable='{badge_enable}'[v_badged]")
+        current_v = "v_badged"
+
+    # C2) Superponer segundo gancho de retención (5.0 a 7.2s) — frena el swipe mid-scroll
     if retention_idx is not None:
-        filter_chains.append(f"[{current_v}][{retention_idx}:v]overlay=(W-w)/2:{ret_y_expr}:enable='between(t,5.0,7.0)'[v_retained]")
+        filter_chains.append(f"[{current_v}][{retention_idx}:v]overlay=(W-w)/2:54:enable='between(t,5.0,7.2)'[v_retained]")
         current_v = "v_retained"
 
     # D) Superponer Subtítulos Karaoke palabra por palabra
@@ -1077,15 +1139,11 @@ def render_final_video(
             sp.unlink()
         except OSError:
             pass
-    if vignette_png.exists():
-        try:
-            vignette_png.unlink()
-        except OSError:
-            pass
-    if hook_png and hook_png.exists():
-        try:
-            hook_png.unlink()
-        except OSError:
-            pass
+    for extra_png in (vignette_png, hook_png, badge_png, retention_png):
+        if extra_png and extra_png.exists():
+            try:
+                extra_png.unlink()
+            except OSError:
+                pass
 
     return True

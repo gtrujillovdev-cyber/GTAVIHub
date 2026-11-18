@@ -815,6 +815,67 @@ def _fetch_subtitles_yt(
     return None, source_lang
 
 
+def _select_action_chapter_window(
+    chapters: Any,
+    duration: float,
+    target_duration: int = 24
+) -> Optional[Tuple[float, float]]:
+    """Elige el mejor capítulo de acción/gameplay dentro de vídeos largos de YouTube."""
+    if not chapters or not isinstance(chapters, list) or duration <= SHORT_MAX_DURATION:
+        return None
+
+    skip_kws = (
+        "intro", "opening", "menu", "settings", "options", "config",
+        "outro", "credits", "sponsor", "subscribe", "recap", "title"
+    )
+    action_kws = (
+        "chase", "police", "wanted", "combat", "shootout", "gunfight",
+        "robbery", "heist", "crash", "physics", "water", "free roam",
+        "open world", "mission", "action", "escape", "explosion",
+        "gameplay", "ps5 pro", "xbox", "fps", "vs", "comparison",
+        "beach", "night", "driving", "boat", "helicopter"
+    )
+
+    best_score = -999
+    best_win = None
+    best_title = ""
+
+    for ch in chapters:
+        if not isinstance(ch, dict):
+            continue
+        title = str(ch.get("title") or "").strip()
+        tl = title.lower()
+        s_t = float(ch.get("start_time") or 0.0)
+        e_t = float(ch.get("end_time") or duration)
+        span = e_t - s_t
+        if span < 18.0 or s_t >= duration - 12.0:
+            continue
+
+        sc = 0
+        if any(sk in tl for sk in skip_kws):
+            sc -= 50
+        for ak in action_kws:
+            if ak in tl:
+                sc += 15
+        if 15.0 <= s_t <= duration * 0.75:
+            sc += 5
+
+        if sc > best_score:
+            best_score = sc
+            clip_dur = min(float(target_duration), max(18.0, span - 2.0))
+            offset = 3.0 if span > (clip_dur + 6.0) else 0.0
+            win_start = s_t + offset
+            win_end = min(duration, win_start + clip_dur)
+            if (win_end - win_start) >= 16.0:
+                best_win = (win_start, win_end)
+                best_title = title
+
+    if best_win and best_score >= 10:
+        print(f"[⚡ Chapter Engine] Capítulo de alta retención elegido ('{best_title}'): {best_win[0]:.1f}s - {best_win[1]:.1f}s")
+        return best_win
+    return None
+
+
 def _pick_window_for_long_video(
     raw_d: float,
     heatmap: Any,
@@ -822,9 +883,10 @@ def _pick_window_for_long_video(
     trim_official_bumpers: bool,
     video_id: str,
     url: str,
-    is_social_clip: bool
+    is_social_clip: bool,
+    chapters: Any = None
 ) -> Optional[Tuple[float, float]]:
-    """Determina la mejor ventana de 24-36s para clips o gameplays largos."""
+    """Determina la mejor ventana de 20-32s para clips o gameplays largos."""
     if trim_official_bumpers and 24.0 <= raw_d <= 45.0:
         win = (1.0, max(16.0, raw_d - 1.5))
         print(f"[*] Spot promocional oficial ({raw_d:.1f}s): conservando anuncio completo -> {win[0]:.1f}s a {win[1]:.1f}s")
@@ -833,27 +895,29 @@ def _pick_window_for_long_video(
     if raw_d <= SHORT_MAX_DURATION:
         return None
 
-    viral_range = _select_heatmap_window(heatmap, raw_d, target_duration=SHORT_TARGET_DURATION)
+    viral_range = _select_heatmap_window(heatmap, raw_d, target_duration=min(SHORT_TARGET_DURATION, 24))
+    if not viral_range and chapters and not trim_official_bumpers:
+        viral_range = _select_action_chapter_window(chapters, raw_d, target_duration=min(SHORT_TARGET_DURATION, 24))
     if not viral_range and srt_path and srt_path.exists() and not trim_official_bumpers:
         viral_range = find_best_transcript_hook_window(
             srt_path,
             min_dur=max(GAMEPLAY_MIN_DURATION, 18),
-            max_dur=min(SHORT_MAX_DURATION, 36),
+            max_dur=min(SHORT_MAX_DURATION, 30),
             total_duration=raw_d,
         )
     if not viral_range:
         seed_val = sum(ord(c) for c in (video_id or url))
-        sweet_min = max(GAMEPLAY_MIN_DURATION, 24)
-        sweet_max = min(SHORT_MAX_DURATION, 32)
+        sweet_min = max(GAMEPLAY_MIN_DURATION, 20)
+        sweet_max = min(SHORT_MAX_DURATION, 26)
         dur_jitter = (seed_val % max(1, (sweet_max - sweet_min + 1)))
         dynamic_dur = sweet_min + dur_jitter
         if is_social_clip or raw_d <= 150.0:
             start_t = 0.0
         elif raw_d >= 300.0:
-            # Saltar intros/cinemáticas iniciales en gameplays largos (entre 35s y 95s según semilla)
-            start_t = min(raw_d * 0.12, 35.0 + float(seed_val % 60))
+            # Saltar intros/cinemáticas iniciales en gameplays largos (entre 45s y 115s según semilla)
+            start_t = min(raw_d * 0.14, 45.0 + float(seed_val % 70))
         else:
-            start_t = min(20.0, raw_d * 0.1)
+            start_t = min(25.0, raw_d * 0.12)
         if start_t + dynamic_dur > raw_d:
             start_t = max(0.0, raw_d - dynamic_dur)
         print(f"[*] Ventana orgánica de acción ({raw_d:.1f}s): {start_t:.1f}s a {start_t + dynamic_dur:.1f}s")
@@ -924,7 +988,8 @@ def download_video_and_subtitles(
                 trim_official_bumpers=trim_official_bumpers,
                 video_id=video_id,
                 url=url,
-                is_social_clip=False
+                is_social_clip=False,
+                chapters=remote_info.get("chapters")
             )
 
     def _run_ytdlp_download(section_arg: Optional[Tuple[float, float]]) -> bool:
@@ -1036,7 +1101,8 @@ def download_video_and_subtitles(
             trim_official_bumpers=trim_official_bumpers,
             video_id=video_id,
             url=url,
-            is_social_clip=is_social_clip
+            is_social_clip=is_social_clip,
+            chapters=remote_info.get("chapters")
         )
         if viral_range:
             v_start, v_end = viral_range
