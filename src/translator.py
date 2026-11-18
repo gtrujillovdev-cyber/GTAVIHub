@@ -72,7 +72,7 @@ def get_gemini_client():
     if _client is None:
         if not GEMINI_API_KEY:
             raise ValueError("GEMINI_API_KEY no está configurada en .env")
-        _client = genai.Client(api_key=GEMINI_API_KEY)
+        _client = genai.Client(api_key=GEMINI_API_KEY, http_options={"api_version": "v1beta"})
     return _client
 
 AUDIO_TAG_REGEX = re.compile(
