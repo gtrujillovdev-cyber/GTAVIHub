@@ -35,6 +35,87 @@ def get_video_dimensions(video_path: Path) -> Tuple[int, int]:
     except Exception:
         return 1920, 1080
 
+def _probe_duration(media_path: Path) -> float:
+    """Obtiene la duración exacta en segundos de un archivo multimedia usando ffprobe."""
+    if not media_path or not media_path.exists():
+        return 0.0
+    try:
+        res = subprocess.run(
+            ["ffprobe", "-v", "quiet", "-show_entries", "format=duration", "-of", "csv=p=0", str(media_path)],
+            capture_output=True, text=True, timeout=8
+        )
+        return float(res.stdout.strip()) if res.stdout.strip() else 0.0
+    except Exception:
+        return 0.0
+
+
+def detect_horizontal_split_screen(video_path: Path, sample_time: float = 3.0) -> bool:
+    """
+    Detecta empíricamente si un vídeo horizontal (16:9) es una comparativa lado-a-lado 50/50
+    (ej. 30 FPS vs 60 FPS, PS5 vs Xbox) analizando la discontinuidad vertical exacta en x = width // 2.
+    """
+    import statistics
+    import tempfile
+    w, h = get_video_dimensions(video_path)
+    if h >= w or w < 320 or h < 200:
+        return False
+
+    tmp_frame = None
+    try:
+        with tempfile.NamedTemporaryFile(suffix=".jpg", delete=False) as tf:
+            tmp_frame = Path(tf.name)
+        subprocess.run(
+            ["ffmpeg", "-y", "-ss", str(sample_time), "-i", str(video_path), "-frames:v", "1", str(tmp_frame)],
+            capture_output=True, timeout=8
+        )
+        if not tmp_frame.exists() or tmp_frame.stat().st_size < 1000:
+            subprocess.run(
+                ["ffmpeg", "-y", "-ss", "0.5", "-i", str(video_path), "-frames:v", "1", str(tmp_frame)],
+                capture_output=True, timeout=8
+            )
+        if not tmp_frame.exists() or tmp_frame.stat().st_size < 1000:
+            return False
+
+        img = Image.open(tmp_frame).convert("RGB")
+        iw, ih = img.size
+        px = img.load()
+        mid = iw // 2
+        col_stats = []
+        y_start, y_end = int(ih * 0.15), int(ih * 0.85)
+        for x in range(max(1, mid - 40), min(iw - 1, mid + 40)):
+            row_diffs = [
+                abs(px[x, y][0] - px[x - 1, y][0])
+                + abs(px[x, y][1] - px[x - 1, y][1])
+                + abs(px[x, y][2] - px[x - 1, y][2])
+                for y in range(y_start, y_end, 4)
+            ]
+            if row_diffs:
+                edge_frac = sum(1 for d in row_diffs if d > 20) / len(row_diffs)
+                col_stats.append((x, sum(row_diffs), edge_frac))
+
+        if not col_stats:
+            return False
+        med = statistics.median(d for _, d, _ in col_stats)
+        med_frac = statistics.median(f for _, _, f in col_stats)
+        center_candidates = [(d, f) for x, d, f in col_stats if abs(x - mid) <= 3]
+        if not center_candidates:
+            return False
+        center_peak, center_frac = max(center_candidates, key=lambda t: t[0])
+        # Un split-screen 50/50 real genera discontinuidad continua a lo largo de >=45% de la altura
+        return (
+            center_frac >= 0.45
+            and center_frac > med_frac * 2.0
+            and center_peak > max(3500, med * 3.0)
+        )
+    except Exception:
+        return False
+    finally:
+        if tmp_frame and tmp_frame.exists():
+            try:
+                tmp_frame.unlink()
+            except OSError:
+                pass
+
 def get_best_font(size: int = 58):
     """
     Obtiene la mejor tipografía sans-serif moderna disponible en macOS.
@@ -456,14 +537,11 @@ def render_retention_hook(output_path: Path, text: str = "ESPERA A VER ESTO") ->
 
 def render_karaoke_subtitle_state(words: List[str], active_idx: int, is_vertical: bool, output_path: Path) -> bool:
     """
-    Renderiza un estado Karaoke palabra por palabra nivel Broadcast Viral:
-    - Píldora de contraste con fondo oscuro sutil (100% de legibilidad en cualquier fondo).
-    - Cubre limpiamente subtítulos preexistentes en inglés si los hubiera.
-    - La frase permanece 100% fija y estable horizontalmente (cero temblores/jitter).
-    - Tipografía grande y de impacto (font_size=64, pop=72) para lectura instantánea en móvil.
-    - La palabra activa se resalta en Amarillo (#FFE600) o Rosa Neón (#FF2D87).
-    - Las palabras inactivas de la frase permanecen en Blanco Puro (#FFFFFF).
-    - Espaciado amplio y márgenes laterales generosos (pad_x=48) para que ninguna letra toque los bordes.
+    Renderiza subtítulos Pop Broadcast limpios y transparentes (estilo Shorts/TikTok viral):
+    - Sin caja/píldora oscura detrás (no tapa la acción del gameplay).
+    - Tipografía Heavy grande (font_size=70, pop=78) con trazo negro grueso y sombra paralela.
+    - La frase permanece 100% fija horizontalmente (cero jitter).
+    - Palabra activa destacada en Amarillo Neón / Verde Flúor / Rosa Neón con glow sutil.
     """
     if not words:
         return False
@@ -474,17 +552,17 @@ def render_karaoke_subtitle_state(words: List[str], active_idx: int, is_vertical
     if not display_words:
         return False
 
-    max_w = 900 if is_vertical else 1000
-    font_size = 64 if is_vertical else 48
+    max_w = 920 if is_vertical else 1040
+    font_size = 70 if is_vertical else 50
     font = get_best_font(size=font_size)
 
     temp_img = Image.new("RGBA", (1, 1))
     d_temp = ImageDraw.Draw(temp_img)
 
-    space_w = 28
+    space_w = 24
 
     # Ajustar tamaño de fuente dinámicamente si supera el ancho máximo seguro
-    while font_size > 38:
+    while font_size > 40:
         test_w = sum(d_temp.textbbox((0, 0), w, font=font)[2] - d_temp.textbbox((0, 0), w, font=font)[0] for w in display_words)
         test_w += space_w * (len(display_words) - 1)
         if test_w <= max_w:
@@ -492,57 +570,56 @@ def render_karaoke_subtitle_state(words: List[str], active_idx: int, is_vertical
         font_size -= 4
         font = get_best_font(size=font_size)
 
-    pop_font = get_best_font(size=font_size + 6)
+    pop_font = get_best_font(size=font_size + 8)
     from .emoji_renderer import is_color_emoji_supported
     has_emoji_support = is_vertical and is_color_emoji_supported()
 
-    # Asignar casilla fija a cada palabra con el ancho máximo (normal o pop) para cero jitter y cero colisiones
+    # Asignar casilla fija a cada palabra con el ancho máximo (normal o pop) para cero jitter
     cell_widths = []
     for w in display_words:
         bb_normal = d_temp.textbbox((0, 0), w, font=font)
         w_norm = bb_normal[2] - bb_normal[0]
         bb_pop = d_temp.textbbox((0, 0), w, font=pop_font)
         w_pop = bb_pop[2] - bb_pop[0]
-        cell_widths.append(max(w_norm, w_pop) + 6)
+        cell_widths.append(max(w_norm, w_pop) + 8)
 
     total_w = sum(cell_widths) + space_w * (len(display_words) - 1)
-    sample_bb = font.getbbox("AY")
-    text_h = (sample_bb[3] - sample_bb[1])
+    sample_bb = pop_font.getbbox("AYÁÉÍÓÚÑjg")
+    text_h = sample_bb[3]
 
     # Altura adicional para emoji si aplica
     emoji_room = 46 if has_emoji_support else 0
 
-    pad_x = 48
-    pad_y = 20
+    pad_x = 34
+    pad_y = 18
     box_w = int(total_w + pad_x * 2)
-    box_h = int(text_h + pad_y * 2 + emoji_room + 10)
+    box_h = int(text_h + pad_y * 2 + emoji_room + 18)
 
     img = Image.new("RGBA", (box_w, box_h), (0, 0, 0, 0))
     d = ImageDraw.Draw(img)
 
-    # 1. Píldora de Contraste Traslúcida Elegante (Look Cine / Documental Moderno)
     pill_top = emoji_room
-    d.rounded_rectangle(
-        [(0, pill_top), (box_w - 1, box_h - 1)],
-        radius=16,
-        fill=(12, 14, 20, 205),
-        outline=(255, 255, 255, 35),
-        width=1
-    )
 
     # Detectar palabra activa y sus propiedades
     raw_active_word = display_words[active_idx] if 0 <= active_idx < len(display_words) else ""
-    clean_active = re.sub(r'[^a-zA-ZáéíóúñÁÉÍÓÚÑ]', '', raw_active_word).lower()
+    clean_active = re.sub(r'[^a-zA-ZáéíóúñÁÉÍÓÚÑ0-9]', '', raw_active_word).lower()
     active_emoji = EMOJI_KEYWORDS.get(clean_active) if has_emoji_support else None
     is_hot_pink = clean_active in HOT_PINK_KEYWORDS
+    is_green_pop = clean_active in {"gta", "gta6", "6", "vi", "leonida", "vice", "dinero", "gratis", "reservaste", "precarga"}
 
-    # Paleta de alta gama: Blanco puro para base, Amarillo ámbar suave (#FFD15C) o Blanco iluminado
-    active_color = (255, 75, 145, 255) if is_hot_pink else (255, 215, 95, 255)
-    glow_color = (255, 75, 145, 90) if is_hot_pink else (255, 215, 95, 90)
+    if is_hot_pink:
+        active_color = (255, 70, 150, 255)
+        glow_color = (255, 70, 150, 110)
+    elif is_green_pop:
+        active_color = (57, 255, 20, 255)
+        glow_color = (57, 255, 20, 100)
+    else:
+        active_color = (255, 224, 65, 255)
+        glow_color = (255, 224, 65, 100)
 
     base_y = pill_top + pad_y
 
-    # 2. Resplandor sutil (glow) para la palabra activa
+    # 1. Resplandor sutil (glow) detrás de la palabra activa
     glow = Image.new("RGBA", (box_w, box_h), (0, 0, 0, 0))
     d_glow = ImageDraw.Draw(glow)
     cur_x = pad_x
@@ -552,31 +629,31 @@ def render_karaoke_subtitle_state(words: List[str], active_idx: int, is_vertical
             bb_pop = d_temp.textbbox((0, 0), w, font=pop_font)
             ww_pop = bb_pop[2] - bb_pop[0]
             draw_x = cur_x + (cw - ww_pop) / 2
-            d_glow.text((draw_x, base_y - 1), w, font=pop_font, fill=glow_color, stroke_width=6, stroke_fill=glow_color)
+            d_glow.text((draw_x, base_y - 2), w, font=pop_font, fill=glow_color, stroke_width=10, stroke_fill=glow_color)
         cur_x += cw + space_w
 
-    glow = glow.filter(ImageFilter.GaussianBlur(4))
+    glow = glow.filter(ImageFilter.GaussianBlur(5))
     img = Image.alpha_composite(img, glow)
     d = ImageDraw.Draw(img)
 
-    # 3. Dibujar las palabras de la frase perfectamente centradas en su casilla fija
+    # 2. Dibujar texto con borde negro grueso de alto contraste y sombra paralela limpia (0 cajas)
     cur_x = pad_x
     for idx, w in enumerate(display_words):
         cw = cell_widths[idx]
         is_active = (idx == active_idx)
         current_font = pop_font if is_active else font
-        text_color = active_color if is_active else (245, 245, 250, 255)
-        stroke_w = 4 if is_active else 3
+        text_color = active_color if is_active else (255, 255, 255, 255)
+        stroke_w = 8 if is_active else 6
 
         bb_w = d_temp.textbbox((0, 0), w, font=current_font)
         ww_act = bb_w[2] - bb_w[0]
         draw_x = cur_x + (cw - ww_act) / 2
-        draw_y = base_y - (1 if is_active else 0)
+        draw_y = base_y - (3 if is_active else 0)
 
-        # Sombra cinematográfica suave
-        d.text((draw_x + 2, draw_y + 3), w, font=current_font, fill=(0, 0, 0, 210))
-        # Trazo negro nítido + Relleno de color
-        d.text((draw_x, draw_y), w, font=current_font, fill=text_color, stroke_width=stroke_w, stroke_fill=(0, 0, 0, 240))
+        # Sombra paralela intensa para legibilidad absoluta sobre cielo/carretera/luces
+        d.text((draw_x + 3, draw_y + 5), w, font=current_font, fill=(0, 0, 0, 235), stroke_width=stroke_w, stroke_fill=(0, 0, 0, 210))
+        # Trazo negro nítido + Relleno vibrante
+        d.text((draw_x, draw_y), w, font=current_font, fill=text_color, stroke_width=stroke_w, stroke_fill=(0, 0, 0, 255))
 
         # Emoji contextual flotante encima si aplica
         if is_active and active_emoji:
@@ -664,15 +741,30 @@ def render_final_video(
     is_already_vertical = (height > width)
     is_vertical = force_short_format or is_already_vertical
 
-    # Determinar preset: FIT (16:9 completo sin recorte lateral), D (Pro-Cinema 83.3%) o C (4:5 70.3%)
+    # Determinar preset: SPLIT (comparativa 50/50 apilada), D (Pro-Cinema 83.3%), C (4:5 70.3%) o FIT
     effective_preset = (format_preset or "").upper()
-    if not effective_preset:
-        action_archetypes = {"gameplay_puro", "rage9_physics", "weapons_shooting_rdr2", "fisicas"}
-        effective_preset = "D" if archetype in action_archetypes else "FIT"
+    if is_vertical and not is_already_vertical and effective_preset in ("", "AUTO", "FIT"):
+        # Detectar automáticamente comparativas reales 50/50 lado-a-lado para apilarlas a pantalla completa
+        if detect_horizontal_split_screen(input_video):
+            effective_preset = "SPLIT"
+
+    if not effective_preset or effective_preset == "AUTO":
+        effective_preset = "FIT"
 
     if is_vertical and not is_already_vertical:
-        if effective_preset == "FIT":
-            # Formato FIT (16:9 completo sin perder contexto lateral: comparativas, análisis y reacciones)
+        if effective_preset == "SPLIT":
+            # Formato SPLIT: Comparativa 50/50 lado-a-lado convertida a dos paneles 1080x900 apilados (93.8% cobertura)
+            fg_w = 1080
+            fg_h = 1808
+            fg_y = 48
+            fg_bottom = 1856
+            is_cinema_layout = True
+            hook_y_expr = "740"
+            ret_y_expr = "740"
+            sub_y = "1520"
+            print("[*] Modo Formato SPLIT Apilado 50/50 (93.8% cobertura): 2x 1080x900 @ y=48 / y=956.")
+        elif effective_preset == "FIT":
+            # Formato FIT (16:9 completo sin recorte lateral, reservado a casos extremos)
             fg_w = 1080
             fg_h = 608
             fg_y = 610
@@ -680,7 +772,7 @@ def render_final_video(
             is_cinema_layout = True
             hook_y_expr = "340"
             ret_y_expr = "400"
-            sub_y = "1280"
+            sub_y = "1260"
             print(f"[*] Modo Formato FIT 16:9 Completo (sin recorte lateral): {fg_w}x{fg_h} @ y={fg_y} con Velvet Canvas.")
         elif effective_preset == "D":
             # Formato D (Pro-Cinema 83.3% de cobertura de pantalla):
@@ -690,21 +782,23 @@ def render_final_video(
             fg_y = 160
             fg_bottom = 1760
             is_cinema_layout = True
-            hook_y_expr = "50"
-            ret_y_expr = "100"
-            sub_y = "1650"
+            # Safe Zone Shorts: hook a y=60 (evita bordes superiores), subtítulos a y=1340 (evita título y botones inferiores)
+            hook_y_expr = "60"
+            ret_y_expr = "105"
+            sub_y = "1340"
             print(f"[*] Modo Formato D Pro-Cinema (83.3% cobertura): {fg_w}x{fg_h} @ y={fg_y} con Velvet Canvas.")
         else:
             # Formato C (Smart Frame Inmersivo 4:5, 70.3% de cobertura):
-            # 1080x1350 centrado a y=285 con Ambient Canvas.
+            # 1080x1350 centrado a y=285 con Ambient Canvas (2.2x más área visual que FIT).
             fg_w = 1080
             fg_h = 1350
             fg_y = 285
             fg_bottom = 1635
             is_cinema_layout = True
-            hook_y_expr = "110"
-            ret_y_expr = "180"
-            sub_y = "1430"
+            # Safe Zone Shorts: hook a y=100, subtítulos a y=1320
+            hook_y_expr = "100"
+            ret_y_expr = "160"
+            sub_y = "1320"
             print(f"[*] Modo Formato C Smart Frame 4:5 (70.3% cobertura): {fg_w}x{fg_h} @ y={fg_y} con Ambient Canvas.")
     else:
         # Formato Vertical Nativo 9:16 (1080x1920)
@@ -713,9 +807,9 @@ def render_final_video(
         fg_y = 0
         fg_bottom = 1920
         is_cinema_layout = False
-        hook_y_expr = "120"
-        ret_y_expr = "220"
-        sub_y = "1200" if is_vertical else "H-h-90"
+        hook_y_expr = "110"
+        ret_y_expr = "210"
+        sub_y = "1340" if is_vertical else "H-h-90"
         print(f"[*] Modo Vertical Nativo 9:16: Pantalla completa sin deformación (Vertical: {is_vertical}).")
 
     # 1. Viñeta y sombras de unión
@@ -741,7 +835,7 @@ def render_final_video(
     # En audio original en inglés con YouTube ASR, se mantiene SUBTITLE_OFFSET (-0.45s).
     effective_sub_offset = 0.0 if (dub_audio and dub_audio.exists()) else None
     cues = parse_srt_file(srt_subtitles, offset_seconds=effective_sub_offset) if srt_subtitles else []
-    sub_cues = cues[:120]
+    sub_cues = cues[:250]
     sub_pngs = []
     global_sub_idx = 0
 
@@ -767,7 +861,16 @@ def render_final_video(
 
     print(f"[*] {len(sub_pngs)} estados de Karaoke dinámico con glow generados.")
 
-    # 4. Construcción del comando FFmpeg
+    # 4. Medir duraciones para evitar cortes de audio/voz al final
+    v_dur = _probe_duration(input_video)
+    dub_dur = _probe_duration(dub_audio) if (dub_audio and dub_audio.exists()) else 0.0
+    pad_sec = 0.0
+    if dub_dur > v_dur + 0.15:
+        pad_sec = round(dub_dur - v_dur + 0.45, 2)
+        print(f"[*] Locución doblada ({dub_dur:.1f}s) supera metraje ({v_dur:.1f}s). Extendiendo vídeo con tpad={pad_sec:.1f}s para evitar corte abrupto.")
+    total_dur = round(v_dur + pad_sec, 2) if pad_sec > 0.0 else None
+
+    # Construcción del comando FFmpeg
     cmd = ["ffmpeg", "-y", "-i", str(input_video)]
     input_idx = 1
 
@@ -791,28 +894,43 @@ def render_final_video(
             input_idx += 1
             print(f"[*] Mezclando pista ambiental sutil: {chosen_ambient.name} (-22 dB)")
 
-    # Construcción de la cadena de mezcla de audio (Voice-Over: Inglés atenuado de fondo + Doblaje en Español + Ambiente)
+    # Construcción de la cadena de mezcla de audio (Voice-Over: original atenuado al 6% + Doblaje ES dominante + Ambiente)
     if dub_idx is not None:
-        # Modo Voice-Over Profesional:
-        # 1. El audio original en inglés se baja a un nivel base suave (volume=0.12 / -18.4 dB).
-        # 2. Cuando habla la voz en español, el sidechain comprime agresivamente (ratio=8, threshold=0.02),
-        #    reduciendo la voz inglesa al ~3.5% (-29 dB) para que se perciba sutilmente de fondo sin competir ni molestar.
-        if ambient_idx is not None:
-            audio_filter = (
-                f"[{ambient_idx}:a]volume=0.06[amb];"
-                f"[0:a]volume=0.12[orig_base];"
-                f"[{dub_idx}:a]asplit=2[sc][voice];"
-                f"[orig_base][sc]sidechaincompress=threshold=0.02:ratio=8:attack=15:release=300[orig_ducked];"
-                f"[orig_ducked][amb]amix=inputs=2:duration=first:normalize=false[bed];"
-                f"[bed][voice]amix=inputs=2:duration=first:normalize=false,loudnorm=I=-14:LRA=7:TP=-1.5[aout]"
-            )
+        if pad_sec > 0.0:
+            fade_start = max(0.0, total_dur - 0.35)
+            if ambient_idx is not None:
+                audio_filter = (
+                    f"[{ambient_idx}:a]volume=0.06[amb];"
+                    f"[0:a]volume=0.06[orig_base];"
+                    f"[{dub_idx}:a]asplit=2[sc][voice];"
+                    f"[orig_base][sc]sidechaincompress=threshold=0.015:ratio=12:attack=10:release=250[orig_ducked];"
+                    f"[orig_ducked][amb]amix=inputs=2:duration=longest:normalize=false[bed];"
+                    f"[bed][voice]amix=inputs=2:duration=longest:normalize=false,afade=t=out:st={fade_start:.2f}:d=0.35,loudnorm=I=-14:LRA=7:TP=-1.5[aout]"
+                )
+            else:
+                audio_filter = (
+                    f"[0:a]volume=0.06[orig_base];"
+                    f"[{dub_idx}:a]asplit=2[sc][voice];"
+                    f"[orig_base][sc]sidechaincompress=threshold=0.015:ratio=12:attack=10:release=250[orig_ducked];"
+                    f"[orig_ducked][voice]amix=inputs=2:duration=longest:normalize=false,afade=t=out:st={fade_start:.2f}:d=0.35,loudnorm=I=-14:LRA=7:TP=-1.5[aout]"
+                )
         else:
-            audio_filter = (
-                f"[0:a]volume=0.12[orig_base];"
-                f"[{dub_idx}:a]asplit=2[sc][voice];"
-                f"[orig_base][sc]sidechaincompress=threshold=0.02:ratio=8:attack=15:release=300[orig_ducked];"
-                f"[orig_ducked][voice]amix=inputs=2:duration=first:normalize=false,loudnorm=I=-14:LRA=7:TP=-1.5[aout]"
-            )
+            if ambient_idx is not None:
+                audio_filter = (
+                    f"[{ambient_idx}:a]volume=0.06[amb];"
+                    f"[0:a]volume=0.06[orig_base];"
+                    f"[{dub_idx}:a]asplit=2[sc][voice];"
+                    f"[orig_base][sc]sidechaincompress=threshold=0.015:ratio=12:attack=10:release=250[orig_ducked];"
+                    f"[orig_ducked][amb]amix=inputs=2:duration=first:normalize=false[bed];"
+                    f"[bed][voice]amix=inputs=2:duration=first:normalize=false,loudnorm=I=-14:LRA=7:TP=-1.5[aout]"
+                )
+            else:
+                audio_filter = (
+                    f"[0:a]volume=0.06[orig_base];"
+                    f"[{dub_idx}:a]asplit=2[sc][voice];"
+                    f"[orig_base][sc]sidechaincompress=threshold=0.015:ratio=12:attack=10:release=250[orig_ducked];"
+                    f"[orig_ducked][voice]amix=inputs=2:duration=first:normalize=false,loudnorm=I=-14:LRA=7:TP=-1.5[aout]"
+                )
     else:
         # Modo Subtítulos Estándar (Shorts Hormozi): Audio original intacto y limpio + ambient beat sutil (-22 dB)
         if ambient_idx is not None:
@@ -853,7 +971,17 @@ def render_final_video(
 
     # A) Base de vídeo:
     if is_vertical and not is_already_vertical:
-        if effective_preset == "FIT":
+        if effective_preset == "SPLIT":
+            # Comparativa lado-a-lado 50/50 convertida en 2 paneles 1080x900 apilados (preserva etiquetas superiores)
+            v_base = (
+                "[0:v]split=3[v1][vl_in][vr_in];"
+                "[v1]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,boxblur=26:5,eq=brightness=-0.28:contrast=1.06:saturation=1.12[bg];"
+                "[vl_in]crop=iw/2:ih:0:0,scale=1080:900:force_original_aspect_ratio=increase,crop=1080:900:(iw-1080)/2:0,unsharp=3:3:0.6:3:3:0.0,eq=contrast=1.06:saturation=1.10[vtop];"
+                "[vr_in]crop=iw/2:ih:iw/2:0,scale=1080:900:force_original_aspect_ratio=increase,crop=1080:900:(iw-1080)/2:0,unsharp=3:3:0.6:3:3:0.0,eq=contrast=1.06:saturation=1.10[vbot];"
+                "[bg][vtop]overlay=0:48[v_split_top];"
+                "[v_split_top][vbot]overlay=0:956[v_framed]"
+            )
+        elif effective_preset == "FIT":
             # Formato FIT: 16:9 completo sin recorte lateral sobre Velvet Blur reactivo
             v_base = (
                 "[0:v]split[v1][v2];"
@@ -882,9 +1010,9 @@ def render_final_video(
     filter_chains.append(f"[{current_v}][{vignette_idx}:v]overlay=0:0[v_vignetted]")
     current_v = "v_vignetted"
 
-    # C) Superponer Gancho Superior (0.0 a 4.0s para lectura completa sin prisas)
+    # C) Superponer Gancho Superior (0.0 a 2.5s dinámico sin tapar de forma eterna)
     if hook_idx is not None:
-        filter_chains.append(f"[{current_v}][{hook_idx}:v]overlay=(W-w)/2:{hook_y_expr}:enable='between(t,0,4.0)'[v_hooked]")
+        filter_chains.append(f"[{current_v}][{hook_idx}:v]overlay=(W-w)/2:{hook_y_expr}:enable='between(t,0,2.5)'[v_hooked]")
         current_v = "v_hooked"
 
     # C2) Superponer segundo gancho de retención (5.0 a 7.0s) — frena el swipe mid-scroll
@@ -902,14 +1030,26 @@ def render_final_video(
         )
         current_v = next_v
 
-    filter_chains.append(f"[{current_v}]null[v_body]")
+    if pad_sec > 0.0:
+        filter_chains.append(f"[{current_v}]tpad=stop_mode=clone:stop_duration={pad_sec}[v_body]")
+    else:
+        filter_chains.append(f"[{current_v}]null[v_body]")
 
     if audio_filter:
         filter_chains.append(audio_filter)
 
     cmd.extend(["-filter_complex", ";".join(filter_chains)])
     cmd.extend(["-map", "[v_body]"])
-    cmd.extend(["-c:v", FFMPEG_VIDEO_CODEC, "-b:v", FFMPEG_BITRATE])
+    if total_dur is not None:
+        cmd.extend(["-t", str(total_dur)])
+    cmd.extend([
+        "-c:v", FFMPEG_VIDEO_CODEC,
+        "-b:v", FFMPEG_BITRATE,
+        "-maxrate", "6500k",
+        "-bufsize", "9000k",
+        "-pix_fmt", "yuv420p",
+        "-movflags", "+faststart"
+    ])
 
     # Protocolo de Coexistencia: Limitar hilos de CPU para no asfixiar a GaTDSEQ
     threads_to_use = 1 if is_quant_busy() else FFMPEG_THREADS
@@ -925,7 +1065,7 @@ def render_final_video(
     cmd.append(str(output_video))
 
     try:
-        subprocess.run(cmd, check=True, capture_output=True, text=True)
+        subprocess.run(cmd, check=True, capture_output=True, text=True, timeout=180)
         print(f"[✓] Vídeo exportado con éxito -> {output_video.name}")
     except subprocess.CalledProcessError as e:
         print(f"[!] Error de renderizado FFmpeg: {e.stderr.strip() if e.stderr else e}")

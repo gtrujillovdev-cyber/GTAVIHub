@@ -389,5 +389,320 @@ class TestCompliance(unittest.TestCase):
         self.assertIn("analys12345", ids)
         self.assertNotIn("dup_same123", ids)
 
+    def test_clickbait_blacklist_and_split_ig_eligibility(self):
+        from src.compliance_auditor import is_safe_rrss_candidate
+        safe_mb, _, _ = is_safe_rrss_candidate(
+            "This Is HUGE For GTA 6 - NEW Pre Load Trailer!",
+            uploader="MrBossFTW",
+            duration_sec=498,
+            allow_long_clipping=True
+        )
+        self.assertFalse(safe_mb)
+
+        elig_split, _ = ComplianceAuditor.is_platform_eligible(
+            platform="instagram",
+            metadata={"title": "GTA 6 30 FPS VS 60 FPS", "is_transformed_visual": True},
+            creator_name="Enigma Gaming",
+            has_voiceover=False,
+            mode="gameplay"
+        )
+        self.assertTrue(elig_split)
+
+    def test_instagram_session_account_isolation(self):
+        import os
+        import sys
+        import types
+        import tempfile
+        from pathlib import Path
+        from unittest.mock import patch, MagicMock
+        import src.social_publisher as sp
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmp_profile = Path(tmpdir)
+            session_file = tmp_profile / "instagrapi_session.json"
+            session_file.write_text('{"authorization_data": {"ds_user_id": "123"}}')
+            vid_file = tmp_profile / "clip.mp4"
+            vid_file.write_bytes(b"fake")
+
+            old_client = MagicMock()
+            old_client.account_info.return_value = MagicMock(username="gtavihubspain")
+            fresh_client = MagicMock()
+            fresh_client.account_info.return_value = MagicMock(username="gtavihubextra")
+            fresh_client.clip_upload.return_value = MagicMock(code="ABC123xyz")
+
+            fake_mod = types.ModuleType("instagrapi")
+            fake_mod.Client = MagicMock(side_effect=[old_client, fresh_client])
+
+            pub = sp.SocialPublisher(dry_run=False)
+            with patch.object(pub, "_notify_telegram"), \
+                 patch.object(sp, "BROWSER_PROFILE_DIR", tmp_profile), \
+                 patch.dict(sys.modules, {"instagrapi": fake_mod}), \
+                 patch.dict(os.environ, {"INSTAGRAM_USERNAME": "gtavihubextra", "INSTAGRAM_PASSWORD": "secret"}):
+                url = pub.publish_to_instagram(vid_file, "Test caption")
+
+            self.assertEqual(url, "https://www.instagram.com/reel/ABC123xyz/")
+            old_client.clip_upload.assert_not_called()
+            fresh_client.login.assert_called_once_with("gtavihubextra", "secret")
+            fresh_client.clip_upload.assert_called_once()
+
+            # Si CAA devuelve la cuenta antigua (@gtavihubspain) al pedir @gtavihubextra, debe abortar
+            wrong_client = MagicMock()
+            wrong_client.account_info.return_value = MagicMock(username="gtavihubspain")
+            fake_mod2 = types.ModuleType("instagrapi")
+            fake_mod2.Client = MagicMock(return_value=wrong_client)
+            with patch.object(pub, "_notify_telegram") as mock_tg_mismatch, \
+                 patch.object(sp, "BROWSER_PROFILE_DIR", tmp_profile), \
+                 patch.dict(sys.modules, {"instagrapi": fake_mod2}), \
+                 patch.dict(os.environ, {"INSTAGRAM_USERNAME": "gtavihubextra", "INSTAGRAM_PASSWORD": "secret"}, clear=False):
+                os.environ.pop("ALLOW_LEGACY_INSTAGRAM", None)
+                mismatch_url = pub.publish_to_instagram(vid_file, "Test caption")
+            self.assertIsNone(mismatch_url)
+            wrong_client.clip_upload.assert_not_called()
+            mock_tg_mismatch.assert_called_once()
+
+            # Uso automatico de cookie web (storage_state.json -> login_by_sessionid)
+            (tmp_profile / "storage_state.json").write_text(
+                '{"cookies": [{"name": "sessionid", "value": "56974781759%3Aabc123456789012345678901234567890", "domain": ".instagram.com"}]}'
+            )
+            sid_client = MagicMock()
+            sid_client.account_info.return_value = MagicMock(username="gtavihubextra")
+            sid_client.clip_upload.return_value = MagicMock(code="SID999ok")
+            fake_mod3 = types.ModuleType("instagrapi")
+            fake_mod3.Client = MagicMock(side_effect=[old_client, sid_client])
+            with patch.object(pub, "_notify_telegram"), \
+                 patch.object(sp, "BROWSER_PROFILE_DIR", tmp_profile), \
+                 patch.dict(sys.modules, {"instagrapi": fake_mod3}), \
+                 patch.dict(os.environ, {"INSTAGRAM_USERNAME": "gtavihubextra", "INSTAGRAM_PASSWORD": "secret"}):
+                sid_url = pub.publish_to_instagram(vid_file, "Test caption")
+            self.assertEqual(sid_url, "https://www.instagram.com/reel/SID999ok/")
+            sid_client.login_by_sessionid.assert_called_once()
+            sid_client.login.assert_not_called()
+
+            # Bloqueo Anti-Ban si .env sigue apuntando a cuenta heredada gtavihubspain
+            with patch.object(pub, "_notify_telegram") as mock_tg, \
+                 patch.object(sp, "BROWSER_PROFILE_DIR", tmp_profile), \
+                 patch.dict(os.environ, {"INSTAGRAM_USERNAME": "gtavihubspain", "INSTAGRAM_PASSWORD": "secret"}, clear=False):
+                os.environ.pop("ALLOW_LEGACY_INSTAGRAM", None)
+                blocked_url = pub.publish_to_instagram(vid_file, "Test caption")
+            self.assertIsNone(blocked_url)
+            mock_tg.assert_called_once()
+
+    def test_tiktok_storage_state_and_legacy_guard(self):
+        import os
+        import sys
+        import types
+        import tempfile
+        from pathlib import Path
+        from unittest.mock import patch, MagicMock
+        import src.social_publisher as sp
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmp_profile = Path(tmpdir)
+            (tmp_profile / "storage_state.json").write_text('{"cookies": [{"name": "sid", "value": "x", "domain": ".tiktok.com"}]}')
+            vid_file = tmp_profile / "clip.mp4"
+            vid_file.write_bytes(b"fake")
+
+            fake_page = MagicMock()
+            fake_page.url = "https://www.tiktok.com/tiktokstudio"
+            fake_page.inner_text.return_value = "Panel @gtavihubspain Analytics"
+            fake_ctx = MagicMock()
+            fake_ctx.new_page.return_value = fake_page
+            fake_browser = MagicMock()
+            fake_browser.new_context.return_value = fake_ctx
+            fake_pw = MagicMock()
+            fake_pw.chromium.launch.return_value = fake_browser
+            fake_cm = MagicMock()
+            fake_cm.__enter__.return_value = fake_pw
+            fake_cm.__exit__.return_value = False
+
+            fake_pw_mod = types.ModuleType("playwright")
+            fake_pw_sync = types.ModuleType("playwright.sync_api")
+            fake_pw_sync.sync_playwright = MagicMock(return_value=fake_cm)
+
+            pub = sp.SocialPublisher(dry_run=False)
+            with patch.object(pub, "_notify_telegram") as mock_tg, \
+                 patch.object(sp, "BROWSER_PROFILE_DIR", tmp_profile), \
+                 patch.dict(sys.modules, {"playwright": fake_pw_mod, "playwright.sync_api": fake_pw_sync}), \
+                 patch.dict(os.environ, {"HEADLESS_BROWSER": "true"}, clear=False):
+                os.environ.pop("ALLOW_LEGACY_TIKTOK", None)
+                res_url = pub.publish_to_tiktok(vid_file, "Título GTA 6", ["GTA6"])
+
+            self.assertIsNone(res_url)
+            fake_pw.chromium.launch.assert_called_once()
+            fake_browser.new_context.assert_called_once()
+            fake_ctx.close.assert_called_once()
+            fake_browser.close.assert_called_once()
+            mock_tg.assert_called_once()
+
+    def test_pipeline_english_speech_guard_switches_gameplay_to_dub(self):
+        import subprocess
+        import tempfile
+        from pathlib import Path
+        from unittest.mock import patch, MagicMock
+        import src.pipeline as pl
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmp_root = Path(tmpdir)
+            t_dir = tmp_root / "temp"
+            o_dir = tmp_root / "output"
+            t_dir.mkdir()
+            o_dir.mkdir()
+
+            fake_vid = t_dir / "talk123.mp4"
+            fake_vid.write_bytes(b"video")
+            fake_en_srt = t_dir / "talk123.en.srt"
+            fake_en_srt.write_text(
+                "1\n00:00:00,500 --> 00:00:04,000\n[Music]\n\n"
+                "2\n00:00:04,100 --> 00:00:12,000\nLook at this insane NPC density in Grand Theft Auto Six right now in Vice City\n",
+                encoding="utf-8",
+            )
+            self.assertEqual(pl._count_spoken_words_in_srt(fake_en_srt), 16)
+
+            def _fake_translate(src_p, dst_p, source_lang="en"):
+                dst_p.write_text("1\n00:00:04,100 --> 00:00:12,000\nMira esta increíble densidad de NPCs en GTA 6\n", encoding="utf-8")
+                return True
+
+            def _fake_voiceover(srt_p, out_p, **kwargs):
+                out_p.write_bytes(b"mp3")
+                return True
+
+            def _fake_render(*args, **kwargs):
+                Path(kwargs["output_video"]).write_bytes(b"mp4")
+                return True
+
+            fake_sub_res = MagicMock(
+                stdout="22.0\n",
+                stderr="pts_time:1.0\npts_time:4.0\npts_time:8.0\npts_time:12.0\n",
+            )
+
+            with patch.object(pl, "TEMP_DIR", t_dir), \
+                 patch.object(pl, "OUTPUT_DIR", o_dir), \
+                 patch.object(pl, "AUTO_DUB_ENGLISH", True), \
+                 patch.object(pl, "download_video_and_subtitles", return_value=(fake_vid, fake_en_srt, "en")), \
+                 patch.object(pl, "get_video_dimensions", return_value=(1080, 1920)), \
+                 patch.object(pl, "detect_horizontal_split_screen", return_value=False), \
+                 patch.object(pl, "translate_srt", side_effect=_fake_translate) as mock_trans, \
+                 patch.object(pl, "generate_voiceover", side_effect=_fake_voiceover) as mock_dub, \
+                 patch.object(pl, "generate_video_metadata", return_value={"title": "DENSIDAD NPC GTA 6", "description": "D", "tags": ["GTA6"], "hook": "BRUTAL"}), \
+                 patch.object(pl, "render_final_video", side_effect=_fake_render), \
+                 patch.object(pl, "create_video_thumbnail"), \
+                 patch.object(pl, "clean_temp_directory"), \
+                 patch.object(pl, "enforce_storage_limits"), \
+                 patch.object(pl, "mark_video_processed"), \
+                 patch("src.audio_shield.validate_audio_and_speech_vitality", return_value=(True, "OK", {})), \
+                 patch.object(subprocess, "run", return_value=fake_sub_res):
+                res = pl.process_single_video(
+                    url="https://youtube.com/shorts/talk123",
+                    video_id="talk123",
+                    original_title="GTA 6 NPC density is MINDBLOWING",
+                    creator_name="TalkingHeadCreator",
+                    source_lang="en",
+                    mode="gameplay",
+                    dry_run=True,
+                    copilot_mode=False,
+                    is_manual_ingest=False,
+                )
+
+            self.assertIsNotNone(res)
+            self.assertEqual(res["mode"], "dub")
+            mock_trans.assert_called_once()
+            mock_dub.assert_called_once()
+
+            # Comparativa split-screen sí debe respetar el modo gameplay sin doblar
+            with patch.object(pl, "TEMP_DIR", t_dir), \
+                 patch.object(pl, "OUTPUT_DIR", o_dir), \
+                 patch.object(pl, "AUTO_DUB_ENGLISH", True), \
+                 patch.object(pl, "download_video_and_subtitles", return_value=(fake_vid, fake_en_srt, "en")), \
+                 patch.object(pl, "get_video_dimensions", return_value=(1920, 1080)), \
+                 patch.object(pl, "detect_horizontal_split_screen", return_value=True), \
+                 patch.object(pl, "translate_srt") as mock_trans_split, \
+                 patch.object(pl, "generate_voiceover") as mock_dub_split, \
+                 patch.object(pl, "generate_video_metadata", return_value={"title": "30 VS 60 FPS GTA 6", "description": "D", "tags": ["GTA6"], "hook": "FPS"}), \
+                 patch.object(pl, "render_final_video", side_effect=_fake_render), \
+                 patch.object(pl, "create_video_thumbnail"), \
+                 patch.object(pl, "clean_temp_directory"), \
+                 patch.object(pl, "enforce_storage_limits"), \
+                 patch.object(pl, "mark_video_processed"), \
+                 patch("src.audio_shield.validate_audio_and_speech_vitality", return_value=(True, "OK", {})), \
+                 patch.object(subprocess, "run", return_value=fake_sub_res):
+                res_split = pl.process_single_video(
+                    url="https://youtube.com/watch?v=split123",
+                    video_id="split123",
+                    original_title="GTA 6 30 FPS vs 60 FPS Comparison",
+                    creator_name="Enigma Gaming",
+                    source_lang="en",
+                    mode="gameplay",
+                    dry_run=True,
+                    copilot_mode=False,
+                    is_manual_ingest=False,
+                )
+            self.assertIsNotNone(res_split)
+            self.assertEqual(res_split["mode"], "gameplay")
+            mock_trans_split.assert_not_called()
+            mock_dub_split.assert_not_called()
+
+    def test_quality_shield_and_gray_frame_retention(self):
+        import src.pipeline as pl
+        from src.compliance_auditor import is_safe_rrss_candidate
+
+        s_ign, r_ign, _ = is_safe_rrss_candidate(
+            "Rockstar Confirms GTA 6 Will Run at 30fps - IGN Daily Fix",
+            uploader="IGN",
+            duration_sec=289,
+            allow_long_clipping=True,
+            allow_official_commentary=True,
+        )
+        self.assertFalse(s_ign)
+        self.assertIn("quality shield", r_ign.lower())
+
+        s_fest, r_fest, _ = is_safe_rrss_candidate(
+            "Grand Theft Auto VI: The Festival",
+            uploader="Rockstar Games",
+            duration_sec=15,
+            allow_official_commentary=True,
+        )
+        self.assertFalse(s_fest)
+        self.assertIn("quality shield", r_fest.lower())
+
+        w, h = 160, 90
+        n_px = w * h
+        bright_slide = bytes([245] * n_px)
+        ok_slide, reason_slide = pl._evaluate_gray_frames_retention([bright_slide, bright_slide, bright_slide, bright_slide])
+        self.assertFalse(ok_slide)
+        self.assertIn("diapositivas", reason_slide.lower())
+
+        static_frame = bytes((i % 150) for i in range(n_px))
+        ok_static, reason_static = pl._evaluate_gray_frames_retention([static_frame] * 5)
+        self.assertFalse(ok_static)
+        self.assertIn("plano fijo", reason_static.lower())
+
+        moving_frames = [bytes(((i * 7 + step * 55) % 190) for i in range(n_px)) for step in range(5)]
+        ok_move, _ = pl._evaluate_gray_frames_retention(moving_frames)
+        self.assertTrue(ok_move)
+
+    def test_portuguese_and_clickbait_rejection_and_prelaunch_flags(self):
+        import os
+        from datetime import datetime
+        from unittest.mock import patch
+        import src.config as cfg
+
+        # Idiomas no objetivo (PT/FR) y checklists falsos pre-lanzamiento deben bloquearse
+        self.assertFalse(is_strictly_gta("10 coisas que vou fazer quando GTA 6 lançar", "GamerBR"))
+        self.assertFalse(is_strictly_gta("GTA 6 bande-annonce officielle en français", "JeuxFR"))
+        self.assertFalse(is_strictly_gta("NO avances la HISTORIA de GTA 6 sin hacer estas 10 COSAS", "2 PLAYER MX"))
+
+        # audit_all debe existir para el comando /audit de Telegram
+        self.assertIsInstance(ComplianceAuditor.audit_all(), int)
+
+        # is_gameplay_enabled debe respetar la fecha de lanzamiento (False antes de 2026-11-19 si no se fuerza)
+        with patch.dict(os.environ, {"FORCE_ENABLE_GAMEPLAY": ""}, clear=False), \
+             patch.object(cfg, "FORCE_ENABLE_GAMEPLAY", False), \
+             patch("datetime.datetime") as mock_dt:
+            mock_dt.now.return_value = datetime(2026, 11, 17, 22, 0, 0)
+            mock_dt.fromisoformat.side_effect = datetime.fromisoformat
+            self.assertFalse(cfg.is_gameplay_enabled())
+            mock_dt.now.return_value = datetime(2026, 11, 19, 0, 5, 0)
+            self.assertTrue(cfg.is_gameplay_enabled())
+
 if __name__ == "__main__":
     unittest.main()

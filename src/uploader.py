@@ -151,7 +151,9 @@ def upload_to_youtube(
             "title": title[:100],  # YouTube limita títulos a 100 caracteres
             "description": description[:5000],
             "tags": tags,
-            "categoryId": "20"  # Categoría 20 = Gaming
+            "categoryId": "20",  # Categoría 20 = Gaming
+            "defaultLanguage": "es",
+            "defaultAudioLanguage": "es"
         },
         "status": {
             "privacyStatus": privacy_status,  # "private", "public", o "unlisted"

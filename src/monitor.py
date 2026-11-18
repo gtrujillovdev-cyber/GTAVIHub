@@ -45,13 +45,16 @@ def print_pipeline_dashboard():
     print(f"  • Carpeta Salida (output/)   : {output_mb:.2f} MB / 1000 MB límite preventivo")
 
     # 2. Estado de Credenciales y Sesiones
-    token_yt = BASE_DIR / "token.json"
+    token_yt = BASE_DIR / "token_extra.json"
+    token_yt_legacy = BASE_DIR / "token.json"
     secrets_yt = BASE_DIR / "client_secrets.json"
     tiktok_session = BROWSER_PROFILE_DIR / "tiktok_user_data"
 
     print(f"\n🔐 ESTADO DE CONECTIVIDAD Y SESIONES:")
     tg_token = os.getenv("TELEGRAM_BOT_TOKEN")
-    print(f"  • YouTube OAuth2 (token.json): {'[✓ Conectado / Activo]' if token_yt.exists() else '[!] Falta token (ejecutar ./run.sh auth)'}")
+    yt_ok = token_yt.exists() or token_yt_legacy.exists()
+    yt_label = "token_extra.json" if token_yt.exists() else "token.json"
+    print(f"  • YouTube OAuth2 ({yt_label}): {'[✓ Conectado / Activo]' if yt_ok else '[!] Falta token (ejecutar ./run.sh auth)'}")
     print(f"  • YouTube Client Secrets     : {'[✓ Presente]' if secrets_yt.exists() else '[!] No encontrado'}")
     print(f"  • TikTok Persistent Profile  : {'[✓ Configurado]' if tiktok_session.exists() else '[*] Pendiente de primer inicio'}")
     print(f"  • Telegram Push & Control    : {'[✓ Conectado / Activo]' if tg_token else '[*] Opcional (configurar en .env)'}")

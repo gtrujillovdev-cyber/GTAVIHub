@@ -57,11 +57,14 @@ SUGGEST_SEEDS = [
 # Variantes alfabéticas de barrido rápido para detectar long-tail de GTA 6
 ALPHABET_SEEDS = ["a", "c", "d", "e", "f", "g", "l", "m", "n", "p", "r", "s", "t", "v"]
 
-# Filtros para descartar búsquedas obsoletas, clickbait o contenido que no sea el estreno de GTA 6
+# Filtros para descartar búsquedas obsoletas, música, clickbait o contenido que no sea gameplay/análisis real de GTA 6
 EXCLUDED_SUGGEST_TERMS = {
     "trailer 1", "primer trailer", "first trailer", "ps4", "ps3", "xbox 360",
     "descargar para android", "descargar gratis", "apk", "mobile", "gta 5", "gta online",
-    "gta v", "fivem", "rp", "roleplay", "extended look", "teaser trailer", "official trailer"
+    "gta v", "fivem", "rp", "roleplay", "extended look", "teaser trailer", "official trailer",
+    "music", "musica", "música", "cancion", "canción", "song", "soundtrack", "ost",
+    "ringtone", "theme song", "leak", "leaks", "filtracion", "filtración", "real life",
+    "vida real", "trailer", "tráiler", "mods", "mod", "ai generated", "fan made"
 }
 
 # Fallback curated data when network/API returns empty or error

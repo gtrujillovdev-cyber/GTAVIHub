@@ -89,14 +89,29 @@ def extract_text_from_srt(srt_path: Path) -> str:
     # 2. Purgar cualquier repetición de n-gramas residual (tartamudeo)
     return deduplicate_phrase_repetitions(raw_joined)
 
-async def _synthesize_async(text: str, output_audio: Path, voice: str = DEFAULT_TTS_VOICE):
-    communicate = edge_tts.Communicate(text, voice)
+async def _synthesize_async(text: str, output_audio: Path, voice: str = DEFAULT_TTS_VOICE, rate: str = "+12%"):
+    communicate = edge_tts.Communicate(text, voice, rate=rate)
     await communicate.save(str(output_audio))
 
-def generate_voiceover(srt_path: Path, output_audio_path: Path, voice: str = DEFAULT_TTS_VOICE) -> bool:
+def _probe_audio_duration(audio_path: Path) -> float:
+    try:
+        res = subprocess.run(
+            ["ffprobe", "-v", "quiet", "-show_entries", "format=duration", "-of", "csv=p=0", str(audio_path)],
+            capture_output=True, text=True, timeout=8
+        )
+        return float(res.stdout.strip()) if res.stdout.strip() else 0.0
+    except Exception:
+        return 0.0
+
+def generate_voiceover(
+    srt_path: Path,
+    output_audio_path: Path,
+    voice: str = DEFAULT_TTS_VOICE,
+    max_duration: Optional[float] = None
+) -> bool:
     """
     Sintetiza la pista de voz en español usando Edge-TTS (0 recursos locales)
-    y sincroniza el arranque al milisegundo exacto de la primera frase del SRT.
+    con ritmo ágil de Shorts (+12%), ajustando tempo y arranque para sincronía limpia.
     """
     text = extract_text_from_srt(srt_path)
     if not text:
@@ -109,24 +124,37 @@ def generate_voiceover(srt_path: Path, output_audio_path: Path, voice: str = DEF
         return False
     raw_tts_path = output_audio_path.with_name(f"{output_audio_path.stem}_raw.mp3")
 
-    print(f"[*] Sintetizando locución en español con voz '{voice}'...")
+    print(f"[*] Sintetizando locución en español con voz '{voice}' (ritmo +12%)...")
     try:
-        asyncio.run(_synthesize_async(text, raw_tts_path, voice))
-        
-        # Si la primera locución empieza tras un silencio en el vídeo original (ej. intro),
-        # retrasamos el audio con adelay para mantener sincronía perfecta con los labios/acción.
-        if first_start > 0.15:
-            delay_ms = int(first_start * 1000)
-            print(f"[*] Sincronizando inicio de doblaje: insertando delay inicial de {first_start:.2f}s ({delay_ms}ms)...")
-            cmd_delay = [
+        asyncio.run(_synthesize_async(text, raw_tts_path, voice, rate="+12%"))
+
+        filters = []
+        raw_dur = _probe_audio_duration(raw_tts_path)
+        effective_delay = first_start if first_start > 0.15 else 0.0
+
+        # Ajustar ligeramente el tempo si la locución excede la duración del clip (evita cortes al final)
+        if max_duration and raw_dur > 1.0:
+            available = max(2.0, float(max_duration) - 0.35 - effective_delay)
+            if raw_dur > available:
+                speed = min(1.35, max(1.02, raw_dur / available))
+                filters.append(f"atempo={speed:.3f}")
+                print(f"[*] Ajustando tempo de voz ({raw_dur:.1f}s -> {available:.1f}s, x{speed:.2f}) para encajar sin cortes.")
+
+        if effective_delay > 0.15:
+            delay_ms = int(effective_delay * 1000)
+            filters.append(f"adelay={delay_ms}|{delay_ms}")
+            print(f"[*] Sincronizando inicio de doblaje: delay inicial {effective_delay:.2f}s ({delay_ms}ms)...")
+
+        if filters:
+            cmd_fx = [
                 "ffmpeg", "-y",
                 "-i", str(raw_tts_path),
-                "-af", f"adelay={delay_ms}|{delay_ms}",
+                "-af", ",".join(filters),
                 "-c:a", "libmp3lame",
                 "-b:a", "192k",
                 str(output_audio_path)
             ]
-            res = subprocess.run(cmd_delay, capture_output=True)
+            res = subprocess.run(cmd_fx, capture_output=True)
             if res.returncode == 0 and output_audio_path.exists():
                 raw_tts_path.unlink(missing_ok=True)
             else:

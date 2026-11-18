@@ -18,6 +18,9 @@ class TestConfig(unittest.TestCase):
     def test_output_temp_dirs(self):
         self.assertTrue(OUTPUT_DIR.exists())
         self.assertTrue(TEMP_DIR.exists())
+        from src.config import _resolve_project_path
+        self.assertEqual(_resolve_project_path("./output", "output"), (BASE_DIR / "output").resolve())
+        self.assertEqual(_resolve_project_path("", "temp"), (BASE_DIR / "temp").resolve())
 
     def test_quant_coexistence_helper(self):
         busy = is_quant_busy()
@@ -58,15 +61,25 @@ class TestConfig(unittest.TestCase):
                 test_srt.unlink()
 
     def test_gameplay_release_date_toggle(self):
+        from unittest.mock import patch
         from src.config import is_gameplay_enabled, GAMEPLAY_RELEASE_DATE
         import src.config as cfg
         self.assertEqual(GAMEPLAY_RELEASE_DATE, "2026-11-19")
-        # En la fecha actual de octubre 2026 debe ser False
-        cfg.FORCE_ENABLE_GAMEPLAY = False
-        self.assertFalse(is_gameplay_enabled())
-        # Con override manual debe ser True
-        cfg.FORCE_ENABLE_GAMEPLAY = True
-        self.assertTrue(is_gameplay_enabled())
+        with patch.object(cfg, "FORCE_ENABLE_GAMEPLAY", False):
+            self.assertFalse(is_gameplay_enabled())
+        with patch.object(cfg, "FORCE_ENABLE_GAMEPLAY", True):
+            self.assertTrue(is_gameplay_enabled())
+
+    def test_channels_quality_and_short_queries(self):
+        import json
+        cfg = json.loads(CHANNELS_FILE.read_text(encoding="utf-8"))
+        disabled_names = {c["name"] for c in cfg["channels"] if not c.get("enabled", True)}
+        self.assertIn("TGG (Shorts)", disabled_names)
+        self.assertIn("Synth Potato (Shorts)", disabled_names)
+        self.assertIn("Synth Potato", disabled_names)
+        for q in cfg["search_queries"]:
+            if q.get("enabled") and q.get("only_shorts", True):
+                self.assertNotIn(q.get("sp"), ("EgQIAxAB", "EgQIAhAB"))
 
 if __name__ == "__main__":
     unittest.main()

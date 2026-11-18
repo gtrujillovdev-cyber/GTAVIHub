@@ -16,6 +16,14 @@ FALLBACK_GEMINI_MODELS = list(dict.fromkeys([
     "gemini-2.5-flash",
 ]))
 
+def _fix_es_title_grammar(txt: str) -> str:
+    """Normaliza concordancias españolas comunes (ej. 'DE LA PRECARGA') preservando saltos de línea."""
+    t = re.sub(r"\bDEL\s+PRE-?CARGA\b", "DE LA PRECARGA", str(txt or ""), flags=re.IGNORECASE)
+    t = re.sub(r"\bEL\s+PRE-?CARGA\b", "LA PRECARGA", t, flags=re.IGNORECASE)
+    t = re.sub(r"\bPRE-CARGA\b", "PRECARGA", t, flags=re.IGNORECASE)
+    return "\n".join(" ".join(ln.split()) for ln in t.splitlines() if ln.strip()).strip()
+
+
 def generate_content_with_retry(client, contents, models=None):
     """Ejecuta generate_content con rotación automática a modelos Flash-Lite si hay límite 429 de cuota."""
     if models is None:
@@ -366,27 +374,41 @@ Devuelve tu respuesta EXACTAMENTE en este formato JSON (sin texto extra):
         orig_lower = (original_title or "").lower()
         if any(k in orig_lower for k in ["south park", "parodia", "meme", "sketch", "fails", "humor"]):
             archetype = "humor_parodia"
-            fallback_hook = "¡NO PUEDE SER! 😂"
-        elif any(k in orig_lower for k in ["físicas", "fisicas", "motor", "rage", "gráfico", "grafico", "digital foundry"]):
+            fallback_hook = "NADIE SE LO ESPERABA\nPARODIA EN GTA 6"
+        elif any(k in orig_lower for k in ["físicas", "fisicas", "motor", "rage", "gráfico", "grafico", "digital foundry", "fps", "30 fps", "60 fps", " vs ", "comparison", "comparativa"]):
             archetype = "analisis_tecnico"
-            fallback_hook = "¡FÍSICAS NUNCA VISTAS! 🌊"
-        elif any(k in orig_lower for k in ["trailer", "tráiler", "oficial", "rockstar", "comunicado"]):
+            fallback_hook = "COMPARATIVA TÉCNICA\nGTA 6 AL LÍMITE"
+        elif any(k in orig_lower for k in ["trailer", "tráiler", "oficial", "rockstar", "comunicado", "pre-load", "preload"]):
             archetype = "noticia_oficial"
-            fallback_hook = "¡ANUNCIO OFICIAL! 🔥"
+            fallback_hook = "NOVEDAD OFICIAL\nLO ÚLTIMO DE GTA 6"
         elif any(k in orig_lower for k in ["ibai", "xokas", "rubius", "knekro", "reaccion", "reacción"]):
             archetype = "reaccion_streamer"
-            fallback_hook = "¡REACCIÓN BRUTAL! 😱"
+            fallback_hook = "REACCIÓN EN VIVO\nASÍ RESPONDIÓ A GTA 6"
         else:
             archetype = "gameplay_puro" if is_launched else "filtracion_misterio"
-            fallback_hook = "¡GAMEPLAY BRUTAL!" if is_launched else "¡DETALLE ÉPICO!"
-        viral_title = f"¡BRUTAL! 🔥 MOMENTO ÉPICO EN GTA 6: {original_title[:40].upper()} #GTA6" if is_launched else f"¡BRUTAL! 🔥 REACCIÓN Y ANÁLISIS DE GTA 6: {original_title[:40].upper()} #GTA6"
+            fallback_hook = "GAMEPLAY REAL\nASÍ SE VE GTA 6" if is_launched else "DETALLE OCULTO\nLO QUE NADIE VIO"
+        viral_title = f"ASÍ SE VE GTA 6 EN ACCIÓN: {original_title[:42].upper()} #GTA6" if is_launched else f"LO QUE NO VISTE DE GTA 6: {original_title[:42].upper()} #GTA6"
         summary = f"Cobertura y mejores momentos de Grand Theft Auto VI a partir del contenido de {creator_name or 'la comunidad'}."
         hook = fallback_hook
         debate_question = "¿Qué os parece este gameplay de GTA 6? ¿Cumple con lo esperado? ¡Comenta abajo! 👇" if is_launched else "¿Crees que GTA 6 cumplirá todas las expectativas? ¡Comenta abajo! 👇"
 
+    # Sanitización gramatical y estética determinista de título y gancho
+    hook = _fix_es_title_grammar(hook).replace("¿", "").replace("?", "").strip()
+    viral_title = _fix_es_title_grammar(viral_title)
+
+    # Evitar hashtags incrustados en mitad de frase (ej. "DE #GTA6 🤯")
+    if viral_title:
+        vt_upper = viral_title.upper()
+        # Si hay texto tras #GTA6 (sin contar #Shorts), reemplazar #GTA6 intermedio por GTA 6
+        vt_no_shorts = re.sub(r"#SHORTS\b", "", vt_upper, flags=re.IGNORECASE).strip()
+        if "#GTA6" in vt_no_shorts and not vt_no_shorts.endswith("#GTA6"):
+            vt_no_shorts = re.sub(r"#GTA6\b", "GTA 6", vt_no_shorts).strip()
+            vt_upper = f"{vt_no_shorts} #GTA6"
+        viral_title = " ".join(vt_upper.split()).strip()
+
     # Asegurar que el título siempre esté en mayúsculas y contenga #Shorts para el crawler
     if not viral_title:
-        viral_title = f"¡IMPACTANTE! 😱 DETALLES DE GTA 6: {original_title[:40].upper()} #GTA6 #Shorts"
+        viral_title = f"DETALLES DE GTA 6: {original_title[:45].upper()} #GTA6 #Shorts"
     else:
         viral_title = viral_title.upper()
         if "#SHORTS" not in viral_title and len(viral_title) <= 90:
@@ -419,8 +441,9 @@ Devuelve tu respuesta EXACTAMENTE en este formato JSON (sin texto extra):
     creator_line = f"👤 Creador / Fuente Original: {creator_clean}\n"
 
     # Detección de música del tráiler de GTA 6
+    is_trailer1 = "trailer 1" in original_title.lower() or "tráiler 1" in original_title.lower()
     is_trailer_content = any(k in original_title.lower() for k in ["trailer", "tráiler", "rockstar", "official"])
-    if is_trailer_content:
+    if is_trailer1:
         music_disclaimer = (
             "🎵 CRÉDITOS DE LA MÚSICA:\n"
             "- Canción: 'Love Is a Long Road'\n"
@@ -428,6 +451,11 @@ Devuelve tu respuesta EXACTAMENTE en este formato JSON (sin texto extra):
             "- Compositores: Tom Petty, Mike Campbell\n"
             "- Sello / Licencias: Geffen Records / Universal Music Group (UMG).\n"
             "Todos los derechos fonográficos y de autor pertenecen a sus legítimos propietarios.\n"
+        )
+    elif is_trailer_content:
+        music_disclaimer = (
+            "🎵 CRÉDITOS DE LA MÚSICA Y AUDIO:\n"
+            "La banda sonora y efectos de sonido oficiales pertenecen a Rockstar Games / Take-Two Interactive y sus respectivos licenciatarios.\n"
         )
     else:
         music_disclaimer = (

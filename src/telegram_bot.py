@@ -619,7 +619,7 @@ def get_my_channels_report() -> str:
 # 5. EJECUCIÓN DE PROCESOS EN SEGUNDO PLANO (THREADS)
 # ═══════════════════════════════════════════════════════════════════
 
-def run_scan_in_background(chat_id: str, max_videos: int = 2):
+def run_scan_in_background(chat_id: str, max_videos: int = 2, window_id: Optional[str] = None):
     """Ejecuta el escaneo autónomo en segundo plano sin congelar Telegram."""
     global ACTIVE_TASK
     with BACKGROUND_LOCK:
@@ -629,6 +629,7 @@ def run_scan_in_background(chat_id: str, max_videos: int = 2):
         from .pipeline import process_single_video
         from .ai_selector import select_best_candidate_ai
         from .channels import filter_repetitive_candidates
+        from .adaptive_scheduler import mark_window_completed
         send_telegram_alert("⏳ *Iniciando escaneo inteligente (Escudo Anti-Repetición + IA)...*")
         candidates = fetch_channel_candidates(max_per_channel=max_videos)
         
@@ -646,7 +647,8 @@ def run_scan_in_background(chat_id: str, max_videos: int = 2):
             remaining = filter_repetitive_candidates(remaining)
             if not remaining:
                 break
-            item = select_best_candidate_ai(remaining, launch_mode=False)
+            from .config import is_gameplay_enabled
+            item = select_best_candidate_ai(remaining, launch_mode=is_gameplay_enabled())
             if not item:
                 break
             remaining = [c for c in remaining if c.get("id") != item.get("id")]
@@ -677,6 +679,9 @@ def run_scan_in_background(chat_id: str, max_videos: int = 2):
             )
             if res:
                 count += 1
+                if window_id:
+                    mark_window_completed(window_id)
+                    window_id = None  # Evitar re-marcar en la misma tanda
                 yt_url = res.get("youtube_url") or res.get("uploaded_youtube_url")
                 if yt_url and res.get("status") != "staged_for_copilot":
                     send_telegram_alert(
@@ -1209,39 +1214,39 @@ def start_telegram_bot_daemon():
                 except Exception as e:
                     print(f"[PerformanceTracker] Error obteniendo métricas: {e}")
 
-            # Planificador 100% Autónomo: 4 Horas Punta Algorítmicas (10:45, 14:15, 17:45, 20:45 CET)
+            # Planificador Adaptativo Anti-Detección (Horarios Aleatorios en Franjas Orgánicas)
             now_dt = datetime.now()
-            today_str = now_dt.strftime("%Y-%m-%d")
-            sched_file = DATA_DIR / "scheduler_slots_state.json"
-            slots = [(10, 45), (14, 15), (17, 45), (20, 45)]
-            for h, m in slots:
-                if now_dt.hour == h and m <= now_dt.minute <= m + 10:
-                    slot_key = f"{h:02d}:{m:02d}"
-                    slots_done = {}
-                    if sched_file.exists():
-                        try:
-                            with open(sched_file, "r", encoding="utf-8") as f:
-                                slots_done = json.load(f)
-                        except Exception:
-                            slots_done = {}
-                    today_slots = slots_done.get(today_str, [])
-                    if slot_key not in today_slots:
-                        with BACKGROUND_LOCK:
-                            busy = (ACTIVE_TASK is not None)
-                        if not busy:
-                            send_telegram_alert(
-                                f"⏰ *[HORA PUNTA ALGORÍTMICA {slot_key} CET]*\n"
-                                f"🚀 Disparando ciclo de publicación 100% autónoma..."
-                            )
-                            today_slots.append(slot_key)
-                            slots_done[today_str] = today_slots
-                            try:
-                                with open(sched_file, "w", encoding="utf-8") as f:
-                                    json.dump(slots_done, f, indent=2)
-                            except Exception:
-                                pass
-                            t = threading.Thread(target=run_scan_in_background, args=(allowed_chat_id, 1), daemon=True)
-                            t.start()
+            try:
+                from .adaptive_scheduler import get_due_window, mark_window_completed
+                from .config import get_max_videos_per_run, MAX_DAILY_UPLOADS
+                from .channels import get_daily_published_count
+                due_win = get_due_window(now_dt)
+                if due_win:
+                    if get_daily_published_count() >= MAX_DAILY_UPLOADS:
+                        print(f"[Scheduler] Cuota diaria alcanzada ({MAX_DAILY_UPLOADS}); ventana '{due_win['name']}' omitida.")
+                        mark_window_completed(due_win["id"], now_dt)
+                        due_win = None
+                if due_win:
+                    win_id = due_win["id"]
+                    win_name = due_win["name"]
+                    win_time = due_win["scheduled_time"]
+                    with BACKGROUND_LOCK:
+                        busy = (ACTIVE_TASK is not None)
+                    if not busy:
+                        send_telegram_alert(
+                            f"🎲 *[DISPARO ALEATORIO ANTI-DETECCIÓN]*\n"
+                            f"Franja: *{win_name}*\n"
+                            f"Horario estocástico: `{win_time} CET` (margen orgánico)\n"
+                            f"🚀 Iniciando ciclo de publicación autónoma..."
+                        )
+                        t = threading.Thread(
+                            target=run_scan_in_background,
+                            args=(allowed_chat_id, get_max_videos_per_run(), win_id),
+                            daemon=True
+                        )
+                        t.start()
+            except Exception as sched_err:
+                print(f"[AdaptiveScheduler] Error verificando ventanas: {sched_err}")
 
             params = {"offset": last_update_id + 1, "timeout": 20}
             if not hasattr(start_telegram_bot_daemon, "_session"):
@@ -1317,6 +1322,10 @@ def start_telegram_bot_daemon():
                 elif cmd in ["/status", "📊"] or text in ["📊 Dashboard", "📊 Estado"]:
                     send_telegram_alert(get_dashboard_text(), reply_markup=get_persistent_menu_keyboard())
 
+                elif cmd in ["/schedule", "/horarios", "/agenda"]:
+                    from .adaptive_scheduler import format_schedule_summary
+                    send_telegram_alert(format_schedule_summary(), reply_markup=get_persistent_menu_keyboard())
+
                 elif cmd in ["/host", "/telemetry", "🖥️"] or text == "🖥️ Estado Host / GaTDSEQ":
                     send_telegram_alert(get_host_telemetry_report(), reply_markup=get_system_actions_inline_keyboard())
 
@@ -1381,7 +1390,8 @@ def start_telegram_bot_daemon():
                             if not candidates:
                                 send_telegram_alert("ℹ️ No hay vídeos nuevos pendientes en los canales para evaluar.")
                                 return
-                            best = select_best_candidate_ai(candidates, launch_mode=False)
+                            from .config import is_gameplay_enabled
+                            best = select_best_candidate_ai(candidates, launch_mode=is_gameplay_enabled())
                             msg = (
                                 "🤖 *ELECCIÓN ESTRATÉGICA DE LA IA*\n"
                                 + ("═" * 36) + "\n\n"

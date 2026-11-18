@@ -1,4 +1,5 @@
 import unittest
+from pathlib import Path
 from unittest.mock import MagicMock, patch
 from src.ai_selector import select_best_candidate_ai
 
@@ -112,6 +113,118 @@ class TestAiSelector(unittest.TestCase):
 
         res = select_best_candidate_ai(launch_candidates, launch_mode=True)
         self.assertEqual(res["id"], "vid_fresh_breakout")
+
+    @patch("src.ai_selector.get_gemini_client")
+    def test_recommended_mode_defaults_to_dub_on_non_comparison_en_titles(self, mock_get_client):
+        mock_client = MagicMock()
+        mock_resp = MagicMock()
+        mock_resp.text = '''
+        {
+            "selected_index": 0,
+            "justification": "Análisis con narración inglesa sobre físicas.",
+            "recommended_title": "DETALLES OCULTOS DE NPC EN GTA 6 🔥 #GTA6",
+            "hook_line1": "DETALLES NPC",
+            "hook_line2": "INCREÍBLE REALISMO",
+            "audience_appeal": "Viral"
+        }
+        '''
+        mock_client.models.generate_content.return_value = mock_resp
+        mock_get_client.return_value = mock_client
+
+        cands = [{
+            "id": "vid_npc_en",
+            "title": "GTA 6 RAGE 9 NPC Physics Details Explained",
+            "lang": "en",
+            "duration": 30.0,
+            "views": 100000,
+            "velocity": 5000.0,
+            "days_old": 1,
+            "score": 90,
+            "uploader": "SomeCreator"
+        }]
+        res = select_best_candidate_ai(cands, launch_mode=False)
+        self.assertEqual(res["recommended_mode"], "dub")
+
+        cands_vs = [{
+            "id": "vid_fps_vs",
+            "title": "GTA 6 30 FPS vs 60 FPS Comparison",
+            "lang": "en",
+            "duration": 27.0,
+            "views": 200000,
+            "velocity": 10000.0,
+            "days_old": 1,
+            "score": 95,
+            "uploader": "Enigma Gaming"
+        }]
+        mock_resp.text = '''
+        {
+            "selected_index": 0,
+            "justification": "Comparativa directa de rendimiento.",
+            "recommended_title": "30 FPS VS 60 FPS EN GTA 6 #GTA6",
+            "hook_line1": "30 FPS VS 60 FPS",
+            "hook_line2": "DIFERENCIA BRUTAL",
+            "audience_appeal": "Visual"
+        }
+        '''
+        res_vs = select_best_candidate_ai(cands_vs, launch_mode=False)
+        self.assertEqual(res_vs["recommended_mode"], "gameplay")
+
+    @patch("src.ai_selector.get_gemini_client")
+    def test_heuristic_prefers_visual_comparison_over_talking_head(self, mock_get_client):
+        mock_get_client.return_value = None
+        pool = [
+            {
+                "id": "talk_high_vph",
+                "title": "GTA 6 30fps Debate Review Reaction",
+                "uploader": "ReactionDude",
+                "lang": "en",
+                "duration": 520.0,
+                "allow_long_clipping": True,
+                "views": 180000,
+                "views_per_hour": 12000.0,
+                "hours_old": 15.0,
+                "score": 80,
+            },
+            {
+                "id": "visual_comp",
+                "title": "GTA 6 VS RDR 2 COMPARISON (NEW DETAILS)",
+                "uploader": "Onespot Gaming",
+                "lang": "en",
+                "duration": 179.0,
+                "allow_long_clipping": True,
+                "views": 17000,
+                "views_per_hour": 230.0,
+                "hours_old": 74.0,
+                "score": 34,
+            },
+        ]
+        with patch("src.channels.PROCESSED_FILE", Path("/nonexistent/processed.json")), \
+             patch("src.channels.get_processed_ids", return_value=set()):
+            res = select_best_candidate_ai(pool, launch_mode=False)
+        self.assertEqual(res["id"], "visual_comp")
+
+    def test_resolve_mode_and_reject_long_low_score_solo_filler(self):
+        from src.ai_selector import _resolve_recommended_mode
+
+        self.assertEqual(
+            _resolve_recommended_mode("", {"title": "NO avances la HISTORIA de GTA 6", "lang": "es"}),
+            "subs",
+        )
+        self.assertEqual(
+            _resolve_recommended_mode("", {"title": "GTA 6 PS5 Pro 60 FPS Comparison", "lang": "es"}),
+            "gameplay",
+        )
+        with patch("src.channels.PROCESSED_FILE", Path("/nonexistent/processed.json")), \
+             patch("src.channels.get_processed_ids", return_value=set()):
+            solo_filler = [{
+                "id": "low_solo_long",
+                "title": "Charla larga sin chicha sobre GTA 6",
+                "lang": "es",
+                "duration": 600,
+                "allow_long_clipping": True,
+                "score": 40,
+            }]
+            self.assertEqual(select_best_candidate_ai(solo_filler, launch_mode=False), {})
 
 if __name__ == "__main__":
     unittest.main()

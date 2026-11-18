@@ -69,11 +69,16 @@ def authenticate_youtube():
                 str(CLIENT_SECRETS_FILE),
                 scopes=SCOPES
             )
-            try:
-                creds = flow.run_local_server(port=8080, prompt='consent')
-            except Exception as e:
-                print(f"[!] Error con servidor local: {e}. Intentando modo consola...")
-                creds = flow.run_console()
+            # Probar puertos 8088, 8090 o puerto dinámico libre (port=0) para evitar conflicto con servidores locales
+            creds = None
+            for p in [8088, 8090, 8888, 0]:
+                try:
+                    creds = flow.run_local_server(port=p, prompt='consent')
+                    break
+                except Exception as e:
+                    print(f"[*] Puerto {p} ocupado o no disponible ({e}). Probando siguiente...")
+            if not creds:
+                raise RuntimeError("No se pudo iniciar el servidor local de autenticación OAuth.")
 
         with open(TOKEN_FILE, "w", encoding="utf-8") as token:
             token.write(creds.to_json())

@@ -49,7 +49,8 @@ def get_youtube_views(video_ids: list) -> dict:
         from google.auth.transport.requests import Request
         from googleapiclient.discovery import build
 
-        token_file = BASE_DIR / "token.json"
+        token_extra = BASE_DIR / "token_extra.json"
+        token_file = token_extra if token_extra.exists() else (BASE_DIR / "token.json")
         if not token_file.exists():
             return {}
 

@@ -4,12 +4,13 @@ import re
 import json
 import time
 import random
+import subprocess
 from pathlib import Path
 from datetime import datetime, date
 from typing import Optional, Dict, Any, List
 
 from .config import (
-    BASE_DIR, OUTPUT_DIR, PROCESSED_FILE, BUSINESS_EMAIL,
+    BASE_DIR, OUTPUT_DIR, LOGS_DIR, PROCESSED_FILE, BUSINESS_EMAIL,
     MONETIZATION_AFFILIATE_URL, ENABLE_AFFILIATE_CTAS,
     AFFILIATE_CTA_TIKTOK, AFFILIATE_CTA_INSTAGRAM
 )
@@ -87,10 +88,25 @@ class AntiBanValidator:
             with open(PROCESSED_FILE, "r", encoding="utf-8") as f:
                 records = json.load(f)
             today_str = date.today().isoformat()
-            today_uploads = [
-                r for r in records
-                if r.get(f"{platform}_uploaded_url") and r.get("date", "").startswith(today_str)
-            ]
+            today_uploads = []
+            for r in records:
+                entry_date = r.get("date") or r.get("approved_at") or ""
+                if not entry_date.startswith(today_str):
+                    continue
+                # 1. Comprobar clave directa (ej. youtube_uploaded_url)
+                if r.get(f"{platform}_uploaded_url") or r.get(f"uploaded_{platform}_url"):
+                    today_uploads.append(r)
+                    continue
+                # 2. Comprobar diccionario anidado 'multiplatform'
+                multi = r.get("multiplatform")
+                if isinstance(multi, dict):
+                    plat_url = multi.get(platform)
+                    if plat_url and str(plat_url).startswith("http"):
+                        today_uploads.append(r)
+                        continue
+                # 3. Clave genérica para youtube (ej. status='completed')
+                if platform == "youtube" and r.get("status") in ("completed", "published_via_copilot") and (r.get("youtube_title") or r.get("youtube_url")):
+                    today_uploads.append(r)
             limit = cls.get_daily_limit(platform)
             if len(today_uploads) >= limit:
                 print(f"[Anti-Ban] Límite diario alcanzado para {platform.upper()} ({len(today_uploads)}/{limit}). Saltando para proteger la cuenta.")
@@ -178,6 +194,7 @@ class SocialPublisher:
         con huella digital humana y perfil persistente local.
         """
         print(f"\n[2/3 TikTok] Preparando subida orgánica a TikTok...")
+        video_path = Path(video_path)
         if not AntiBanValidator.check_daily_limit("tiktok"):
             return None
 
@@ -205,296 +222,397 @@ class SocialPublisher:
             headless = os.getenv("HEADLESS_BROWSER", "false").lower() in ["true", "1", "yes"]
             storage_state_file = BROWSER_PROFILE_DIR / "storage_state.json"
 
-            print(f"[*] Abriendo sesión persistente de TikTok en {tiktok_profile} (headless={headless})...")
+            print(f"[*] Abriendo sesión de TikTok (headless={headless}, storage_state={storage_state_file.exists()})...")
             for lk_name in ("SingletonLock", "SingletonSocket", "SingletonCookie"):
                 try:
                     (tiktok_profile / lk_name).unlink(missing_ok=True)
                 except Exception:
                     pass
+            raw_browser = None
+            browser = None
             with sync_playwright() as p:
-                launch_kwargs = {
-                    "user_data_dir": str(tiktok_profile),
-                    "headless": headless,
-                    "args": ["--disable-blink-features=AutomationControlled", "--no-sandbox"]
-                }
-
-                browser = p.chromium.launch_persistent_context(**launch_kwargs)
-                if storage_state_file.exists():
-                    import json as _json
-                    state = _json.loads(storage_state_file.read_text())
-                    if state.get("cookies"):
-                        browser.clear_cookies()
-                        browser.add_cookies(state["cookies"])
-                page = browser.new_page()
-
-                # Guardia Anti-Ban: verificar cuenta activa en TikTok Studio antes de subir
                 try:
-                    page.goto("https://www.tiktok.com/tiktokstudio", wait_until="load", timeout=30000)
-                    time.sleep(3)
-                    studio_head = (page.inner_text("body") or "")[:400].lower()
-                    if "gtavihubspain" in studio_head and "gtavihubextra" not in studio_head:
-                        print("[!] BLOQUEADO [Anti-Ban]: Sesión de TikTok sigue conectada a la cuenta heredada @gtavihubspain.")
-                        print("    Ejecuta 'scripts/setup_tiktok_session.py --fresh' con @gtavihubextra y sincroniza storage_state.json.")
-                        self._notify_telegram(
-                            "🛑 *TikTok bloqueado por seguridad:* la sesión del servidor sigue conectada a `@gtavihubspain` (cuenta antigua).\n"
-                            "👉 Ejecuta `scripts/setup_tiktok_session.py --fresh` iniciando sesión en `@gtavihubextra`."
+                    if storage_state_file.exists():
+                        raw_browser = p.chromium.launch(
+                            headless=headless,
+                            args=["--disable-blink-features=AutomationControlled", "--no-sandbox"],
                         )
-                        browser.close()
-                        return None
-                except Exception:
-                    pass
+                        browser = raw_browser.new_context(
+                            storage_state=str(storage_state_file),
+                            locale="es-ES",
+                            timezone_id="Europe/Madrid",
+                            viewport={"width": 1280, "height": 1150},
+                        )
+                    else:
+                        browser = p.chromium.launch_persistent_context(
+                            user_data_dir=str(tiktok_profile),
+                            headless=headless,
+                            args=["--disable-blink-features=AutomationControlled", "--no-sandbox"],
+                            locale="es-ES",
+                            timezone_id="Europe/Madrid",
+                            viewport={"width": 1280, "height": 1150},
+                        )
+                    page = browser.new_page()
 
-                page.goto("https://www.tiktok.com/tiktokstudio/upload?from=upload", wait_until="load", timeout=60000)
-                time.sleep(3)
-                
-                # Si requiere inicio de sesión manual la primera vez
-                if "login" in page.url.lower():
-                    print("[!] TikTok requiere inicio de sesión. Por favor inicia sesión en la ventana abierta.")
-                    print("[*] La sesión quedará guardada permanentemente en tus cookies locales para futuras subidas.")
-                    browser.close()
-                    return None
-
-                # Aceptar cookies o cerrar modales de bienvenida si aparecen
-                try:
-                    cookie_btn = page.locator("button:has-text('Accept all'), button:has-text('Aceptar todas'), button:has-text('Accept')").first
-                    if cookie_btn.count() > 0 and cookie_btn.is_visible():
-                        cookie_btn.click()
-                        time.sleep(1)
-                except Exception:
-                    pass
-
-                print("[*] Subiendo archivo a TikTok Creator Center...")
-                # Esperar a que React monte el input (puede tardar hasta 15s)
-                try:
-                    page.wait_for_selector("input[type='file'][accept*='video']", timeout=15000)
-                except Exception:
-                    pass
-                file_input = page.locator("input[type='file'][accept*='video']").first
-                if file_input.count() == 0:
-                    print("[!] Selector de subida no encontrado en TikTok.")
-                    browser.close()
-                    return None
-
-                file_input.set_input_files(str(video_path))
-                print("[*] Esperando que el archivo se procese...")
-
-                # Esperar a que desaparezca el indicador de carga (hasta 3 min para vídeos grandes)
-                try:
-                    page.wait_for_selector(".upload-progress, [class*='uploading'], [class*='loading']",
-                                           state="detached", timeout=180000)
-                except Exception:
-                    pass
-                time.sleep(5)
-
-                print("[✓] Archivo cargado. Rellenando descripción...")
-
-                # Rellenar caption en TikTok Studio (compatible con Draft.js / Lexical / React)
-                editor_selectors = [
-                    "div.public-DraftEditor-content",
-                    "div[contenteditable='true']",
-                    "div[role='textbox']",
-                    ".editor-input-box div[contenteditable]",
-                    "[data-testid='caption-input']",
-                    "textarea[placeholder*='caption'], textarea[placeholder*='escribe']"
-                ]
-                caption_filled = False
-                clean_caption = caption[:220].strip()
-
-                for sel in editor_selectors:
+                    # Guardia Anti-Ban: verificar cuenta activa en TikTok Studio antes de subir
                     try:
-                        el = page.locator(sel).first
-                        if el.count() > 0:
-                            el.scroll_into_view_if_needed(timeout=3000)
-                            el.click(force=True)
-                            time.sleep(0.4)
-                            # Limpiar con atajos multiplataforma (Control+A para Chromium headless y Meta+A para Mac)
-                            page.keyboard.press("Control+a")
-                            page.keyboard.press("Meta+a")
-                            page.keyboard.press("Backspace")
-                            time.sleep(0.3)
-                            # Tecleo progresivo para disparar los synthetic events de React
-                            page.keyboard.type(clean_caption, delay=10)
-                            time.sleep(0.5)
-                            curr_text = el.inner_text().strip()
-                            if len(curr_text) > 10 and not curr_text.startswith("SHORT_") and not curr_text.startswith("VIDEO_"):
-                                caption_filled = True
-                                print(f"[*] Caption introducida con éxito mediante teclado en TikTok ({sel})")
-                                break
+                        page.goto("https://www.tiktok.com/tiktokstudio", wait_until="load", timeout=30000)
+                        time.sleep(4)
+                        if "login" in page.url.lower():
+                            print("[!] Sesión de TikTok caducada (redirigido a /login).")
+                            self._notify_telegram(
+                                "🛑 *TikTok sin sesión activa:* redirigido a `/login`.\n"
+                                "👉 Ejecuta `scripts/setup_tiktok_session.py --fresh --sync` con `@gtavihubextra`."
+                            )
+                            return None
+                        studio_head = (page.inner_text("body") or "")[:1000].lower()
+                        if "gtavihubspain" in studio_head and "gtavihubextra" not in studio_head and os.getenv("ALLOW_LEGACY_TIKTOK", "").lower() != "true":
+                            print("[!] BLOQUEADO [Anti-Ban]: Sesión de TikTok sigue conectada a la cuenta heredada @gtavihubspain.")
+                            print("    Ejecuta 'scripts/setup_tiktok_session.py --fresh --sync' con @gtavihubextra.")
+                            self._notify_telegram(
+                                "🛑 *TikTok bloqueado por seguridad:* la sesión del servidor sigue conectada a `@gtavihubspain` (cuenta antigua).\n"
+                                "👉 Ejecuta `scripts/setup_tiktok_session.py --fresh --sync` iniciando sesión en `@gtavihubextra`."
+                            )
+                            return None
                     except Exception:
-                        continue
+                        pass
 
-                if not caption_filled:
-                    # Inyección infalible mediante document.execCommand ('insertText')
-                    # Este método dispara los eventos nativos de bajo nivel que Draft.js y Lexical
-                    # interceptan obligatoriamente para actualizar el estado inmutable de React.
+                    page.goto("https://www.tiktok.com/tiktokstudio/upload?from=upload", wait_until="domcontentloaded", timeout=60000)
+                    time.sleep(3)
+
+                    # Si requiere inicio de sesión manual o expiraron las cookies
+                    if "login" in page.url.lower():
+                        print("[!] TikTok requiere inicio de sesión (@gtavihubextra).")
+                        self._notify_telegram(
+                            "🛑 *TikTok requiere login:* ejecuta `scripts/setup_tiktok_session.py --fresh --sync` con `@gtavihubextra`."
+                        )
+                        return None
+
+                    # Aceptar cookies o cerrar modales de bienvenida si aparecen
                     try:
-                        injected = page.evaluate("""(textToInsert) => {
-                            const el = document.querySelector('div.public-DraftEditor-content, div[contenteditable="true"], div[role="textbox"]');
-                            if (!el) return false;
-                            el.focus();
-                            const range = document.createRange();
-                            range.selectNodeContents(el);
-                            const sel = window.getSelection();
-                            sel.removeAllRanges();
-                            sel.addRange(range);
-                            document.execCommand('delete', false, null);
-                            document.execCommand('insertText', false, textToInsert);
-                            el.dispatchEvent(new Event('input', { bubbles: true }));
-                            el.dispatchEvent(new Event('change', { bubbles: true }));
-                            return el.innerText.trim().length > 5;
-                        }""", clean_caption)
-                        if injected:
-                            caption_filled = True
-                            print("[✓] Caption introducida con éxito en TikTok Studio vía execCommand (Draft.js insertText).")
-                    except Exception as e:
-                        print(f"[!] Error en inyección avanzada de caption en TikTok: {e}")
-
-                time.sleep(3)
-
-                # Descartar/Aceptar popups modales de TikTok Studio que bloquean la vista ('Got it', 'Turn on', etc.)
-                try:
-                    dismiss_selectors = [
-                        "button:has-text('Got it')",
-                        "button:has-text('Turn on')",
-                        "button:has-text('Entendido')",
-                        "button:has-text('Aceptar')",
-                        "button.Button__root--size-lg:has-text('Got it')"
-                    ]
-                    for d_sel in dismiss_selectors:
-                        m_btn = page.locator(d_sel).first
-                        if m_btn.count() > 0 and m_btn.is_visible():
-                            m_btn.click()
-                            print(f"[*] Popup de aviso de TikTok Studio aceptado ({d_sel}).")
+                        cookie_btn = page.locator("button:has-text('Accept all'), button:has-text('Aceptar todas'), button:has-text('Accept')").first
+                        if cookie_btn.count() > 0 and cookie_btn.is_visible():
+                            cookie_btn.click()
                             time.sleep(1)
-                except Exception:
-                    pass
+                    except Exception:
+                        pass
 
-                # Scroll hacia abajo para asegurar visibilidad de controles y botón de publicar
-                try:
-                    page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
-                except Exception:
-                    pass
-                time.sleep(2)
-
-                # Hacer click en el botón de publicar con reintentos y selectores exhaustivos de TikTok Studio
-                post_selectors = [
-                    "button[data-e2e='post_video_button']",
-                    "button.Button__root--type-primary:has-text('Post')",
-                    "button.Button__root--type-primary:has-text('Publicar')",
-                    "button:has-text('Post')",
-                    "button:has-text('Publicar')",
-                    "button[data-testid='post-button']",
-                    "div.btn-post button",
-                    "button.btn-post",
-                    ".btn-post",
-                    "button.TUXButton--primary",
-                    "button.submit",
-                ]
-
-                posted = False
-                # Reintentar encontrar y clickear el botón hasta por 90s (esperando validaciones de copyright/render en la nube)
-                start_post_wait = time.time()
-                while time.time() - start_post_wait < 90 and not posted:
-                    # Descartar posibles popups modales que se hayan superpuesto
+                    print("[*] Subiendo archivo a TikTok Creator Center...")
                     try:
-                        for d_sel in ["button:has-text('Got it')", "button:has-text('Turn on')", "button:has-text('Not now')", "button:has-text('Ahora no')", "button:has-text('Entendido')", "button:has-text('Aceptar')"]:
+                        page.wait_for_selector("input[type='file']", state="attached", timeout=35000)
+                    except Exception:
+                        pass
+                    file_input = page.locator("input[type='file'][accept*='video'], input[type='file'][accept*='mp4'], input[type='file']").first
+                    if file_input.count() == 0:
+                        # Intentar buscar dentro de iframes de TikTok Studio si el contenedor está embebido
+                        for frame in page.frames:
+                            f_in = frame.locator("input[type='file']").first
+                            if f_in.count() > 0:
+                                file_input = f_in
+                                break
+                    if file_input.count() == 0:
+                        print("[!] Selector de subida no encontrado en TikTok.")
+                        return None
+
+                    file_input.set_input_files(str(video_path))
+                    print("[*] Esperando que el archivo se procese en TikTok Studio...")
+
+                    # Esperar a que post_video_button esté adjunto y habilitado (o DraftEditor disponible) hasta 150s
+                    upload_ready = False
+                    wait_start = time.time()
+                    while time.time() - wait_start < 150:
+                        try:
+                            for d_sel in ("button:has-text('Got it')", "button:has-text('Entendido')"):
+                                m_btn = page.locator(d_sel).first
+                                if m_btn.count() > 0 and m_btn.is_visible():
+                                    m_btn.evaluate("b => b.click()")
+                                    print(f"[*] Popup de aviso de TikTok Studio cerrado ({d_sel}).")
+                                    time.sleep(0.5)
+                        except Exception:
+                            pass
+                        try:
+                            post_btn_check = page.locator("button[data-e2e='post_video_button']").first
+                            if post_btn_check.count() > 0:
+                                is_aria_dis = post_btn_check.get_attribute("aria-disabled") == "true"
+                                if post_btn_check.is_enabled() and not is_aria_dis:
+                                    upload_ready = True
+                                    break
+                        except Exception:
+                            pass
+                        time.sleep(2)
+
+                    if not upload_ready:
+                        try:
+                            page.wait_for_selector(
+                                ".upload-progress, [class*='uploading'], [class*='loading']",
+                                state="detached",
+                                timeout=10000,
+                            )
+                        except Exception:
+                            pass
+                    time.sleep(2)
+
+                    # Descartar únicamente popups informativos (Entendido / Got it), nunca Cancel/Cancelar
+                    try:
+                        for d_sel in ("button:has-text('Got it')", "button:has-text('Entendido')", "button:has-text('Not now')", "button:has-text('Ahora no')"):
                             m_btn = page.locator(d_sel).first
                             if m_btn.count() > 0 and m_btn.is_visible():
-                                m_btn.click()
-                                time.sleep(1)
+                                m_btn.evaluate("b => b.click()")
+                                print(f"[*] Popup de aviso de TikTok Studio cerrado ({d_sel}).")
+                                time.sleep(0.6)
                     except Exception:
                         pass
 
-                    try:
-                        page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
-                    except Exception:
-                        pass
+                    print("[✓] Archivo cargado. Rellenando descripción sin mutar Draft.js vía execCommand...")
 
-                    # 1. Intentar con selectores Playwright
-                    for sel in post_selectors:
+                    editor_selectors = [
+                        "div.public-DraftEditor-content",
+                        "div[contenteditable='true']",
+                        "div[role='textbox']",
+                        ".editor-input-box div[contenteditable]",
+                        "[data-testid='caption-input']",
+                        "textarea[placeholder*='caption'], textarea[placeholder*='escribe']"
+                    ]
+                    caption_filled = False
+                    clean_caption = caption[:220].strip()
+
+                    for sel in editor_selectors:
                         try:
-                            locator = page.locator(sel)
-                            if locator.count() > 0:
-                                btn = locator.first
-                                btn.scroll_into_view_if_needed(timeout=2000)
-                                is_aria_disabled = btn.get_attribute("aria-disabled") == "true"
-                                if btn.is_enabled() and not is_aria_disabled:
-                                    btn.click(force=True)
-                                    print(f"[*] Click en botón publicar ({sel})")
-                                    posted = True
+                            el = page.locator(sel).first
+                            if el.count() > 0:
+                                el.evaluate("""node => {
+                                    node.scrollIntoView({ block: 'center' });
+                                    node.focus();
+                                    const range = document.createRange();
+                                    range.selectNodeContents(node);
+                                    range.collapse(false);
+                                    const sel = window.getSelection();
+                                    sel.removeAllRanges();
+                                    sel.addRange(range);
+                                }""")
+                                time.sleep(0.3)
+                                for _sel_key in ("Meta+a", "Control+a"):
+                                    try:
+                                        page.keyboard.press(_sel_key)
+                                        time.sleep(0.1)
+                                        page.keyboard.press("Backspace")
+                                    except Exception:
+                                        pass
+                                # Si Draft.js conservó el nombre del archivo pre-rellenado, vaciar con Backspace limpio
+                                for _ in range(8):
+                                    rem_text = el.inner_text().strip()
+                                    if not rem_text:
+                                        break
+                                    page.keyboard.press("End")
+                                    for _k in range(min(len(rem_text) + 5, 120)):
+                                        page.keyboard.press("Backspace")
+                                    time.sleep(0.2)
+                                page.keyboard.insert_text(clean_caption)
+                                time.sleep(0.6)
+                                curr_text = el.inner_text().strip()
+                                if len(curr_text) > 10 and not curr_text.startswith("SHORT_") and not curr_text.startswith("VIDEO_"):
+                                    caption_filled = True
+                                    print(f"[*] Caption introducida con éxito mediante insert_text en TikTok ({sel})")
                                     break
                         except Exception:
                             continue
 
-                    # 2. Si no ha clickeado, fallback profundo vía evaluación directa de DOM JS
-                    if not posted:
-                        try:
-                            clicked_via_js = page.evaluate("""() => {
-                                const buttons = Array.from(document.querySelectorAll('button, div[role="button"]'));
-                                for (const b of buttons) {
-                                    const txt = (b.innerText || b.textContent || '').trim();
-                                    if (txt === 'Post' || txt === 'Publicar') {
-                                        const isDis = b.disabled || b.getAttribute('aria-disabled') === 'true' || b.className.includes('disabled');
-                                        if (!isDis) {
-                                            b.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                                            b.click();
-                                            return true;
-                                        }
-                                    }
+                    if not caption_filled:
+                        print("[!] Aviso: no se pudo confirmar el reemplazo completo del caption vía teclado (se evita execCommand para no colapsar Draft.js).")
+
+                    time.sleep(2)
+
+                    # Descartar nuevamente modales informativos sin pulsar Cancel/Cancelar ni 'Turn on'
+                    try:
+                        dismiss_selectors = [
+                            "button:has-text('Got it')",
+                            "button:has-text('Entendido')",
+                            "button:has-text('Not now')",
+                            "button:has-text('Ahora no')",
+                        ]
+                        for d_sel in dismiss_selectors:
+                            m_btn = page.locator(d_sel).first
+                            if m_btn.count() > 0 and m_btn.is_visible():
+                                m_btn.evaluate("b => b.click()")
+                                print(f"[*] Popup de aviso de TikTok Studio cerrado ({d_sel}).")
+                                time.sleep(0.8)
+                    except Exception:
+                        pass
+
+                    # Asegurar visibilidad pública ('Everyone' / 'Todos') si el selector aparece restringido
+                    try:
+                        priv_trigger = page.locator("button:has-text('Followers'), button:has-text('Seguidores'), button:has-text('Only you'), button:has-text('Solo yo'), div[role='combobox']:has-text('Followers'), div[role='combobox']:has-text('Only you')").first
+                        if priv_trigger.count() > 0 and priv_trigger.is_visible():
+                            priv_trigger.evaluate("b => b.click()")
+                            time.sleep(0.8)
+                            pub_opt = page.locator("[role='option']:has-text('Everyone'), [role='option']:has-text('Todos'), li:has-text('Everyone'), span:text-is('Everyone'), span:text-is('Todos')").first
+                            if pub_opt.count() > 0 and pub_opt.is_visible():
+                                pub_opt.evaluate("b => b.click()")
+                                print("[*] Privacidad ajustada a Everyone / Todos en TikTok Studio.")
+                                time.sleep(0.8)
+                    except Exception:
+                        pass
+
+                    try:
+                        page.evaluate("""() => {
+                            window.scrollTo(0, document.body.scrollHeight);
+                            document.querySelectorAll('*').forEach(el => {
+                                if (el.scrollHeight > el.clientHeight && el.clientHeight > 100) {
+                                    el.scrollTop = el.scrollHeight;
                                 }
-                                return false;
-                            }""")
-                            if clicked_via_js:
-                                print("[*] Click en botón publicar ejecutado con éxito vía DOM JS")
-                                posted = True
-                                break
+                            });
+                        }""")
+                    except Exception:
+                        pass
+                    time.sleep(2)
+
+                    post_selectors = [
+                        "button[data-e2e='post_video_button']",
+                        "button[data-testid='post-button']",
+                        "button:has-text('Post')",
+                        "button:has-text('Publicar')",
+                        "button.Button__root--type-primary:text-is('Post')",
+                        "button.Button__root--type-primary:text-is('Publicar')",
+                        "button:text-is('Post')",
+                        "button:text-is('Publicar')",
+                        "button.TUXButton--primary",
+                        "button.btn-post",
+                        "div[data-e2e='post_video_button']",
+                        "[data-e2e*='post']",
+                    ]
+
+                    posted = False
+                    start_post_wait = time.time()
+                    while time.time() - start_post_wait < 150 and not posted:
+                        try:
+                            for d_sel in ["button:has-text('Got it')", "button:has-text('Not now')", "button:has-text('Ahora no')", "button:has-text('Entendido')"]:
+                                m_btn = page.locator(d_sel).first
+                                if m_btn.count() > 0 and m_btn.is_visible():
+                                    m_btn.evaluate("b => b.click()")
+                                    time.sleep(0.5)
                         except Exception:
                             pass
 
+                        try:
+                            page.evaluate("""() => {
+                                window.scrollTo(0, document.body.scrollHeight);
+                                document.querySelectorAll('*').forEach(el => {
+                                    if (el.scrollHeight > el.clientHeight && el.clientHeight > 100) {
+                                        el.scrollTop = el.scrollHeight;
+                                    }
+                                });
+                            }""")
+                        except Exception:
+                            pass
+
+                        for sel in post_selectors:
+                            try:
+                                locator = page.locator(sel)
+                                if locator.count() > 0:
+                                    btn = locator.first
+                                    btn.scroll_into_view_if_needed(timeout=2000)
+                                    is_aria_disabled = btn.get_attribute("aria-disabled") == "true"
+                                    if btn.is_enabled() and not is_aria_disabled:
+                                        btn.click(force=True)
+                                        print(f"[*] Click en botón publicar ({sel})")
+                                        posted = True
+                                        break
+                            except Exception:
+                                continue
+
+                        if not posted:
+                            try:
+                                clicked_via_js = page.evaluate("""() => {
+                                    const buttons = Array.from(document.querySelectorAll('button, div[role="button"]'));
+                                    for (const b of buttons) {
+                                        const txt = (b.innerText || b.textContent || '').trim();
+                                        const isPostBtn = (b.getAttribute('data-e2e') || '').includes('post') ||
+                                                          /^(post|publicar)/i.test(txt) ||
+                                                          (b.className || '').includes('btn-post');
+                                        if (isPostBtn) {
+                                            const isDis = b.disabled || b.getAttribute('aria-disabled') === 'true' || (b.className || '').includes('disabled');
+                                            if (!isDis) {
+                                                b.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                                b.click();
+                                                return true;
+                                            }
+                                        }
+                                    }
+                                    return false;
+                                }""")
+                                if clicked_via_js:
+                                    print("[*] Click en botón publicar ejecutado con éxito vía DOM JS")
+                                    posted = True
+                                    break
+                            except Exception:
+                                pass
+
+                        if not posted:
+                            time.sleep(3)
+
+                    time.sleep(2)
+                    try:
+                        modal_buttons = page.locator("button:has-text('Post anyway'), button:has-text('Publicar de todos modos'), button:has-text('Manage your posts'), button:has-text('Aceptar')")
+                        if modal_buttons.count() > 0 and modal_buttons.first.is_visible():
+                            modal_buttons.first.evaluate("b => b.click()")
+                            print("[*] Confirmación de diálogo modal post-publicación aceptada.")
+                    except Exception:
+                        pass
+
                     if not posted:
-                        time.sleep(3)
+                        print("[!] No se encontró botón de publicar activo — guardando captura de debug...")
+                        try:
+                            btn_info = page.evaluate("""() => {
+                                return Array.from(document.querySelectorAll('button, div[role="button"]')).map(b => ({
+                                    text: (b.innerText || b.textContent || '').trim().replace(/\\s+/g, ' ').slice(0, 30),
+                                    disabled: b.disabled || b.getAttribute('aria-disabled') === 'true' || (b.className || '').includes('disabled'),
+                                    e2e: b.getAttribute('data-e2e') || ''
+                                }));
+                            }""")
+                            print(f"[*] Botones detectados en DOM TikTok: {btn_info}")
+                        except Exception:
+                            pass
+                        try:
+                            LOGS_DIR.mkdir(parents=True, exist_ok=True)
+                            debug_shot = LOGS_DIR / "tiktok_button_debug.png"
+                            page.screenshot(path=str(debug_shot), timeout=5000)
+                            print(f"[*] Captura guardada en: {debug_shot}")
+                        except Exception as shot_err:
+                            print(f"[!] Error guardando captura debug TikTok: {shot_err}")
+                        return None
 
-                # Comprobar posibles diálogos modales de confirmación post-publicación
-                time.sleep(2)
-                try:
-                    modal_buttons = page.locator("button:has-text('Post anyway'), button:has-text('Publicar de todos modos'), button:has-text('Manage your posts'), button:has-text('Aceptar')")
-                    if modal_buttons.count() > 0 and modal_buttons.first.is_visible():
-                        modal_buttons.first.click()
-                        print("[*] Confirmación de diálogo modal post-publicación aceptada.")
-                except Exception:
-                    pass
-
-                if not posted:
-                    print("[!] No se encontró botón de publicar activo — guardando captura de debug...")
                     try:
-                        debug_shot = BASE_DIR / "logs" / "tiktok_button_debug.png"
-                        page.screenshot(path=str(debug_shot))
-                        print(f"[*] Captura guardada en: {debug_shot}")
+                        page.wait_for_url("**/manage**", timeout=30000)
                     except Exception:
-                        pass
-                    browser.close()
-                    return None
+                        try:
+                            page.wait_for_selector("[class*='success'], [class*='uploaded'], [class*='posted']",
+                                                   timeout=20000)
+                        except Exception:
+                            pass
 
-                # Esperar confirmación (redirección o mensaje de éxito)
-                try:
-                    page.wait_for_url("**/manage**", timeout=30000)
-                except Exception:
-                    try:
-                        page.wait_for_selector("[class*='success'], [class*='uploaded'], [class*='posted']",
-                                               timeout=20000)
-                    except Exception:
-                        pass
+                    time.sleep(3)
+                    current_url = page.url
 
-                time.sleep(3)
-                current_url = page.url
-                browser.close()
+                    # Guardar estado de sesión renovado si fue exitoso
+                    if storage_state_file and browser:
+                        try:
+                            browser.storage_state(path=str(storage_state_file))
+                        except Exception:
+                            pass
 
-                if "manage" in current_url or "content" in current_url:
-                    print("[✓] Vídeo publicado en TikTok.")
-                    return f"https://www.tiktok.com/@gtavihubextra"
-                else:
-                    print(f"[*] URL final: {current_url} — vídeo posiblemente en revisión")
-                    return f"https://www.tiktok.com/@gtavihubextra"
+                    if "manage" in current_url or "content" in current_url:
+                        print("[✓] Vídeo publicado en TikTok.")
+                        return "https://www.tiktok.com/@gtavihubextra"
+                    else:
+                        print(f"[*] URL final: {current_url} — vídeo posiblemente en revisión")
+                        return "https://www.tiktok.com/@gtavihubextra"
+                finally:
+                    for closable in (browser, raw_browser):
+                        if closable is not None:
+                            try:
+                                closable.close()
+                            except Exception:
+                                pass
         except ImportError:
             print("[TikTok] Playwright no está instalado o configurado aún. Puedes activarlo con: pip install playwright && playwright install chromium")
             print(f"[TikTok] Archivo preparado para subida manual o por navegador: {video_path}")
@@ -514,7 +632,9 @@ class SocialPublisher:
         Credenciales en .env: INSTAGRAM_USERNAME, INSTAGRAM_PASSWORD.
         Session cache en assets/.browser_profiles/instagrapi_session.json.
         """
-        print(f"\n[3/3 Instagram] Preparando subida a Instagram Reels (@gtavihubextra)...")
+        ig_handle = (os.getenv("INSTAGRAM_USERNAME") or "gtavihubextra").strip().lstrip("@")
+        video_path = Path(video_path)
+        print(f"\n[3/3 Instagram] Preparando subida a Instagram Reels (@{ig_handle})...")
         if not AntiBanValidator.check_daily_limit("instagram"):
             return None
 
@@ -535,42 +655,98 @@ class SocialPublisher:
             )
             return None
 
-        session_file = BROWSER_PROFILE_DIR / "instagrapi_session.json"
+        expected_user = ig_user.strip().lstrip("@").lower()
+        session_file = BROWSER_PROFILE_DIR / f"instagrapi_session_{expected_user}.json"
+        legacy_session_file = BROWSER_PROFILE_DIR / "instagrapi_session.json"
+        if not session_file.exists() and legacy_session_file.exists():
+            session_file = legacy_session_file
         BROWSER_PROFILE_DIR.mkdir(parents=True, exist_ok=True)
 
         try:
             from instagrapi import Client
             cl = Client()
             cl.delay_range = [2, 5]
+            session_valid = False
 
             if session_file.exists():
                 try:
                     cl.load_settings(str(session_file))
-                    cl.login(ig_user, ig_pass)
-                    print("[*] Sesión de Instagram restaurada desde cache.")
+                    acc_info = cl.account_info()
+                    cached_user = (getattr(acc_info, "username", "") or "").strip().lower()
+                    if cached_user == expected_user:
+                        session_valid = True
+                        print(f"[*] Sesión de Instagram restaurada desde cache (@{cached_user}).")
+                    else:
+                        print(f"[!] Cache de Instagram pertenecía a @{cached_user or 'otro'}; regenerando login para @{expected_user}...")
                 except Exception:
-                    print("[*] Cache expirado, haciendo login completo...")
-                    cl = Client()
-                    cl.delay_range = [2, 5]
-                    cl.login(ig_user, ig_pass)
-            else:
-                cl.login(ig_user, ig_pass)
-                print("[*] Login en Instagram completado.")
+                    print("[*] Cache de Instagram caducado o inválido, haciendo login completo...")
 
-            cl.dump_settings(str(session_file))
+            active_ig_user = expected_user
+            if not session_valid:
+                # Intentar primero desde storage_state.json (evita redirecciones de Centro de Cuentas CAA)
+                storage_state_file = BROWSER_PROFILE_DIR / "storage_state.json"
+                if storage_state_file.exists():
+                    try:
+                        from urllib.parse import unquote
+                        st = json.loads(storage_state_file.read_text(encoding="utf-8"))
+                        ig_sid = next(
+                            (unquote(c.get("value", "")) for c in st.get("cookies", [])
+                             if "instagram" in c.get("domain", "") and c.get("name") == "sessionid" and c.get("value")),
+                            "",
+                        )
+                        if ig_sid and len(ig_sid) > 30:
+                            cl_sid = Client()
+                            cl_sid.delay_range = [2, 5]
+                            cl_sid.login_by_sessionid(ig_sid)
+                            sid_info = cl_sid.account_info()
+                            sid_user = getattr(sid_info, "username", "")
+                            if isinstance(sid_user, str) and sid_user.strip().lower() == expected_user:
+                                cl = cl_sid
+                                session_valid = True
+                                print(f"[*] Sesión de Instagram iniciada vía cookie web (@{expected_user}).")
+                    except Exception:
+                        pass
+
+            if not session_valid:
+                cl = Client()
+                cl.delay_range = [2, 5]
+                cl.login(ig_user, ig_pass)
+                post_info = cl.account_info()
+                post_user = getattr(post_info, "username", "")
+                if isinstance(post_user, str) and post_user.strip() and post_user.strip().lower() != expected_user:
+                    if os.getenv("ALLOW_LEGACY_INSTAGRAM", "").lower() != "true":
+                        print(f"[!] BLOQUEADO [Anti-Ban]: Instagram autenticó @{post_user} en lugar de @{expected_user}.")
+                        self._notify_telegram(
+                            f"🛑 *Instagram bloqueado por seguridad:* Meta autenticó `@{post_user}` en lugar de `@{expected_user}`.\n"
+                            "👉 Vincula `@gtavihubextra` desde Playwright (`scripts/setup_tiktok_session.py --fresh --with-instagram --sync`)."
+                        )
+                        return None
+                    active_ig_user = post_user.strip()
+                    print(f"[⚠️] ALLOW_LEGACY_INSTAGRAM activo: sesión autenticada en @{active_ig_user} (esperado @{expected_user}).")
+                else:
+                    print(f"[*] Login en Instagram completado (@{active_ig_user}).")
+
+            target_session_file = BROWSER_PROFILE_DIR / f"instagrapi_session_{active_ig_user}.json"
+            cl.dump_settings(str(target_session_file))
 
             print("[*] Subiendo Reel a Instagram...")
-            clip_kwargs = {"caption": caption[:2200]}
+            clip_kwargs: Dict[str, Any] = {"caption": caption[:2200]}
             if thumbnail_path and Path(thumbnail_path).exists():
-                clip_kwargs["thumbnail"] = str(thumbnail_path)
+                clip_kwargs["thumbnail"] = Path(thumbnail_path)
                 print(f"[*] Usando miniatura: {Path(thumbnail_path).name}")
-            media = cl.clip_upload(video_path, **clip_kwargs)
+            media = cl.clip_upload(Path(video_path), **clip_kwargs)
             url = f"https://www.instagram.com/reel/{media.code}/"
             print(f"[✓] Reel publicado en Instagram: {url}")
             return url
 
         except Exception as e:
-            print(f"[Instagram] Error con instagrapi: {e}")
+            err_str = str(e)
+            print(f"[Instagram] Error con instagrapi: {err_str}")
+            if any(k in err_str.lower() for k in ["challenge", "two-factor", "2fa", "password", "login", "bad_password"]):
+                self._notify_telegram(
+                    f"⚠️ *Error de sesión en Instagram (@{expected_user}):* `{err_str[:140]}`\n"
+                    "👉 Ejecuta `scripts/setup_instagram_session.py --user gtavihubextra --fresh --sync` para renovar la sesión."
+                )
             return None
 
     def publish_all(

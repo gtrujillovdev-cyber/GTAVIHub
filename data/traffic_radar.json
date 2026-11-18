@@ -1,101 +1,232 @@
 {
-  "updated_at": "2026-11-10T23:11:23.191615+00:00",
-  "elapsed_seconds": 0.03,
-  "days_to_launch": 8,
+  "updated_at": "2026-11-17T21:34:49.560897+00:00",
+  "elapsed_seconds": 3.43,
+  "days_to_launch": 1,
   "launch_date_str": "19 de Noviembre de 2026",
   "top_search_intents": [
-    "gta 6 fisicas rage 9 agua y colisiones",
-    "gta 6 gameplay filtrado mecanicas de tiroteo",
-    "gta 6 mapa vice city comparativa leonida",
-    "gta 6 novedades confirmadas rockstar games",
-    "gta 6 detalles ocultos lucia y jason"
+    "gta 6 gameplay",
+    "gta 6 gameplay español",
+    "gta 6 gameplay ps5",
+    "gta 6 gameplay 4k",
+    "gta 6 19 de noviembre"
   ],
   "youtube_suggestions": [
     {
-      "term": "gta 6 fisicas rage 9 agua y colisiones",
-      "demand_score": 95,
-      "category": "fisicas_y_graficos"
-    },
-    {
-      "term": "gta 6 gameplay filtrado mecanicas de tiroteo",
-      "demand_score": 90,
+      "term": "gta 6 gameplay",
+      "demand_score": 19,
       "category": "gameplay_misiones"
     },
     {
-      "term": "gta 6 mapa vice city comparativa leonida",
-      "demand_score": 88,
-      "category": "mundo_y_secretos"
+      "term": "gta 6 gameplay español",
+      "demand_score": 19,
+      "category": "gameplay_misiones"
     },
     {
-      "term": "gta 6 novedades confirmadas rockstar games",
-      "demand_score": 84,
+      "term": "gta 6 gameplay ps5",
+      "demand_score": 15,
+      "category": "gameplay_misiones"
+    },
+    {
+      "term": "gta 6 gameplay 4k",
+      "demand_score": 11,
+      "category": "gameplay_misiones"
+    },
+    {
+      "term": "gta 6 19 de noviembre",
+      "demand_score": 10,
       "category": "estreno_19_noviembre"
     },
     {
-      "term": "gta 6 detalles ocultos lucia y jason",
-      "demand_score": 80,
+      "term": "gta 6 fisicas del agua",
+      "demand_score": 10,
+      "category": "fisicas_y_graficos"
+    },
+    {
+      "term": "gta 6 fecha de lanzamiento",
+      "demand_score": 10,
+      "category": "estreno_19_noviembre"
+    },
+    {
+      "term": "gta 6 preventa rubius",
+      "demand_score": 10,
+      "category": "estreno_19_noviembre"
+    },
+    {
+      "term": "gta 6 reserva illojuan",
+      "demand_score": 10,
+      "category": "estreno_19_noviembre"
+    },
+    {
+      "term": "gta 6 ps5 pro 60fps",
+      "demand_score": 10,
+      "category": "fisicas_y_graficos"
+    },
+    {
+      "term": "gta 6 lucia jason kiss",
+      "demand_score": 10,
       "category": "mundo_y_secretos"
     },
     {
-      "term": "gta 6 comparativa grafica ps5 pro vs ps5",
-      "demand_score": 78,
+      "term": "gta 6 analisis",
+      "demand_score": 10,
+      "category": "general_gta6"
+    },
+    {
+      "term": "gta 6 directo",
+      "demand_score": 10,
+      "category": "general_gta6"
+    },
+    {
+      "term": "gta 6 gameplay netflix",
+      "demand_score": 9,
+      "category": "gameplay_misiones"
+    },
+    {
+      "term": "gta 6 fisicas",
+      "demand_score": 9,
       "category": "fisicas_y_graficos"
+    },
+    {
+      "term": "gta 6 preventa reaccion",
+      "demand_score": 9,
+      "category": "estreno_19_noviembre"
+    },
+    {
+      "term": "gta 6 reserva directo",
+      "demand_score": 9,
+      "category": "estreno_19_noviembre"
+    },
+    {
+      "term": "gta 6 ps5 pro vs xbox series x",
+      "demand_score": 9,
+      "category": "fisicas_y_graficos"
+    },
+    {
+      "term": "gta 6 album",
+      "demand_score": 9,
+      "category": "general_gta6"
+    },
+    {
+      "term": "gta 6 countdown",
+      "demand_score": 9,
+      "category": "general_gta6"
+    },
+    {
+      "term": "gta 6 danirep",
+      "demand_score": 9,
+      "category": "general_gta6"
+    },
+    {
+      "term": "gta 6 español",
+      "demand_score": 9,
+      "category": "general_gta6"
+    },
+    {
+      "term": "gta 6 filtrado",
+      "demand_score": 9,
+      "category": "gameplay_misiones"
+    },
+    {
+      "term": "gta 6 mapa",
+      "demand_score": 9,
+      "category": "mundo_y_secretos"
+    },
+    {
+      "term": "gta 6 ultimate edition",
+      "demand_score": 8,
+      "category": "general_gta6"
     }
   ],
   "breaking_news": [
     {
-      "title": "GTA 6 exprime la tecnología de iluminación global y densidad climática",
-      "source": "3DJuegos",
-      "pub_date": "",
-      "link": ""
-    },
-    {
-      "title": "Los fans analizan al detalle las físicas de colisión y agua en GTA 6",
+      "title": "Cosas de GTA 6 que deberías saber antes de comprarlo, ya sea en edición 'física' o digital",
       "source": "Vandal",
-      "pub_date": "",
-      "link": ""
+      "pub_date": "Tue, 17 Nov 2026 19:47:43 GMT",
+      "link": "https://news.google.com/rss/articles/CBMiywFBVV95cUxOc0RMandsLXRkSk56SGJSUTR4OUtvdEt4TTlHbGRjTGpYampxaVpTVlh2T3J6bXA0MkVvNE9qZHhGMkJ3TXZVSlBFNXBCUUlBOEhyS053b2lxN1doZ2FNRjF5X0dMalcwNzBORmdCU2cxS1BkMDlyQ1pBenBwd0phZktaVklod2JvaS1jeXQ4N2pnWUFpbFFaa1ZEVWRscHRGRTlObElXQ1puMEkyVGpOQUJLQ0podDJMZlJCaGhBX1BiaVJPckVrVXMxVdIB0AFBVV95cUxPOTVsOFduRkZOX1ZlOVRwZ1FSRXBwYlJQbzh2R1c5UGl1OTFGS3Z6T3BlSXYyT0JMQWs2LWZQSm5xZ0tqeVYwUVRvYTQ2OWJBSEV2ZzhuU1dUZGpvNW9reHlSS2gwcjd5WnB4SnhmNExWQ25FODJYMUlJMmZURUwtUWRKY0FhOXR4dG8xRmdPemRaTE16aDRLd1lPTGFBblpyenRBSGpWLVpPM3gyYWpQWm50ZlpzUTRmdEQ0aS15SzJsSVBEN21CN2lKdUg2M0xJ?oc=5"
     },
     {
-      "title": "Filtraciones y secretos del mapa de Leonida ante el lanzamiento de GTA 6",
-      "source": "Eurogamer",
-      "pub_date": "",
-      "link": ""
+      "title": "Horarios de lanzamiento de GTA 6 por países: a qué hora empieza a jugarse",
+      "source": "elDiario.es",
+      "pub_date": "Tue, 17 Nov 2026 18:00:51 GMT",
+      "link": "https://news.google.com/rss/articles/CBMipAFBVV95cUxQUFZKaHpZOU9FdE5jV0xERDZPR2ZnZDl1Y2pEaU1vTW9Fd2pkaVlUR2RRelNVQVRrdjMxX0hRaUNCUVVqaWgzSzNzVDVvU1FaNnNSc3NFRmJKOVlFNzR6MC1zT0VSVnVZMkhCSGtSZTFBNXc4eWZybW4wSW5UeEthQmplZnY5OE5lOVR4b2ExX0FpOTZGaUNteXNSeEhjQ2tuSDZWRNIBqgFBVV95cUxPNGdnYmI3OEhzN1V6SnlzNVVUOWpCT0ZNZ25JUDVvU1FOcHpwMEJuUG85am1fTFptTFpOSy1CWTdFQUFSbmtDb2JXUnR3STU4R1BJWXVNM3I0dlp2UzNaMXpZaEI0dnhON29YaHl2cktSREZlRFQtQU04YV9kX1M1UEl2LWVJYUtTdmFhMjhpaFRURFJzQTFlQTdfSUNXRlpObV9HTjVNZEFEUQ?oc=5"
     },
     {
-      "title": "Comparativa de expectativas gráficas y rendimiento en PS5 Pro para GTA 6",
-      "source": "MeriStation",
-      "pub_date": "",
-      "link": ""
+      "title": "En qué plataformas sale GTA 6 y cuál es su rendimiento",
+      "source": "3DJuegos Guías",
+      "pub_date": "Tue, 17 Nov 2026 20:01:25 GMT",
+      "link": "https://news.google.com/rss/articles/CBMiiwFBVV95cUxPNUpRYWRKWlBueU5VWFVuWXFZZUVtLVpmUjRvT1hURzRqc2xyeEQwTFZwTTBuTzh0SjV4NThsSnFBb000cmdfaDE4R0dTSHdNOXh5UklaRVd5cjhkZndGUC04aWxnVm1GWmxLWXBpazcySy1ya2RRczgwVF9BMU1oa0o2dzJRWVVmU0RN0gGQAUFVX3lxTFBlUTZ1N2tWdGRDWGd1bTBhVklkTzNTTEg2ZHozM3ZkOFRWVUVEdlhlenlIZkR2UDlFenlnTDBqa1dFbU5SaU5UcGZadUdXVUVZaFE2SlRpWVZyU1hYbk1QUEFVYW5iN1VSdmRwZnJncHZzYUQ4QlplRUFmeUpBdHh5NUVqWi1ZT1ZMVWQ3ZmRfTA?oc=5"
+    },
+    {
+      "title": "Miami se llena de publicidad del Grand Theft Auto VI",
+      "source": "ABC",
+      "pub_date": "Tue, 17 Nov 2026 20:24:39 GMT",
+      "link": "https://news.google.com/rss/articles/CBMilwFBVV95cUxPSjZhSnVpSDVBRGxyYVJYMGFCWklmMHAwTFcwZ1RrTUZuX3BaajFucVRIQjBxYWx4QU04Wkk5V2lJZk1sRFdDTThRQmtLNi13YTRtY1k1V1A3TW53cW1WZFQ3ZFdEcW5DMzJFSjVCSmFMTEZkaFR5eXdCdHVscjVjZWZyeGg3WjhpbGVXZUVCZlZBYUV2ZE530gGcAUFVX3lxTE9rWUNGamxGOURmN1gxeXJNWThmWDJpcHY5MWRpTGdzak5VN3JCNmhrWXhfbUxWRndFSGlvUEozX0FwWTBBNHJLUllOYmNZRWFyTXVreXY2TlJQbDBQeldWNXVtV1JvSlFORC1aSmNmb21OMEdGUlJ1b2E3SVk4Y3J3a1RoQndUOUtpR3JEUFJ3UmFIbDFNakk0a0EwdQ?oc=5"
+    },
+    {
+      "title": "GTA 6 muestra en nuevas capturas lo impresionante que es el clima en Leonida, y estamos aún más impactados por los increíbles gráficos",
+      "source": "VidaExtra",
+      "pub_date": "Tue, 17 Nov 2026 13:33:36 GMT",
+      "link": "https://news.google.com/rss/articles/CBMizgFBVV95cUxPVENWaGVMX2dRMmtLQy1icVdYbHBsUDl0Uy1URktQOTdmNVM0Yy16MVpYckpQN09xblk0T2NtU21UUFhlME45YU5xRURNRmduN3RtU2hrbVM2WEdDaFVQNnZ0Q2NRSUMyZGZZcEdnN1E1d2NPejE0SDhRNTh5T3VBR2Fjb0NFOWExZGp1SXJ6MTFTeHJweUxoemVZTXJwVHNkNzUzbzhtNW9sb3hIZW5SUmFSS0kxcmw5VXIwVkNfVTU1TXhyLXhTaVNPdnBUZw?oc=5"
+    },
+    {
+      "title": "¿Cuánto cuesta GTA 6 en México? Precios para PlayStation y Xbox y cuánto cuesta cada edición",
+      "source": "MARCA",
+      "pub_date": "Tue, 17 Nov 2026 19:59:42 GMT",
+      "link": "https://news.google.com/rss/articles/CBMixAFBVV95cUxObU92aDZBcXlaeUpNOGJjcnNTYVVjRG1rYUdRQlg4ZU04R1FfUkY5UjJIRWFjMXczZlhVcnllSUktVUpMQWVGWFhOUnNsMzRNWWxOR3JkVGgwc2Y3QW1HY1JsU0E3WVJuekw3UFJlUDJsNnFsbVh5TS1jQW1LT293TlhXNGw0b2FmRjlNUjZfWlJwQmNzR3Ayak5wcDVzOU1MRVA3ZHJyekZ5X2tkeHBMRTVWVG9zZmJjMnpvNFQtNDJteDBB0gHEAUFVX3lxTE5HZENZbFRTakk5V0hLYXhtWGJ3MVp0RVR4WHFVOTZtZjk2elBFREhuMmZ4MEthZjV4dEZfQ1dnVGZMcDA0QjNGQnNmRk5OQ3NxRE9LakY3Yl8zbi1lSWc4TVpYQVpNVDF1aGRaQTN3RGxWRm5xenEzaWVwTVF1bUJGU2UtVlpWZ3FJTVJhNEhtTHRfYmNRRk84czBOUmRjWTRuUi1aV1d0R2xnV05IYk5aZ3BuWU1WS280WlBNUGRNYWhuSzk?oc=5"
+    },
+    {
+      "title": "La nominación a los TGA desvela la identidad de la actriz de Lucia en GTA 6",
+      "source": "Eurogamer.es",
+      "pub_date": "Tue, 17 Nov 2026 17:45:50 GMT",
+      "link": "https://news.google.com/rss/articles/CBMiogFBVV95cUxPM040aHRPRk5QZ2VsckhLQzlnR2IwTGw4bjdiRW9CMlV2N1Azczh0VFFYWmN4RDQ0dVYyaUw1TDFLMkZ4OEVDd2MzLVRIRTdNWThpUWd2ZVl4M1BENlBfUzRtRF9MbHVmaXlMOGNpZ29JeUg2dDkzMmRxUEhNSUplaFV3dEdNbk9kbVdPYnQtSmkxOHNMWEsyNzJ1ZDJCMDhOdVE?oc=5"
+    },
+    {
+      "title": "Cara o Cruz #304: ¿Te parece justo que GTA 6 esté nominado en los Game Awards 2026?",
+      "source": "Nintenderos",
+      "pub_date": "Tue, 17 Nov 2026 19:55:08 GMT",
+      "link": "https://news.google.com/rss/articles/CBMitwFBVV95cUxOTzhiZHZtZTdJQlNrSkVOYjJWZGZnOXk4MU50ZExhQmJCN3pTdGF3TDJrVFBpLV84X3hmckF3d2MxS2UzS1g1MlY1YjJKQ0lPcWpTVE9jUHVnS1luYkxlcDJ0dm5ZYmdLcDBfd3RObGtpeTEtNTJrN2dvNDZSaDJvdFdxR0xmRnUtSVNvM0NGZkFSeERheWxGYzk0NThKN0JiczlITjd5SmduRlVLODdHN09INDJnQzA?oc=5"
+    },
+    {
+      "title": "'Grand Theft Auto VI' acapara la mayoría de las nominaciones en “los Oscar del videojuego”",
+      "source": "La Vanguardia",
+      "pub_date": "Tue, 17 Nov 2026 18:17:21 GMT",
+      "link": "https://news.google.com/rss/articles/CBMiuwFBVV95cUxPdmloSXBPMHR6WGl6SGZ5d2VJOWZ6M1pfQXBobW5DenBLbmN5aXlXck9kUko3TDA1TWp6VnZHUXpDWTdwc2lueXdPWllHaWw1QUxfcmxsTXRCRkJtQVBUaU1DNUpOX2NUd0hiRlhuX2NHcGxMNGExRVRPTE55T2hXTDloQThOR0pONmNQVy04QW1razVpZTB1U0VMVVRBN2UyVTA0N3hIOG9wMnFMYXJHOEd2Y0xZUUI5V0930gHAAUFVX3lxTE5SRnJWcXRFWlF6UmlYYUdUZTNNeVVxbmZyVWhGQmE1N3h2MDUtNnV1ZjhFS1pGV0pMbTFDM0tUR0htUmx6QlYwU2pSRmhhZlpOWWlGWGo1c2lLV3BwSUVWT0swb09wdDlPd01Ga2Juckd5YUx4VklMT1lSUmdMejlJSEl3TlliUVVLWG1nZVJJeU42dWFJUGNRX0hUSng5ZXJsT0xwWGE4UHRRR0hGTDZFbXFiaXc0c3Rkb1c2M2s5eQ?oc=5"
     }
   ],
   "trending_keywords": [
-    "comparativa",
-    "leonida",
-    "fisicas",
-    "rage",
-    "agua",
-    "colisiones",
     "gameplay",
-    "filtrado",
-    "mecanicas",
-    "tiroteo",
-    "mapa",
-    "vice",
-    "city",
-    "novedades",
-    "confirmadas",
-    "rockstar",
-    "games",
-    "detalles",
-    "ocultos",
-    "lucia"
+    "edición",
+    "grand",
+    "theft",
+    "cuánto",
+    "cuesta",
+    "español",
+    "lanzamiento",
+    "lucia",
+    "fisicas",
+    "preventa",
+    "reserva",
+    "directo",
+    "cosas",
+    "deberías",
+    "saber",
+    "antes",
+    "comprarlo",
+    "física",
+    "digital"
   ],
   "dynamic_search_queries": [
-    "ytsearch10:gta 6 fisicas rage 9 agua y colisiones #shorts",
-    "ytsearch10:gta 6 gameplay filtrado mecanicas de tiroteo #shorts",
-    "ytsearch10:gta 6 mapa vice city comparativa leonida #shorts",
-    "ytsearch10:gta 6 novedades confirmadas rockstar games #shorts",
-    "ytsearch10:gta 6 detalles ocultos lucia y jason #shorts",
-    "ytsearch10:gta 6 comparativa grafica ps5 pro vs ps5 #shorts"
+    "ytsearch10:gta 6 gameplay #shorts",
+    "ytsearch10:gta 6 gameplay español #shorts",
+    "ytsearch10:gta 6 gameplay ps5 #shorts",
+    "ytsearch10:gta 6 gameplay 4k #shorts",
+    "ytsearch10:gta 6 19 de noviembre #shorts",
+    "ytsearch10:gta 6 fisicas del agua #shorts",
+    "ytsearch10:gta 6 fecha de lanzamiento #shorts",
+    "ytsearch10:gta 6 preventa rubius #shorts",
+    "ytsearch10:gta 6 reserva illojuan #shorts",
+    "ytsearch10:gta 6 ps5 pro 60fps #shorts",
+    "ytsearch10:gta 6 lucia jason kiss #shorts",
+    "ytsearch10:gta 6 analisis #shorts"
   ]
 }

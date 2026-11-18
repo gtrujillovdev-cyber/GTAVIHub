@@ -39,24 +39,22 @@ def get_client():
     cl = Client()
     cl.delay_range = [2, 5]
 
-    if not SESSION_FILE.exists():
-        print(f"[!] No existe sesion en {SESSION_FILE}")
-        print("    Ejecuta primero: .venv/bin/python3 scripts/setup_instagram_session.py")
-        sys.exit(1)
+    if SESSION_FILE.exists():
+        try:
+            cl.load_settings(str(SESSION_FILE))
+            acc = cl.account_info()
+            if (getattr(acc, "username", "") or "").strip().lower() == USERNAME.strip().lstrip("@").lower():
+                print(f"[*] Sesion de Instagram restaurada (@{acc.username}).")
+                cl.dump_settings(str(SESSION_FILE))
+                return cl
+        except Exception as e:
+            print(f"[*] Sesion cacheada no reutilizable ({e}), haciendo login completo...")
 
-    try:
-        cl.load_settings(str(SESSION_FILE))
-        cl.login(USERNAME, PASSWORD)
-        print("[*] Sesion de Instagram restaurada.")
-    except Exception as e:
-        print(f"[!] Error restaurando sesion: {e}")
-        print("[*] Intentando login completo...")
-        cl = Client()
-        cl.delay_range = [2, 5]
-        if not PASSWORD:
-            raise RuntimeError("Falta INSTAGRAM_PASSWORD en .env")
-        cl.login(USERNAME, PASSWORD)
-
+    if not PASSWORD:
+        raise RuntimeError("Falta INSTAGRAM_PASSWORD en .env")
+    cl = Client()
+    cl.delay_range = [2, 5]
+    cl.login(USERNAME, PASSWORD)
     cl.dump_settings(str(SESSION_FILE))
     return cl
 

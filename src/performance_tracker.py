@@ -38,11 +38,13 @@ def record_published_video(
     base_score: int = 0,
     velocity_vpd: float = 0.0,
     days_old: int = 0,
-    is_short: bool = True
+    is_short: bool = True,
+    target_channel: str = "main",
+    **kwargs
 ) -> None:
     """
     Registra un vídeo recién publicado en performance_records.json.
-    Se llamará desde pipeline.py tras mark_video_processed.
+    Se llamará desde pipeline.py o copilot.py tras mark_video_processed.
     """
     records = _load_records()
     # Evitar duplicados por video_id
@@ -56,6 +58,7 @@ def record_published_video(
         "velocity_vpd": velocity_vpd,
         "days_old": days_old,
         "is_short": is_short,
+        "target_channel": target_channel,
         "published_at": datetime.now().isoformat(),
         "metrics_fetched_at": None,
         "views_24h": None,

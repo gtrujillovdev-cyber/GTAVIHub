@@ -12,7 +12,7 @@ from .config import OUTPUT_DIR, TEMP_DIR, AUTO_DUB_ENGLISH
 from .downloader import download_video_and_subtitles
 from .translator import translate_srt, generate_video_metadata
 from .dubber import generate_voiceover
-from .video_editor import render_final_video, get_video_dimensions
+from .video_editor import render_final_video, get_video_dimensions, detect_horizontal_split_screen
 from .channels import mark_video_processed, get_processed_ids
 from .uploader import upload_to_youtube
 from .social_publisher import SocialPublisher
@@ -20,6 +20,101 @@ from .thumbnail_generator import create_video_thumbnail
 from .monitor import notify_macos
 from .cleaner import clean_temp_directory, clean_uploaded_video_file, enforce_storage_limits
 from .copilot import is_copilot_enabled, stage_pending_video
+
+def _count_spoken_words_in_srt(srt_path: Optional[Path]) -> int:
+    """Cuenta palabras habladas reales en un SRT ignorando numeración, marcas de tiempo y etiquetas tipo [Music]."""
+    if not srt_path or not srt_path.exists():
+        return 0
+    try:
+        words = 0
+        for raw_line in srt_path.read_text(encoding="utf-8", errors="ignore").splitlines():
+            line = raw_line.strip()
+            if not line or line.isdigit() or "-->" in line:
+                continue
+            cleaned = re.sub(r"\[[^\]]*\]|\([^\)]*\)", " ", line).strip()
+            if cleaned:
+                words += len(cleaned.split())
+        return words
+    except Exception:
+        return 0
+
+
+def _is_pure_visual_title(title: str) -> bool:
+    """Detecta comparativas visuales puras o gameplay explícito sin narración."""
+    tl = f" {(title or '').lower()} "
+    return any(
+        kw in tl
+        for kw in (
+            " vs ", "fps", "comparison", "comparativa",
+            "no commentary", "sin comentarios", "pure gameplay", "gameplay only"
+        )
+    )
+
+
+def _evaluate_gray_frames_retention(frames: list, width: int = 160) -> tuple:
+    """
+    Evalúa fotogramas en escala de grises (bytes) para detectar planos fijos (talking-head)
+    o diapositivas/tarjetas de texto estáticas de fondo claro sin retención visual.
+    """
+    if len(frames) < 3:
+        return True, "OK"
+
+    slide_frames = 0
+    for fr in frames:
+        n = len(fr)
+        if n <= width:
+            continue
+        bright_flat = 0
+        for idx in range(1, n):
+            px = fr[idx]
+            if px >= 220 and abs(px - fr[idx - 1]) <= 2:
+                bright_flat += 1
+        if (bright_flat / n) >= 0.48:
+            slide_frames += 1
+
+    slide_ratio = slide_frames / len(frames)
+    if slide_ratio >= 0.45:
+        return False, f"diapositivas/tarjetas estáticas ({slide_frames}/{len(frames)} frames)"
+
+    static_pairs = 0
+    for i in range(len(frames) - 1):
+        f1, f2 = frames[i], frames[i + 1]
+        if len(f1) != len(f2) or not f1:
+            continue
+        mad = sum(abs(a - b) for a, b in zip(f1, f2)) / len(f1)
+        if mad < 7.5:
+            static_pairs += 1
+
+    static_ratio = static_pairs / max(len(frames) - 1, 1)
+    if static_ratio >= 0.75:
+        return False, f"plano fijo sin movimiento ({static_pairs}/{len(frames) - 1} transiciones estáticas)"
+
+    return True, "OK"
+
+
+def _inspect_clip_motion_and_slides(video_path: Path, clip_dur_sec: float) -> tuple:
+    """Extrae hasta 8 mini-fotogramas 160x90 en grises vía ffmpeg y valida dinamismo visual."""
+    w, h = 160, 90
+    frame_bytes = w * h
+    sample_fps = max(0.25, min(0.65, 8.0 / min(max(clip_dur_sec, 12.0), 30.0)))
+    try:
+        res = subprocess.run(
+            [
+                "ffmpeg", "-threads", "2", "-t", "30", "-i", str(video_path),
+                "-vf", f"fps={sample_fps:.3f},scale={w}:{h},format=gray",
+                "-f", "rawvideo", "-pix_fmt", "gray", "-"
+            ],
+            capture_output=True, timeout=20
+        )
+        raw = res.stdout
+        if not isinstance(raw, (bytes, bytearray)) or len(raw) < frame_bytes * 3:
+            return True, "OK"
+        count = min(10, len(raw) // frame_bytes)
+        frames = [raw[i * frame_bytes:(i + 1) * frame_bytes] for i in range(count)]
+        return _evaluate_gray_frames_retention(frames, width=w)
+    except Exception:
+        return True, "OK"
+
 
 def process_single_video(
     url: str,
@@ -62,7 +157,12 @@ def process_single_video(
     print(f"    Título Original: {original_title}")
     print(f"    Creador: {creator_name or 'Rockstar Games'}")
     print(f"    Idioma Origen: {source_lang.upper()}")
-    print(f"    Modo: {'Subtítulos Dinámicos' if mode == 'subs' else 'Doblaje de Voz'}")
+    mode_label = (
+        "Gameplay / Audio del Juego"
+        if mode in ("gameplay", "clean")
+        else ("Subtítulos Dinámicos" if mode == "subs" else "Doblaje Neural ES")
+    )
+    print(f"    Modo: {mode_label}")
     print(f"    Auto-Subida: {'SÍ (' + effective_privacy.upper() + ')' if auto_upload else 'NO'}")
     print(f"=======================================================")
 
@@ -124,9 +224,58 @@ def process_single_video(
 
     lang_to_use = detected_lang if detected_lang in ["es", "en"] else source_lang
 
-    # Detectar dimensiones y formato
+    # Detectar dimensiones, formato y pacing visual real antes de gastar tokens en audio/IA
     width, height = get_video_dimensions(video_path)
     is_vertical = (height > width)
+    is_split_comparison = (width > height) and detect_horizontal_split_screen(video_path)
+
+    # Probe de duración y ritmo de cortes (en modo autónomo, rechaza vídeos estáticos con <3 cortes en >=15s salvo split-screen)
+    clip_dur_sec = 0.0
+    try:
+        p_dur = subprocess.run(
+            ["ffprobe", "-v", "quiet", "-show_entries", "format=duration", "-of", "csv=p=0", str(video_path)],
+            capture_output=True, text=True, timeout=10
+        )
+        clip_dur_sec = float(p_dur.stdout.strip()) if p_dur.stdout.strip() else 0.0
+    except Exception:
+        clip_dur_sec = 0.0
+
+    if not is_manual_ingest and not is_split_comparison and not allow_official_commentary and clip_dur_sec >= 15.0:
+        try:
+            sc_res = subprocess.run(
+                [
+                    "ffmpeg", "-threads", "2", "-t", "30", "-i", str(video_path),
+                    "-vf", "fps=3,scale=320:-1,select='gt(scene,0.22)',showinfo", "-f", "null", "-"
+                ],
+                capture_output=True, text=True, timeout=25
+            )
+            scene_cuts = sum(1 for ln in (sc_res.stderr or "").splitlines() if "pts_time:" in ln)
+            reject_status = ""
+            reject_msg = ""
+            if scene_cuts < 3:
+                reject_status = "skipped_static_visuals"
+                reject_msg = f"Vídeo demasiado estático ({scene_cuts} cortes en {clip_dur_sec:.1f}s)"
+            else:
+                ok_motion, motion_reason = _inspect_clip_motion_and_slides(video_path, clip_dur_sec)
+                if not ok_motion:
+                    reject_status = "skipped_static_slides"
+                    reject_msg = f"Retención visual insuficiente: {motion_reason}"
+            if reject_status:
+                print(f"[!] [Quality Visual Shield] {reject_msg}. Descartando...")
+                mark_video_processed({
+                    "id": video_id,
+                    "title": original_title,
+                    "creator": creator_name,
+                    "url": url,
+                    "status": reject_status,
+                    "date": datetime.now().isoformat()
+                })
+                clean_temp_directory(video_id)
+                gc.collect()
+                return None
+        except Exception:
+            pass
+
     # En este canal TODO vídeo debe salir obligatoriamente en formato Vertical 9:16 (Shorts/TikTok/Reels),
     # salvo que se indique de forma estricta force_short=False.
     if force_short is False:
@@ -138,15 +287,52 @@ def process_single_video(
 
     # 2. Procesar/Traducir subtítulos si existen (o transcribir audio / comentario editorial con Gemini Flash)
     report_stage("🤖 [2/5] Analizando pistas y generando subtítulos/metadatos...")
-    # Usar source_lang real del audio (evita omitir doblaje cuando un vídeo inglés trae pista de subtítulos en español)
-    audio_needs_dub = (source_lang != "es")
+    # Usar tanto source_lang como detected_lang e inferencia del título para jamás colar inglés sin doblar
+    _en_title_hint = bool(re.search(
+        r"\b(the|and|with|from|this|that|just|blew|mind|everyone|everyones|new|gameplay|graphics|comparison|breakdown|missed|things|secrets|details|trailer|now|pre-load|preload|physics|realistic|versus)\b",
+        (original_title or "").lower()
+    )) and not bool(re.search(
+        r"\b(el|la|los|las|del|como|para|por|con|sin|este|esta|estos|nuevo|nueva|nuevos|secretos|detalles|comparativa|graficos|gráficos|fisicas|físicas|lanzamiento|tráiler|filtracion|filtración)\b",
+        (original_title or "").lower()
+    ))
+    if _en_title_hint and lang_to_use == "es":
+        lang_to_use = "en"
+    audio_needs_dub = (source_lang != "es" or lang_to_use != "es" or _en_title_hint)
     generated_editorial_script = False
+    confirmed_no_speech = False
     es_srt_path = None
     if allow_official_commentary and srt_path and srt_path.exists():
-        # Conservar pistas de subtítulos reales para traducir y dar contexto exacto a metadatos (sin alucinar títulos)
-        print("[*] Spot oficial con rótulos/subtítulos detectados: conservando pistas para contexto fiel en español...")
+        # Conservar pistas de subtítulos reales para traducir y dar contexto exacto a metadatos (sin doblar música de tráilers)
+        print("[*] Spot oficial con rótulos/subtítulos detectados: conservando audio original de Rockstar y subtítulos en español...")
 
-    if srt_path and srt_path.exists():
+    # Guardia Anti-Inglés: si IA eligió 'gameplay'/'clean' en autónomo sobre vídeo en inglés con locución real,
+    # forzar traducción + autodoblaje (no publicar inglés crudo salvo comparativas split o spots oficiales).
+    allow_pure_gameplay = (
+        is_manual_ingest
+        or is_split_comparison
+        or allow_official_commentary
+        or lang_to_use == "es"
+    )
+    if mode in ("gameplay", "clean") and not allow_pure_gameplay:
+        srt_spoken_words = _count_spoken_words_in_srt(srt_path)
+        if srt_spoken_words >= 12:
+            target_mode = "dub" if AUTO_DUB_ENGLISH else "subs"
+            print(
+                f"[!] [Guardia Anti-Inglés] Detectada locución ({srt_spoken_words} palabras en {lang_to_use.upper()}) "
+                f"pese a modo '{mode}'. Activando modo '{target_mode}'."
+            )
+            mode = target_mode
+        elif not (srt_path and srt_path.exists()) and not _is_pure_visual_title(original_title):
+            print(
+                f"[*] [Guardia Anti-Inglés] Modo '{mode}' sin subtítulos ni título visual puro: "
+                "verificando voz en audio con Gemini antes de conservar audio original..."
+            )
+            mode = "dub" if AUTO_DUB_ENGLISH else "subs"
+
+    if mode in ("gameplay", "clean"):
+        print("[*] Modo Gameplay/Visual limpio: preservando audio del juego sin transcribir diálogos de fondo.")
+        es_srt_path = None
+    elif srt_path and srt_path.exists():
         es_srt_path = TEMP_DIR / f"{video_id}_es.srt"
         success_trans = translate_srt(
             srt_path,
@@ -157,7 +343,7 @@ def process_single_video(
             print("[Warning] No se pudieron traducir subtítulos al español.")
             es_srt_path = None
     else:
-        # En spots oficiales NO transcribir letras musicales del tráiler: pasar directo a narración editorial propia
+        # En spots oficiales o gameplay puro NO transcribir letras musicales/diálogos de fondo
         if not allow_official_commentary:
             # Si no hay subtítulos nativos, intentar transcribir directamente el audio del clip con Gemini Flash
             try:
@@ -192,6 +378,7 @@ def process_single_video(
                     elif success_ai and not has_speech:
                         print("[*] Audio analizado: Clip sin narración (gameplay o efectos de sonido puros).")
                         es_srt_path = None
+                        confirmed_no_speech = True
                 if temp_audio.exists():
                     temp_audio.unlink(missing_ok=True)
             except Exception as e:
@@ -218,19 +405,13 @@ def process_single_video(
                 print(f"[OCR] Info extracción de texto en pantalla: {e}")
 
     # Si es clip oficial/visual con música/rótulos breves (<12 palabras) o sin locución, usar modo gameplay (conserva audio original sin abortar en Audio Shield)
-    _active_caption_words = 0
-    _cap_check = es_srt_path or srt_path
-    if _cap_check and _cap_check.exists():
-        try:
-            _lines = [l.strip() for l in _cap_check.read_text(encoding="utf-8", errors="ignore").splitlines() if l.strip() and not l.strip().isdigit() and "-->" not in l]
-            _active_caption_words = len(" ".join(_lines).split())
-        except Exception:
-            _active_caption_words = 0
+    _active_caption_words = _count_spoken_words_in_srt(es_srt_path or srt_path)
 
     if (not es_srt_path and not (srt_path and srt_path.exists())) or (allow_official_commentary and _active_caption_words < 12):
         tl_lower = (original_title or "").lower()
         is_visual_showcase = (
             mode in ("gameplay", "clean")
+            or confirmed_no_speech
             or allow_official_commentary
             or any(
                 kw in tl_lower
@@ -262,13 +443,21 @@ def process_single_video(
         clean_temp_directory(video_id)
         return None
 
-    # 4. Doblaje de voz neural en español (solo bajo demanda explícita en modo dub/voice, o si AUTO_DUB_ENGLISH=true)
+    # 4. Doblaje de voz neural en español (obligatorio en autónomo para voz en inglés si AUTO_DUB_ENGLISH=true, o bajo demanda en modo dub)
+    # En anuncios oficiales de Rockstar (allow_official_commentary=True), JAMÁS doblar los subtítulos automáticos de música/canciones;
+    # preservar el audio original de Rockstar con subtítulos en español.
     dub_audio_path = None
-    should_dub = (mode in ["dub", "voice"]) or (mode not in ["short", "subs", "gameplay", "clean"] and AUTO_DUB_ENGLISH and audio_needs_dub)
+    if allow_official_commentary and not is_manual_ingest:
+        print("[*] Anuncio oficial de Rockstar: preservando banda sonora/audio original sin doblar canciones con TTS.")
+        should_dub = False
+    else:
+        should_dub = (mode in ["dub", "voice"]) or (
+            AUTO_DUB_ENGLISH and audio_needs_dub and not is_manual_ingest and mode not in ["gameplay", "clean"]
+        )
     if should_dub and es_srt_path and audio_needs_dub:
         dub_audio_path = TEMP_DIR / f"{video_id}_es_voice.mp3"
         print(f"[*] Modo voz activa (ES Neural). Generando locución en español...")
-        if generate_voiceover(es_srt_path, dub_audio_path):
+        if generate_voiceover(es_srt_path, dub_audio_path, max_duration=clip_dur_sec or None):
             mode = "dub"
         else:
             dub_audio_path = None
@@ -393,20 +582,25 @@ def process_single_video(
     thumb_path = OUTPUT_DIR / f"{slug}_{video_id}_thumb.jpg"
     meta_path = OUTPUT_DIR / f"{slug}_{video_id}_info.json"
 
-    # Formato D (83.3%) para gameplay puro/físicas/spots Rockstar sin textos laterales;
-    # Formato FIT (16:9 completo) para breakdowns, comparativas, reacciones y spots PlayStation/Xbox con texto en pantalla
+    # Selección de encuadre inteligente:
+    # - SPLIT: comparativas lado-a-lado 50/50 apiladas verticalmente (93.8% pantalla)
+    # - D (83.3%): gameplay puro, físicas, acción, trailers/spots sin textos laterales
+    # - C (4:5 / 70.3%): análisis técnicos y comparativas full-frame (2.2x más área visual que FIT)
     is_comparison_or_breakdown = any(
         kw in title_lower
         for kw in (" vs ", "comparison", "comparativa", "breakdown", "missed", "reaction", "reacciona", "reacción", "fps", "analysis", "review", "features")
     ) or any(ch_k in creator_lower for ch_k in ("playstation", "xbox", "ign", "digital foundry", "elanalistadebits"))
-    if is_comparison_or_breakdown or (not allow_official_commentary and archetype in {"analisis_tecnico", "reaccion_streamer", "noticia_oficial", "filtracion_misterio", "humor_parodia"}):
-        target_preset = "FIT"
-    elif allow_official_commentary or archetype in {"gameplay_puro", "rage9_physics", "weapons_shooting_rdr2", "fisicas"}:
-        target_preset = "D"
-    else:
-        target_preset = "FIT"
 
-    render_srt = None if (mode == "gameplay" and allow_official_commentary) else es_srt_path
+    if is_split_comparison:
+        target_preset = "SPLIT"
+    elif is_comparison_or_breakdown:
+        # Formato C (4:5 / 70.3% de pantalla): mantiene barras comparativas visibles pero con 2.2x más área que FIT
+        target_preset = "C"
+    else:
+        # Formato D (1080x1600 / 83.3% de pantalla): reencuadre vertical inmersivo obligatorio según Regla 5.1 de GEMINI.md
+        target_preset = "D"
+
+    render_srt = None if mode == "gameplay" else es_srt_path
 
     success_render = render_final_video(
         input_video=video_path,
@@ -500,6 +694,7 @@ def process_single_video(
                 "block_instagram": block_instagram,
                 "allowed_platforms": allowed_platforms,
                 "has_voiceover": (dub_audio_path is not None and dub_audio_path.exists()) or (mode in ["dub", "voice"]),
+                "is_transformed_visual": is_split_comparison,
                 "mode": mode
             },
             is_short=is_short,
@@ -573,6 +768,7 @@ def process_single_video(
                 "privacy": effective_privacy,
                 "mode": mode,
                 "has_voiceover": (dub_audio_path is not None and dub_audio_path.exists()) or (mode in ["dub", "voice"]),
+                "is_transformed_visual": is_split_comparison,
                 "block_instagram": block_instagram,
                 "allowed_platforms": allowed_platforms
             },

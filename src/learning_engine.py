@@ -14,7 +14,7 @@ from .translator import get_gemini_client, clean_srt_response
 from .channels import list_monitored_channels
 
 PLAYBOOK_FILE = DATA_DIR / "viral_playbook.json"
-OWN_CHANNEL_URL = "https://www.youtube.com/channel/UCBOl2KuaHEoUWYWJqb7ID9Q/videos"
+OWN_CHANNEL_URL = "https://www.youtube.com/@gtavihubextra/shorts"
 
 DEFAULT_PLAYBOOK = {
     "version": 1,

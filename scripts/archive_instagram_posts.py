@@ -7,6 +7,7 @@ antigua para congelar el historial algorítmico y empezar limpio.
 import os
 import sys
 import json
+import time
 from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -31,12 +32,15 @@ def archive_all_instagram_posts():
         try:
             print("[*] Intentando conectar con sesión guardada en instagrapi_session.json...")
             cl.load_settings(str(SESSION_FILE))
-            if ig_user and ig_pass:
-                cl.login(ig_user, ig_pass)
+            acc = cl.account_info()
+            if ig_user and (getattr(acc, "username", "") or "").lower() != ig_user.strip().lstrip("@").lower():
+                raise RuntimeError("La sesión cacheada pertenece a otro usuario")
             logged_in = True
-            print("[✓] Conectado a Instagram.")
+            print(f"[✓] Conectado a Instagram (@{acc.username}).")
         except Exception as e:
             print(f"[*] Sesión expirada o no válida ({e}).")
+            cl = Client()
+            cl.delay_range = [2, 4]
 
     if not logged_in:
         if not ig_user or not ig_pass:
@@ -69,6 +73,7 @@ def archive_all_instagram_posts():
                 if res:
                     archived_count += 1
                     print(f"    ✓ [Archivado]")
+                time.sleep(1.2)
             except Exception as e:
                 print(f"    [!] Error archivando {m.id}: {e}")
 

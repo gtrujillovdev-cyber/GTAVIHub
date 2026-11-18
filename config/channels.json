@@ -173,13 +173,14 @@
       "description": "Shorts de curiosidades y opiniones de DarkViperAU"
     },
     {
-      "name": "Sonny Evans (Shorts)",
-      "url": "https://www.youtube.com/@SonnyEvans/shorts",
+      "name": "Sonny Evans",
+      "url": "https://www.youtube.com/@sonnyfnevans/videos",
       "type": "breakdowns",
       "lang": "en",
       "filter_keywords": true,
+      "allow_long_clipping": true,
       "enabled": true,
-      "description": "Shorts de físicas, mapa y secretos de Sonny Evans"
+      "description": "Físicas, mapa y secretos de Sonny Evans (@sonnyfnevans)"
     },
     {
       "name": "The Professional (Shorts)",
@@ -196,8 +197,8 @@
       "type": "lore_and_details",
       "lang": "en",
       "filter_keywords": true,
-      "enabled": true,
-      "description": "Shorts de Easter Eggs y secretos ocultos de Rockstar"
+      "enabled": false,
+      "description": "Shorts de Easter Eggs y secretos ocultos de Rockstar (DESACTIVADO: sin pestaña /shorts)"
     },
     {
       "name": "Badger Goodger (Shorts)",
@@ -205,17 +206,18 @@
       "type": "breakdowns",
       "lang": "en",
       "filter_keywords": true,
-      "enabled": true,
-      "description": "Shorts de detalles del mundo abierto y lore"
+      "enabled": false,
+      "description": "Shorts de detalles del mundo abierto y lore (DESACTIVADO: sin pestaña /shorts)"
     },
     {
-      "name": "INTER (Shorts)",
-      "url": "https://www.youtube.com/@INTER_yt/shorts",
+      "name": "INTER GTA",
+      "url": "https://www.youtube.com/@intergta/videos",
       "type": "breakdowns",
       "lang": "en",
       "filter_keywords": true,
+      "allow_long_clipping": true,
       "enabled": true,
-      "description": "Shorts de comparativas visuales y físicas"
+      "description": "Comparativas visuales y físicas de INTER GTA (@intergta)"
     },
     {
       "name": "SWEGTA (Shorts)",
@@ -263,13 +265,14 @@
       "description": "Análisis técnico de vehículos, armas y físicas"
     },
     {
-      "name": "ENXGMA (Shorts)",
-      "url": "https://www.youtube.com/@ENXGMA/shorts",
+      "name": "ENXGMA",
+      "url": "https://www.youtube.com/@enxgma_yt/videos",
       "type": "breakdowns",
       "lang": "en",
       "filter_keywords": true,
+      "allow_long_clipping": true,
       "enabled": true,
-      "description": "Documentales de diseño y detalles de mundo abierto"
+      "description": "Documentales de diseño y detalles de mundo abierto (@enxgma_yt)"
     },
     {
       "name": "Digital Foundry (Shorts)",
@@ -662,8 +665,8 @@
       "type": "gta_authority",
       "lang": "en",
       "filter_keywords": true,
-      "enabled": true,
-      "description": "Noticias comunitarias oficiales de Rockstar Universe"
+      "enabled": false,
+      "description": "Noticias comunitarias oficiales de Rockstar Universe (DESACTIVADO: handle incorrecto en YouTube)"
     },
     {
       "name": "GTA 6 Countdown (Shorts)",
@@ -671,8 +674,8 @@
       "type": "countdown_news",
       "lang": "en",
       "filter_keywords": true,
-      "enabled": true,
-      "description": "Cuenta atrás y novedades de GTA 6 Countdown"
+      "enabled": false,
+      "description": "Cuenta atrás y novedades de GTA 6 Countdown (DESACTIVADO: 404 sin /shorts)"
     },
     {
       "name": "Jordi Maquiavello (Shorts)",
@@ -819,54 +822,60 @@
   "search_queries": [
     {
       "query": "ytsearch15:GTA 6 graficos comparativa RAGE 9 #shorts",
-      "sp": "EgYIBBABGAE=",
       "lang": "es",
       "only_shorts": true,
       "enabled": true,
-      "description": "Comparativas gráficas y físicas RAGE 9 (<4m este mes) en español"
+      "description": "Comparativas gráficas y físicas RAGE 9 en español"
     },
     {
       "query": "ytsearch15:GTA 6 30 fps vs 60 fps comparison",
-      "sp": "EgYIBBABGAE=",
+      "sp": "EgQIAxAB",
       "lang": "en",
       "only_shorts": false,
       "allow_long_clipping": true,
       "enabled": true,
-      "description": "Comparativas técnicas FPS / consola (<4m este mes, auto-clipping 16:9)"
+      "description": "Comparativas técnicas FPS / consola de esta semana (auto-clipping 16:9)"
     },
     {
       "query": "ytsearch15:GTA 6 gameplay vs RDR 2 comparison",
-      "sp": "EgYIBBABGAE=",
+      "sp": "EgQIAxAB",
       "lang": "en",
       "only_shorts": false,
       "allow_long_clipping": true,
       "enabled": true,
-      "description": "Comparativas visuales y mecánicas GTA 6 vs RDR2/GTA5 (<4m este mes)"
+      "description": "Comparativas visuales y mecánicas GTA 6 vs RDR2/GTA5 de esta semana"
+    },
+    {
+      "query": "ytsearch15:GTA 6 PS5 Pro graphics physics breakdown",
+      "sp": "EgQIAhAB",
+      "lang": "en",
+      "only_shorts": false,
+      "allow_long_clipping": true,
+      "enabled": true,
+      "description": "Última hora HOY: análisis gráficos/físicas GTA 6 PS5 Pro (auto-clipping)"
     },
     {
       "query": "ytsearch15:GTA 6 curiosidades secretos mapa #shorts",
-      "sp": "EgYIBBABGAE=",
       "lang": "es",
       "only_shorts": true,
       "enabled": true,
-      "description": "Curiosidades y secretos dinámicos (<4m este mes) en español"
+      "description": "Curiosidades y secretos dinámicos en español"
     },
     {
       "query": "ytsearch15:GTA 6 gameplay conduccion fisicas detalles #shorts",
-      "sp": "EgYIBBABGAE=",
       "lang": "es",
       "only_shorts": true,
       "enabled": true,
-      "description": "Gameplay real y físicas (<4m este mes) en español"
+      "description": "Gameplay real y físicas en español"
     },
     {
       "query": "ytsearch15:GTA 6 vs GTA 5 graphics comparison",
-      "sp": "EgYIBBABGAE=",
+      "sp": "EgQIAxAB",
       "lang": "en",
       "only_shorts": false,
       "allow_long_clipping": true,
       "enabled": true,
-      "description": "Comparativas visuales puras GTA 6 vs GTA 5/RDR2 (<4m este mes, auto-clipping)"
+      "description": "Comparativas visuales puras GTA 6 vs GTA 5/RDR2 de esta semana (auto-clipping)"
     },
     {
       "query": "ytsearch15:GTA 6 South Park parodia #shorts",

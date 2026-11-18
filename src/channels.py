@@ -83,6 +83,8 @@ def is_strictly_gta6(title: str, description: str = "") -> bool:
         r"\bmidnight\s*club\b", r"\bcircoloco\b", r"\bla\s*noire\b", r"\bmanhunt\b",
         r"\bfortnite\b", r"\bcall\s*of\s*duty\b", r"\bwarzone\b", r"\bminecraft\b",
         r"\bcyberpunk\b", r"\belden\s*ring\b", r"\broblox\b", r"\beafc\b", r"\bfifa\b",
+        r"\bnba\s*2k\d*\b", r"\b2k2[45678]\b", r"\bwwe\s*2k\d*\b", r"\bmadden\b", r"\bnhl\b",
+        r"\bcrossover\b", r"\bcollab\b", r"\bonlyindade\b",
         r"\bvalorant\b", r"\bleague\s*of\s*legends\b", r"\bassassin'?s\s*creed\b",
         r"\bspider-?man\b", r"\bwolverine\b", r"\bstar\s*field\b", r"\bhalo\b",
         r"\bresident\s*evil\b", r"\bsilent\s*hill\b", r"\bblack\s*myth\b", r"\bwukong\b",
@@ -181,10 +183,12 @@ def is_strictly_gta6(title: str, description: str = "") -> bool:
     non_target_lang_markers = [
         r"\bvoc[eê]\b", r"\bn[aã]o\b", r"\bjogando\b", r"\bdublado\b",
         r"\bolha\b", r"\bgalera\b", r"\bjogos\b",
-        r"\blan[cç]amento\b", r"\bcomente\b", r"\bcurte\b", r"\bdeixa\s*o\s*like\b",
+        r"\blan[cç]amento\b", r"\blan[cç]ar\b", r"\bcomente\b", r"\bcurte\b", r"\bdeixa\s*o\s*like\b",
         r"\bportugu[eê]s\b", r"\bbrasileiro\b", r"\bbrasil\b", r"\bmuito\b",
+        r"\bcoisas\b", r"\bvou\b", r"\bfazer\b", r"\bassim\b", r"\bquando\b",
+        r"\bmelhores\b", r"\bpior\b", r"\btudo\b",
         r"\bnederland\b", r"\blaunchtrailer\b", r"\bdeutschland\b", r"\bdeutsch\b",
-        r"\bfrançais\b", r"\bfrance\b", r"\bitaliano\b", r"\bitalia\b", r"[\u0400-\u04FF]"
+        r"\bfrançais\b", r"\bfrance\b", r"\bbande[- ]?annonce\b", r"\bitaliano\b", r"\bitalia\b", r"[\u0400-\u04FF]"
     ]
     for pattern in non_target_lang_markers:
         if re.search(pattern, combined):
@@ -265,7 +269,13 @@ def is_strictly_gta6(title: str, description: str = "") -> bool:
         r"\bdebate\b",
         r"\bhablando\b",
         r"\bfacecam\b",
-        r"\breactor\b"
+        r"\breactor\b",
+        r"\bblew\s+everyone'?s\s+mind\b",
+        r"\bjust\s+blew\b",
+        r"\breal\s+life\s+graphics\b",
+        r"\bno\s+avances\s+(la\s+)?historia\b",
+        r"\bsin\s+hacer\s+estas\b",
+        r"\bantes\s+de\s+empezar\s+(la\s+)?historia\b"
     ]
     for pattern in talking_head_regexes:
         if re.search(pattern, combined):
@@ -277,7 +287,7 @@ def is_strictly_gta6(title: str, description: str = "") -> bool:
 is_strictly_gta = is_strictly_gta6
 
 def get_daily_published_count() -> int:
-    """Cuenta cuántos vídeos han sido completados en las últimas 24 horas."""
+    """Cuenta cuántos vídeos han sido completados o publicados vía Co-Pilot en las últimas 24 horas."""
     if not PROCESSED_FILE.exists():
         return 0
     try:
@@ -287,13 +297,15 @@ def get_daily_published_count() -> int:
             data = json.load(f)
             count = 0
             for v in data:
-                if v.get("status") == "completed" and v.get("date"):
-                    try:
-                        v_date = datetime.fromisoformat(v["date"])
-                        if v_date >= cutoff:
-                            count += 1
-                    except Exception:
-                        pass
+                if v.get("status") in ("completed", "published_via_copilot"):
+                    date_str = v.get("approved_at") or v.get("date")
+                    if date_str:
+                        try:
+                            v_date = datetime.fromisoformat(date_str)
+                            if v_date >= cutoff:
+                                count += 1
+                        except Exception:
+                            pass
             return count
     except Exception:
         return 0
@@ -335,7 +347,8 @@ _STOPWORDS = {
     "gta", "vi", "gtavi", "gta6", "grand", "theft", "auto", "rockstar", "games",
     "shorts", "short", "video", "videos", "official", "new", "nuevo", "nueva",
     "nuevos", "nuevas", "con", "los", "las", "que", "como", "del", "para", "por",
-    "una", "uno", "this", "that", "with", "from", "the", "and", "out", "finally"
+    "una", "uno", "this", "that", "with", "from", "the", "and", "out", "finally",
+    "trailer", "tráiler", "now", "ya", "teaser"
 }
 
 def _tokenize_title_for_dedup(text: str) -> set:
@@ -344,7 +357,7 @@ def _tokenize_title_for_dedup(text: str) -> set:
 
 def _strip_franchise_tokens_for_dedup(text: str) -> str:
     cleaned = re.sub(
-        r"\b(grand\s+theft\s+auto\s+(?:vi|6)|gta\s*(?:vi|6)|rockstar\s+games?|official|shorts?)\b",
+        r"\b(grand\s+theft\s+auto\s+(?:vi|6)|gta\s*(?:vi|6)|rockstar\s+games?|official|shorts?|tr[aá]iler|teaser|now)\b",
         " ",
         (text or "").lower(),
     )
@@ -373,11 +386,22 @@ def filter_repetitive_candidates(
                 processed_entries = []
 
     processed_ids = {e.get("id") for e in processed_entries if e.get("id")}
-    # Revisar los últimos 40 elementos y TODOS los rechazados/en espera recientes
-    recent_pool = processed_entries[-40:]
+    # Si se pasan processed_entries explícitamente (ej. tests), usar todo el conjunto provisto.
+    # Si viene del PROCESSED_FILE general en producción, filtrar solo publicaciones reales y rechazos explícitos del operador,
+    # excluyendo estados técnicos o saltados en staging ('staged_copilot', 'skipped', 'skipped_static_visuals')
+    # que bloquean noticias frescas del radar.
+    if processed_entries is not None:
+        effective_pool = [
+            e for e in processed_entries
+            if e.get("status") not in ("staged_copilot", "skipped", "skipped_static_visuals")
+        ]
+    else:
+        effective_pool = processed_entries
+
+    recent_pool = effective_pool[-40:]
     recent_creators = [
         (e.get("creator") or "").strip().lower()
-        for e in processed_entries[-3:]
+        for e in effective_pool[-3:]
         if e.get("creator") and not str(e.get("creator")).startswith("Search:")
     ]
 
@@ -412,7 +436,8 @@ def filter_repetitive_candidates(
             if tokens and hist_tokens:
                 overlap = len(tokens & hist_tokens)
                 union = len(tokens | hist_tokens)
-                if overlap >= 3 and (overlap / max(1, union)) >= 0.55:
+                min_len = min(len(tokens), len(hist_tokens))
+                if (overlap >= 3 and (overlap / max(1, union)) >= 0.55) or (min_len <= 3 and overlap >= 2 and (overlap / max(1, union)) >= 0.50):
                     is_duplicate_topic = True
                     break
 
@@ -429,7 +454,8 @@ def filter_repetitive_candidates(
             if tokens and prev_tokens:
                 overlap = len(tokens & prev_tokens)
                 union = len(tokens | prev_tokens)
-                if overlap >= 3 and (overlap / max(1, union)) >= 0.60:
+                min_len = min(len(tokens), len(prev_tokens))
+                if (overlap >= 3 and (overlap / max(1, union)) >= 0.60) or (min_len <= 3 and overlap >= 2 and (overlap / max(1, union)) >= 0.50):
                     is_intra_batch_dup = True
                     break
         if is_intra_batch_dup:
@@ -506,7 +532,7 @@ def fetch_channel_candidates(max_per_channel: int = 2) -> List[Dict[str, Any]]:
                 "--no-check-certificates",
                 "--flat-playlist",
                 "--print", "%(id)s\t%(title)s\t%(duration)s\t%(view_count)s\t%(like_count)s\t%(url)s\t%(upload_date)s\t%(uploader)s",
-                "-I", f"1:{max(5, max_per_channel * 3)}",
+                "-I", f"1:{max(15, max_per_channel * 7)}",
                 target_url
             ], capture_output=True, text=True, check=True, timeout=25)
             res_stdout = res.stdout
@@ -569,8 +595,8 @@ def fetch_channel_candidates(max_per_channel: int = 2) -> List[Dict[str, Any]]:
 
                     # FILTRO DE TRACCIÓN Y VIRALIDAD REAL:
                     is_authority_src = comp_meta.get("is_verified_authority", False)
-                    is_fresh_breakout = (days_old == 1 and views >= 2_000)
-                    if not is_authority_src and views > 0 and views < 12_000 and not is_fresh_breakout:
+                    is_fresh_breakout = (days_old is not None and days_old <= 14 and views >= 2_000)
+                    if not is_authority_src and views > 0 and views < 4_000 and not is_fresh_breakout:
                         continue
 
                     score_data = calculate_virality_score(title, dur_secs, views, days_old=days_old, like_count=like_count)
@@ -611,15 +637,18 @@ def fetch_channel_candidates(max_per_channel: int = 2) -> List[Dict[str, Any]]:
         if not q.get("enabled", False):
             return []
         query = q.get("query", "")
-        sp_filter = q.get("sp", "EgQIAxAB")  # EgQIAhAB = Hoy (24h Videos), EgQIAxAB = Esta semana (7d Videos)
+        sp_filter = q.get("sp", "")
         is_today_breaking = (sp_filter == "EgQIAhAB")
         allow_long = not q.get("only_shorts", True)
         results = []
 
+        # Los filtros sp=EgQIAxAB / EgQIAhAB fuerzan 'Solo Vídeos 16:9' en /results y ocultan Shorts;
+        # para consultas only_shorts usamos ytsearch nativo para recuperar tanto Shorts como clips cortos.
         search_target = query
         if query.startswith("ytsearch") and ":" in query:
-            terms = query.split(":", 1)[1].strip()
-            search_target = f"https://www.youtube.com/results?search_query={quote_plus(terms)}&sp={quote_plus(sp_filter)}"
+            if sp_filter and (allow_long or sp_filter not in ("EgQIAxAB", "EgQIAhAB")):
+                terms = query.split(":", 1)[1].strip()
+                search_target = f"https://www.youtube.com/results?search_query={quote_plus(terms)}&sp={quote_plus(sp_filter)}"
 
         try:
             res = subprocess.run([
@@ -665,10 +694,12 @@ def fetch_channel_candidates(max_per_channel: int = 2) -> List[Dict[str, Any]]:
                             except Exception:
                                 pass
 
-                        # En búsquedas de ÚLTIMA HORA (HOY), aceptar vídeos en ascenso desde 2,500 vistas
-                        min_req_views = 2_500 if is_today_breaking else 10_000
-                        is_fresh_breakout = (days_old == 1 and views >= 2_000)
-                        if views < min_req_views and not is_fresh_breakout:
+                        # En --flat-playlist de búsqueda YT upload_date suele venir NA; usar umbral base y filtrar velocidad tras YouTube API
+                        min_req_views = 1_500 if is_today_breaking else 2_000
+                        is_fresh_breakout = (days_old is not None and days_old <= 2 and views >= 1_000)
+                        if views > 0 and views < min_req_views and not is_fresh_breakout:
+                            continue
+                        if views == 0:
                             continue
 
                         try:
@@ -678,7 +709,7 @@ def fetch_channel_candidates(max_per_channel: int = 2) -> List[Dict[str, Any]]:
 
                         upl_l = real_uploader.strip().lower()
                         allow_official_q = (
-                            ("rockstar" in upl_l or upl_l in ("playstation", "xbox"))
+                            ("rockstar" in upl_l or "playstation" in upl_l or "xbox" in upl_l)
                             and not ("trailer 1" in title.lower())
                         )
                         is_safe, _, _ = is_safe_rrss_candidate(
@@ -698,6 +729,19 @@ def fetch_channel_candidates(max_per_channel: int = 2) -> List[Dict[str, Any]]:
                         velocity = score_data.get("velocity_vpd")
                         adjusted_score = min(100, score_data["score"] + 12) if is_today_breaking else max(0, score_data["score"] - 5)
 
+                        # Inferir idioma real del título para evitar etiquetar como 'es' vídeos en inglés
+                        _en_title_markers = re.search(
+                            r"\b(the|and|with|from|this|that|just|blew|mind|everyone|everyones|new|gameplay|graphics|comparison|breakdown|missed|things|secrets|details|trailer|now|pre-load|preload|physics|realistic|versus)\b",
+                            title.lower()
+                        )
+                        _es_title_markers = re.search(
+                            r"\b(el|la|los|las|del|como|para|por|con|sin|este|esta|estos|nuevo|nueva|nuevos|secretos|detalles|comparativa|graficos|gráficos|fisicas|físicas|lanzamiento|tráiler|filtracion|filtración)\b",
+                            title.lower()
+                        )
+                        inferred_lang = q.get("lang", "es")
+                        if _en_title_markers and not _es_title_markers:
+                            inferred_lang = "en"
+
                         results.append({
                             "id": vid_id,
                             "title": title,
@@ -712,7 +756,7 @@ def fetch_channel_candidates(max_per_channel: int = 2) -> List[Dict[str, Any]]:
                             "uploader": real_uploader,
                             "search_query": query,
                             "source_type": "breaking_today" if is_today_breaking else "viral_search",
-                            "lang": q.get("lang", "es"),
+                            "lang": inferred_lang,
                             "is_short": True if (allow_long or 0 <= dur_secs <= 60) else False,
                             "allow_long_clipping": allow_long,
                             "allow_official_commentary": allow_official_q,
@@ -764,12 +808,53 @@ def fetch_channel_candidates(max_per_channel: int = 2) -> List[Dict[str, Any]]:
         return q.get("enabled", False)
 
     active_queries = [q for q in config.get("search_queries", []) if _is_query_active(q)]
+
+    # Incorporar consultas dinámicas del radar de tráfico (Traffic Sentinel)
+    try:
+        from .traffic_sentinel import get_latest_traffic_radar
+        radar = get_latest_traffic_radar()
+        dyn_queries = radar.get("dynamic_search_queries", [])
+        for dq in dyn_queries[:4]:
+            if dq and not any(q.get("query") == dq for q in active_queries):
+                active_queries.append({
+                    "query": dq if dq.startswith("ytsearch") else f"ytsearch10:{dq}",
+                    "name": f"TrafficRadar: {dq[:25]}",
+                    "type": "viral_search",
+                    "lang": "es",
+                    "only_shorts": True,
+                    "enabled": True
+                })
+    except Exception as e:
+        print(f"[Channels] Radar dinámico no disponible: {e}")
+
     if active_queries:
         with concurrent.futures.ThreadPoolExecutor(max_workers=3) as executor:
             futures = {executor.submit(_scan_query, q): q for q in active_queries}
             for future in concurrent.futures.as_completed(futures):
                 for cand in future.result():
                     _merge_candidate(cand)
+
+    # Si tras escanear canales base y queries tenemos muy pocos candidatos (<2),
+    # recurrir a un lote selecto del Directorio Maestro (autoridades técnicas)
+    if len(candidates_by_id) < 2:
+        try:
+            from .channel_directory import get_channel_directory
+            c_dir = get_channel_directory()
+            extra_batch = c_dir.get_rotating_batch(batch_size=8)
+            fresh_extras = [
+                ch for ch in extra_batch
+                if (ch.get("url") or "").strip().lower() not in base_urls
+                and "/search?" not in (ch.get("url") or "").lower()
+                and not (ch.get("url") or "").strip().lower().startswith("ytsearch")
+            ]
+            if fresh_extras:
+                with concurrent.futures.ThreadPoolExecutor(max_workers=3) as executor:
+                    futures = {executor.submit(_scan_channel, ch): ch for ch in fresh_extras[:6]}
+                    for future in concurrent.futures.as_completed(futures):
+                        for cand in future.result():
+                            _merge_candidate(cand)
+        except Exception as e:
+            print(f"[Channels] Aviso escaneando lote del Directorio Maestro: {e}")
 
     candidates = list(candidates_by_id.values())
     # Enriquecer con YouTube Data API v3 en tiempo real (<0.5s batch) para obtener publishedAt, duration y views/h reales
@@ -786,25 +871,59 @@ def fetch_channel_candidates(max_per_channel: int = 2) -> List[Dict[str, Any]]:
         source_type = c.get("source_type", "")
 
         upl_l = uploader_c.strip().lower()
+        # Bloquear subcanales regionales oficiales no hispanos/ingleses (Brasil, Francia, Alemania, etc.)
+        if ("rockstar" in upl_l or "playstation" in upl_l or "xbox" in upl_l) and any(
+            loc in upl_l for loc in (
+                "brasil", "portug", "france", "french", "deutsch", "germany",
+                "italia", "japan", "korea", "russia", "polska", "nederland",
+                "turk", "arab", "taiwan", "china"
+            )
+        ):
+            continue
+
+        # Normalizar y filtrar idioma real detectado vía YouTube Data API v3
+        yt_lang = (c.get("yt_lang") or "").strip().lower()
+        if yt_lang and not yt_lang.startswith(("es", "en", "zxx")):
+            continue
+        if yt_lang.startswith("es"):
+            c["lang"] = "es"
+        elif yt_lang.startswith("en"):
+            c["lang"] = "en"
+
         is_rockstar_official = (
-            ("rockstar" in upl_l or upl_l in ("playstation", "xbox"))
+            ("rockstar" in upl_l or "playstation" in upl_l or "xbox" in upl_l)
             and "trailer 1" not in title_c.lower()
         )
         if is_rockstar_official:
             c["allow_official_commentary"] = True
             c["allow_long_clipping"] = True
 
-        # Filtrar vídeos obsoletos según el tipo de fuente
-        if source_type in ("breaking_today", "viral_search"):
-            if hours_old > 168 and not is_rockstar_official:
+        # Filtrar vídeos obsoletos y ruido sin tracción tras obtener métricas exactas de YouTube API
+        views_c = int(c.get("views") or 0)
+        if source_type == "breaking_today":
+            if hours_old > 48 and not is_rockstar_official:
+                continue
+            if views_c < 1500 and not (hours_old <= 12 and vph >= 150) and not is_rockstar_official:
+                continue
+        elif source_type == "viral_search":
+            if hours_old > 336 and not is_rockstar_official:
+                continue
+            if views_c < 2000 and not (hours_old <= 12 and vph >= 150) and not is_rockstar_official:
                 continue
         else:
             if hours_old > 720:
                 continue
 
-        # Anti-Plagio: nunca copiar Shorts verticales ya en español de otros creadores (solo traducir inglés o recortar análisis 16:9 largos)
-        if (c.get("lang") or "").lower().startswith("es") and 0 < dur_c <= 65 and not is_rockstar_official:
+        # Anti-Plagio: nunca copiar Shorts verticales hablados ya en español de otros creadores,
+        # pero SÍ permitir comparativas técnicas explícitas y no-commentary puro (para edición SPLIT/D).
+        is_pure_visual_es = any(
+            kw in f"{title_c} {uploader_c}".lower()
+            for kw in ("fps", " vs ", "comparativa", "comparison", "no commentary", "sin comentarios", "pure gameplay", "elanalistadebits", "digital foundry")
+        )
+        if (c.get("lang") or "").lower().startswith("es") and 0 < dur_c <= 65 and not is_rockstar_official and not is_pure_visual_es:
             continue
+        if is_pure_visual_es and not c.get("recommended_mode"):
+            c["recommended_mode"] = "gameplay"
 
         # Si venía de búsqueda strict-short y la API revela duración > 65s (sin clipping permitido), descartar
         if c.get("only_shorts") and not c.get("allow_long_clipping") and dur_c > 65:
@@ -930,6 +1049,9 @@ def enrich_candidates_with_yt_api(candidates: List[Dict[str, Any]]) -> List[Dict
 
             if snippet.get("title"):
                 c["title"] = snippet["title"]
+            yt_lang = snippet.get("defaultAudioLanguage") or snippet.get("defaultLanguage") or ""
+            if yt_lang:
+                c["yt_lang"] = yt_lang
             ch_title = snippet.get("channelTitle")
             if ch_title:
                 c["uploader"] = ch_title

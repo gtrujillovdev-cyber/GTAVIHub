@@ -51,5 +51,16 @@ class TestStrategySuggestion(unittest.TestCase):
         self.assertEqual(strat["recommended_opt"], "dub")
         self.assertIn("Inglés", strat["archetype"])
 
+    def test_fps_comparison_long_x_clip(self):
+        strat = suggest_video_strategy(
+            title="Enigma Gaming - This Is What GTA 6 Could Look Like at 30 FPS vs. 60 FPS!",
+            duration_sec=93,
+            uploader="Enigma Gaming",
+            platform="Twitter/X"
+        )
+        self.assertEqual(strat["recommended_opt"], "gameplay")
+        self.assertIn("Comparativa", strat["archetype"])
+        self.assertIn("30 FPS", strat["hook_text"])
+
 if __name__ == "__main__":
     unittest.main()

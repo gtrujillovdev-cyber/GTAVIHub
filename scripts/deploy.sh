@@ -15,7 +15,9 @@ ssh -o ConnectTimeout=8 -o BatchMode=yes "$HOST" 'echo "   conectado: $(hostname
 
 echo "→ Subiendo código ..."
 scp -q main.py requirements.txt .env.example .gitignore "$HOST:$REMOTE/"
-scp -q src/*.py "$HOST:$REMOTE/src/"
+scp -rq src/* "$HOST:$REMOTE/src/"
+scp -q config/channels.json "$HOST:$REMOTE/config/"
+scp -q tests/*.py "$HOST:$REMOTE/tests/"
 scp -q docs/*.md "$HOST:$REMOTE/docs/"
 scp -q scripts/*.py scripts/*.sh "$HOST:$REMOTE/scripts/" 2>/dev/null || true
 echo "   código subido."

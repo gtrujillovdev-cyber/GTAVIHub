@@ -249,9 +249,6 @@ def snap_window_to_subtitles(
                 min_start_diff = diff
                 best_start = c["start"]
 
-        if best_start < 4.0:
-            best_start = 0.0
-
         target_dur = v_end - v_start
         ideal_end = best_start + target_dur
 
@@ -338,7 +335,7 @@ def find_best_transcript_hook_window(
     sponsor_re = re.compile(
         r"\b(sponsor(?:ed)?|nord\s?vpn|surfshark|express\s?vpn|incogni|ridge\s?wallet|"
         r"raid\s?shadow|raycon|factor|hello\s?fresh|patreon|discount\s?code|promo\s?code|"
-        r"use\s?code|c[oó]digo\s?de\s?descuento|patrocinad[oa]|enlace\s?en\s?la\s?descripci[oó]n|"
+        r"use\s?code|scroll\s+down|visit\s+the\s+website|website\s+right\s+now|c[oó]digo\s?de\s?descuento|patrocinad[oa]|enlace\s?en\s?la\s?descripci[oó]n|"
         r"link\s?in\s?(?:the\s)?description)\b",
         re.IGNORECASE,
     )
@@ -534,8 +531,10 @@ def find_viral_heatmap_segment(
                     estimated_avd_s = c_dur * avg_retention * (1.0 + peak_retention * 0.35)
                     # 2. Factor de consistencia (penaliza acantilados donde el usuario abandona a la mitad):
                     cliff_penalty = max(0.5, min(1.0, (min_retention / (avg_retention + 1e-4))))
-                    # 3. Puntuación final centrada en AVD absoluto optimizado para algoritmo de YouTube/TikTok:
-                    avd_score = estimated_avd_s * (0.7 + 0.3 * cliff_penalty)
+                    # 3. Sweet-spot de retención Shorts/TikTok (18-28s): penalizar duraciones excesivas (>32s)
+                    duration_penalty = 1.0 if c_dur <= 28 else (0.85 if c_dur <= 36 else 0.70)
+                    # 4. Puntuación final centrada en AVD absoluto optimizado para algoritmo de YouTube/TikTok:
+                    avd_score = estimated_avd_s * (0.7 + 0.3 * cliff_penalty) * duration_penalty
 
                     if avd_score > best_avd_score:
                         best_avd_score = avd_score
@@ -578,14 +577,15 @@ def suggest_video_strategy(
         u in uploader_lower for u in ["vandal", "elanalistadebits", "eurogamer spain", "3djuegos", "vidaextra", "alfabetajuega"]
     )
 
-    # 1. Arquetipo: Comparativa Gráfica en Loop (<= 16s o palabras clave de VS)
-    is_comparison = any(k in title_lower for k in ["vs", "versus", "comparativa", "comparison", "graphics vs", "gráfico vs", "trailer 2"])
+    # 1. Arquetipo: Comparativa Gráfica / FPS (en Loop si <= 20s, o Split/Audio Juego si > 20s)
+    is_fps_or_vs = bool(re.search(r"\b(vs|versus|comparativa|comparison|30\s*fps|60\s*fps|frame\s*rate)\b", title_lower)) or "graphics vs" in title_lower or "gráfico vs" in title_lower
+    is_comparison = is_fps_or_vs or ("trailer 2" in title_lower)
     if (0 < duration_sec <= 16) or (is_comparison and duration_sec <= 20):
         return {
             "recommended_opt": "gameplay",
             "archetype": "Comparativa Visual en Loop",
             "badge": "⚡ Loop Ultra-Corto",
-            "reason": "Vídeo corto de alto impacto visual. Un bucle continuo en Formato D Pro-Cinema con audio del juego maximiza el completion rate (>120%).",
+            "reason": "Vídeo corto de alto impacto visual. Encuadre inmersivo con audio del juego maximiza el completion rate (>120%).",
             "hook_text": "GTA 6 VS GTA 5 🤯"
         }
 
@@ -597,7 +597,7 @@ def suggest_video_strategy(
                 "recommended_opt": "short",
                 "archetype": "Listicle de Detalles & Curiosidades",
                 "badge": "🔥 Retención Máxima (Listicle)",
-                "reason": "Contenido en español con ritmo enumerado. Recomendado Subtítulos Pop Karaoke dinámicos y píldora superior para disparar el CTR.",
+                "reason": "Contenido en español con ritmo enumerado. Recomendado Subtítulos Pop limpios sin cajas para disparar el CTR.",
                 "hook_text": "¡DETALLES ALUCINANTES! 🔥"
             }
         else:
@@ -605,14 +605,26 @@ def suggest_video_strategy(
                 "recommended_opt": "dub",
                 "archetype": "Listicle en Inglés (Top Detalles)",
                 "badge": "🎙️ Doblaje Neural + Subtítulos",
-                "reason": "Top detalles en inglés. El Doblaje Neural al español con audio ducking elimina la barrera de idioma y captura la retención completa.",
+                "reason": "Top detalles en inglés. El Doblaje Neural al español (+12% ritmo) elimina la barrera de idioma y captura la retención completa.",
                 "hook_text": "¡SECRETOS REVELADOS! 🔍"
             }
 
-    # 3. Arquetipo: Físicas RAGE 9, Gameplay Puro, Accidentes o Demostración
+    # 3. Comparativa Técnica / FPS larga (>20s, ej. 30 FPS vs 60 FPS en X/YouTube) -> Audio original del juego + Split Apilado
+    if is_fps_or_vs:
+        fps_hook = "30 FPS VS 60 FPS\nDIFERENCIA REAL EN GTA 6" if "fps" in title_lower else "COMPARATIVA DIRECTA\nMIRA LA DIFERENCIA"
+        return {
+            "recommended_opt": "gameplay",
+            "archetype": "Comparativa Técnica / FPS",
+            "badge": "🎮 Split / Audio del Juego",
+            "reason": "Comparativa visual/técnica. Preserva el audio real del juego y apila o encuadra ambas vistas sin voz encima.",
+            "hook_text": fps_hook
+        }
+
+    # 4. Arquetipo: Físicas RAGE 9, Gameplay Puro, Accidentes o Demostración
     is_physics_gameplay = any(k in title_lower for k in [
         "rage 9", "physics", "físicas", "water physics", "crash", "car crash", "accident", "accidente",
-        "tiroteo", "gunplay", "shooting", "driving", "conducción", "npc behavior", "ia peatones"
+        "tiroteo", "gunplay", "shooting", "driving", "conducción", "npc behavior", "ia peatones",
+        "pure gameplay", "gameplay clip"
     ])
     if is_physics_gameplay:
         return {
@@ -658,6 +670,7 @@ def get_url_metadata(url: str) -> Dict[str, Any]:
     cmd_attempts = []
     base_cmd = [
         sys.executable, "-m", "yt_dlp",
+        "--force-ipv4",
         "--no-check-certificates",
         "--no-playlist",
         "--print", "%(id)s\t%(title)s\t%(duration)s\t%(uploader)s\t%(extractor_key)s\t%(channel_url)s\t%(uploader_url)s",
@@ -768,6 +781,7 @@ def download_video_and_subtitles(
 
     base_cmd = [
         sys.executable, "-m", "yt_dlp",
+        "--force-ipv4",
         "--no-check-certificates",
         "--no-playlist",
         "-f", format_selector,
@@ -909,7 +923,8 @@ def download_video_and_subtitles(
                 sweet_max = min(SHORT_MAX_DURATION, 32)
                 dur_jitter = (seed_val % max(1, (sweet_max - sweet_min + 1)))
                 dynamic_dur = sweet_min + dur_jitter
-                start_t = min(20.0, raw_d * 0.1)
+                # En clips cortos sociales (ej. X/Twitter 60-150s) sin intro larga, arrancar desde 0.0s captura el gancho de acción inicial
+                start_t = 0.0 if (is_twitter_or_x or is_tiktok or raw_d <= 150.0) else min(20.0, raw_d * 0.1)
                 if start_t + dynamic_dur > raw_d:
                     start_t = max(0.0, raw_d - dynamic_dur)
                 print(f"[*] Fallback orgánico sin subtítulos ({raw_d:.1f}s): {start_t:.1f}s a {start_t + dynamic_dur:.1f}s")
@@ -930,7 +945,7 @@ def download_video_and_subtitles(
             trimmed_video = TEMP_DIR / f"{video_id}_viral.mp4"
             print(f"[*] Recortando clip dinámico ({v_start:.1f}s a {v_end:.1f}s, duración: {v_end - v_start:.1f}s)...")
             
-            # Seek híbrido en dos pasos: salto rápido por keyframes hasta 10s antes + ajuste frame-accurate
+            # Seek híbrido en dos pasos con timestamps estabilizados:
             # Evita decodificar 10+ minutos de vídeo por CPU desde 0.0s (coexistencia GaTDSEQ)
             fast_seek = max(0.0, round(v_start - 10.0, 3))
             inner_ss = max(0.0, round(v_start - fast_seek, 3))
@@ -940,22 +955,39 @@ def download_video_and_subtitles(
                 "ffmpeg", "-y",
                 "-threads", n_threads,
                 "-ss", str(fast_seek),
+                "-accurate_seek",
                 "-i", str(video_path),
                 "-ss", str(inner_ss),
+                "-avoid_negative_ts", "make_zero",
                 "-t", str(clip_dur),
                 "-threads", n_threads,
                 "-c:v", "h264_videotoolbox",
                 "-b:v", "8M",
+                "-pix_fmt", "yuv420p",
                 "-c:a", "aac",
                 "-b:a", "192k",
                 str(trimmed_video)
             ]
             try:
                 subprocess.run(cmd_trim, check=True, capture_output=True, timeout=120)
+                # Verificar duración real del archivo recortado con ffprobe antes de descartar el original
+                trimmed_dur = 0.0
                 if trimmed_video.exists():
-                    video_path.unlink()  # Eliminar archivo largo pesado
+                    try:
+                        probe_res = subprocess.run(
+                            ["ffprobe", "-v", "quiet", "-show_entries", "format=duration", "-of", "csv=p=0", str(trimmed_video)],
+                            capture_output=True, text=True, timeout=8
+                        )
+                        trimmed_dur = float(probe_res.stdout.strip()) if probe_res.stdout.strip() else 0.0
+                    except Exception:
+                        trimmed_dur = 0.0
+
+                # Validar que el clip no haya quedado truncado anómalamente (debe ser al menos 80% del clip solicitado o min 8s)
+                min_acceptable_dur = min(8.0, clip_dur * 0.75)
+                if trimmed_video.exists() and trimmed_dur >= min_acceptable_dur:
+                    video_path.unlink()  # Eliminar archivo largo pesado de forma segura
                     video_path = trimmed_video
-                    print(f"[✓] Vídeo recortado al pico de máxima retención -> {trimmed_video.name}")
+                    print(f"[✓] Vídeo recortado al pico de máxima retención ({trimmed_dur:.1f}s) -> {trimmed_video.name}")
 
                     # Recortar y sincronizar SRT si existe
                     if srt_path and srt_path.exists():
@@ -968,6 +1000,10 @@ def download_video_and_subtitles(
                             print("[!] El segmento recortado no contiene subtítulos válidos; descartando SRT completo para evitar desfase.")
                             srt_path.unlink(missing_ok=True)
                             srt_path = None
+                else:
+                    print(f"[!] Recorte inválido o duración anómala ({trimmed_dur:.2f}s). Conservando archivo original.")
+                    if trimmed_video.exists():
+                        trimmed_video.unlink()
             except Exception as e:
                 print(f"[!] No se pudo recortar con VideoToolbox: {e}")
 

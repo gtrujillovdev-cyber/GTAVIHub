@@ -124,7 +124,8 @@ def _fetch_viral_thumbnails() -> list:
         from google.oauth2.credentials import Credentials
         from google.auth.transport.requests import Request
 
-        token_file = BASE_DIR / "token.json"
+        token_extra = BASE_DIR / "token_extra.json"
+        token_file = token_extra if token_extra.exists() else (BASE_DIR / "token.json")
         if not token_file.exists():
             return []
 

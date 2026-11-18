@@ -9,6 +9,42 @@ from .translator import get_gemini_client, clean_srt_response, FALLBACK_GEMINI_M
 from .learning_engine import load_viral_playbook, generate_hook_card_texts
 from .channels import get_processed_ids
 
+def _resolve_recommended_mode(raw_mode: str, item: Dict[str, Any]) -> str:
+    """Normaliza recommended_mode evitando etiquetar locuciones en español/inglés como 'gameplay' salvo comparativa visual explícita."""
+    norm = (raw_mode or "").strip().lower()
+    if norm in ("gameplay", "dub", "subs", "clean", "short"):
+        return norm
+    tl = f" {(item.get('title') or '').lower()} "
+    is_es_src = (item.get("lang") or "en").lower().startswith("es")
+    is_explicit_visual = any(
+        k in tl for k in ("fps", " vs ", "comparison", "comparativa", "no commentary", "sin comentarios", "pure gameplay")
+    )
+    if is_explicit_visual:
+        return "gameplay"
+    return "subs" if is_es_src else "dub"
+
+
+def _visual_appeal_adjustment(item: Dict[str, Any]) -> float:
+    """Ajuste compartido de prioridad editorial: premia comparativas/gameplay puro y penaliza tertulias/reacciones."""
+    delta = 0.0
+    tl = f" {(item.get('title') or '').lower()} "
+    upl = (item.get("uploader") or item.get("source_name") or "").lower()
+    dur = float(item.get("duration") or 0)
+    if 12 <= dur <= 62 or item.get("is_short"):
+        delta += 18.0
+    elif dur > 360:
+        delta -= 18.0
+    if (item.get("lang") or "").lower() == "es":
+        delta += 12.0
+    if any(a in upl for a in ("elanalistadebits", "onespot gaming", "cycu1", "digital foundry", "gta series videos")):
+        delta += 24.0
+    if any(k in tl for k in ("fps", " vs ", "comparison", "comparativa", "physics", "físicas", "fisicas", "rage 9", "graphics", "gameplay")):
+        delta += 20.0
+    if any(k in tl for k in ("daily fix", "reaction", "reaccion", "reacciona", "thoughts", "debate", "review", "things we found", "opinion", "pissed", "don't buy")):
+        delta -= 42.0
+    return delta
+
+
 def select_best_candidate_ai(
     candidates: List[Dict[str, Any]],
     launch_mode: bool = False,
@@ -46,31 +82,43 @@ def select_best_candidate_ai(
         print("[AI Selector] Todos los candidatos fueron descartados por seguridad RRSS o anti-repetición.")
         return {}
 
-    # Si solo hay un candidato, enriquecerlo y retornarlo
+    # Si solo hay un candidato, validar calidad mínima antes de aceptarlo
     if len(candidates) == 1:
         chosen = dict(candidates[0])
+        c_title = f" {(chosen.get('title') or '').lower()} "
+        c_dur = int(chosen.get("duration") or 0)
+        c_score = int(chosen.get("score") or 0)
+        c_visual = any(
+            k in c_title for k in ("fps", " vs ", "comparison", "comparativa", "no commentary", "sin comentarios", "pure gameplay")
+        )
+        if c_score < 50 and c_dur > 120 and not c_visual:
+            print(f"[AI Selector] ❌ Único candidato rechazado por relleno largo de baja calidad (score={c_score}, dur={c_dur}s): {chosen.get('title')}")
+            return {}
         l1, l2 = generate_hook_card_texts(chosen.get("title", ""))
         chosen["ai_selection"] = False
         chosen["ai_justification"] = "Único candidato disponible en la ronda."
         chosen["hook_line1"] = l1
         chosen["hook_line2"] = l2
+        chosen["recommended_mode"] = _resolve_recommended_mode(chosen.get("recommended_mode", ""), chosen)
         return chosen
 
-    # Priorizar análisis/breakdowns/reacciones reales con voz (>=75s) sobre spots promocionales mudos oficiales (<=65s)
-    # para garantizar contenido transformado en español, formato FIT 16:9 y cero riesgo de Reused Content.
+    # Evitar promos mudas si existen candidatos con gameplay real, comparativas técnicas o Shorts dinámicos
     def _is_short_promo_spot(item: Dict[str, Any]) -> bool:
         dur = float(item.get("duration") or 0)
         return bool(item.get("allow_official_commentary")) and (0 < dur <= 65)
 
-    spoken_breakdowns = [
-        c for c in candidates
-        if not _is_short_promo_spot(c)
-        and float(c.get("duration") or 0) >= 75
-        and float(c.get("views_per_hour") or 0) >= 200
-    ]
-    base_pool = spoken_breakdowns if spoken_breakdowns else candidates
+    non_promo = [c for c in candidates if not _is_short_promo_spot(c)]
+    base_pool = non_promo if len(non_promo) >= 2 else candidates
 
-    # Limitar a los 15 mejores según virality_score para la IA
+    # Ordenar pre-pool priorizando ritmo dinámico, gameplay/comparativas y frescura (<24h) sobre vídeos largos lentos
+    def _pre_rank(item: Dict[str, Any]) -> float:
+        s = float(item.get("score") or 0) + _visual_appeal_adjustment(item)
+        if float(item.get("views_per_hour") or 0) >= 1000:
+            s += 10.0
+        return s
+
+    base_pool = sorted(base_pool, key=_pre_rank, reverse=True)
+    # Limitar a los 15 mejores según ranking dinámico para la IA
     pool = base_pool[:15]
 
     # Cargar playbook si no se suministró
@@ -114,6 +162,7 @@ def select_best_candidate_ai(
             "index": idx,
             "id": c.get("id"),
             "title": c.get("title"),
+            "lang": c.get("lang", "en"),
             "duration": c.get("duration"),
             "views": views,
             "views_per_hour": c.get("views_per_hour"),
@@ -155,15 +204,16 @@ VÍDEOS RECIENTES YA PUBLICADOS (EVITA REPETIR ESTAS TEMÁTICAS):
 {json.dumps(recent_titles, indent=2, ensure_ascii=False)}
 
 CRITERIOS EDITORIALES DE VICTORIA (PLAYBOOK VIRAL):
-0. PRIORIDAD ABSOLUTA — EQUILIBRIO ANTI-REUSED CONTENT Y RETENCIÓN (<24H):
-   - PRIORIZA EN PRIMER LUGAR análisis frescos (<24h), desgloses técnicos, gameplay comentado y reacciones con VOZ HUMANA REAL en inglés (ej. '30 FPS', 'Fuel System', 'New Gameplay', 'Breakdown', 'Everything You Missed', TGG, IGN, Digital Car Addict) frente a spots promocionales solo con música de Rockstar: los análisis hablados transformados al español en formato 16:9 FIT aportan dato real desde el segundo 0, retienen el doble y evitan reclamaciones de 'Reused Content'.
-   - Solo elige spots musicales oficiales sin voz ('Pre-Load Now', 'The Festival') si no hay análisis/breakdowns hablados frescos disponibles con alta tracción.
-   - DESCARTAR tráileres antiguos de 2023 ('Trailer 1') y charlas lentas de radio/podcast sin ritmo visual.
+0. PRIORIDAD ABSOLUTA — RITMO VISUAL, GAMEPLAY PURO Y CERO FACECAM/TALKING-HEAD/PLATÓ:
+   - ELIGE SIEMPRE comparativas visuales directas ('GTA 6 vs RDR 2', '30 FPS vs 60 FPS', gráficos, PS5 Pro, RAGE 9), físicas reales y gameplay puro (Onespot Gaming, ElAnalistaDeBits, Cycu1, GTA Series Videos) INCLUSO AUNQUE tengan menos views_per_hour que un noticiero o reacción en cámara.
+   - RECHAZA/EVITA vídeos donde un presentador habla en plató o webcam con diapositivas de citas de texto en inglés ('Daily Fix', reacciones, 'Full Thoughts', opiniones estáticas), vídeos largos (>5 min) y promos sin gameplay ('The Festival').
+   - Solo elige spots musicales oficiales sin voz si no hay clips de gameplay o comparativa disponibles.
+   - DESCARTAR tráileres antiguos de 2023 ('Trailer 1').
 1. VELOCIDAD VIRAL REAL (views_per_hour / velocity_vpd): Prioriza vídeos en ascenso vertical ahora mismo. Un vídeo de hace 5 horas con 50,000 views/hora vale 10x más que uno de hace 2 semanas.
 2. MULTI-FUENTE (source_count > 1): Un vídeo detectado por múltiples fuentes/queries simultáneamente es una señal inequívoca de momento viral. Priorizarlo sobre candidatos únicos.
 3. ENGAGEMENT REAL (engagement_rate): Ratio likes/vistas como proxy de distribución activa por el algoritmo. Un ratio > 0.02 indica audiencia comprometida.
 4. ENGAGEMENT Y CURIOSIDAD: El vídeo debe provocar el deseo irrefrenable de comentar o ver hasta el final.
-5. CERO CLICKBAIT FALSO: Descarta conceptos abstractos o mods antiguos. Solo contenido real y de impacto.
+5. CERO CLICKBAIT NI HASHTAGS DE CONSOLA EQUIVOCADA: Solo contenido real y coherente (jamás pongas #PS5PRO si el vídeo trata de Xbox, ni viceversa).
 6. CONTENIDO 100% GTA 6 REAL: Prioriza clips con tracción real de vistas (demostraciones de RAGE 9, detalles del mapa de Leonida, mecánicas in-game, vehículos, comparativas con vida real). DESCALIFICAR AUTOMÁTICAMENTE cualquier parodia, meme, o gameplay de GTA 5.
 7. GANCHO DE 2 LÍNEAS EN ESPAÑOL (OBLIGATORIO ESPAÑOL, NUNCA INGLÉS): Redacta dos líneas de titular afirmativo en ESPAÑOL (Línea 1 en blanco max 20 caracteres, Línea 2 en amarillo neón max 20 caracteres). PROHIBIDO usar signos de interrogación ('¿' o '?') en el gancho superior.
 8. CERO LEAKS O FILTRACIONES ILEGALES (CUMPLIMIENTO ESTRICTO ANTI-DMCA): PROHIBIDO terminantemente seleccionar clips con código robado, filtraciones confidenciales de desarrollo de 2022 o marcas de debug. Prioriza análisis legítimos bajo Fair Use, comparativas gráficas, curiosidades de prensa y descubrimientos geográficos.
@@ -171,6 +221,7 @@ CRITERIOS EDITORIALES DE VICTORIA (PLAYBOOK VIRAL):
 RESPONDE EXCLUSIVAMENTE CON UN OBJETO JSON VÁLIDO:
 {{
   "selected_index": 0,
+  "recommended_mode": "gameplay o dub (usa 'gameplay' SOLO para comparativas 30fps vs 60fps o gameplay sin narrador; usa 'dub' siempre que haya voz en inglés incluso si muestra gráficos, NPCs o RAGE 9)",
   "justification": "Explicación de por qué este clip es el ganador indiscutible frente a los otros.",
   "recommended_title": "TÍTULO VIRAL EN ESPAÑOL Y MAYÚSCULAS CON EMOJIS Y #GTA6",
   "hook_line1": "LÍNEA 1 EN ESPAÑOL",
@@ -179,7 +230,7 @@ RESPONDE EXCLUSIVAMENTE CON UN OBJETO JSON VÁLIDO:
 }}
 """
 
-            from .translator import generate_content_with_retry
+            from .translator import generate_content_with_retry, _fix_es_title_grammar
             response = generate_content_with_retry(client=client, contents=prompt)
             cleaned = clean_srt_response(response.text)
             decision = json.loads(cleaned)
@@ -191,9 +242,18 @@ RESPONDE EXCLUSIVAMENTE CON UN OBJETO JSON VÁLIDO:
             chosen = dict(pool[sel_idx])
             chosen["ai_selection"] = True
             chosen["ai_justification"] = decision.get("justification", "Seleccionado por IA como el vídeo con mayor engagement.")
-            chosen["recommended_title"] = decision.get("recommended_title", chosen.get("title"))
-            chosen["hook_line1"] = decision.get("hook_line1", "").strip().upper()
-            chosen["hook_line2"] = decision.get("hook_line2", "").strip().upper()
+            rec_title = _fix_es_title_grammar(decision.get("recommended_title", chosen.get("title", "")))
+            if "xbox" in (chosen.get("title") or "").lower() and "ps5" not in (chosen.get("title") or "").lower():
+                rec_title = re.sub(r'#PS5PRO|#PS5', '#GTA6', rec_title, flags=re.IGNORECASE).strip()
+            chosen["recommended_title"] = rec_title
+
+            raw_mode = str(decision.get("recommended_mode") or chosen.get("recommended_mode") or "")
+            chosen["recommended_mode"] = _resolve_recommended_mode(raw_mode, chosen)
+
+            l1_clean = _fix_es_title_grammar(decision.get("hook_line1", "").replace("¿", "").replace("?", "")).strip().upper()
+            l2_clean = _fix_es_title_grammar(decision.get("hook_line2", "").replace("¿", "").replace("?", "")).strip().upper()
+            chosen["hook_line1"] = l1_clean
+            chosen["hook_line2"] = l2_clean
             chosen["audience_appeal"] = decision.get("audience_appeal", "")
 
             # Si la IA no generó ganchos válidos, usar el generador del playbook
@@ -209,30 +269,24 @@ RESPONDE EXCLUSIVAMENTE CON UN OBJETO JSON VÁLIDO:
         except Exception as e:
             print(f"[AI Selector] Advertencia: Error en evaluación con IA ({e}). Usando fallback heurístico.")
 
-    # FALLBACK HEURÍSTICO ROBUSTO (penaliza charlas de radio/podcast lentas y premia espectáculo visual)
+    # FALLBACK HEURÍSTICO ROBUSTO (penaliza charlas de radio/podcast/plató lentas y premia espectáculo visual)
     def _visual_priority_score(item: Dict[str, Any]) -> float:
         base = float(item.get("score", 0))
         vph = float(item.get("views_per_hour") or 0.0)
         hours_old = float(item.get("hours_old") or 720.0)
         if vph >= 10000:
-            base += 40.0
+            base += 20.0
         elif vph >= 1000:
-            base += 25.0
-        elif vph >= 200:
             base += 12.0
+        elif vph >= 200:
+            base += 6.0
         if hours_old <= 6:
-            base += 25.0
+            base += 20.0
         elif hours_old <= 24:
-            base += 15.0
+            base += 12.0
         elif hours_old > 168:
-            base -= 20.0
-
-        tl = (item.get("title") or "").lower()
-        if any(k in tl for k in ("radio station", "podcast", "tier list", "unboxing")):
-            base -= 25.0
-        if any(k in tl for k in ("pre-load", "preload", "reaction", "reaccion", "reacciona", "breakdown", "details", "detalles", "physics", "rage 9", "graphics", "comparison", "gameplay", "trailer")):
-            base += 15.0
-        return base
+            base -= 16.0
+        return base + _visual_appeal_adjustment(item)
 
     if launch_mode:
         sorted_pool = sorted(

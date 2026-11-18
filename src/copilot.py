@@ -149,6 +149,7 @@ def approve_and_publish_video(video_id: str) -> Optional[Dict[str, Any]]:
                 "privacy": privacy_status,
                 "mode": metadata.get("mode") or data.get("mode", "subs"),
                 "has_voiceover": metadata.get("has_voiceover", False) or data.get("mode") in ["dub", "voice"],
+                "is_transformed_visual": bool(metadata.get("is_transformed_visual", False)),
                 "block_instagram": metadata.get("block_instagram", False),
                 "allowed_platforms": metadata.get("allowed_platforms"),
                 "target_channel": "youtube_extra"
@@ -190,6 +191,33 @@ def approve_and_publish_video(video_id: str) -> Optional[Dict[str, Any]]:
         "multiplatform": multiplatform_results if publish_all else None,
         "approved_at": datetime.now().isoformat()
     })
+
+    # Conexión con PerformanceTracker y ChannelSentinel para monitorización y bucle cerrado
+    if yt_url:
+        try:
+            from .performance_tracker import record_published_video
+            from .channel_sentinel import record_video_for_sentinel
+            record_published_video(
+                video_id=video_id,
+                title=data.get("original_title", "GTA 6 Video"),
+                youtube_url=yt_url,
+                base_score=0,
+                target_channel="extra"
+            )
+            plat_urls = {"youtube": yt_url}
+            if multiplatform_results:
+                for p, p_res in multiplatform_results.items():
+                    if p_res and str(p_res).startswith("http"):
+                        plat_urls[p] = str(p_res)
+            record_video_for_sentinel(
+                video_id=video_id,
+                title=data.get("original_title", "GTA 6 Video"),
+                archetype=metadata.get("archetype", "general"),
+                target_channel="extra",
+                platform_urls=plat_urls
+            )
+        except Exception as e:
+            print(f"[Co-Pilot] Aviso registrando telemetría: {e}")
 
     # Limpieza
     if uploaded_yt_id and not keep_local_video:
