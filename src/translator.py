@@ -32,6 +32,7 @@ def generate_content_with_retry(client, contents, models=None, config=None):
     retryable_tokens = (
         "429", "RESOURCE_EXHAUSTED", "404", "NOT_FOUND", "503", "UNAVAILABLE",
         "500", "403", "PERMISSION_DENIED", "400", "INVALID_ARGUMENT", "overloaded",
+        "timeout", "timed out", "Timeout",
     )
     for model_name in models:
         try:
@@ -72,7 +73,18 @@ def get_gemini_client():
     if _client is None:
         if not GEMINI_API_KEY:
             raise ValueError("GEMINI_API_KEY no está configurada en .env")
-        _client = genai.Client(api_key=GEMINI_API_KEY, http_options={"api_version": "v1beta"})
+        _client = genai.Client(
+            api_key=GEMINI_API_KEY,
+            http_options={
+                "api_version": "v1beta",
+                "timeout": 25000,
+                "retry_options": {
+                    "attempts": 2,
+                    "initial_delay": 0.5,
+                    "max_delay": 2.0,
+                },
+            },
+        )
     return _client
 
 AUDIO_TAG_REGEX = re.compile(
