@@ -814,10 +814,10 @@ def render_final_video(
             fg_y = 160
             fg_bottom = 1760
             is_cinema_layout = True
-            # Safe Zone Shorts: hook a y=60 (evita bordes superiores), subtítulos a y=1340 (evita título y botones inferiores)
+            # Safe Zone Shorts & TikTok: hook a y=60, subtítulos a y=1240 (libre del título y botones inferiores)
             hook_y_expr = "60"
             ret_y_expr = "105"
-            sub_y = "1340"
+            sub_y = "1240"
             print(f"[*] Modo Formato D Pro-Cinema (83.3% cobertura): {fg_w}x{fg_h} @ y={fg_y} con Velvet Canvas.")
         else:
             # Formato C (Smart Frame Inmersivo 4:5, 70.3% de cobertura):
@@ -827,10 +827,10 @@ def render_final_video(
             fg_y = 285
             fg_bottom = 1635
             is_cinema_layout = True
-            # Safe Zone Shorts: hook a y=100, subtítulos a y=1320
+            # Safe Zone Shorts & TikTok: hook a y=100, subtítulos a y=1240
             hook_y_expr = "100"
             ret_y_expr = "160"
-            sub_y = "1320"
+            sub_y = "1240"
             print(f"[*] Modo Formato C Smart Frame 4:5 (70.3% cobertura): {fg_w}x{fg_h} @ y={fg_y} con Ambient Canvas.")
     else:
         # Formato Vertical Nativo 9:16 (1080x1920)
@@ -841,7 +841,7 @@ def render_final_video(
         is_cinema_layout = False
         hook_y_expr = "110"
         ret_y_expr = "210"
-        sub_y = "1340" if is_vertical else "H-h-90"
+        sub_y = "1240" if is_vertical else "H-h-90"
         print(f"[*] Modo Vertical Nativo 9:16: Pantalla completa sin deformación (Vertical: {is_vertical}).")
 
     # 1. Viñeta y sombras de unión
@@ -943,6 +943,14 @@ def render_final_video(
             input_idx += 1
             print(f"[*] Mezclando pista ambiental sutil: {chosen_ambient.name} (-22 dB)")
 
+    # Micro-SFX de impacto inicial en t=0.0s para frenar el scroll sin cargar CPU
+    sfx_idx = None
+    sfx_file = BASE_DIR / "assets" / "audio" / "sfx" / "hook_impact.wav"
+    if hook_png and is_vertical and sfx_file.exists():
+        cmd.extend(["-i", str(sfx_file)])
+        sfx_idx = input_idx
+        input_idx += 1
+
     # Construcción de la cadena de mezcla de audio (Voice-Over: original atenuado al 6% + Doblaje ES dominante + Ambiente)
     if dub_idx is not None:
         if pad_sec > 0.0:
@@ -954,14 +962,14 @@ def render_final_video(
                     f"[{dub_idx}:a]asplit=2[sc][voice];"
                     f"[orig_base][sc]sidechaincompress=threshold=0.015:ratio=12:attack=10:release=250[orig_ducked];"
                     f"[orig_ducked][amb]amix=inputs=2:duration=longest:normalize=false[bed];"
-                    f"[bed][voice]amix=inputs=2:duration=longest:normalize=false,afade=t=out:st={fade_start:.2f}:d=0.35,loudnorm=I=-14:LRA=7:TP=-1.5[aout]"
+                    f"[bed][voice]amix=inputs=2:duration=longest:normalize=false,afade=t=out:st={fade_start:.2f}:d=0.35[a_mix]"
                 )
             else:
                 audio_filter = (
                     f"[0:a]volume=0.06[orig_base];"
                     f"[{dub_idx}:a]asplit=2[sc][voice];"
                     f"[orig_base][sc]sidechaincompress=threshold=0.015:ratio=12:attack=10:release=250[orig_ducked];"
-                    f"[orig_ducked][voice]amix=inputs=2:duration=longest:normalize=false,afade=t=out:st={fade_start:.2f}:d=0.35,loudnorm=I=-14:LRA=7:TP=-1.5[aout]"
+                    f"[orig_ducked][voice]amix=inputs=2:duration=longest:normalize=false,afade=t=out:st={fade_start:.2f}:d=0.35[a_mix]"
                 )
         else:
             if ambient_idx is not None:
@@ -971,25 +979,33 @@ def render_final_video(
                     f"[{dub_idx}:a]asplit=2[sc][voice];"
                     f"[orig_base][sc]sidechaincompress=threshold=0.015:ratio=12:attack=10:release=250[orig_ducked];"
                     f"[orig_ducked][amb]amix=inputs=2:duration=first:normalize=false[bed];"
-                    f"[bed][voice]amix=inputs=2:duration=first:normalize=false,loudnorm=I=-14:LRA=7:TP=-1.5[aout]"
+                    f"[bed][voice]amix=inputs=2:duration=first:normalize=false[a_mix]"
                 )
             else:
                 audio_filter = (
                     f"[0:a]volume=0.06[orig_base];"
                     f"[{dub_idx}:a]asplit=2[sc][voice];"
                     f"[orig_base][sc]sidechaincompress=threshold=0.015:ratio=12:attack=10:release=250[orig_ducked];"
-                    f"[orig_ducked][voice]amix=inputs=2:duration=first:normalize=false,loudnorm=I=-14:LRA=7:TP=-1.5[aout]"
+                    f"[orig_ducked][voice]amix=inputs=2:duration=first:normalize=false[a_mix]"
                 )
     else:
-        # Modo Subtítulos Estándar (Shorts Hormozi): Audio original intacto y limpio + ambient beat sutil (-22 dB)
+        # Modo Subtítulos Estándar / Gameplay: Audio original limpio + ambient beat sutil si activo
         if ambient_idx is not None:
             audio_filter = (
                 f"[{ambient_idx}:a]volume=0.08[amb];"
                 f"[0:a]highpass=f=60,lowpass=f=15500[a_eq];"
-                f"[a_eq][amb]amix=inputs=2:duration=first,loudnorm=I=-14:LRA=7:TP=-1.5[aout]"
+                f"[a_eq][amb]amix=inputs=2:duration=first:normalize=false[a_mix]"
             )
         else:
-            audio_filter = f"[0:a]highpass=f=60,lowpass=f=15500,loudnorm=I=-14:LRA=7:TP=-1.5[aout]"
+            audio_filter = "[0:a]highpass=f=60,lowpass=f=15500[a_mix]"
+
+    if sfx_idx is not None:
+        audio_filter += (
+            f";[{sfx_idx}:a]volume=0.16[sfx_hook];"
+            f"[a_mix][sfx_hook]amix=inputs=2:duration=first:normalize=false,loudnorm=I=-14:LRA=7:TP=-1.5[aout]"
+        )
+    else:
+        audio_filter += ";[a_mix]loudnorm=I=-14:LRA=7:TP=-1.5[aout]"
 
     # Viñeta discreta
     cmd.extend(["-i", str(vignette_png)])
@@ -1060,7 +1076,8 @@ def render_final_video(
         v_base = "[0:v]unsharp=3:3:0.6:3:3:0.0,eq=contrast=1.06:saturation=1.12[v_framed]"
     
     filter_chains.append(v_base)
-    current_v = "v_framed"
+    filter_chains.append("[v_framed]setsar=1[v_sar]")
+    current_v = "v_sar"
 
     # B) Superponer Viñeta sutil y sombras de unión
     filter_chains.append(f"[{current_v}][{vignette_idx}:v]overlay=0:0[v_vignetted]")

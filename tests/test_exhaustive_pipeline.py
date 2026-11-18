@@ -245,14 +245,15 @@ class TestExhaustivePipeline(unittest.TestCase):
         self.assertTrue(output_vid.exists(), "El archivo de salida debe existir")
         self.assertGreater(output_vid.stat().st_size, 5000, "El vídeo final debe tener contenido real")
 
-        # Verificar dimensiones del vídeo de salida vía ffprobe (debe ser 1080x1920 vertical)
+        # Verificar dimensiones y SAR 1:1 del vídeo de salida vía ffprobe (debe ser 1080x1920 vertical)
         p = subprocess.run(
             ["ffprobe", "-v", "quiet", "-select_streams", "v:0",
-             "-show_entries", "stream=width,height", "-of", "csv=s=x:p=0", str(output_vid)],
+             "-show_entries", "stream=width,height,sample_aspect_ratio", "-of", "csv=p=0", str(output_vid)],
             capture_output=True, text=True
         )
-        dims = p.stdout.strip()
-        self.assertEqual(dims, "1080x1920", f"El formato final debe ser 1080x1920, se obtuvo '{dims}'")
+        probe_out = p.stdout.strip()
+        self.assertTrue(probe_out.startswith("1080,1920"), f"El formato final debe ser 1080x1920, se obtuvo '{probe_out}'")
+        self.assertIn("1:1", probe_out, f"SAR debe normalizarse a 1:1 para TikTok/Shorts, se obtuvo '{probe_out}'")
 
     # -------------------------------------------------------------------------
     # 5. CUMPLIMIENTO LEGAL & FAIR USE MULTIPLATAFORMA
@@ -502,6 +503,16 @@ class TestExhaustivePipeline(unittest.TestCase):
             blocked, reason = up._is_youtube_upload_blocked_by_cooldown("Otro título nuevo de GTA 6", "public")
             self.assertTrue(blocked, "Debe bloquear subidas en menos de 45 minutos")
             self.assertIn("cooldown", reason.lower())
+
+    def test_tiktok_anti_saturation_cooldown(self):
+        """TikTok debe respetar el enfriamiento anti-saturación entre subidas consecutivas."""
+        import src.social_publisher as sp
+        tt_cd = self.mock_temp / "test_tt_cooldown.json"
+        with patch.object(sp, "TIKTOK_COOLDOWN_FILE", tt_cd):
+            sp._record_tiktok_upload("GTA 6 Gameplay en PS5 Pro")
+            blocked, reason = sp._is_tiktok_blocked_by_cooldown(cooldown_minutes=90)
+            self.assertTrue(blocked, "Debe espaciar subidas en TikTok <90 min para evitar saturación")
+            self.assertIn("tiktok", reason.lower())
 
 
 if __name__ == "__main__":

@@ -20,6 +20,41 @@ from .translator import to_unicode_bold
 
 # Directorio persistente para la sesión del navegador (TikTok / Instagram)
 BROWSER_PROFILE_DIR = BASE_DIR / "assets" / ".browser_profiles"
+TIKTOK_COOLDOWN_FILE = BASE_DIR / "data" / "tiktok_cooldown.json"
+
+
+def _is_tiktok_blocked_by_cooldown(cooldown_minutes: Optional[int] = None) -> tuple[bool, str]:
+    """Evita saturar TikTok respetando un espaciado mínimo (default 90 min) entre publicaciones."""
+    limit_min = int(os.getenv("TIKTOK_COOLDOWN_MINUTES", "90")) if cooldown_minutes is None else int(cooldown_minutes)
+    if limit_min <= 0 or not TIKTOK_COOLDOWN_FILE.exists():
+        return False, ""
+    try:
+        entries = json.loads(TIKTOK_COOLDOWN_FILE.read_text(encoding="utf-8"))
+        if not isinstance(entries, list) or not entries:
+            return False, ""
+        last_ts = datetime.fromisoformat(entries[-1].get("uploaded_at", ""))
+        mins_since = (datetime.now() - last_ts).total_seconds() / 60.0
+        if mins_since < limit_min:
+            wait_left = max(1, int(round(limit_min - mins_since)))
+            return True, f"Cooldown anti-saturación TikTok activo: última subida hace {int(mins_since)}m (<{limit_min}m, esperar {wait_left}m)."
+    except Exception:
+        pass
+    return False, ""
+
+
+def _record_tiktok_upload(title: str) -> None:
+    """Registra una subida real a TikTok para preservar el espaciado anti-saturación."""
+    try:
+        TIKTOK_COOLDOWN_FILE.parent.mkdir(parents=True, exist_ok=True)
+        entries = []
+        if TIKTOK_COOLDOWN_FILE.exists():
+            entries = json.loads(TIKTOK_COOLDOWN_FILE.read_text(encoding="utf-8"))
+            if not isinstance(entries, list):
+                entries = []
+        entries.append({"title": title[:80], "uploaded_at": datetime.now().isoformat()})
+        TIKTOK_COOLDOWN_FILE.write_text(json.dumps(entries[-20:], indent=2, ensure_ascii=False), encoding="utf-8")
+    except Exception:
+        pass
 
 def open_login_assistant():
     """
@@ -197,6 +232,12 @@ class SocialPublisher:
         video_path = Path(video_path)
         if not AntiBanValidator.check_daily_limit("tiktok"):
             return None
+        if not self.dry_run:
+            blocked_tt, reason_tt = _is_tiktok_blocked_by_cooldown()
+            if blocked_tt:
+                print(f"🛡️ [TikTok Anti-Saturación] Subida aplazada: {reason_tt}")
+                self._notify_telegram(f"⏳ *[TikTok Anti-Saturación]* Clip aplazado para evitar saturar la cuenta:\n_{reason_tt}_")
+                return None
 
         # Formato 100% orgánico para TikTok: Ultra-compacto (evita tapar la pantalla y evita shadowban/0-views)
         clean_title = re.sub(r'[\r\n]+', ' ', title).strip()
@@ -613,6 +654,7 @@ class SocialPublisher:
                         except Exception:
                             pass
 
+                    _record_tiktok_upload(title)
                     if "manage" in current_url or "content" in current_url:
                         print("[✓] Vídeo publicado en TikTok.")
                         return "https://www.tiktok.com/@gtavihubextra"

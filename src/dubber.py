@@ -134,7 +134,7 @@ def generate_voiceover(
 
         # Ajustar ligeramente el tempo si la locución excede la duración del clip (evita cortes al final)
         if max_duration and raw_dur > 1.0:
-            available = max(2.0, float(max_duration) - 0.35 - effective_delay)
+            available = max(2.0, float(max_duration) - 0.55 - effective_delay)
             if raw_dur > available:
                 speed = min(1.35, max(1.02, raw_dur / available))
                 filters.append(f"atempo={speed:.3f}")

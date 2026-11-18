@@ -938,8 +938,12 @@ def process_single_video(
     clean_temp_directory(video_id)
     gc.collect()  # Liberar buffers para GaTDSEQ
 
-    # Si se subió con éxito y no se especificó guardar copia pesada, borrar el mp4 local
-    if uploaded_yt_id and not keep_local_video:
+    # Si se subió con éxito a alguna plataforma (YouTube/TikTok/Instagram) y no se pidió conservar copia pesada, borrar el mp4 local
+    has_published_any = bool(
+        uploaded_yt_id
+        or (publish_all and any(v and str(v).startswith("http") for v in multiplatform_results.values()))
+    )
+    if has_published_any and not keep_local_video:
         clean_uploaded_video_file(output_path)
 
     print(f"\n[✓✓✓] ¡Procesamiento transformacional completado!")
