@@ -17,7 +17,7 @@ from .config import (
 )
 from .uploader import upload_to_youtube
 from .compliance_auditor import ComplianceAuditor
-from .translator import to_unicode_bold
+from .translator import to_unicode_bold, truncate_on_word_boundary
 
 # Directorio persistente para la sesión del navegador (TikTok / Instagram)
 BROWSER_PROFILE_DIR = BASE_DIR / "assets" / ".browser_profiles"
@@ -295,12 +295,12 @@ class SocialPublisher:
 
         # Formato 100% orgánico para TikTok: Ultra-compacto (evita tapar la pantalla y evita shadowban/0-views)
         clean_title = re.sub(r'[\r\n]+', ' ', title).strip()
-        # Limitar título a 45 caracteres para que no desborde la interfaz móvil de TikTok
-        short_title = clean_title[:45].strip()
+        # Limitar título a 50 caracteres en límite de palabra para que no corte palabras ni desborde la UI de TikTok
+        short_title = truncate_on_word_boundary(clean_title, 50)
         tags_str = " ".join([f"#{t.replace(' ', '').replace('#', '')}" for t in tags[:3]])
 
         if debate_question:
-            q_clean = debate_question.replace("¿", "").replace("?", "").strip()[:35]
+            q_clean = truncate_on_word_boundary(debate_question.replace("¿", "").replace("?", "").strip(), 42)
             caption = f"{short_title} 🤯\n¿{q_clean}? 👇\n{tags_str}"
         else:
             caption = f"{short_title} 🤯\n¿Qué opinas de esto? 👇\n{tags_str}"
@@ -471,7 +471,7 @@ class SocialPublisher:
                         "textarea[placeholder*='caption'], textarea[placeholder*='escribe']"
                     ]
                     caption_filled = False
-                    clean_caption = caption[:220].strip()
+                    clean_caption = truncate_on_word_boundary(caption, 220)
 
                     for sel in editor_selectors:
                         try:

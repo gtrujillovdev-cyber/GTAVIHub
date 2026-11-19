@@ -19,6 +19,7 @@ from .emoji_renderer import (
     render_emoji_image,
     get_best_emoji_font
 )
+from .translator import truncate_on_word_boundary
 
 def get_video_dimensions(video_path: Path) -> Tuple[int, int]:
     """Obtiene ancho y alto del vídeo usando ffprobe."""
@@ -569,8 +570,10 @@ def render_persistent_context_badge(output_path: Path, text: str = "GTA 6 • VI
     - Auto-escalado dinámico para llenar el ancho disponible en 1 o 2 líneas balanceadas.
     - Color de acento dinámico según el arquetipo del clip + trazo grueso y sombra profunda.
     """
-    clean = clean_text_preserve_emojis(text).replace("•", " ").strip().upper()[:38]
-    clean = " ".join(clean.split())
+    clean = truncate_on_word_boundary(
+        clean_text_preserve_emojis(text).replace("•", " ").strip().upper(),
+        44,
+    )
     if not clean:
         clean = "GTA 6 VICE CITY"
 
@@ -584,11 +587,19 @@ def render_persistent_context_badge(output_path: Path, text: str = "GTA 6 • VI
     }
     accent = accent_palette.get((archetype or "").strip().lower(), (0, 240, 255))
 
-    # Dividir en 2 líneas balanceadas si supera 18 caracteres para maximizar tamaño visual
+    # Dividir en 2 líneas visualmente equilibradas (por ancho de caracteres, sin partir palabras)
     words = clean.split()
-    if len(clean) > 18 and len(words) >= 3:
-        mid = len(words) // 2
-        lines = [" ".join(words[:mid]), " ".join(words[mid:])]
+    if len(clean) > 18 and len(words) >= 2:
+        best_split = 1
+        best_diff = 10**9
+        for i in range(1, len(words)):
+            l1 = " ".join(words[:i])
+            l2 = " ".join(words[i:])
+            diff = abs(len(l1) - len(l2))
+            if diff < best_diff:
+                best_diff = diff
+                best_split = i
+        lines = [" ".join(words[:best_split]), " ".join(words[best_split:])]
         max_font, min_font, max_h = int(62 * scale_factor), int(42 * scale_factor), int(130 * scale_factor)
     else:
         lines = [clean]

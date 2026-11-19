@@ -335,6 +335,27 @@ class TestPhase1Fixes(unittest.TestCase):
         self.assertTrue(render_calls)
         self.assertIsNotNone(render_calls[0].get("srt_subtitles"))
 
+    def test_word_boundary_truncation_never_chops_mid_word(self):
+        from src.translator import truncate_on_word_boundary
+        from src.video_editor import render_persistent_context_badge
+
+        sample = "DANIREP • PRIMERA CONDUCCIÓN MOTO"
+        self.assertEqual(truncate_on_word_boundary(sample, 42), sample)
+        # Cuando excede el tope, debe cortar en límite de palabra y nunca en "MOT"
+        trimmed = truncate_on_word_boundary(sample, 32)
+        self.assertEqual(trimmed, "DANIREP • PRIMERA CONDUCCIÓN")
+        self.assertFalse(trimmed.endswith("MOT"))
+
+        badge_out = Path(self.test_dir) / "badge_danirep.png"
+        ok = render_persistent_context_badge(
+            badge_out,
+            text=sample,
+            archetype="reaccion_streamer",
+            scale_factor=2.0,
+        )
+        self.assertTrue(ok)
+        self.assertTrue(badge_out.exists())
+
 
 if __name__ == "__main__":
     unittest.main()

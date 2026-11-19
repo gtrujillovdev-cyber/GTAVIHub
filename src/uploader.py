@@ -9,6 +9,7 @@ from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
 
 from .config import BASE_DIR
+from .translator import truncate_on_word_boundary
 
 SCOPES = [
     "https://www.googleapis.com/auth/youtube.upload",
@@ -72,9 +73,10 @@ def _record_youtube_upload(video_id: str, title: str, privacy_status: str) -> No
                     records = data
             except Exception:
                 records = []
+        safe_title = truncate_on_word_boundary(title, 100)
         records.append({
             "video_id": video_id,
-            "title": title[:100],
+            "title": safe_title,
             "uploaded_at": datetime.now().isoformat()
         })
         UPLOAD_COOLDOWN_FILE.write_text(json.dumps(records[-20:], indent=2, ensure_ascii=False), encoding="utf-8")
@@ -213,7 +215,7 @@ def upload_to_youtube(
 
     body = {
         "snippet": {
-            "title": title[:100],  # YouTube limita títulos a 100 caracteres
+            "title": truncate_on_word_boundary(title, 100),  # YouTube limita títulos a 100 caracteres sin cortar palabras
             "description": description[:5000],
             "tags": tags,
             "categoryId": "20",  # Categoría 20 = Gaming
