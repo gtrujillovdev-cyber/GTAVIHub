@@ -9,6 +9,7 @@ from unittest.mock import patch, MagicMock
 import src.performance_tracker as pt
 from src.pipeline import process_single_video
 from src.translator import generate_mechanical_editorial_srt, generate_editorial_commentary_srt
+from src.ai_selector import _resolve_recommended_mode
 
 
 class TestPhase1Fixes(unittest.TestCase):
@@ -103,6 +104,11 @@ class TestPhase1Fixes(unittest.TestCase):
             )
         self.assertTrue(ok2)
         self.assertIn("físicas", out_srt2.read_text(encoding="utf-8").lower())
+
+    def test_resolve_recommended_mode_promotes_english_subs_to_dub(self):
+        self.assertEqual(_resolve_recommended_mode("subs", {"lang": "en", "title": "GTA 6 Secrets"}), "dub")
+        self.assertEqual(_resolve_recommended_mode("subs", {"lang": "es", "title": "Willyrex GTA 6"}), "subs")
+        self.assertEqual(_resolve_recommended_mode("gameplay", {"lang": "en", "title": "GTA 6 Free Roam"}), "gameplay")
 
 
 if __name__ == "__main__":
