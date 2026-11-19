@@ -1232,7 +1232,11 @@ def render_final_video(
     threads_to_use = 1 if is_quant_busy() else FFMPEG_THREADS
     if is_quant_busy():
         print("[Coexistencia GaTDSEQ] Proceso cuantitativo activo en el Mac. Limitando FFmpeg a 1 hilo de CPU.")
-    cmd.extend(["-threads", str(threads_to_use)])
+    cmd.extend([
+        "-threads", str(threads_to_use),
+        "-filter_threads", str(threads_to_use),
+        "-filter_complex_threads", str(threads_to_use),
+    ])
 
     if audio_filter:
         cmd.extend(["-map", "[aout]", "-c:a", "aac", "-b:a", "192k"])
@@ -1241,24 +1245,31 @@ def render_final_video(
 
     cmd.append(str(output_video))
 
+    render_ok = False
     try:
-        subprocess.run(cmd, check=True, capture_output=True, text=True, timeout=180)
+        subprocess.run(cmd, check=True, capture_output=True, text=True, timeout=360)
         print(f"[✓] Vídeo exportado con éxito -> {output_video.name}")
+        render_ok = True
+    except subprocess.TimeoutExpired:
+        print("[!] Timeout de 360s renderizando vídeo FFmpeg.")
+        if output_video.exists():
+            output_video.unlink(missing_ok=True)
     except subprocess.CalledProcessError as e:
         print(f"[!] Error de renderizado FFmpeg: {e.stderr.strip() if e.stderr else e}")
-        return False
-
-    # Limpieza de imágenes temporales
-    for sp, _, _ in sub_pngs:
-        try:
-            sp.unlink()
-        except OSError:
-            pass
-    for extra_png in (vignette_png, hook_png, badge_png, retention_png):
-        if extra_png and extra_png.exists():
+        if output_video.exists():
+            output_video.unlink(missing_ok=True)
+    finally:
+        # Limpieza garantizada de imágenes temporales (incluso si falla o expira el render)
+        for sp, _, _ in sub_pngs:
             try:
-                extra_png.unlink()
+                sp.unlink(missing_ok=True)
             except OSError:
                 pass
+        for extra_png in (vignette_png, hook_png, badge_png, retention_png):
+            if extra_png and extra_png.exists():
+                try:
+                    extra_png.unlink(missing_ok=True)
+                except OSError:
+                    pass
 
-    return True
+    return render_ok

@@ -187,6 +187,81 @@ class TestPhase1Fixes(unittest.TestCase):
             self.assertFalse(chosen.get("ai_selection"))
             self.assertIn("Dry-Run", chosen.get("ai_justification"))
 
+    def test_4k_download_selector_prioritizes_1440p_vp9_and_avoids_av01(self):
+        from src.downloader import download_video_and_subtitles
+
+        captured_cmds = []
+
+        def fake_run(cmd, *args, **kwargs):
+            captured_cmds.append(cmd)
+            m = MagicMock(returncode=1, stdout="", stderr="mock fail")
+            if "-f" in cmd:
+                raise __import__("subprocess").CalledProcessError(1, cmd, stderr="mock fail")
+            return m
+
+        with patch("src.downloader.ENABLE_4K_SHORTS", True), \
+             patch("src.downloader.TEMP_DIR", Path(self.test_dir)), \
+             patch("src.downloader._inspect_remote_video_info", return_value={"duration": 30.0}), \
+             patch("src.downloader._fetch_subtitles_yt", return_value=(None, "es")), \
+             patch("src.downloader.subprocess.run", side_effect=fake_run):
+            download_video_and_subtitles("https://youtu.be/test4k123", "test4k123", source_lang="es")
+
+        fmt_cmds = [c for c in captured_cmds if "-f" in c]
+        self.assertTrue(fmt_cmds)
+        fmt_idx = fmt_cmds[0].index("-f") + 1
+        fmt_str = fmt_cmds[0][fmt_idx]
+        self.assertTrue(fmt_str.startswith("bestvideo[height>=1440][height<=2160][vcodec!^=av01]"))
+        self.assertNotIn("[vcodec!=av01]", fmt_str)
+
+    def test_video_editor_cleans_temp_pngs_and_caps_filter_threads_on_timeout(self):
+        import subprocess
+        from src.video_editor import render_final_video
+
+        in_mp4 = Path(self.test_dir) / "input.mp4"
+        out_mp4 = Path(self.test_dir) / "output.mp4"
+        in_mp4.write_bytes(b"\x00" * 2048)
+
+        captured = {}
+
+        def fake_run(cmd, *args, **kwargs):
+            if cmd and cmd[0] == "ffmpeg":
+                captured["cmd"] = cmd
+                raise subprocess.TimeoutExpired(cmd, timeout=360)
+            return MagicMock(returncode=0, stdout="", stderr="")
+
+        with patch("src.video_editor.get_video_dimensions", return_value=(1920, 1080)), \
+             patch("src.video_editor._probe_duration", return_value=20.0), \
+             patch("src.video_editor.is_quant_busy", return_value=True), \
+             patch("src.video_editor.subprocess.run", side_effect=fake_run):
+            ok = render_final_video(
+                input_video=in_mp4,
+                output_video=out_mp4,
+                hook_text="TEST HOOK\nLINE TWO",
+                format_preset="D",
+            )
+
+        self.assertFalse(ok)
+        self.assertIn("-filter_threads", captured["cmd"])
+        self.assertIn("-filter_complex_threads", captured["cmd"])
+        # Ningún PNG temporal huérfano tras el timeout
+        leftover_pngs = list(Path(self.test_dir).glob("*.png"))
+        self.assertEqual(leftover_pngs, [])
+
+    def test_social_publisher_skips_downscale_on_dry_run_and_quota_full(self):
+        from src.social_publisher import SocialPublisher
+
+        dummy_vid = Path(self.test_dir) / "master_4k.mp4"
+        dummy_vid.write_bytes(b"\x00" * 5000)
+
+        with patch("src.social_publisher.prepare_social_compatible_video") as mock_prep, \
+             patch("src.social_publisher.AntiBanValidator.check_daily_limit", return_value=True):
+            pub = SocialPublisher(dry_run=True)
+            tt_url = pub.publish_to_tiktok(dummy_vid, "GTA 6 Test", ["GTA6"])
+            ig_url = pub.publish_to_instagram(dummy_vid, "GTA 6 Test")
+            self.assertIsNotNone(tt_url)
+            self.assertIsNotNone(ig_url)
+            mock_prep.assert_not_called()
+
 
 if __name__ == "__main__":
     unittest.main()

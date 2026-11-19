@@ -8,7 +8,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional, Dict, Any
 
-from .config import OUTPUT_DIR, TEMP_DIR, AUTO_DUB_ENGLISH
+from .config import OUTPUT_DIR, TEMP_DIR, AUTO_DUB_ENGLISH, ENABLE_4K_SHORTS
 from .downloader import download_video_and_subtitles
 from .translator import translate_srt, generate_video_metadata
 from .dubber import generate_voiceover
@@ -280,7 +280,8 @@ def process_single_video(
             print(f"[Pipeline] Info Telegram Stage Alert: {e}")
 
     # 1. Descarga limpia
-    report_stage("📥 [1/5] Descargando vídeo y pistas originales (1080p)...")
+    res_label = "4K UHD" if ENABLE_4K_SHORTS else "1080p"
+    report_stage(f"📥 [1/5] Descargando vídeo y pistas originales ({res_label})...")
     video_path, srt_path, detected_lang = download_video_and_subtitles(
         url, video_id, source_lang=source_lang, trim_official_bumpers=allow_official_commentary
     )

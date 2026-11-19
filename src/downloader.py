@@ -472,20 +472,33 @@ def find_best_transcript_hook_window(
 
 def _inspect_remote_video_info(url: str) -> Dict[str, Any]:
     """Obtiene metadatos ligeros remotos (duración, heatmap, live_status) sin descargar vídeo."""
-    try:
-        cmd = [
+    attempts = [
+        [
             sys.executable, "-m", "yt_dlp",
             "--impersonate", "chrome",
             "--no-check-certificates",
+            "--no-playlist",
             "--skip-download",
             "--dump-single-json",
             url
-        ]
-        res = subprocess.run(cmd, capture_output=True, text=True, timeout=25)
-        if res.returncode == 0 and (res.stdout or "").strip():
-            return json.loads(res.stdout)
-    except Exception as e:
-        print(f"[!] Info inspector remoto: {e}")
+        ],
+        [
+            sys.executable, "-m", "yt_dlp",
+            "--force-ipv4",
+            "--no-check-certificates",
+            "--no-playlist",
+            "--skip-download",
+            "--dump-single-json",
+            url
+        ],
+    ]
+    for cmd in attempts:
+        try:
+            res = subprocess.run(cmd, capture_output=True, text=True, timeout=25)
+            if res.returncode == 0 and (res.stdout or "").strip():
+                return json.loads(res.stdout)
+        except Exception as e:
+            print(f"[!] Info inspector remoto: {e}")
     return {}
 
 
@@ -941,9 +954,9 @@ def download_video_and_subtitles(
     trim_official_bumpers: bool = False
 ) -> Tuple[Optional[Path], Optional[Path], str]:
     """
-    Descarga el video (limitado a 1080p), detecta picos virales ANTES de descargar
-    vídeos largos (>90s) usando --download-sections para ahorrar ancho de banda/SSD,
-    y sincroniza los subtítulos disponibles con el clip recortado.
+    Descarga el video (4K VP9/1440p cuando ENABLE_4K_SHORTS está activo o 1080p),
+    detecta picos virales ANTES de descargar vídeos largos (>90s) usando --download-sections
+    para ahorrar ancho de banda/SSD, y sincroniza los subtítulos disponibles con el clip recortado.
     Retorna: (video_path, srt_path, detected_lang)
     """
     output_template = str(TEMP_DIR / f"{video_id}.%(ext)s")
@@ -956,13 +969,26 @@ def download_video_and_subtitles(
     max_h = 2160 if ENABLE_4K_SHORTS else 1080
     if is_social_clip:
         format_selector = f"best[ext=mp4]/bestvideo[height<={max_h}]+bestaudio/best"
+    elif ENABLE_4K_SHORTS:
+        # Priorizar 4K/1440p reales (VP9, excluyendo AV1 lento) antes de caer a 1080p avc1
+        format_selector = (
+            f"bestvideo[height>=1440][height<={max_h}][vcodec!^=av01]+bestaudio[language^={audio_lang}][ext=m4a]/"
+            f"bestvideo[height>=1440][height<={max_h}][vcodec!^=av01]+bestaudio[ext=m4a]/"
+            f"bestvideo[height>=1440][height<={max_h}][vcodec!^=av01]+bestaudio/"
+            f"bestvideo[height<={max_h}][vcodec^=avc1]+bestaudio[language^={audio_lang}]/"
+            f"bestvideo[height<={max_h}][vcodec!^=av01]+bestaudio[language^={audio_lang}]/"
+            f"bestvideo[height<={max_h}][vcodec^=avc1]+bestaudio/"
+            f"bestvideo[height<={max_h}][vcodec!^=av01]+bestaudio/"
+            f"bestvideo[height<={max_h}]+bestaudio/"
+            f"best[height<={max_h}]/best"
+        )
     else:
         format_selector = (
             f"bestvideo[height<={max_h}][vcodec^=avc1]+bestaudio[language^={audio_lang}]/"
-            f"bestvideo[height<={max_h}][vcodec!=av01]+bestaudio[language^={audio_lang}]/"
+            f"bestvideo[height<={max_h}][vcodec!^=av01]+bestaudio[language^={audio_lang}]/"
             f"bestvideo[height<={max_h}]+bestaudio[language^={audio_lang}]/"
             f"bestvideo[height<={max_h}][vcodec^=avc1]+bestaudio/"
-            f"bestvideo[height<={max_h}][vcodec!=av01]+bestaudio/"
+            f"bestvideo[height<={max_h}][vcodec!^=av01]+bestaudio/"
             f"bestvideo[height<={max_h}]+bestaudio/"
             f"best[height<={max_h}]/best"
         )
@@ -993,6 +1019,11 @@ def download_video_and_subtitles(
                 chapters=remote_info.get("chapters")
             )
 
+    def _cleanup_partial_downloads():
+        for partial in TEMP_DIR.glob(f"{video_id}*"):
+            if partial.suffix.lower() in (".part", ".ytdl", ".f315", ".f140") or ".part" in partial.name:
+                partial.unlink(missing_ok=True)
+
     def _run_ytdlp_download(section_arg: Optional[Tuple[float, float]]) -> bool:
         extra_args = []
         if section_arg:
@@ -1000,6 +1031,9 @@ def download_video_and_subtitles(
             s1 = max(s0 + 8.0, round(section_arg[1], 2))
             extra_args = ["--download-sections", f"*{s0:.2f}-{s1:.2f}"]
             print(f"[⚡ Fast Section] Descargando solo segmento {s0:.1f}s - {s1:.1f}s (sin bajar vídeo completo)...")
+        elif not is_social_clip and not remote_info:
+            # Guardia SSD: si falló el inspector de duración remoto, limitar tamaño máx para no llenar el SSD con streams largos
+            extra_args = ["--max-filesize", "800M"]
 
         cmd_attempts = []
         if not is_social_clip:
@@ -1032,11 +1066,14 @@ def download_video_and_subtitles(
                 return True
             except subprocess.TimeoutExpired:
                 print(f"[!] Timeout de 90s descargando vídeo {url}.")
+                _cleanup_partial_downloads()
             except subprocess.CalledProcessError as e:
                 err_msg = e.stderr.strip() if e.stderr else str(e)
                 print(f"[!] Intento {attempt_idx+1} falló al descargar vídeo {url}: {err_msg[:120]}")
+                _cleanup_partial_downloads()
             except Exception as e:
                 print(f"[!] Error inesperado descargando vídeo {url}: {e}")
+                _cleanup_partial_downloads()
         return False
 
     print(f"[*] Descargando vídeo de {url}...")

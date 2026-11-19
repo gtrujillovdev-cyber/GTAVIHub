@@ -238,11 +238,27 @@ def send_telegram_video(
     reply_markup: Optional[Dict[str, Any]] = None,
     thumbnail_path: Optional[Path] = None
 ) -> bool:
-    """Envía un archivo de vídeo MP4 nativo al chat para descarga directa y publicación en TikTok/Reels."""
+    """Envía un archivo de vídeo MP4 nativo al chat (auto-comprime vista previa a 1080p si el máster 4K supera 45 MB)."""
     token = os.getenv("TELEGRAM_BOT_TOKEN") or TELEGRAM_BOT_TOKEN
     chat_id = os.getenv("TELEGRAM_CHAT_ID") or TELEGRAM_CHAT_ID
+    video_path = Path(video_path)
     if not token or not chat_id or not video_path.exists():
         return False
+
+    send_path = video_path
+    is_temp_preview = False
+    # Telegram Bot API rechaza vídeos >50 MB (común en másters 4K >22s). Generar preview 1080p temporal sin tocar el máster 4K.
+    try:
+        if video_path.stat().st_size > 45 * 1024 * 1024:
+            from .social_publisher import prepare_social_compatible_video
+            compat_path, is_temp = prepare_social_compatible_video(video_path)
+            if is_temp and compat_path.exists() and compat_path.stat().st_size <= 49 * 1024 * 1024:
+                send_path = compat_path
+                is_temp_preview = True
+            elif is_temp and compat_path.exists():
+                compat_path.unlink(missing_ok=True)
+    except Exception as e:
+        print(f"[Telegram] Aviso generando preview 1080p para Telegram: {e}")
 
     # Sondear dimensiones y duración para forzar al reproductor de Telegram a renderizar en 9:16 vertical nativo (Short)
     width, height, duration = 1080, 1920, 0
@@ -253,7 +269,7 @@ def send_telegram_video(
             "-show_entries", "stream=width,height,duration",
             "-show_entries", "format=duration",
             "-of", "json",
-            str(video_path)
+            str(send_path)
         ]
         res = subprocess.run(cmd, capture_output=True, text=True, timeout=5)
         if res.returncode == 0:
@@ -275,7 +291,7 @@ def send_telegram_video(
 
     url = get_api_url("sendVideo")
     try:
-        with open(video_path, "rb") as video:
+        with open(send_path, "rb") as video:
             files: Dict[str, Any] = {"video": video}
             data: Dict[str, Any] = {
                 "chat_id": chat_id,
@@ -312,6 +328,9 @@ def send_telegram_video(
     except Exception as e:
         print(f"[Telegram] Error enviando vídeo: {e}")
         return False
+    finally:
+        if is_temp_preview and send_path.exists():
+            send_path.unlink(missing_ok=True)
 
 def send_telegram_notification(
     title: str,

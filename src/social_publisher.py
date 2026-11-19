@@ -284,18 +284,13 @@ class SocialPublisher:
         """
         print(f"\n[2/3 TikTok] Preparando subida orgánica a TikTok...")
         video_path = Path(video_path)
-        compat_path, is_temp_video = prepare_social_compatible_video(video_path)
         if not AntiBanValidator.check_daily_limit("tiktok"):
-            if is_temp_video and compat_path.exists():
-                compat_path.unlink(missing_ok=True)
             return None
         if not self.dry_run:
             blocked_tt, reason_tt = _is_tiktok_blocked_by_cooldown()
             if blocked_tt:
                 print(f"🛡️ [TikTok Anti-Saturación] Subida aplazada: {reason_tt}")
                 self._notify_telegram(f"⏳ *[TikTok Anti-Saturación]* Clip aplazado para evitar saturar la cuenta:\n_{reason_tt}_")
-                if is_temp_video and compat_path.exists():
-                    compat_path.unlink(missing_ok=True)
                 return None
 
         # Formato 100% orgánico para TikTok: Ultra-compacto (evita tapar la pantalla y evita shadowban/0-views)
@@ -315,6 +310,8 @@ class SocialPublisher:
             print(f"[2/3 TikTok] [DRY RUN] Simulación exitosa. Caption: '{caption[:60]}...'")
             print(f"             Perfil de sesión: {tiktok_profile}")
             return f"https://www.tiktok.com/@gtavihubextra/video/mock_{video_path.stem}"
+
+        compat_path, is_temp_video = prepare_social_compatible_video(video_path)
 
         try:
             # Comprobar si playwright está disponible en el entorno
@@ -751,17 +748,12 @@ class SocialPublisher:
         """
         ig_handle = (os.getenv("INSTAGRAM_USERNAME") or "gtavihubextra").strip().lstrip("@")
         video_path = Path(video_path)
-        compat_path, is_temp_video = prepare_social_compatible_video(video_path)
         print(f"\n[3/3 Instagram] Preparando subida a Instagram Reels (@{ig_handle})...")
         if not AntiBanValidator.check_daily_limit("instagram"):
-            if is_temp_video and compat_path.exists():
-                compat_path.unlink(missing_ok=True)
             return None
 
         if self.dry_run:
             print(f"[3/3 Instagram] [DRY RUN] Simulación exitosa. Caption: '{caption[:60]}...'")
-            if is_temp_video and compat_path.exists():
-                compat_path.unlink(missing_ok=True)
             return f"https://www.instagram.com/reel/mock_{video_path.stem}"
 
         ig_user = os.getenv("INSTAGRAM_USERNAME")
@@ -776,6 +768,8 @@ class SocialPublisher:
                 "👉 Actualiza `INSTAGRAM_USERNAME=gtavihubextra` y su sesión cuando quieras activar Instagram."
             )
             return None
+
+        compat_path, is_temp_video = prepare_social_compatible_video(video_path)
 
         expected_user = ig_user.strip().lstrip("@").lower()
         session_file = BROWSER_PROFILE_DIR / f"instagrapi_session_{expected_user}.json"
