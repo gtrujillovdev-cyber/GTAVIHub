@@ -158,15 +158,15 @@ class AntiBanValidator:
 
     @classmethod
     def get_daily_limit(cls, platform: str) -> int:
-        """Obtiene el límite diario configurado por plataforma."""
+        """Obtiene el límite diario configurado por plataforma (máximo 3/día por defecto anti-spam)."""
         p = platform.lower()
         if p == "youtube":
-            return int(os.getenv("MAX_DAILY_UPLOADS_YOUTUBE", os.getenv("MAX_DAILY_UPLOADS", "6")))
+            return int(os.getenv("MAX_DAILY_UPLOADS_YOUTUBE", os.getenv("MAX_DAILY_UPLOADS", "3")))
         elif p == "tiktok":
-            return int(os.getenv("MAX_DAILY_UPLOADS_TIKTOK", os.getenv("MAX_DAILY_UPLOADS", "10")))
+            return int(os.getenv("MAX_DAILY_UPLOADS_TIKTOK", os.getenv("MAX_DAILY_UPLOADS", "3")))
         elif p == "instagram":
-            return int(os.getenv("MAX_DAILY_UPLOADS_INSTAGRAM", os.getenv("MAX_DAILY_UPLOADS", "10")))
-        return int(os.getenv("MAX_DAILY_UPLOADS", "10"))
+            return int(os.getenv("MAX_DAILY_UPLOADS_INSTAGRAM", os.getenv("MAX_DAILY_UPLOADS", "3")))
+        return int(os.getenv("MAX_DAILY_UPLOADS", "3"))
 
     @classmethod
     def check_daily_limit(cls, platform: str) -> bool:

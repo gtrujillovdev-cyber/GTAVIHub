@@ -33,6 +33,88 @@ def set_copilot_enabled(enabled: bool):
     except Exception as e:
         print(f"[Co-Pilot] Error actualizando estado: {e}")
 
+
+def evaluate_autopilot_eligibility(
+    candidate_score: float,
+    recent_metrics: list,
+    has_static_penalty: bool = False,
+    min_views: int = 1000,
+    min_likes: int = 25,
+    min_likes_ratio: float = 0.025,
+    circuit_breaker_ratio: float = 0.015,
+    min_viewed_rate: float = 0.70,
+) -> Dict[str, Any]:
+    """
+    Evalúa si un candidato puede publicarse en Autopilot desatendido con garantías estadísticas:
+    - Exige score >= 90 sin penalización por pantalla estática.
+    - Exige muestra mínima (views >= 1000 o likes >= 25) para evitar ruido de muestras pequeñas.
+    - Exige likes/views >= 2.5% (y viewed_rate >= 70% si está disponible en métricas).
+    - Dispara circuit breaker y reactiva Co-Pilot si los últimos 5+ clips caen <= 1.5%.
+    """
+    window = list(recent_metrics or [])[-5:]
+    total_views = sum(int(m.get("views", 0) or 0) for m in window)
+    total_likes = sum(int(m.get("likes", 0) or 0) for m in window)
+    trailing_ratio = (total_likes / total_views) if total_views > 0 else 0.0
+
+    viewed_rates = [float(m["viewed_rate"]) for m in window if m.get("viewed_rate") is not None]
+    avg_viewed_rate = (sum(viewed_rates) / len(viewed_rates)) if viewed_rates else None
+
+    if len(window) >= 5 and total_views >= min_views and trailing_ratio <= circuit_breaker_ratio:
+        set_copilot_enabled(True)
+        return {
+            "allow_autopilot": False,
+            "circuit_breaker_triggered": True,
+            "trailing_likes_ratio": round(trailing_ratio, 4),
+            "reason": f"Circuit breaker: ratio {trailing_ratio:.2%} <= {circuit_breaker_ratio:.2%} en últimos 5 clips",
+        }
+
+    if has_static_penalty:
+        return {
+            "allow_autopilot": False,
+            "circuit_breaker_triggered": False,
+            "trailing_likes_ratio": round(trailing_ratio, 4),
+            "reason": "Penalización por pantalla estática activa",
+        }
+
+    if float(candidate_score or 0) < 90.0:
+        return {
+            "allow_autopilot": False,
+            "circuit_breaker_triggered": False,
+            "trailing_likes_ratio": round(trailing_ratio, 4),
+            "reason": f"Score editorial insuficiente ({candidate_score} < 90)",
+        }
+
+    if total_views < min_views and total_likes < min_likes:
+        return {
+            "allow_autopilot": False,
+            "circuit_breaker_triggered": False,
+            "trailing_likes_ratio": round(trailing_ratio, 4),
+            "reason": f"Muestra estadística insuficiente ({total_views} vistas, {total_likes} likes)",
+        }
+
+    if avg_viewed_rate is not None and avg_viewed_rate < min_viewed_rate:
+        return {
+            "allow_autopilot": False,
+            "circuit_breaker_triggered": False,
+            "trailing_likes_ratio": round(trailing_ratio, 4),
+            "reason": f"Retención inicial baja (Viewed {avg_viewed_rate:.1%} < {min_viewed_rate:.0%})",
+        }
+
+    if trailing_ratio < min_likes_ratio:
+        return {
+            "allow_autopilot": False,
+            "circuit_breaker_triggered": False,
+            "trailing_likes_ratio": round(trailing_ratio, 4),
+            "reason": f"Ratio likes/views insuficiente ({trailing_ratio:.2%} < {min_likes_ratio:.2%})",
+        }
+
+    return {
+        "allow_autopilot": True,
+        "circuit_breaker_triggered": False,
+        "trailing_likes_ratio": round(trailing_ratio, 4),
+        "reason": "Elegible para Autopilot desatendido",
+    }
+
 def stage_pending_video(
     video_id: str,
     original_url: str,

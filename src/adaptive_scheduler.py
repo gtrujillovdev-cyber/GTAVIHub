@@ -26,43 +26,43 @@ from .config import DATA_DIR
 
 SCHEDULE_FILE = DATA_DIR / "adaptive_schedule.json"
 
-# Definición de ventanas objetivo con sus rangos de minutos aleatorios
+# Definición de ventanas objetivo con margen previo de 25-45 min para render 4K + GaTDSEQ
 TARGET_WINDOWS = [
     {
         "id": "morning",
-        "name": "🌅 Mañana (Pico España)",
+        "name": "🌅 Mañana (Pico España 11:00)",
         "start_hour": 10,
         "start_minute": 15,
-        "end_hour": 11,
-        "end_minute": 20,
-        "target_label": "10:15 - 11:20 CET"
+        "end_hour": 10,
+        "end_minute": 35,
+        "target_label": "10:15 - 10:35 CET"
     },
     {
         "id": "lunch_latam",
-        "name": "🍲 Almuerzo ES / Amanecer LatAm",
+        "name": "🍲 Almuerzo ES / Amanecer LatAm (14:30)",
         "start_hour": 13,
         "start_minute": 45,
         "end_hour": 14,
-        "end_minute": 50,
-        "target_label": "13:45 - 14:50 CET"
+        "end_minute": 5,
+        "target_label": "13:45 - 14:05 CET"
     },
     {
         "id": "afternoon",
-        "name": "🌇 Tarde / Salida Laboral",
+        "name": "🌇 Tarde / Salida Laboral (18:00)",
         "start_hour": 17,
         "start_minute": 15,
-        "end_hour": 18,
-        "end_minute": 25,
-        "target_label": "17:15 - 18:25 CET"
+        "end_hour": 17,
+        "end_minute": 35,
+        "target_label": "17:15 - 17:35 CET"
     },
     {
         "id": "prime_time",
-        "name": "🌙 Prime Time ES / Tarde LatAm",
+        "name": "🌙 Prime Time ES / Tarde LatAm (21:00)",
         "start_hour": 20,
         "start_minute": 15,
-        "end_hour": 21,
-        "end_minute": 30,
-        "target_label": "20:15 - 21:30 CET"
+        "end_hour": 20,
+        "end_minute": 35,
+        "target_label": "20:15 - 20:35 CET"
     }
 ]
 

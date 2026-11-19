@@ -116,7 +116,7 @@ def select_best_candidate_ai(
         print("[AI Selector] Todos los candidatos fueron descartados por seguridad RRSS o anti-repetición.")
         return {}
 
-    # Si solo hay un candidato, validar calidad mínima antes de aceptarlo
+    # Si solo hay un candidato, validar calidad mínima (calidad sobre cuota fija)
     if len(candidates) == 1:
         chosen = dict(candidates[0])
         c_title = f" {(chosen.get('title') or '').lower()} "
@@ -125,8 +125,8 @@ def select_best_candidate_ai(
         c_visual = any(
             k in c_title for k in ("fps", " vs ", "comparison", "comparativa", "no commentary", "sin comentarios", "pure gameplay")
         )
-        if c_score < 50 and c_dur > 120 and not c_visual:
-            print(f"[AI Selector] ❌ Único candidato rechazado por relleno largo de baja calidad (score={c_score}, dur={c_dur}s): {chosen.get('title')}")
+        if ((0 < c_score < 65) or (c_score < 50 and c_dur > 120)) and not c_visual:
+            print(f"[AI Selector] ❌ Único candidato rechazado por calidad insuficiente (score={c_score}, dur={c_dur}s): {chosen.get('title')}")
             return {}
         l1, l2 = generate_hook_card_texts(chosen.get("title", ""))
         chosen["ai_selection"] = False
