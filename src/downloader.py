@@ -348,10 +348,19 @@ def find_best_transcript_hook_window(
     )
     hook_kw_re = re.compile(
         r"\b(pre-?load|30\s?fps|60\s?fps|frame\s?rate|confirm(?:ed|ado)|official|oficial|"
-        r"rockstar|november\s?19|lucia|jason|vice\s?city|leonida|secret|hidden|oculto|"
+        r"rockstar|november\s?19|lucia|luc[ií]a|jason|vice\s?city|leonida|secret|hidden|oculto|"
         r"detail|detalle|look\s+at|look\s+closely|pause|insane|crazy|brutal|wtf|no\s+way|"
         r"oh\s+my\s+god|omg|gameplay|trailer|leak|map|size|gb|download|ray\s?tracing|"
-        r"physics|water|hair|mira|incre[ií]ble)\b",
+        r"physics|f[ií]sicas?|water|agua|hair|mira|incre[ií]ble|polic[ií]a|persecuci[oó]n|"
+        r"choque|explosi[oó]n|atropell|disparo|tiroteo|hostia|madre\s+m[ií]a|qu[eé]\s+locura|"
+        r"realismo|mec[aá]nica|agarre|coche|ragdoll|misi[oó]n)\b",
+        re.IGNORECASE,
+    )
+    menu_admin_re = re.compile(
+        r"\b(tienda|skins?\s+de\s+pago|ultimate\s+edition|copyright|en\s+el\s+(?:bot|vod)|"
+        r"apag[oa]\s+la\s+radio|quitar?\s+la\s+radio|m[uú]sica\s+con\s+licencia|ajustes|"
+        r"configuraci[oó]n|interfaz\s+de\s+usuario|men[uú]\s+de\s+pausa|controles\s+del\s+mando|"
+        r"suscriptores?|donaci[oó]n|patreon|twitch\s+prime)\b",
         re.IGNORECASE,
     )
 
@@ -387,6 +396,8 @@ def find_best_transcript_hook_window(
         score = 0.0
         if sponsor_re.search(joined):
             score -= 120.0
+        if menu_admin_re.search(joined):
+            score -= 65.0
         if cta_re.search(joined):
             score -= 45.0
         if eff_total > 75 and w_start < 6.0:
@@ -448,9 +459,9 @@ def find_best_transcript_hook_window(
                 )
                 prompt = (
                     f"Vídeo: '{title or 'GTA 6'}'\n"
-                    "Elige el ÚNICO fragmento con mayor retención para un YouTube Short/TikTok "
-                    "(el momento exacto donde hay un dato concreto, descubrimiento visual o reacción genuina; "
-                    "NUNCA intros, saludos ni sponsors).\n"
+                    "Elige el ÚNICO fragmento con mayor retención visual y gameplay puro para un YouTube Short/TikTok "
+                    "(un momento jugando con acción, físicas, policía, descubrimiento o reacción divertida in-game; "
+                    "NUNCA intros, saludos, sponsors, menús de pausa/ajustes ni charlas sobre radio/copyright del directo).\n"
                     f"{options_txt}\n\n"
                     "Responde SOLO con el número de índice (ejemplo: 0)."
                 )

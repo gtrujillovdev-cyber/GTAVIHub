@@ -262,6 +262,79 @@ class TestPhase1Fixes(unittest.TestCase):
             self.assertIsNotNone(ig_url)
             mock_prep.assert_not_called()
 
+    def test_transcript_hook_penalizes_menu_and_copyright_chatter(self):
+        from src.downloader import find_best_transcript_hook_window
+
+        srt_file = Path(self.test_dir) / "rubius_audit.srt"
+        srt_file.write_text(
+            "1\n00:01:00,000 --> 00:01:08,000\n"
+            "Vale uy como que tienda ah skins de pago o estudio fotografico confirmado.\n\n"
+            "2\n00:01:08,500 --> 00:01:22,000\n"
+            "Voy a dejar la musica con licencia pero apago la radio por copyright en el vod.\n\n"
+            "3\n00:05:00,000 --> 00:05:12,000\n"
+            "Madre mia mira la fisica del agua y esa explosion brutal en la persecucion policial!\n\n"
+            "4\n00:05:12,500 --> 00:05:24,500\n"
+            "Que locura de detalles y realismo con el coche en GTA 6!\n",
+            encoding="utf-8",
+        )
+        win = find_best_transcript_hook_window(srt_file, min_dur=16, max_dur=28, total_duration=400.0, use_ai=False)
+        self.assertIsNotNone(win)
+        # Debe elegir el tramo de acción real (300s+) y NO el menú de ajustes/copyright (60s-82s)
+        self.assertGreaterEqual(win[0], 290.0)
+
+    def test_pipeline_spanish_streamer_gets_karaoke_and_heavy_english_gets_dub(self):
+        from src.pipeline import process_single_video
+
+        tmp_vid = Path(self.test_dir) / "streamer.mp4"
+        tmp_vid.write_bytes(b"\x00" * 4096)
+        es_srt = Path(self.test_dir) / "streamer.srt"
+        es_srt.write_text(
+            "1\n00:00:01,000 --> 00:00:10,000\n"
+            "Madre mía chavales mirad cómo acaba de explotar ese coche de policía en GTA 6 qué locura de físicas!\n",
+            encoding="utf-8",
+        )
+
+        render_calls = []
+
+        def fake_render(*args, **kwargs):
+            render_calls.append(kwargs)
+            out_v = kwargs["output_video"]
+            out_v.write_bytes(b"\x00" * 4096)
+            return True
+
+        out_dir = Path(self.test_dir) / "out"
+        out_dir.mkdir(exist_ok=True)
+        with patch("src.pipeline.TEMP_DIR", Path(self.test_dir)), \
+             patch("src.pipeline.OUTPUT_DIR", out_dir), \
+             patch("src.pipeline.download_video_and_subtitles", return_value=(tmp_vid, es_srt, "es")), \
+             patch("src.pipeline.get_video_dimensions", return_value=(1920, 1080)), \
+             patch("src.pipeline.detect_horizontal_split_screen", return_value=False), \
+             patch("src.audio_shield.detect_audio_levels", return_value={"has_audio": True, "mean_volume": -18.0, "max_volume": -2.0}), \
+             patch("src.pipeline.translate_srt", side_effect=lambda s, d, **kw: (d.write_text(s.read_text(encoding="utf-8"), encoding="utf-8"), True)[1]), \
+             patch("src.pipeline.generate_video_metadata", return_value={"title": "TEST ES STREAMER", "description": "desc", "tags": ["GTA6"]}), \
+             patch("src.pipeline.render_final_video", side_effect=fake_render), \
+             patch("src.pipeline.create_video_thumbnail"), \
+             patch("src.pipeline.is_copilot_enabled", return_value=False), \
+             patch("src.pipeline.clean_temp_directory"), \
+             patch("src.pipeline.mark_video_processed"), \
+             patch("src.pipeline.notify_macos"), \
+             patch("src.telegram_bot.send_telegram_video", return_value=True), \
+             patch("src.telegram_bot.send_telegram_photo", return_value=True), \
+             patch("src.telegram_bot.send_telegram_alert", return_value=True), \
+             patch("src.pipeline.subprocess.run", return_value=MagicMock(returncode=0, stdout="22.0", stderr="")):
+            process_single_video(
+                url="https://youtu.be/es_stream_1",
+                video_id="es_stream_1",
+                original_title="GTA 6 MUNDO ABIERTO",
+                creator_name="Rubius Z",
+                source_lang="es",
+                mode="gameplay",
+                auto_upload=False,
+            )
+
+        self.assertTrue(render_calls)
+        self.assertIsNotNone(render_calls[0].get("srt_subtitles"))
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -66,7 +66,8 @@ def _is_pure_gameplay_action(title: str) -> bool:
         kw in tl
         for kw in (
             "breakdown", "review", "tech review", "analysis", "análisis",
-            "analisis", "differences", "diferencias", "how long", " vs ", "comparison"
+            "analisis", "differences", "diferencias", "how long", " vs ", "comparison",
+            "discussion", "podcast", "talk", "technology", "digital foundry", "direct special"
         )
     )
     return has_gp and not has_analysis
@@ -379,9 +380,26 @@ def process_single_video(
     is_pure_gameplay = _is_pure_gameplay_action(original_title)
     skip_tts_for_gameplay = False
 
+    srt_spoken_words = _count_spoken_words_in_srt(srt_path)
+
+    # Streamers y clips en español con voz real: conservar audio original PERO activar subtítulos Karaoke dinámicos
+    if (
+        mode in ("gameplay", "clean")
+        and lang_to_use == "es"
+        and not is_split_comparison
+        and not allow_official_commentary
+        and srt_spoken_words >= 8
+    ):
+        print(
+            f"[*] [Streamer/Voz ES] Detectadas {srt_spoken_words} palabras en español: "
+            "activando subtítulos Karaoke dinámicos preservando audio original."
+        )
+        mode = "subs"
+        skip_tts_for_gameplay = True
+
     # Guardia Anti-Inglés: si IA eligió 'gameplay'/'clean' en autónomo sobre vídeo en inglés con locución real,
-    # forzar traducción + autodoblaje — PERO si es gameplay real (ej. primera misión/free roam), usar subtítulos
-    # en español conservando las voces y el sonido auténtico del juego (sin doblaje TTS encima).
+    # forzar traducción + autodoblaje — PERO si es gameplay real con diálogos in-game breves (<32 palabras),
+    # usar subtítulos en español conservando las voces y el sonido auténtico del juego (sin doblaje TTS encima).
     allow_pure_gameplay = (
         is_manual_ingest
         or is_split_comparison
@@ -389,17 +407,13 @@ def process_single_video(
         or lang_to_use == "es"
     )
     if mode in ("gameplay", "clean") and not allow_pure_gameplay:
-        srt_spoken_words = _count_spoken_words_in_srt(srt_path)
-        if is_pure_gameplay:
-            if srt_spoken_words >= 8:
-                print(
-                    f"[*] [Gameplay Real + Diálogos] Detectadas {srt_spoken_words} palabras in-game: "
-                    "activando subtítulos dinámicos ES preservando audio auténtico de GTA 6."
-                )
-                mode = "subs"
-                skip_tts_for_gameplay = True
-            else:
-                print("[*] [Gameplay Puro] Conservando audio auténtico del juego sin TTS ni subtítulos inventados.")
+        if is_pure_gameplay and 8 <= srt_spoken_words < 32:
+            print(
+                f"[*] [Gameplay Real + Diálogos] Detectadas {srt_spoken_words} palabras in-game: "
+                "activando subtítulos dinámicos ES preservando audio auténtico de GTA 6."
+            )
+            mode = "subs"
+            skip_tts_for_gameplay = True
         elif srt_spoken_words >= 12:
             target_mode = "dub" if AUTO_DUB_ENGLISH else "subs"
             print(
@@ -407,6 +421,8 @@ def process_single_video(
                 f"pese a modo '{mode}'. Activando modo '{target_mode}'."
             )
             mode = target_mode
+        elif is_pure_gameplay:
+            print("[*] [Gameplay Puro] Conservando audio auténtico del juego sin TTS ni subtítulos inventados.")
         elif not (srt_path and srt_path.exists()) and not _is_pure_visual_title(original_title):
             print(
                 f"[*] [Guardia Anti-Inglés] Modo '{mode}' sin subtítulos ni título visual puro: "
@@ -943,6 +959,17 @@ def process_single_video(
     with open(meta_path, "w", encoding="utf-8") as f:
         json.dump(full_info, f, indent=2, ensure_ascii=False)
 
+    has_published_any = bool(
+        uploaded_yt_id
+        or (publish_all and any(v and str(v).startswith("http") for v in multiplatform_results.values()))
+    )
+    if (auto_upload or publish_all) and not dry_run and not has_published_any and not keep_local_video:
+        print("[!] Ninguna plataforma publicó el vídeo (cooldown o cuota). Purgando MP4 huérfano y omitiendo marca 'completed'.")
+        clean_temp_directory(video_id)
+        clean_uploaded_video_file(output_path)
+        gc.collect()
+        return None
+
     # 8. Registro en processed.json
     mark_video_processed({
         "id": video_id,
@@ -990,10 +1017,6 @@ def process_single_video(
     gc.collect()  # Liberar buffers para GaTDSEQ
 
     # Si se subió con éxito a alguna plataforma (YouTube/TikTok/Instagram) y no se pidió conservar copia pesada, borrar el mp4 local
-    has_published_any = bool(
-        uploaded_yt_id
-        or (publish_all and any(v and str(v).startswith("http") for v in multiplatform_results.values()))
-    )
     if has_published_any and not keep_local_video:
         clean_uploaded_video_file(output_path)
 

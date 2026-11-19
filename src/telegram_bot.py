@@ -693,7 +693,7 @@ def get_my_channels_report() -> str:
 # 5. EJECUCIÓN DE PROCESOS EN SEGUNDO PLANO (THREADS)
 # ═══════════════════════════════════════════════════════════════════
 
-def run_scan_in_background(chat_id: str, max_videos: int = 2, window_id: Optional[str] = None):
+def run_scan_in_background(chat_id: str, max_videos: int = 1, window_id: Optional[str] = None):
     """Ejecuta el escaneo autónomo en segundo plano sin congelar Telegram."""
     global ACTIVE_TASK
     with BACKGROUND_LOCK:
