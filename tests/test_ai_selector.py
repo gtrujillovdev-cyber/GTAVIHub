@@ -226,5 +226,55 @@ class TestAiSelector(unittest.TestCase):
             }]
             self.assertEqual(select_best_candidate_ai(solo_filler, launch_mode=False), {})
 
+    def test_anti_monoculture_and_angle_classification(self):
+        import json
+        import tempfile
+        from src.performance_tracker import classify_clip_angle
+
+        # 1. Verificar clasificación correcta de creadores y mecánicas
+        willy_angle = classify_clip_angle("WILLYREX PRUEBA LA MECÁNICA DE AGARRE EN GTA 6", "Willyrex")
+        self.assertIn(willy_angle, ("reaccion_streamer", "fisicas_motor"))
+        self.assertNotEqual(willy_angle, "gameplay_general")
+
+        # 2. Verificar que cuando el canal ya tiene varias comparativas técnicas, rota temáticamente
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmp_proc = Path(tmpdir) / "processed.json"
+            # Historial simulado saturado de comparativas técnicas
+            hist = [
+                {"id": "c1", "title": "GTA 6 vs GTA 5 Graphics", "status": "completed"},
+                {"id": "c2", "title": "PS5 Pro vs Xbox Series X", "status": "completed"},
+                {"id": "c3", "title": "Grand Theft Auto VI 4K Comparison", "status": "completed"}
+            ]
+            tmp_proc.write_text(json.dumps(hist), encoding="utf-8")
+
+            cands = [
+                {
+                    "id": "cand_comp_repetitive",
+                    "title": "GTA 6 Digital Foundry Technical Tech Review",
+                    "uploader": "Digital Foundry",
+                    "duration": 600,
+                    "score": 90,
+                    "views_per_hour": 15000,
+                    "allow_long_clipping": True
+                },
+                {
+                    "id": "cand_physics_fresh",
+                    "title": "GTA 6 RAGE 9 Físicas de Choques y Agua Impresionantes",
+                    "uploader": "GameV",
+                    "duration": 25,
+                    "score": 88,
+                    "views_per_hour": 14000,
+                    "allow_long_clipping": True
+                }
+            ]
+
+            with patch("src.config.PROCESSED_FILE", tmp_proc), \
+                 patch("src.channels.PROCESSED_FILE", tmp_proc), \
+                 patch("src.channels.get_processed_ids", return_value=set()):
+                chosen = select_best_candidate_ai(cands, launch_mode=False, use_ai=False)
+                # El escudo anti-monocultura y anti-cháchara debe seleccionar el clip de físicas frescas
+                self.assertEqual(chosen.get("id"), "cand_physics_fresh")
+
+
 if __name__ == "__main__":
     unittest.main()

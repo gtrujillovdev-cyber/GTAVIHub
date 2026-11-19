@@ -165,47 +165,56 @@ def get_performance_context_for_playbook() -> str:
 
 ANGLE_CATALOG: Dict[str, tuple[str, ...]] = {
     "fisicas_motor": (
-        "física", "fisica", "physics", "agua", "water", "rage", "colision",
-        "colisión", "deformacion", "deformación", "choque", "crash", "ragdoll"
+        "física", "fisica", "physics", "agua", "water", "rage", "rage 9", "colision",
+        "colisión", "deformacion", "deformación", "choque", "crash", "ragdoll",
+        "mecanica", "mecánica", "mecanicas", "mecánicas", "agarre", "animacion",
+        "animación", "conduccion", "conducción", "disparo", "combate", "pelea",
+        "ia", "npc", "npcs", "destruccion", "destrucción"
+    ),
+    "reaccion_streamer": (
+        "reaccion", "reacción", "reaction", "reacts", "xqc", "ibai", "rubius", "elrubius",
+        "illojuan", "xokas", "elxokas", "willyrex", "auron", "auronplay", "thegrefg",
+        "grefg", "vegetta", "vegetta777", "djmariio", "streamer", "streamers",
+        "directo", "flipa", "alucina", "prueba", "jugando"
     ),
     "policia_caos": (
         "policia", "policía", "police", "chase", "persecucion", "persecución",
-        "swat", "estrellas", "wanted", "caos", "chaos", "tiroteo", "atraco"
+        "swat", "estrellas", "wanted", "caos", "chaos", "tiroteo", "atraco",
+        "escape", "huida", "arresto"
     ),
     "historia_misiones": (
-        "mision", "misión", "mission", "prologo", "prólogo", "prologue",
-        "intro", "lucia", "lucía", "jason", "historia", "story", "final"
+        "mision", "misión", "mission", "missions", "prologo", "prólogo", "prologue",
+        "intro", "lucia", "lucía", "jason", "historia", "story", "campaña", "final",
+        "walkthrough"
     ),
     "comparativa_tecnica": (
-        "ps5", "xbox", "fps", " vs ", "comparativa", "comparison", "graficos",
-        "gráficos", "graphics", "4k", "digital foundry", "elanalistadebits"
+        "ps5", "ps5 pro", "xbox", "fps", " vs ", "comparativa", "comparison", "graficos",
+        "gráficos", "graphics", "4k", "digital foundry", "elanalistadebits", "ray tracing", "rtx"
     ),
     "secretos_detalles": (
-        "secreto", "secret", "oculto", "hidden", "easter egg", "detalle",
-        "detail", "mapa", "map", "leonida", "vice city", "curiosidad"
-    ),
-    "reaccion_streamer": (
-        "reaccion", "reacción", "reaction", "xqc", "ibai", "rubius",
-        "illojuan", "xokas", "streamer", "directo", "flipa"
+        "secreto", "secretos", "secret", "secrets", "oculto", "ocultos", "hidden",
+        "easter egg", "easter eggs", "detalle", "detalles", "detail", "details",
+        "mapa", "map", "leonida", "vice city", "curiosidad", "curiosidades",
+        "loot", "ubicacion", "ubicación", "truco", "trucos", "dinero"
     ),
 }
 
 ANGLE_LABELS: Dict[str, str] = {
-    "fisicas_motor": "Físicas y Motor RAGE 9",
+    "fisicas_motor": "Físicas, Mecánicas y Motor RAGE 9",
+    "reaccion_streamer": "Streamers y Momentos Virales",
     "policia_caos": "Persecuciones Policiales y Caos",
     "historia_misiones": "Historia, Misiones y Protagonistas",
     "comparativa_tecnica": "Comparativas Técnicas y Gráficos PS5 Pro",
     "secretos_detalles": "Secretos, Mapa y Detalles Ocultos",
-    "reaccion_streamer": "Reacciones de Streamers",
     "gameplay_general": "Gameplay General",
 }
 
 
-def classify_clip_angle(title: str) -> str:
-    """Clasifica el ángulo temático de un vídeo por su título."""
-    t_low = f" {(title or '').lower()} "
+def classify_clip_angle(title: str, uploader: str = "") -> str:
+    """Clasifica el ángulo temático de un vídeo por su título y uploader."""
+    combined = f" {(title or '').lower()} {(uploader or '').lower()} "
     for angle, kws in ANGLE_CATALOG.items():
-        if any(kw in t_low for kw in kws):
+        if any(kw in combined for kw in kws):
             return angle
     return "gameplay_general"
 
@@ -314,12 +323,36 @@ def detect_and_apply_winning_angles(limit: int = 12) -> Dict[str, Any]:
 
     winner = live_items[0]
     win_angle = winner["angle"]
-    # Si el #1 es gameplay_general pero hay un #2 con ángulo específico y tracción similar, preferir el específico
+    # Si el #1 es gameplay_general pero hay un candidato en el top con ángulo específico y tracción relevante, considerarlo
     if win_angle == "gameplay_general":
         for cand in live_items[1:4]:
             if cand["angle"] != "gameplay_general" and cand["views"] > 0:
                 win_angle = cand["angle"]
                 break
+
+    # Escudo Anti-Monocultura / Saturación de Contenido:
+    # Si este ángulo ya acapara >= 2 de los últimos 4 vídeos en el canal, rotar al siguiente mejor
+    # clip con un ángulo fresco para mantener la variedad editorial y no cansar a la audiencia.
+    try:
+        from .config import PROCESSED_FILE
+        import json
+        if PROCESSED_FILE.exists():
+            with open(PROCESSED_FILE, "r", encoding="utf-8") as f:
+                hist = json.load(f)
+                recent_pub = [e for e in hist if e.get("status") in ("completed", "published_via_copilot")][-5:]
+                recent_published_angles = [
+                    classify_clip_angle(e.get("title") or e.get("original_title") or "", e.get("creator") or "")
+                    for e in recent_pub
+                ]
+                if recent_published_angles.count(win_angle) >= 2:
+                    for cand in live_items:
+                        c_angle = cand.get("angle")
+                        if c_angle != win_angle and c_angle != "gameplay_general" and recent_published_angles.count(c_angle) < 2:
+                            winner = cand
+                            win_angle = c_angle
+                            break
+    except Exception as e:
+        print(f"[PerformanceTracker] Warning evaluando rotación anti-monocultura: {e}")
 
     priority_kws = list(ANGLE_CATALOG.get(win_angle, ()))[:10]
     angle_label = ANGLE_LABELS.get(win_angle, win_angle)

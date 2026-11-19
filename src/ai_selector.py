@@ -60,13 +60,20 @@ def _visual_appeal_adjustment(item: Dict[str, Any]) -> float:
         delta += 12.0
     if any(a in upl for a in ("elanalistadebits", "onespot gaming", "cycu1", "digital foundry", "gta series videos", "powerpyx", "gameriot", "gamev")):
         delta += 24.0
+    if any(a in upl for a in ("willyrex", "illojuan", "rubius", "elrubius", "xokas", "elxokas", "auron", "auronplay", "thegrefg", "vegetta", "vegetta777", "djmariio")):
+        delta += 28.0
     if has_gameplay_kw:
         delta += 24.0
+    # Penalizar formatos de tertulia larga/podcast/debate que arruinan la retención en Shorts
+    if dur > 500 and any(k in tl for k in ("discussion", "podcast", "talk", "chat", "direct special", "roundtable", "interview", "debate")):
+        delta -= 48.0
+    is_trusted_streamer = any(a in upl for a in ("willyrex", "illojuan", "rubius", "elrubius", "xokas", "elxokas", "auron", "thegrefg", "vegetta", "djmariio"))
     if any(k in tl for k in (
         "how long is", "worth it", "should you buy", "opening intro",
-        "daily fix", "reaction", "reaccion", "reacciona", "thoughts",
-        "debate", "things we found", "opinion", "pissed", "don't buy"
+        "daily fix", "thoughts", "things we found", "opinion", "pissed", "don't buy"
     )) or ("review" in tl and "digital foundry" not in upl and "gameplay" not in tl):
+        delta -= 42.0
+    if any(k in tl for k in ("reaction", "reaccion", "reacciona")) and not is_trusted_streamer and not has_gameplay_kw:
         delta -= 42.0
     return delta
 
@@ -144,6 +151,25 @@ def select_best_candidate_ai(
     _priority_kws = [str(k).lower() for k in (_heur.get("priority_keywords") or []) if k]
     _priority_angle_label = str(_heur.get("priority_angle_label") or "")
 
+    # Cargar historial de ángulos publicados para rotación temática anti-monocultura
+    recent_published_angles = []
+    try:
+        from .performance_tracker import classify_clip_angle
+        from .config import PROCESSED_FILE
+        if PROCESSED_FILE.exists():
+            with open(PROCESSED_FILE, "r", encoding="utf-8") as f:
+                hist = json.load(f)
+                recent_pub = [e for e in hist if e.get("status") in ("completed", "published_via_copilot")][-6:]
+                recent_published_angles = [
+                    classify_clip_angle(e.get("title") or e.get("original_title") or "", e.get("creator") or "")
+                    for e in recent_pub
+                ]
+    except Exception:
+        recent_published_angles = []
+
+    last_pub_angle = recent_published_angles[-1] if recent_published_angles else None
+    recent_window_4 = recent_published_angles[-4:] if len(recent_published_angles) >= 4 else recent_published_angles
+
     # Ordenar pre-pool priorizando ritmo dinámico, velocidad real y ángulo ganador actual del canal
     def _pre_rank(item: Dict[str, Any]) -> float:
         s = float(item.get("score") or 0) + _visual_appeal_adjustment(item)
@@ -158,6 +184,19 @@ def select_best_candidate_ai(
             t_low = f" {(item.get('title') or '').lower()} "
             if any(kw in t_low for kw in _priority_kws):
                 s += 18.0
+
+        # Escudo Anti-Monocultura / Rotación Temática Obligatoria:
+        cand_angle = classify_clip_angle(item.get("title") or "", item.get("uploader") or item.get("source_name") or "")
+        if last_pub_angle and cand_angle == last_pub_angle and cand_angle != "gameplay_general":
+            # Cooldown inmediato: Evita subir 2 vídeos del mismo ángulo de forma consecutiva
+            s -= 25.0
+        if recent_window_4.count(cand_angle) >= 2 and cand_angle != "gameplay_general":
+            # Fatiga de categoría: Si el ángulo ya tiene >= 2 apariciones en los últimos 4 vídeos, penalizar fuertemente
+            s -= 35.0
+        elif cand_angle in ("fisicas_motor", "secretos_detalles", "policia_caos", "reaccion_streamer", "historia_misiones") and cand_angle not in recent_window_4:
+            # Bonus de frescura temática: Premia categorías desatendidas para mantener el canal variado y vibrante
+            s += 16.0
+
         return s
 
     base_pool = sorted(base_pool, key=_pre_rank, reverse=True)
