@@ -89,15 +89,90 @@ def fetch_recent_videos(limit: int = 4) -> List[Dict[str, Any]]:
         return []
 
 def get_youtube_analytics_report() -> str:
-    """Genera un reporte conciso y profesional de analíticas de YouTube para Telegram."""
+    """Genera un reporte conciso y profesional de analíticas de YouTube para Telegram con fallback a yt-dlp."""
     overview = fetch_channel_overview()
-    if not overview:
+    recent = fetch_recent_videos(limit=5) if overview else []
+
+    # Fallback si YouTube Data API OAuth token ha caducado
+    if not overview or not recent:
+        from .config import DATA_DIR
+        processed_file = DATA_DIR / "processed.json"
+        recent_candidates = []
+        if processed_file.exists():
+            try:
+                with open(processed_file, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                    if isinstance(data, list):
+                        for item in reversed(data):
+                            yt_url = item.get("youtube_uploaded_url")
+                            if yt_url and "youtu" in yt_url and "mock" not in yt_url:
+                                recent_candidates.append({
+                                    "url": yt_url,
+                                    "title": item.get("youtube_title") or item.get("title", "GTA 6 Short")
+                                })
+                                if len(recent_candidates) >= 5:
+                                    break
+            except Exception:
+                pass
+
+        if recent_candidates:
+            total_views = 0
+            total_likes = 0
+            total_comments = 0
+            scraped_items = []
+
+            for c in recent_candidates:
+                try:
+                    res = subprocess.run([
+                        sys.executable, "-m", "yt_dlp",
+                        "--dump-json", "--no-download", c["url"]
+                    ], capture_output=True, text=True, timeout=12)
+                    if res.returncode == 0 and res.stdout.strip():
+                        v_info = json.loads(res.stdout)
+                        v_cnt = int(v_info.get("view_count") or 0)
+                        l_cnt = int(v_info.get("like_count") or 0)
+                        c_cnt = int(v_info.get("comment_count") or 0)
+                        total_views += v_cnt
+                        total_likes += l_cnt
+                        total_comments += c_cnt
+                        scraped_items.append({
+                            "title": v_info.get("title") or c["title"],
+                            "url": c["url"],
+                            "views": v_cnt,
+                            "likes": l_cnt,
+                            "comments": c_cnt,
+                        })
+                except Exception:
+                    pass
+
+            if scraped_items:
+                report = (
+                    "📈 *MÉTRICAS ACUMULADAS Y RENDIMIENTO (@GTAVIHubExtra)*\n"
+                    + ("═" * 38) + "\n\n"
+                    + f"🔥 *TOTAL ACUMULADO (Últimos {len(scraped_items)} Shorts):*\n"
+                    + f"• 👁️ *Vistas Totales:* `{total_views:,}`\n"
+                    + f"• ❤️ *Likes Totales:* `{total_likes:,}`\n"
+                    + f"• 💬 *Comentarios Totales:* `{total_comments:,}`\n\n"
+                    + "📊 *DETALLE INDIVIDUAL POR CLIP:*\n"
+                )
+                for idx, item in enumerate(scraped_items, 1):
+                    clean_t = item["title"][:42] + ("..." if len(item["title"]) > 42 else "")
+                    report += (
+                        f"\n*{idx}.* [{clean_t}]({item['url']})\n"
+                        f"   • Vistas: `{item['views']:,}` | Likes: `{item['likes']:,}` | Comentarios: `{item['comments']}`\n"
+                    )
+                report += (
+                    "\n" + ("═" * 38) + "\n"
+                    "💡 _Métricas obtenidas en directo vía scraper público con fallback resiliente._"
+                )
+                return report
+
         return (
             "📈 *MÉTRICAS DE YOUTUBE — GTA VI HUB*\n"
             + ("═" * 36) + "\n\n"
             + "⚠️ *YouTube API No Disponible*\n"
-            + "No se pudo conectar con YouTube Data API.\n"
-            + "Asegúrate de que `token.json` esté presente y autorizado con:\n"
+            + "No se pudo conectar con YouTube Data API ni consultar vídeos recientes.\n"
+            + "Asegúrate de que `token.json` esté autorizado con:\n"
             + "`python3 auth_youtube.py`"
         )
 
@@ -112,13 +187,18 @@ def get_youtube_analytics_report() -> str:
         + ("═" * 36) + "\n\n"
         + f"📺 *Canal:* `{title}` ({handle})\n"
         + f"👥 *Suscriptores:* `{subs}`\n"
-        + f"👁️ *Visualizaciones Totales:* `{views}`\n"
+        + f"👁️ *Visualizaciones Totales del Canal:* `{views}`\n"
         + f"🎬 *Vídeos Públicos:* `{vids}`\n\n"
         + "🔥 *Rendimiento de Subidas Recientes:*\n"
     )
 
-    recent = fetch_recent_videos(limit=3)
     if recent:
+        sub_views = sum(v["views"] for v in recent)
+        sub_likes = sum(v["likes"] for v in recent)
+        sub_comm = sum(v["comments"] for v in recent)
+        report += (
+            f"• 📊 *Acumulado Reciente:* `{sub_views:,}` vistas | `{sub_likes:,}` likes | `{sub_comm:,}` comms\n\n"
+        )
         for idx, vid in enumerate(recent, 1):
             short_title = vid["title"][:42] + ("..." if len(vid["title"]) > 42 else "")
             report += (
