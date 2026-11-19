@@ -255,6 +255,20 @@ def process_single_video(
     # Auditoría inicial de almacenamiento
     enforce_storage_limits(max_mb=1000)
 
+    # Pre-check de cuota Anti-Ban antes de descargar o renderizar (evita renders huérfanos en output/)
+    if auto_upload:
+        from .social_publisher import AntiBanValidator
+        yt_ok = AntiBanValidator.check_daily_limit("youtube")
+        tt_ok = AntiBanValidator.check_daily_limit("tiktok")
+        ig_ok = (
+            AntiBanValidator.check_daily_limit("instagram")
+            and not block_instagram
+            and mode not in ("subs", "clean", "gameplay")
+        )
+        if not (yt_ok or tt_ok or ig_ok):
+            print("[Anti-Ban Pre-Check] Cuotas diarias agotadas en todas las plataformas elegibles. Abortando antes de descargar/renderizar.")
+            return None
+
     def report_stage(stage_text: str):
         print(f"\n[*] {stage_text}")
         try:
@@ -474,11 +488,14 @@ def process_single_video(
             except Exception as e:
                 print(f"[OCR] Info extracción de texto en pantalla: {e}")
 
-    # Si el clip no tiene narración hablada (p. ej. gameplay puro sin voz), generar comentario editorial multimodal
-    # en español para aportar narrativa original (Fair Use), subtítulos Pop Karaoke y desbloquear Instagram Reels.
+    # Si el clip no tiene narración hablada o falló la cuota de IA (Gemini 429), generar comentario editorial
+    # (multimodal o fallback mecánico 0-API) para aportar narrativa en español, Pop Karaoke y desbloquear IG Reels.
     if (
         (not es_srt_path)
-        and (mode == "dub" or (confirmed_no_speech and os.getenv("AUTO_COMMENTARY_ON_SILENT_GAMEPLAY", "true").lower() in ("1", "true", "yes")))
+        and (
+            mode in ("dub", "subs")
+            or (confirmed_no_speech and os.getenv("AUTO_COMMENTARY_ON_SILENT_GAMEPLAY", "true").lower() in ("1", "true", "yes"))
+        )
         and not allow_official_commentary
         and not skip_tts_for_gameplay
         and not is_split_comparison

@@ -7,7 +7,7 @@ para alimentar al Learning Engine con datos de rendimiento concretos.
 import sys
 import json
 import subprocess
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Dict, Any, List, Optional
 
@@ -74,7 +74,7 @@ def fetch_pending_metrics(max_fetch: int = 5) -> int:
     Retorna el número de registros actualizados.
     """
     records = _load_records()
-    now = datetime.now()
+    now = datetime.now(timezone.utc)
     updated = 0
 
     for rec in records:
@@ -84,7 +84,10 @@ def fetch_pending_metrics(max_fetch: int = 5) -> int:
         if not published_at_str:
             continue
         try:
-            published_at = datetime.fromisoformat(published_at_str)
+            published_at = datetime.fromisoformat(published_at_str.replace("Z", "+00:00"))
+            if published_at.tzinfo is None:
+                published_at = published_at.astimezone()
+            published_at = published_at.astimezone(timezone.utc)
         except ValueError:
             continue
 

@@ -612,6 +612,82 @@ Grand Theft Auto VI, GTA VI, Vice City y los logotipos asociados son marcas regi
     }
 
 
+def _format_srt_ts(seconds: float) -> str:
+    """Formatea segundos flotantes a timestamp SubRip HH:MM:SS,mmm."""
+    ms_total = max(0, int(round(seconds * 1000)))
+    h = ms_total // 3_600_000
+    m = (ms_total % 3_600_000) // 60_000
+    s = (ms_total % 60_000) // 1000
+    ms = ms_total % 1000
+    return f"{h:02d}:{m:02d}:{s:02d},{ms:03d}"
+
+
+def generate_mechanical_editorial_srt(
+    output_srt: Path,
+    original_title: str = "",
+    creator_name: str = "",
+    duration_sec: float = 24.0,
+) -> bool:
+    """
+    Fallback mecánico 0-API: genera un guion editorial breve en español en formato SRT
+    basado en heurística de palabras clave cuando Gemini no tiene cuota o falla.
+    """
+    orig = (original_title or "").lower()
+    if any(k in orig for k in ("ps5", "xbox", "fps", " vs ", "comparativa", "comparison", "graficos", "gráficos", "4k")):
+        cues = [
+            "Fíjate en esta comparativa.",
+            "El salto gráfico es real.",
+            "Mira la iluminación dinámica.",
+            "Y el nivel de detalle.",
+            "¿En qué consola jugarás?",
+        ]
+    elif any(k in orig for k in ("fisica", "física", "physics", "agua", "water", "npc", "ia ", "ai ", "detail", "detalle")):
+        cues = [
+            "Mira este detalle oculto.",
+            "Las físicas de GTA 6.",
+            "Cada reacción parece real.",
+            "Atento al entorno vivo.",
+            "¿Qué nota le pones?",
+        ]
+    elif any(k in orig for k in ("mision", "misión", "mission", "jason", "lucia", "lucía", "heist", "atraco", "policia", "policía", "police")):
+        cues = [
+            "Atento a esta escena.",
+            "Acción pura en Leonida.",
+            "El ritmo no da tregua.",
+            "Cada segundo cuenta aquí.",
+            "¿Supera a GTA 5?",
+        ]
+    else:
+        cues = [
+            "Gameplay real de GTA 6.",
+            "Mira cómo luce Vice City.",
+            "Iluminación y detalle brutal.",
+            "Esto ya está aquí.",
+            "Comenta qué te parece.",
+        ]
+
+    eff_dur = max(12.0, min(float(duration_sec or 24.0), 40.0))
+    usable_end = min(eff_dur - 1.5, 22.0)
+    start_t = 0.5
+    step = max(2.2, (usable_end - start_t) / len(cues))
+
+    blocks = []
+    for idx, line in enumerate(cues, start=1):
+        t0 = start_t + (idx - 1) * step
+        t1 = min(usable_end, t0 + step - 0.15)
+        if t1 <= t0:
+            break
+        blocks.append(f"{idx}\n{_format_srt_ts(t0)} --> {_format_srt_ts(t1)}\n{line}")
+
+    if not blocks:
+        return False
+
+    output_srt.parent.mkdir(parents=True, exist_ok=True)
+    output_srt.write_text("\n\n".join(blocks) + "\n", encoding="utf-8")
+    print(f"[✓ Fallback Mecánico 0-API] Guion editorial SRT generado -> {output_srt.name}")
+    return True
+
+
 def generate_editorial_commentary_srt(
     video_path: Path,
     original_title: str,
@@ -670,14 +746,18 @@ def generate_editorial_commentary_srt(
         cleaned = sanitize_srt_content(cleaned)
 
         if not cleaned or "-->" not in cleaned:
-            return False
+            return generate_mechanical_editorial_srt(
+                output_srt, original_title=original_title, creator_name=creator_name, duration_sec=duration_sec
+            )
 
         output_srt.write_text(cleaned.strip() + "\n", encoding="utf-8")
         print(f"[✓] Guion editorial SRT generado con éxito -> {output_srt.name}")
         return True
     except Exception as e:
-        print(f"[Warning] No se pudo generar comentario editorial visual: {e}")
-        return False
+        print(f"[Warning] No se pudo generar comentario editorial visual ({e}). Activando fallback mecánico 0-API...")
+        return generate_mechanical_editorial_srt(
+            output_srt, original_title=original_title, creator_name=creator_name, duration_sec=duration_sec
+        )
     finally:
         for f in extracted_frames:
             try:

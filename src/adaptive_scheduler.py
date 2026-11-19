@@ -66,8 +66,9 @@ TARGET_WINDOWS = [
     }
 ]
 
-# Ventanas extraordinarias activadas automáticamente en las noches de estreno (19 y 20 nov)
-LAUNCH_NIGHT_DATES = (date(2026, 11, 19), date(2026, 11, 20))
+# Ventana extraordinaria activada únicamente en la noche de estreno (19 nov);
+# desde el 20 nov se reservan los 4 disparos diarios para las franjas punta ES/LatAm.
+LAUNCH_NIGHT_DATES = (date(2026, 11, 19),)
 LAUNCH_NIGHT_WINDOWS = [
     {
         "id": "midnight_drop",
