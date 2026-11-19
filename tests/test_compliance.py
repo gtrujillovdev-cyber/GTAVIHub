@@ -522,6 +522,8 @@ class TestCompliance(unittest.TestCase):
             pub = sp.SocialPublisher(dry_run=False)
             with patch.object(pub, "_notify_telegram") as mock_tg, \
                  patch.object(sp, "BROWSER_PROFILE_DIR", tmp_profile), \
+                 patch.object(sp.AntiBanValidator, "check_daily_limit", return_value=True), \
+                 patch.object(sp, "_is_tiktok_blocked_by_cooldown", return_value=(False, "")), \
                  patch.dict(sys.modules, {"playwright": fake_pw_mod, "playwright.sync_api": fake_pw_sync}), \
                  patch.dict(os.environ, {"HEADLESS_BROWSER": "true"}, clear=False):
                 os.environ.pop("ALLOW_LEGACY_TIKTOK", None)
