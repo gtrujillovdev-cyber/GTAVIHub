@@ -52,8 +52,8 @@ def evaluate_autopilot_eligibility(
     - Dispara circuit breaker y reactiva Co-Pilot si los últimos 5+ clips caen <= 1.5%.
     """
     window = list(recent_metrics or [])[-5:]
-    total_views = sum(int(m.get("views", 0) or 0) for m in window)
-    total_likes = sum(int(m.get("likes", 0) or 0) for m in window)
+    total_views = sum(int(m.get("views") if m.get("views") is not None else (m.get("views_24h") or 0)) for m in window)
+    total_likes = sum(int(m.get("likes") if m.get("likes") is not None else (m.get("likes_24h") or 0)) for m in window)
     trailing_ratio = (total_likes / total_views) if total_views > 0 else 0.0
 
     viewed_rates = [float(m["viewed_rate"]) for m in window if m.get("viewed_rate") is not None]

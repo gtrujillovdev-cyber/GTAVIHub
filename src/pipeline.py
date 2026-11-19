@@ -19,7 +19,7 @@ from .social_publisher import SocialPublisher
 from .thumbnail_generator import create_video_thumbnail
 from .monitor import notify_macos
 from .cleaner import clean_temp_directory, clean_uploaded_video_file, enforce_storage_limits
-from .copilot import is_copilot_enabled, stage_pending_video
+from .copilot import is_copilot_enabled, stage_pending_video, evaluate_autopilot_eligibility
 
 def _count_spoken_words_in_srt(srt_path: Optional[Path]) -> int:
     """Cuenta palabras habladas reales en un SRT ignorando numeración, marcas de tiempo y etiquetas tipo [Music]."""
@@ -828,6 +828,22 @@ def process_single_video(
     from .config import LAUNCH_AUTOPILOT, LAUNCH_AUTOPILOT_MIN_SCORE, is_gameplay_enabled
     if copilot_mode is None:
         effective_copilot = is_copilot_enabled()
+        if not effective_copilot and (auto_upload or publish_all) and not is_manual_ingest:
+            try:
+                from .performance_tracker import _load_records
+                recent_records = [
+                    r for r in _load_records()
+                    if r.get("views") is not None or r.get("views_24h") is not None
+                ]
+            except Exception:
+                recent_records = []
+            gate = evaluate_autopilot_eligibility(
+                candidate_score=candidate_score,
+                recent_metrics=recent_records,
+            )
+            if not gate["allow_autopilot"]:
+                print(f"[*] [Autopilot Guard] Revertido a Co-Pilot: {gate['reason']}")
+                effective_copilot = True
         if (
             effective_copilot
             and LAUNCH_AUTOPILOT
