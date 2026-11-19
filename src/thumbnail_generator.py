@@ -32,8 +32,11 @@ def extract_keyframe(video_path: Path, output_frame: Path, timestamp_sec: float 
 
 
 def get_best_font(size: int = 70):
-    """Obtiene tipografía bold moderna en macOS."""
+    """Obtiene tipografía oficial de marca (Montserrat Black / Anton) o fallback macOS."""
+    base_fonts = Path(__file__).resolve().parent.parent / "assets" / "fonts"
     font_configs = [
+        (str(base_fonts / "Montserrat-Black.ttf"), 0),
+        (str(base_fonts / "Anton-Regular.ttf"), 0),
         ("/System/Library/Fonts/Supplemental/Arial Bold.ttf", 0),
         ("/System/Library/Fonts/Avenir Next.ttc", 8),
         ("/System/Library/Fonts/HelveticaNeue.ttc", 9),
@@ -198,8 +201,10 @@ def create_video_thumbnail(
             try:
                 cand_img = Image.open(cand_frame).convert("RGB").resize((320, 180), Image.Resampling.LANCZOS)
                 stat = ImageStat.Stat(cand_img)
-                # Energía visual nativa con Pillow (cero dependencia numpy): contraste + luminosidad saludable
-                energy = sum(stat.stddev) * 2.0 + sum(stat.mean) * 0.35
+                # Energía visual nativa con Pillow: prioriza fotogramas luminosos y nítidos (penaliza planos nocturnos oscuros)
+                mean_luma = sum(stat.mean) / 3.0
+                dark_penalty = -150.0 if mean_luma < 45.0 else 0.0
+                energy = sum(stat.stddev) * 1.8 + sum(stat.mean) * 0.9 + dark_penalty
                 if energy > best_energy:
                     best_energy = energy
                     if best_frame and best_frame.exists():

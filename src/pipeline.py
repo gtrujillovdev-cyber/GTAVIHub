@@ -474,6 +474,38 @@ def process_single_video(
             except Exception as e:
                 print(f"[OCR] Info extracción de texto en pantalla: {e}")
 
+    # Si el clip no tiene narración hablada (p. ej. gameplay puro sin voz), generar comentario editorial multimodal
+    # en español para aportar narrativa original (Fair Use), subtítulos Pop Karaoke y desbloquear Instagram Reels.
+    if (
+        (not es_srt_path)
+        and (mode == "dub" or (confirmed_no_speech and os.getenv("AUTO_COMMENTARY_ON_SILENT_GAMEPLAY", "true").lower() in ("1", "true", "yes")))
+        and not allow_official_commentary
+        and not skip_tts_for_gameplay
+        and not is_split_comparison
+        and mode != "clean"
+        and video_path.exists()
+        and video_path.stat().st_size > 10000
+    ):
+        try:
+            from .translator import generate_editorial_commentary_srt
+            editorial_srt = TEMP_DIR / f"{video_id}_editorial_es.srt"
+            if generate_editorial_commentary_srt(
+                video_path=video_path,
+                original_title=original_title or video_id,
+                creator_name=creator_name or "Rockstar Games",
+                output_srt=editorial_srt,
+                duration_sec=clip_dur_sec or 25.0,
+            ) and editorial_srt.exists():
+                es_srt_path = editorial_srt
+                srt_path = editorial_srt
+                lang_to_use = "es"
+                audio_needs_dub = True
+                mode = "dub"
+                confirmed_no_speech = False
+                print("[✓] [Alpha Commentary] Guion editorial original en español generado -> activando voz neural y subtítulos.")
+        except Exception as e:
+            print(f"[!] Info comentario editorial automático: {e}")
+
     # Si es clip oficial/visual con música/rótulos breves (<12 palabras) o sin locución, usar modo gameplay (conserva audio original sin abortar en Audio Shield)
     _active_caption_words = _count_spoken_words_in_srt(es_srt_path or srt_path)
 
@@ -664,9 +696,9 @@ def process_single_video(
         and (
             any(
                 kw in title_lower
-                for kw in (" vs ", "comparison", "comparativa", "breakdown", "missed", "reaction", "reacciona", "reacción", "fps", "analysis", "review", "features")
+                for kw in (" vs ", "comparison", "comparativa")
             )
-            or any(ch_k in creator_lower for ch_k in ("playstation", "xbox", "ign", "digital foundry", "elanalistadebits"))
+            or any(ch_k in creator_lower for ch_k in ("digital foundry", "elanalistadebits"))
         )
     )
 
@@ -679,7 +711,7 @@ def process_single_video(
         # Formato D (1080x1600 / 83.3% de pantalla): reencuadre vertical inmersivo obligatorio según Regla 5.1 de GEMINI.md
         target_preset = "D"
 
-    render_srt = None if mode == "gameplay" else es_srt_path
+    render_srt = es_srt_path
 
     success_render = render_final_video(
         input_video=video_path,
@@ -690,7 +722,8 @@ def process_single_video(
         hook_text=hook_text,
         is_official_content=is_official_content,
         archetype=archetype,
-        format_preset=target_preset
+        format_preset=target_preset,
+        context_badge=metadata.get("context_badge", "")
     )
 
     if not success_render or not output_path.exists():

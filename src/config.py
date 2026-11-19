@@ -40,8 +40,8 @@ PROCESSED_FILE = DATA_DIR / "processed.json" if (DATA_DIR / "processed.json").ex
 
 # Gemini / Hydrogen API Configuration
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
-GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-4-hydrogen")
-_raw_fallbacks = os.getenv("GEMINI_FALLBACK_MODELS", "gemini-4-hydrogen,gemini-3.8-flash,gemini-3.5-flash-lite,gemini-2.5-flash,gemini-2.5-flash-lite")
+GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash-lite")
+_raw_fallbacks = os.getenv("GEMINI_FALLBACK_MODELS", "gemini-2.5-flash-lite,gemini-2.5-flash,gemini-flash-lite-latest,gemini-flash-latest")
 GEMINI_FALLBACK_MODELS = [m.strip() for m in _raw_fallbacks.split(",") if m.strip()]
 
 # Defaults & Duración Orgánica Nativa (Shorts nativos 100% íntegros, sin cortes arbitrarios)

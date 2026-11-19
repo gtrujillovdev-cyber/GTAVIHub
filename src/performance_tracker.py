@@ -158,3 +158,221 @@ def get_performance_context_for_playbook() -> str:
             )
 
     return "\n".join(lines)
+
+
+ANGLE_CATALOG: Dict[str, tuple[str, ...]] = {
+    "fisicas_motor": (
+        "física", "fisica", "physics", "agua", "water", "rage", "colision",
+        "colisión", "deformacion", "deformación", "choque", "crash", "ragdoll"
+    ),
+    "policia_caos": (
+        "policia", "policía", "police", "chase", "persecucion", "persecución",
+        "swat", "estrellas", "wanted", "caos", "chaos", "tiroteo", "atraco"
+    ),
+    "historia_misiones": (
+        "mision", "misión", "mission", "prologo", "prólogo", "prologue",
+        "intro", "lucia", "lucía", "jason", "historia", "story", "final"
+    ),
+    "comparativa_tecnica": (
+        "ps5", "xbox", "fps", " vs ", "comparativa", "comparison", "graficos",
+        "gráficos", "graphics", "4k", "digital foundry", "elanalistadebits"
+    ),
+    "secretos_detalles": (
+        "secreto", "secret", "oculto", "hidden", "easter egg", "detalle",
+        "detail", "mapa", "map", "leonida", "vice city", "curiosidad"
+    ),
+    "reaccion_streamer": (
+        "reaccion", "reacción", "reaction", "xqc", "ibai", "rubius",
+        "illojuan", "xokas", "streamer", "directo", "flipa"
+    ),
+}
+
+ANGLE_LABELS: Dict[str, str] = {
+    "fisicas_motor": "Físicas y Motor RAGE 9",
+    "policia_caos": "Persecuciones Policiales y Caos",
+    "historia_misiones": "Historia, Misiones y Protagonistas",
+    "comparativa_tecnica": "Comparativas Técnicas y Gráficos PS5 Pro",
+    "secretos_detalles": "Secretos, Mapa y Detalles Ocultos",
+    "reaccion_streamer": "Reacciones de Streamers",
+    "gameplay_general": "Gameplay General",
+}
+
+
+def classify_clip_angle(title: str) -> str:
+    """Clasifica el ángulo temático de un vídeo por su título."""
+    t_low = f" {(title or '').lower()} "
+    for angle, kws in ANGLE_CATALOG.items():
+        if any(kw in t_low for kw in kws):
+            return angle
+    return "gameplay_general"
+
+
+def sync_live_channel_metrics(limit: int = 12) -> List[Dict[str, Any]]:
+    """
+    Consulta métricas en vivo (vistas, likes, comentarios y velocidad vistas/h)
+    de los vídeos recientes de @GTAVIHubExtra vía YouTube Data API v3 y actualiza
+    performance_records.json sin esperar 23h.
+    """
+    from .youtube_analytics import fetch_recent_videos
+    from datetime import timezone
+
+    recent = fetch_recent_videos(limit=limit)
+    if not recent:
+        return []
+
+    records = _load_records()
+    by_id = {r.get("video_id"): r for r in records if r.get("video_id")}
+    now_utc = datetime.now(timezone.utc)
+    now_local = datetime.now()
+    live_items: List[Dict[str, Any]] = []
+
+    for v in recent:
+        vid = v.get("id")
+        if not vid:
+            continue
+        views = int(v.get("views") or 0)
+        likes = int(v.get("likes") or 0)
+        comments = int(v.get("comments") or 0)
+        pub_raw = v.get("published_at") or ""
+        age_hours = 1.0
+        if pub_raw:
+            try:
+                pub_dt = datetime.fromisoformat(pub_raw.replace("Z", "+00:00"))
+                if pub_dt.tzinfo is None:
+                    pub_dt = pub_dt.replace(tzinfo=timezone.utc)
+                age_hours = max(0.25, (now_utc - pub_dt).total_seconds() / 3600.0)
+            except Exception:
+                age_hours = 1.0
+
+        vph = round(views / max(age_hours, 0.5), 1)
+        eng_score = likes + (comments * 3)
+        angle = classify_clip_angle(v.get("title", ""))
+
+        entry = by_id.get(vid)
+        if entry is None:
+            entry = {
+                "video_id": vid,
+                "title": v.get("title", ""),
+                "youtube_url": v.get("url", f"https://youtu.be/{vid}"),
+                "base_score": 0,
+                "velocity_vpd": 0.0,
+                "days_old": int(age_hours // 24),
+                "is_short": True,
+                "target_channel": "extra",
+                "published_at": pub_raw or now_local.isoformat(),
+                "metrics_fetched_at": None,
+                "views_24h": None,
+                "likes_24h": None,
+                "comments_24h": None,
+            }
+            records.append(entry)
+            by_id[vid] = entry
+
+        entry["views_live"] = views
+        entry["likes_live"] = likes
+        entry["comments_live"] = comments
+        entry["views_per_hour"] = vph
+        entry["age_hours"] = round(age_hours, 2)
+        entry["angle"] = angle
+        entry["last_live_sync_at"] = now_local.isoformat()
+        if age_hours >= 23.0 and entry.get("views_24h") is None:
+            entry["views_24h"] = views
+            entry["likes_24h"] = likes
+            entry["comments_24h"] = comments
+            entry["metrics_fetched_at"] = now_local.isoformat()
+
+        live_items.append({
+            "video_id": vid,
+            "title": v.get("title", ""),
+            "url": v.get("url", f"https://youtu.be/{vid}"),
+            "views": views,
+            "likes": likes,
+            "comments": comments,
+            "age_hours": round(age_hours, 1),
+            "views_per_hour": vph,
+            "engagement_score": eng_score,
+            "angle": angle,
+            "launch_rank": round(vph * 2.0 + eng_score * 5.0 + views * 0.25, 2),
+        })
+
+    _save_records(records)
+    live_items.sort(key=lambda x: x["launch_rank"], reverse=True)
+    return live_items
+
+
+def detect_and_apply_winning_angles(limit: int = 12) -> Dict[str, Any]:
+    """
+    Detecta qué clips y ángulos están rindiendo mejor en las últimas horas y
+    actualiza data/viral_playbook.json para replicar ese ángulo en las próximas rondas.
+    """
+    live_items = sync_live_channel_metrics(limit=limit)
+    if not live_items:
+        return {"ok": False, "reason": "Sin datos recientes en YouTube Data API.", "top_clips": []}
+
+    winner = live_items[0]
+    win_angle = winner["angle"]
+    # Si el #1 es gameplay_general pero hay un #2 con ángulo específico y tracción similar, preferir el específico
+    if win_angle == "gameplay_general":
+        for cand in live_items[1:4]:
+            if cand["angle"] != "gameplay_general" and cand["views"] > 0:
+                win_angle = cand["angle"]
+                break
+
+    priority_kws = list(ANGLE_CATALOG.get(win_angle, ()))[:10]
+    angle_label = ANGLE_LABELS.get(win_angle, win_angle)
+
+    try:
+        from .learning_engine import load_viral_playbook, save_viral_playbook
+        pb = load_viral_playbook()
+        heur = pb.setdefault("active_heuristics", {})
+        heur["priority_angle"] = win_angle
+        heur["priority_angle_label"] = angle_label
+        heur["priority_keywords"] = priority_kws
+        heur["winning_clip"] = {
+            "video_id": winner["video_id"],
+            "title": winner["title"],
+            "views": winner["views"],
+            "views_per_hour": winner["views_per_hour"],
+            "likes": winner["likes"],
+            "comments": winner["comments"],
+        }
+        heur["last_winner_sync"] = datetime.now().isoformat()
+        save_viral_playbook(pb)
+    except Exception as e:
+        print(f"[PerformanceTracker] Warning actualizando playbook ganador: {e}")
+
+    return {
+        "ok": True,
+        "winner": winner,
+        "priority_angle": win_angle,
+        "priority_angle_label": angle_label,
+        "priority_keywords": priority_kws,
+        "top_clips": live_items[:5],
+    }
+
+
+def format_winner_replication_report(summary: Dict[str, Any]) -> str:
+    """Formatea el informe táctico de clips ganadores y réplica para Telegram."""
+    if not summary.get("ok"):
+        return f"⚠️ *Radar de Ganadores:* {summary.get('reason', 'Sin métricas disponibles aún.')}"
+
+    top_clips = summary.get("top_clips", [])
+    winner = summary.get("winner", {})
+    label = summary.get("priority_angle_label", "Gameplay")
+    lines = [
+        "🏆 *RADAR DE CLIPS GANADORES & RÉPLICA AUTOMÁTICA*",
+        "═" * 34,
+        f"🎯 *Ángulo ganador actual:* `{label}`",
+        "_(El selector IA ya prioriza (+18 pts) candidatos de este mismo tema en la siguiente ronda)_\n",
+        "📊 *Top rendimiento reciente (@GTAVIHubExtra):*",
+    ]
+    for idx, c in enumerate(top_clips[:4], 1):
+        medal = "🥇" if idx == 1 else ("🥈" if idx == 2 else ("🥉" if idx == 3 else "•"))
+        title_clean = str(c.get("title", "")).replace("*", "").replace("`", "")[:46]
+        lines.append(
+            f"{medal} *{title_clean}*\n"
+            f"   👁 `{c['views']}` (`{c['views_per_hour']}/h`) | ❤️ `{c['likes']}` | 💬 `{c['comments']}` | _{c['age_hours']}h_"
+        )
+    if winner.get("url"):
+        lines.append(f"\n🔗 *Clip #1:* {winner['url']}")
+    return "\n".join(lines)

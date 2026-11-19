@@ -40,8 +40,18 @@ class TestExhaustivePipeline(unittest.TestCase):
         self.mock_output = self.test_path / "output"
         self.mock_temp.mkdir(parents=True, exist_ok=True)
         self.mock_output.mkdir(parents=True, exist_ok=True)
+        # Aislar Telegram para que ningún test envíe mensajes o previews al chat real
+        self._tg_env_patch = patch.dict(os.environ, {"TELEGRAM_BOT_TOKEN": "", "TELEGRAM_CHAT_ID": ""})
+        self._tg_tok_patch = patch("src.telegram_bot.TELEGRAM_BOT_TOKEN", "")
+        self._tg_chat_patch = patch("src.telegram_bot.TELEGRAM_CHAT_ID", "")
+        self._tg_env_patch.start()
+        self._tg_tok_patch.start()
+        self._tg_chat_patch.start()
 
     def tearDown(self):
+        self._tg_chat_patch.stop()
+        self._tg_tok_patch.stop()
+        self._tg_env_patch.stop()
         self.test_dir.cleanup()
 
     def _create_synthetic_video(

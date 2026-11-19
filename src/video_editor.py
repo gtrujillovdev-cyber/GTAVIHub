@@ -116,12 +116,35 @@ def detect_horizontal_split_screen(video_path: Path, sample_time: float = 3.0) -
             except OSError:
                 pass
 
+def get_viral_display_font(size: int = 68):
+    """
+    Tipografía display condensada de marca para titulares virales en Shorts/TikTok/Reels.
+    Prioridad: Anton-Regular (assets/fonts) -> Montserrat-Black -> Impact -> Helvetica Condensed Black.
+    """
+    viral_configs = [
+        (str(BASE_DIR / "assets" / "fonts" / "Anton-Regular.ttf"), 0),
+        (str(BASE_DIR / "assets" / "fonts" / "Montserrat-Black.ttf"), 0),
+        ("/System/Library/Fonts/Supplemental/Impact.ttf", 0),
+        ("/System/Library/Fonts/HelveticaNeue.ttc", 9),
+        ("/System/Library/Fonts/Supplemental/Arial Black.ttf", 0),
+    ]
+    for path, idx in viral_configs:
+        if os.path.exists(path):
+            try:
+                if path.endswith(".ttc"):
+                    return ImageFont.truetype(path, size, index=idx)
+                return ImageFont.truetype(path, size)
+            except Exception:
+                continue
+    return get_best_font(size)
+
+
 def get_best_font(size: int = 58):
     """
-    Obtiene la mejor tipografía sans-serif moderna disponible en macOS.
-    Prioridad: Avenir Next Heavy -> DIN Alternate Bold -> Futura.
+    Obtiene la tipografía oficial de marca (Montserrat Black) o fallback macOS.
     """
     font_configs = [
+        (str(BASE_DIR / "assets" / "fonts" / "Montserrat-Black.ttf"), 0),
         ("/System/Library/Fonts/Avenir Next.ttc", 8), # Avenir Next Heavy
         ("/System/Library/Fonts/Supplemental/DIN Alternate Bold.ttf", 0),
         ("/System/Library/Fonts/HelveticaNeue.ttc", 9), # Condensed Black
@@ -456,49 +479,41 @@ def render_top_hook_headline(hook_text: str, output_path: Path) -> bool:
     tokens1 = split_text_and_emojis(line1) if line1 else []
     tokens2 = split_text_and_emojis(line2)
 
-    pad_x = 46
-    pad_y = 20
-    spacing = 14 if line1 else 0
-    size1 = 46
-    size2 = 60
+    pad_x = 32
+    pad_y = 8
+    spacing = 8 if line1 else 0
+    size1 = 56
+    size2 = 72
 
     while True:
-        font1 = get_best_font(size=size1)
-        font2 = get_best_font(size=size2)
+        font1 = get_viral_display_font(size=size1)
+        font2 = get_viral_display_font(size=size2)
         w1, h1 = measure_composite_line(tokens1, font1, emoji_size=size1) if line1 else (0, 0)
-        w2, h2 = measure_composite_line(tokens2, font2, emoji_size=max(32, size2 - 4))
+        w2, h2 = measure_composite_line(tokens2, font2, emoji_size=max(36, size2 - 4))
         content_w = max(w1, w2)
         box_w = int(content_w + pad_x * 2)
-        if box_w <= 980 or (size1 <= 30 and size2 <= 36):
+        if box_w <= 980 or (size1 <= 36 and size2 <= 44):
             break
-        size1 = max(30, size1 - 2)
-        size2 = max(36, size2 - 3)
+        size1 = max(36, size1 - 2)
+        size2 = max(44, size2 - 3)
 
-    box_h = int(h1 + h2 + spacing + pad_y * 2)
+    box_h = int(h1 + h2 + spacing + pad_y * 2 + 12)
 
     img = Image.new("RGBA", (box_w, box_h), (0, 0, 0, 0))
     d = ImageDraw.Draw(img)
 
-    # Tarjeta de cristal ahumado sobria y minimalista estilo documental premium
-    d.rounded_rectangle(
-        [(0, 0), (box_w - 1, box_h - 1)],
-        radius=18,
-        fill=(10, 12, 18, 215),
-        outline=(255, 255, 255, 40),
-        width=2
-    )
-
+    # Tipografía pura de alto impacto (sin caja de botón ni bordes artificiales)
     cur_y = pad_y
     if line1:
         x1 = pad_x + (content_w - w1) / 2
-        draw_composite_line(img, d, tokens1, int(x1 + 2), int(cur_y + 2), font1, fill_color=(0, 0, 0, 210), stroke_width=0, emoji_size=size1)
-        draw_composite_line(img, d, tokens1, int(x1), int(cur_y), font1, fill_color=(250, 250, 252, 255), stroke_color=(0, 0, 0, 230), stroke_width=2, emoji_size=size1)
+        draw_composite_line(img, d, tokens1, int(x1 + 4), int(cur_y + 4), font1, fill_color=(0, 0, 0, 235), stroke_width=0, emoji_size=size1)
+        draw_composite_line(img, d, tokens1, int(x1), int(cur_y), font1, fill_color=(255, 255, 255, 255), stroke_color=(0, 0, 0, 255), stroke_width=5, emoji_size=size1)
         cur_y += h1 + spacing
 
-    em2 = max(32, size2 - 4)
+    em2 = max(36, size2 - 4)
     x2 = pad_x + (content_w - w2) / 2
-    draw_composite_line(img, d, tokens2, int(x2 + 2), int(cur_y + 2), font2, fill_color=(0, 0, 0, 210), stroke_width=0, emoji_size=em2)
-    draw_composite_line(img, d, tokens2, int(x2), int(cur_y), font2, fill_color=(255, 215, 95, 255), stroke_color=(0, 0, 0, 230), stroke_width=2, emoji_size=em2)
+    draw_composite_line(img, d, tokens2, int(x2 + 4), int(cur_y + 4), font2, fill_color=(0, 0, 0, 235), stroke_width=0, emoji_size=em2)
+    draw_composite_line(img, d, tokens2, int(x2), int(cur_y), font2, fill_color=(255, 210, 63, 255), stroke_color=(0, 0, 0, 255), stroke_width=5, emoji_size=em2)
 
     img.save(output_path, "PNG")
     return True
@@ -536,33 +551,75 @@ def render_retention_hook(output_path: Path, text: str = "ESPERA A VER ESTO") ->
     return True
 
 
-def render_persistent_context_badge(output_path: Path, text: str = "GTA 6 • GAMEPLAY REAL") -> bool:
+def render_persistent_context_badge(output_path: Path, text: str = "GTA 6 • VICE CITY", archetype: str = "") -> bool:
     """
-    Píldora editorial compacta y discreta visible tras desaparecer el gancho inicial (>= 2.8s).
-    Da contexto inmediato a espectadores que entran a mitad del clip o en loop sin tapar gameplay.
+    Titular contextual viral de alto impacto (sin caja de botón):
+    - Tipografía display condensada (Impact / Helvetica Condensed Black).
+    - Auto-escalado dinámico para llenar ~940px del ancho 1080px en 1 o 2 líneas balanceadas.
+    - Color de acento dinámico según el arquetipo del clip + trazo grueso y sombra profunda.
     """
-    clean = clean_text_preserve_emojis(text).upper()[:34]
+    clean = clean_text_preserve_emojis(text).replace("•", " ").strip().upper()[:38]
+    clean = " ".join(clean.split())
     if not clean:
-        clean = "GTA 6 • GAMEPLAY REAL"
+        clean = "GTA 6 VICE CITY"
 
-    font = get_best_font(size=28)
-    tokens = split_text_and_emojis(clean)
-    tw, th = measure_composite_line(tokens, font, emoji_size=28)
+    accent_palette = {
+        "gameplay_puro": (0, 240, 255),
+        "reaccion_streamer": (255, 75, 165),
+        "analisis_tecnico": (255, 215, 75),
+        "filtracion_misterio": (195, 130, 255),
+        "noticia_oficial": (255, 95, 95),
+        "humor_parodia": (90, 255, 150),
+    }
+    accent = accent_palette.get((archetype or "").strip().lower(), (0, 240, 255))
 
-    pad_x, pad_y = 26, 10
-    box_w = tw + pad_x * 2
-    box_h = th + pad_y * 2
+    # Dividir en 2 líneas balanceadas si supera 18 caracteres para maximizar tamaño visual
+    words = clean.split()
+    if len(clean) > 18 and len(words) >= 3:
+        mid = len(words) // 2
+        lines = [" ".join(words[:mid]), " ".join(words[mid:])]
+        max_font, min_font, max_h = 62, 42, 130
+    else:
+        lines = [clean]
+        max_font, min_font, max_h = 78, 46, 110
 
-    img = Image.new("RGBA", (box_w, box_h), (0, 0, 0, 0))
+    max_w = 960
+    font_size = max_font
+    while True:
+        font = get_viral_display_font(size=font_size)
+        measured = []
+        for ln in lines:
+            tks = split_text_and_emojis(ln)
+            lw, lh = measure_composite_line(tks, font, emoji_size=font_size)
+            measured.append((tks, lw, lh))
+        total_w = max(m[1] for m in measured)
+        line_gap = 6 if len(lines) > 1 else 0
+        total_h = sum(m[2] for m in measured) + line_gap * max(0, len(lines) - 1)
+        if (total_w <= max_w and total_h <= max_h) or font_size <= min_font:
+            break
+        font_size -= 2
+
+    canvas_w = max(total_w + 48, 320)
+    underline_h = 5
+    canvas_h = total_h + 24 + underline_h
+
+    img = Image.new("RGBA", (canvas_w, canvas_h), (0, 0, 0, 0))
     d = ImageDraw.Draw(img)
-    d.rounded_rectangle(
-        [(0, 0), (box_w - 1, box_h - 1)],
-        radius=16,
-        fill=(10, 12, 18, 175),
-        outline=(255, 215, 95, 190),
-        width=2
-    )
-    draw_composite_line(img, d, tokens, pad_x, pad_y, font, fill_color=(245, 245, 250, 255), stroke_color=(0, 0, 0, 220), stroke_width=1, emoji_size=28)
+
+    cur_y = 6
+    for idx, (tks, lw, lh) in enumerate(measured):
+        x = int((canvas_w - lw) / 2)
+        color = (255, 255, 255, 255) if (len(lines) == 1 or idx == 0) else (accent[0], accent[1], accent[2], 255)
+        draw_composite_line(img, d, tks, x + 4, cur_y + 4, font, fill_color=(0, 0, 0, 235), stroke_width=0, emoji_size=font_size)
+        draw_composite_line(img, d, tks, x, cur_y, font, fill_color=color, stroke_color=(0, 0, 0, 255), stroke_width=4, emoji_size=font_size)
+        cur_y += lh + (6 if len(lines) > 1 else 0)
+
+    # Barra de acento neón sutil centrada bajo el titular
+    bar_w = min(int(total_w * 0.55), 420)
+    bar_x = int((canvas_w - bar_w) / 2)
+    bar_y = cur_y + 8
+    d.rounded_rectangle([(bar_x, bar_y), (bar_x + bar_w, bar_y + underline_h)], radius=3, fill=(accent[0], accent[1], accent[2], 235))
+
     img.save(output_path, "PNG")
     return True
 
@@ -640,14 +697,11 @@ def render_karaoke_subtitle_state(words: List[str], active_idx: int, is_vertical
     is_green_pop = clean_active in {"gta", "gta6", "6", "vi", "leonida", "vice", "dinero", "gratis", "reservaste", "precarga"}
 
     if is_hot_pink:
-        active_color = (255, 70, 150, 255)
-        glow_color = (255, 70, 150, 110)
-    elif is_green_pop:
-        active_color = (57, 255, 20, 255)
-        glow_color = (57, 255, 20, 100)
+        active_color = (255, 59, 154, 255)   # Rosa Vice City
+        glow_color = (255, 59, 154, 110)
     else:
-        active_color = (255, 224, 65, 255)
-        glow_color = (255, 224, 65, 100)
+        active_color = (255, 210, 63, 255)   # Oro Rockstar unificado (sin verde chillón)
+        glow_color = (255, 210, 63, 100)
 
     base_y = pill_top + pad_y
 
@@ -711,28 +765,33 @@ def create_subtle_vignette(output_png: Path, fg_top: int = 160, fg_bottom: int =
     d = ImageDraw.Draw(img)
 
     if is_cinema:
-        top_limit = max(1, min(180, fg_top))
+        # Cabecera editorial oscura limpia (elimina el aspecto lavado de franja superior)
+        top_limit = max(1, fg_top)
         for y in range(top_limit):
-            alpha = int(120 * (1 - (y / top_limit)))
-            d.line([(0, y), (w, y)], fill=(0, 0, 0, alpha))
+            alpha = int(235 - 55 * (y / top_limit))
+            d.line([(0, y), (w, y)], fill=(7, 9, 15, alpha))
 
-        # Sombras de unión superior e inferior
-        for i in range(25):
-            alpha = int(130 * (1 - (i / 25)))
-            if fg_top - i >= 0:
-                d.line([(0, fg_top - i), (w, fg_top - i)], fill=(0, 0, 0, alpha))
-            if fg_bottom + i < h:
-                d.line([(0, fg_bottom + i), (w, fg_bottom + i)], fill=(0, 0, 0, alpha))
+        # Sombra suave hacia el vídeo para transición orgánica
+        for i in range(32):
+            alpha = int(150 * (1 - (i / 32)))
+            if fg_top + i < h:
+                d.line([(0, fg_top + i), (w, fg_top + i)], fill=(7, 9, 15, alpha))
 
-        # Borde sutil blanco translúcido
-        d.line([(0, fg_top), (w, fg_top)], fill=(255, 255, 255, 30), width=2)
-        d.line([(0, fg_bottom), (w, fg_bottom)], fill=(255, 255, 255, 30), width=2)
-
-        bot_start = max(fg_bottom, 1740)
-        bot_range = max(1, h - bot_start)
-        for y in range(bot_range):
-            alpha = int(120 * (y / bot_range))
-            d.line([(0, bot_start + y), (w, bot_start + y)], fill=(0, 0, 0, alpha))
+        if fg_bottom < h - 5:
+            for i in range(25):
+                alpha = int(130 * (1 - (i / 25)))
+                if fg_bottom + i < h:
+                    d.line([(0, fg_bottom + i), (w, fg_bottom + i)], fill=(0, 0, 0, alpha))
+            bot_start = max(fg_bottom, 1740)
+            bot_range = max(1, h - bot_start)
+            for y in range(bot_range):
+                alpha = int(120 * (y / bot_range))
+                d.line([(0, bot_start + y), (w, bot_start + y)], fill=(0, 0, 0, alpha))
+        else:
+            # Degradado inferior sutil para legibilidad de UI sin cortar imagen
+            for y in range(220):
+                alpha = int(135 * (y / 220))
+                d.line([(0, h - 220 + y), (w, h - 220 + y)], fill=(0, 0, 0, alpha))
     else:
         for y in range(160):
             alpha = int(90 * (1 - (y / 160)))
@@ -740,6 +799,13 @@ def create_subtle_vignette(output_png: Path, fg_top: int = 160, fg_bottom: int =
         for y in range(180):
             alpha = int(110 * (y / 180))
             d.line([(0, 1920 - 180 + y), (w, 1920 - 180 + y)], fill=(0, 0, 0, alpha))
+
+    # Micro-watermark editorial de marca sutil en esquina superior derecha
+    try:
+        wm_font = get_best_font(size=22)
+        d.text((w - 225, 16), "@GTAVIHUBEXTRA", font=wm_font, fill=(255, 255, 255, 95))
+    except Exception:
+        pass
 
     img.save(output_png, "PNG")
     return True
@@ -753,7 +819,8 @@ def render_final_video(
     hook_text: str = "",
     is_official_content: bool = False,
     archetype: str = "",
-    format_preset: Optional[str] = None
+    format_preset: Optional[str] = None,
+    context_badge: str = ""
 ) -> bool:
     """
     Ensamblaje viral definitivo con KARAOKE GLOW, GANCHO SUPERIOR (0-2.5s) y ENCUADRE INTELIGENTE:
@@ -807,18 +874,17 @@ def render_final_video(
             sub_y = "1260"
             print(f"[*] Modo Formato FIT 16:9 Completo (sin recorte lateral): {fg_w}x{fg_h} @ y={fg_y} con Velvet Canvas.")
         elif effective_preset == "D":
-            # Formato D (Pro-Cinema 83.3% de cobertura de pantalla):
-            # 1080x1600 centrado a y=160. Máxima presencia de pantalla sin cortar elementos clave.
+            # Formato D Alpha (89.1% cobertura Edge-to-Bottom):
+            # 1080x1710 anclado abajo (y=210..1920) sin franja borrosa inferior, cabecera editorial limpia arriba.
             fg_w = 1080
-            fg_h = 1600
-            fg_y = 160
-            fg_bottom = 1760
+            fg_h = 1710
+            fg_y = 210
+            fg_bottom = 1920
             is_cinema_layout = True
-            # Safe Zone Shorts & TikTok: hook a y=60, subtítulos a y=1240 (libre del título y botones inferiores)
-            hook_y_expr = "60"
-            ret_y_expr = "105"
-            sub_y = "1240"
-            print(f"[*] Modo Formato D Pro-Cinema (83.3% cobertura): {fg_w}x{fg_h} @ y={fg_y} con Velvet Canvas.")
+            hook_y_expr = "28"
+            ret_y_expr = "28"
+            sub_y = "1280"
+            print(f"[*] Modo Formato D Pro-Cinema (89.1% cobertura Edge-to-Bottom): {fg_w}x{fg_h} @ y={fg_y}.")
         else:
             # Formato C (Smart Frame Inmersivo 4:5, 70.3% de cobertura):
             # 1080x1350 centrado a y=285 con Ambient Canvas (2.2x más área visual que FIT).
@@ -859,25 +925,17 @@ def render_final_video(
             hook_png = None
 
         if effective_preset != "SPLIT":
-            first_hook_line = [ln.strip() for ln in hook_text.splitlines() if ln.strip()]
-            badge_label = first_hook_line[0] if first_hook_line else "GTA 6 • GAMEPLAY REAL"
+            hook_lines = [ln.strip() for ln in hook_text.splitlines() if ln.strip()]
+            badge_label = (context_badge or "").strip()
+            if not badge_label:
+                # Si no hay context_badge explícito, preferir la 2ª línea (más específica) si existe
+                badge_label = hook_lines[1] if len(hook_lines) >= 2 else (hook_lines[0] if hook_lines else "GTA 6 • VICE CITY")
             badge_png = temp_dir / f"{base_name}_badge.png"
-            if not render_persistent_context_badge(badge_png, text=badge_label):
+            if not render_persistent_context_badge(badge_png, text=badge_label, archetype=archetype):
                 badge_png = None
 
-    # 2b. Micro-tarjeta secundaria de retención mid-scroll (5.0 a 7.2s) específica por arquetipo
+    # 2b. Micro-tarjeta genérica de los 5.0s desactivada por defecto en estándar Alpha (evita parpadeos y frases cliché)
     retention_png = None
-    if is_vertical and not is_already_vertical and effective_preset != "SPLIT":
-        arch_low = (archetype or "").lower()
-        if "tecnico" in arch_low or "analisis" in arch_low:
-            ret_text = "MIRA EL DETALLE GRÁFICO"
-        elif "gameplay" in arch_low or not srt_subtitles:
-            ret_text = "NO TE PIERDAS EL CLÍMAX ⚡"
-        else:
-            ret_text = "ESPERA A VER EL FINAL 🔥"
-        retention_png = temp_dir / f"{base_name}_ret.png"
-        if not render_retention_hook(retention_png, text=ret_text):
-            retention_png = None
 
     # 3. Generación de estados de Karaoke palabra por palabra
     # En audio doblado neural, la sincronía fonética es directa (offset=0.0s).
@@ -1088,10 +1146,10 @@ def render_final_video(
         filter_chains.append(f"[{current_v}][{hook_idx}:v]overlay=(W-w)/2:{hook_y_expr}:enable='between(t,0,2.8)'[v_hooked]")
         current_v = "v_hooked"
 
-    # C1) Superponer Badge contextual discreto (>= 2.8s, pausado brevemente en 5.0-7.2s si hay retención)
+    # C1) Superponer Titular contextual viral (>= 2.8s, pausado brevemente en 5.0-7.2s si hay retención)
     if badge_idx is not None:
         badge_enable = "gte(t,2.8)*lt(t,5.0)+gte(t,7.2)" if retention_idx is not None else "gte(t,2.8)"
-        filter_chains.append(f"[{current_v}][{badge_idx}:v]overlay=(W-w)/2:54:enable='{badge_enable}'[v_badged]")
+        filter_chains.append(f"[{current_v}][{badge_idx}:v]overlay=(W-w)/2:28:enable='{badge_enable}'[v_badged]")
         current_v = "v_badged"
 
     # C2) Superponer segundo gancho de retención (5.0 a 7.2s) — frena el swipe mid-scroll

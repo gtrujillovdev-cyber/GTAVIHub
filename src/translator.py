@@ -11,11 +11,10 @@ _client = None
 FALLBACK_GEMINI_MODELS = list(dict.fromkeys([
     GEMINI_MODEL,
     *GEMINI_FALLBACK_MODELS,
-    "gemini-4-hydrogen",
-    "gemini-3.8-flash",
-    "gemini-3.5-flash-lite",
-    "gemini-2.5-flash",
     "gemini-2.5-flash-lite",
+    "gemini-2.5-flash",
+    "gemini-flash-lite-latest",
+    "gemini-flash-latest",
 ]))
 
 def _fix_es_title_grammar(txt: str) -> str:
@@ -368,6 +367,7 @@ Tu tarea es ADAPTAR EL TONO Y FORMATO AL CONTENIDO REAL:
 3. "summary": Un resumen apasionante de 2 párrafos en español fiel al contenido real del vídeo.
 4. "hook": Titular visual en ESPAÑOL de 2 líneas cortas separado por '\\n' (máx 18 chars por línea, en MAYÚSCULAS, SIN '¿' ni '?') que revele EL DATO CONCRETO del clip en los primeros segundos (ej. "GTA 6 EN PS5 PRO\\nPRIMERA MISIÓN" o "FÍSICAS RAGE 9\\nIMPACTO EN EL AGUA"). PROHIBIDO hooks genéricos vacíos como "IMPRESIONANTE" o "GRÁFICOS TOP".
 5. "debate_question": Una pregunta binaria/directa sobre lo que se ve en el clip para disparar comentarios en los primeros 30 minutos.
+6. "context_badge": Etiqueta editorial ultra-específica de 3 a 5 palabras (máx 32 chars, MAYÚSCULAS) que identifique la escena/tema exacto para un badge discreto (ej. "PS5 PRO • PERSECUCIÓN LEONIDA", "PRÓLOGO • PRISIÓN DE LUCIA", "RAGE 9 • FÍSICAS DEL AGUA"). PROHIBIDO usar genéricos como "INTRO DE GTA 6" o "GAMEPLAY REAL".
 
 Devuelve tu respuesta EXACTAMENTE en este formato JSON (sin texto extra):
 {{
@@ -375,7 +375,8 @@ Devuelve tu respuesta EXACTAMENTE en este formato JSON (sin texto extra):
   "viral_title": "Título atractivo natural en español 🎮 #GTA6",
   "summary": "Resumen en español...",
   "hook": "GANCHO EN MAYUSCULAS",
-  "debate_question": "¿Pregunta de debate directa para comentarios? 👇"
+  "debate_question": "¿Pregunta de debate directa para comentarios? 👇",
+  "context_badge": "ESCENA O TEMA ESPECÍFICO"
 }}
 """
     try:
@@ -391,6 +392,7 @@ Devuelve tu respuesta EXACTAMENTE en este formato JSON (sin texto extra):
         summary = data.get("summary", "").strip()
         hook = data.get("hook", "GAMEPLAY REAL GTA 6").strip().upper()
         debate_question = data.get("debate_question", "¿Qué nota le das a estas físicas y gráficos de GTA 6 del 1 al 10? 👇").strip()
+        context_badge = (data.get("context_badge") or "").strip().upper()[:32]
     except Exception as e:
         print(f"[Warning] Error consultando IA para metadatos: {e}")
         # Inferencia heurística de arquetipo si falla la IA
@@ -414,9 +416,33 @@ Devuelve tu respuesta EXACTAMENTE en este formato JSON (sin texto extra):
         summary = f"Cobertura y mejores momentos de Grand Theft Auto VI a partir del contenido de {creator_name or 'la comunidad'}."
         hook = fallback_hook
         debate_question = "¿Qué te parece este gameplay de GTA 6? ¿Supera lo que esperabas? 👇" if is_launched else "¿Crees que GTA 6 cumplirá todas las expectativas? ¡Comenta abajo! 👇"
+        context_badge = ""
 
-    # Sanitización gramatical y estética determinista de título y gancho
+    # Sanitización gramatical y estética determinista de título, gancho y badge contextual
     hook = _fix_es_title_grammar(hook).replace("¿", "").replace("?", "").strip()
+    if not context_badge:
+        _orig_l = (original_title or "").lower()
+        if "ps5 pro" in _orig_l:
+            context_badge = "PS5 PRO • GAMEPLAY 4K"
+        elif "lucia" in _orig_l:
+            context_badge = "HISTORIA DE LUCIA • LEONIDA"
+        elif "jason" in _orig_l:
+            context_badge = "HISTORIA DE JASON • VICE CITY"
+        elif any(k in _orig_l for k in ("police", "policia", "chase", "persecucion")):
+            context_badge = "PERSECUCIÓN POLICIAL • GTA 6"
+        elif any(k in _orig_l for k in ("prologue", "prologo", "first mission", "primera mision", "intro")):
+            context_badge = "ARRANQUE • PRIMERA MISIÓN"
+        else:
+            _arch_badges = {
+                "analisis_tecnico": "ANÁLISIS TÉCNICO • RAGE 9",
+                "reaccion_streamer": "REACCIÓN EN VIVO • GTA 6",
+                "noticia_oficial": "ÚLTIMA HORA • ROCKSTAR",
+                "filtracion_misterio": "DETALLE OCULTO • LEONIDA",
+                "humor_parodia": "MOMENTO VIRAL • VICE CITY",
+                "gameplay_puro": "CAPTURA IN-GAME • VICE CITY",
+            }
+            context_badge = _arch_badges.get(archetype, "CAPTURA IN-GAME • VICE CITY")
+    context_badge = _fix_es_title_grammar(context_badge).replace("¿", "").replace("?", "").strip().upper()[:32]
     viral_title = _fix_es_title_grammar(viral_title)
 
     # Limpiar ruido spam (#Shorts en título y hashtags intermedios; #Shorts se queda solo en descripción)
@@ -578,6 +604,7 @@ Grand Theft Auto VI, GTA VI, Vice City y los logotipos asociados son marcas regi
         "title": viral_title[:100],
         "description": full_description[:5000],
         "hook": hook,
+        "context_badge": context_badge,
         "debate_question": debate_question,
         "pinned_comment": pinned_comment,
         "archetype": archetype,

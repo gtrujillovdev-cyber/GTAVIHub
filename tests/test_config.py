@@ -65,7 +65,7 @@ class TestConfig(unittest.TestCase):
         from src.config import is_gameplay_enabled, GAMEPLAY_RELEASE_DATE
         import src.config as cfg
         self.assertEqual(GAMEPLAY_RELEASE_DATE, "2026-11-19")
-        with patch.object(cfg, "FORCE_ENABLE_GAMEPLAY", False):
+        with patch.object(cfg, "FORCE_ENABLE_GAMEPLAY", False), patch.object(cfg, "GAMEPLAY_RELEASE_DATE", "2099-01-01"):
             self.assertFalse(is_gameplay_enabled())
         with patch.object(cfg, "FORCE_ENABLE_GAMEPLAY", True):
             self.assertTrue(is_gameplay_enabled())

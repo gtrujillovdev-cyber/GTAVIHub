@@ -1275,16 +1275,31 @@ def start_telegram_bot_daemon():
                 except Exception as e:
                     print(f"[DealScanner] Error en chequeo automático: {e}")
 
-            # Feedback loop: obtener métricas reales de vídeos publicados (cada ~6h)
-            if _now_ts - start_telegram_bot_daemon._last_metrics_check > 21600:
+            # Feedback loop + Réplica automática de ganadores (cada 2h en lanzamiento, 6h en modo normal)
+            try:
+                from .config import is_gameplay_enabled as _is_gp_on
+                _metrics_interval = 7200 if _is_gp_on() else 21600
+            except Exception:
+                _metrics_interval = 21600
+
+            if _now_ts - start_telegram_bot_daemon._last_metrics_check > _metrics_interval:
                 start_telegram_bot_daemon._last_metrics_check = _now_ts
                 try:
-                    from .performance_tracker import fetch_pending_metrics
+                    from .performance_tracker import (
+                        fetch_pending_metrics,
+                        detect_and_apply_winning_angles,
+                        format_winner_replication_report,
+                    )
                     fetched = fetch_pending_metrics(max_fetch=5)
                     if fetched > 0:
                         print(f"[PerformanceTracker] Métricas actualizadas para {fetched} vídeo(s).")
+                    win_summary = detect_and_apply_winning_angles(limit=12)
+                    if win_summary.get("ok") and win_summary.get("top_clips"):
+                        top_views = win_summary["top_clips"][0].get("views", 0)
+                        if top_views > 0:
+                            send_telegram_alert(format_winner_replication_report(win_summary))
                 except Exception as e:
-                    print(f"[PerformanceTracker] Error obteniendo métricas: {e}")
+                    print(f"[PerformanceTracker] Error obteniendo métricas/ganadores: {e}")
 
             # Transición automática a Fase Estreno al cruzar las 00:00 CET (comprobación cada 5 min)
             if not hasattr(start_telegram_bot_daemon, '_last_phase_check'):
@@ -1576,6 +1591,17 @@ def start_telegram_bot_daemon():
                             send_telegram_alert(report, reply_markup=keyboard)
                     except Exception as e:
                         send_telegram_alert(f"⚠️ Error consultando ofertas: {e}", reply_markup=get_persistent_menu_keyboard())
+
+                elif cmd in ["/winners", "/ganadores", "/replicar"]:
+                    send_telegram_alert("🏆 *Analizando clips recientes de @GTAVIHubExtra y actualizando ángulo ganador...*")
+                    def _run_winners():
+                        try:
+                            from .performance_tracker import detect_and_apply_winning_angles, format_winner_replication_report
+                            summary = detect_and_apply_winning_angles(limit=12)
+                            send_telegram_alert(format_winner_replication_report(summary), reply_markup=get_persistent_menu_keyboard())
+                        except Exception as e:
+                            send_telegram_alert(f"⚠️ Error analizando ganadores: {e}")
+                    threading.Thread(target=_run_winners, daemon=True).start()
 
                 elif cmd in ["/optimize", "/aprender", "/learning", "🧠"] or text == "🧠 Auto-Perfeccionar":
                     send_telegram_alert("🧠 *Iniciando ciclo de auto-perfeccionamiento y benchmark...*\nAuditando vídeos de nuestro canal y extrayendo patrones ganadores de los líderes.")

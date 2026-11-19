@@ -133,20 +133,32 @@ def select_best_candidate_ai(
     non_promo = [c for c in candidates if not _is_short_promo_spot(c)]
     base_pool = non_promo if len(non_promo) >= 2 else candidates
 
-    # Ordenar pre-pool priorizando ritmo dinámico, gameplay/comparativas y frescura (<24h) sobre vídeos largos lentos
+    # Cargar playbook antes del pre-ranking para replicar automáticamente el ángulo ganador del canal
+    if playbook is None:
+        playbook = load_viral_playbook()
+    _heur = playbook.get("active_heuristics") or {}
+    _priority_kws = [str(k).lower() for k in (_heur.get("priority_keywords") or []) if k]
+    _priority_angle_label = str(_heur.get("priority_angle_label") or "")
+
+    # Ordenar pre-pool priorizando ritmo dinámico, velocidad real y ángulo ganador actual del canal
     def _pre_rank(item: Dict[str, Any]) -> float:
         s = float(item.get("score") or 0) + _visual_appeal_adjustment(item)
-        if float(item.get("views_per_hour") or 0) >= 1000:
+        vph = float(item.get("views_per_hour") or 0)
+        if vph >= 50000:
+            s += 30.0
+        elif vph >= 10000:
+            s += 20.0
+        elif vph >= 1000:
             s += 10.0
+        if _priority_kws:
+            t_low = f" {(item.get('title') or '').lower()} "
+            if any(kw in t_low for kw in _priority_kws):
+                s += 18.0
         return s
 
     base_pool = sorted(base_pool, key=_pre_rank, reverse=True)
     # Limitar a los 15 mejores según ranking dinámico para la IA
     pool = base_pool[:15]
-
-    # Cargar playbook si no se suministró
-    if playbook is None:
-        playbook = load_viral_playbook()
 
     # Obtener historial reciente para evitar repetir temáticas
     recent_titles = []
@@ -210,9 +222,14 @@ def select_best_candidate_ai(
                 "ESTRICTAMENTE PROHIBIDO: parodias, memes, clips de GTA 5 o rellenos viejos de semanas pasadas."
             )
 
+            _winning_angle_block = (
+                f"\nÁNGULO GANADOR COMPROBADO EN TU CANAL AHORA MISMO (REPLICAR PRIORITARIAMENTE): {_priority_angle_label}\n"
+                if _priority_angle_label else ""
+            )
+
             prompt = f"""Eres el Director de Estrategia de Contenidos y Algoritmos para 'GTA VI Hub Spain' (YouTube Shorts, TikTok, Instagram Reels).
 {mode_context}
-{dynamic_editorial_context}
+{dynamic_editorial_context}{_winning_angle_block}
 
 OBJETIVO:
 Analiza los siguientes {len(pool)} vídeos candidatos pre-filtrados y SELECCIONA EL MEJOR CLIP ABSOLUTO para conseguir visitas REALES ahora mismo.
