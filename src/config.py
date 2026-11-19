@@ -58,6 +58,9 @@ SHORT_TARGET_DURATION = int(os.getenv("SHORT_TARGET_DURATION", "28"))
 LAUNCH_AUTOPILOT = os.getenv("LAUNCH_AUTOPILOT", "false").lower() in ("1", "true", "yes")
 LAUNCH_AUTOPILOT_MIN_SCORE = int(os.getenv("LAUNCH_AUTOPILOT_MIN_SCORE", "65"))
 
+# Ventana de veto en Co-Pilot: si > 0, auto-publica tras N segundos si el operador no veta en Telegram
+COPILOT_AUTO_APPROVE_SECONDS = int(os.getenv("COPILOT_AUTO_APPROVE_SECONDS", "60"))
+
 # FFmpeg Hardware Acceleration (VideoToolbox para Apple Silicon e Intel)
 FFMPEG_VIDEO_CODEC = "h264_videotoolbox"
 

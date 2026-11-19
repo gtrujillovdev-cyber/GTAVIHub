@@ -1,14 +1,16 @@
 import os
 import json
 import shutil
+import threading
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, Any, Optional, List
 
-from .config import DATA_DIR, OUTPUT_DIR, TEMP_DIR
+from .config import DATA_DIR, OUTPUT_DIR, TEMP_DIR, COPILOT_AUTO_APPROVE_SECONDS
 from .channels import mark_video_processed
 from .cleaner import clean_uploaded_video_file, clean_temp_directory
 
+_PUBLISH_LOCK = threading.Lock()
 COPILOT_STATE_FILE = DATA_DIR / "copilot_state.json"
 PENDING_DIR = DATA_DIR / "pending_approvals"
 PENDING_DIR.mkdir(parents=True, exist_ok=True)
@@ -188,19 +190,20 @@ def approve_and_publish_video(video_id: str) -> Optional[Dict[str, Any]]:
     3. Registra en processed.json.
     4. Purga el archivo de staging y vídeo local (si corresponde).
     """
-    data = get_pending_video(video_id)
-    if not data:
-        print(f"[Co-Pilot] No se encontró el vídeo pendiente {video_id}")
-        return None
-    if data.get("status") == "publishing":
-        print(f"[Co-Pilot] El vídeo {video_id} ya se encuentra en proceso de publicación.")
-        return None
+    with _PUBLISH_LOCK:
+        data = get_pending_video(video_id)
+        if not data:
+            print(f"[Co-Pilot] No se encontró el vídeo pendiente {video_id}")
+            return None
+        if data.get("status") == "publishing":
+            print(f"[Co-Pilot] El vídeo {video_id} ya se encuentra en proceso de publicación.")
+            return None
 
-    try:
-        data["status"] = "publishing"
-        (PENDING_DIR / f"{video_id}.json").write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
-    except Exception:
-        pass
+        try:
+            data["status"] = "publishing"
+            (PENDING_DIR / f"{video_id}.json").write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
+        except Exception:
+            pass
 
     video_path = Path(data["output_video"])
     thumb_path = Path(data["thumbnail"]) if data.get("thumbnail") else None
@@ -396,3 +399,40 @@ def check_and_auto_approve_expired_videos(timeout_minutes: int = COPILOT_AUTO_AP
             print(f"[Co-Pilot] Error verificando timeout de {vid_id}: {e}")
 
     return approved
+
+
+def schedule_auto_approve_if_pending(
+    video_id: str,
+    timeout_sec: Optional[int] = None,
+    notify_telegram: bool = True,
+) -> Optional[threading.Timer]:
+    """
+    Programa la auto-publicación tras `timeout_sec` segundos si el operador no veta ni aprueba antes.
+    """
+    delay = COPILOT_AUTO_APPROVE_SECONDS if timeout_sec is None else int(timeout_sec)
+    if delay <= 0:
+        return None
+
+    def _worker():
+        pending = get_pending_video(video_id)
+        if not pending or pending.get("status") == "publishing":
+            return
+        print(f"[Co-Pilot] ⏱️ Ventana de veto de {delay}s expirada sin rechazo para {video_id}. Publicando automáticamente...")
+        res = approve_and_publish_video(video_id)
+        if res and notify_telegram:
+            try:
+                from .telegram_bot import send_telegram_alert
+                title = res.get("title", video_id)
+                yt_url = res.get("youtube_url") or ""
+                link_line = f"\n🔗 {yt_url}" if yt_url else ""
+                send_telegram_alert(
+                    f"🚀 *[Co-Pilot Auto-Publicado ({delay}s)]*\n"
+                    f"`{str(title)[:65]}`{link_line}"
+                )
+            except Exception as tg_err:
+                print(f"[Co-Pilot] Info Telegram Auto-Approve Alert: {tg_err}")
+
+    timer = threading.Timer(delay, _worker)
+    timer.daemon = False
+    timer.start()
+    return timer

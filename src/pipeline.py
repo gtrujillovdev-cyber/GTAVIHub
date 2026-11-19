@@ -19,7 +19,7 @@ from .social_publisher import SocialPublisher
 from .thumbnail_generator import create_video_thumbnail
 from .monitor import notify_macos
 from .cleaner import clean_temp_directory, clean_uploaded_video_file, enforce_storage_limits
-from .copilot import is_copilot_enabled, stage_pending_video, evaluate_autopilot_eligibility
+from .copilot import is_copilot_enabled, stage_pending_video, evaluate_autopilot_eligibility, schedule_auto_approve_if_pending
 
 def _count_spoken_words_in_srt(srt_path: Optional[Path]) -> int:
     """Cuenta palabras habladas reales en un SRT ignorando numeración, marcas de tiempo y etiquetas tipo [Music]."""
@@ -886,10 +886,10 @@ def process_single_video(
         
         full_info["status"] = "staged_for_copilot"
 
-        # Notificación en Telegram para aprobación
+        # Notificación en Telegram para aprobación (con ventana de veto de 60s)
         try:
             from .telegram_bot import send_copilot_approval_request
-            send_copilot_approval_request(
+            sent_ok = send_copilot_approval_request(
                 video_id=video_id,
                 title=metadata.get("title", original_title),
                 creator=creator_name or "Rockstar Games",
@@ -900,6 +900,8 @@ def process_single_video(
                 original_url=url,
                 video_path=output_path if output_path and output_path.exists() else None
             )
+            if sent_ok:
+                schedule_auto_approve_if_pending(video_id)
         except Exception as e:
             print(f"[Pipeline] Info Co-Pilot Telegram: {e}")
 

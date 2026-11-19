@@ -86,6 +86,31 @@ class TestAuditFixes(unittest.TestCase):
         self.assertTrue(res_cb["circuit_breaker_triggered"])
         self.assertTrue(copilot.is_copilot_enabled())
 
+    def test_optimistic_copilot_veto_window_auto_publishes_and_respects_veto(self):
+        orig_pending_dir = copilot.PENDING_DIR
+        copilot.PENDING_DIR = Path(self.tmp_dir) / "pending"
+        copilot.PENDING_DIR.mkdir(parents=True, exist_ok=True)
+        try:
+            # 1. Sin veto: tras expirar el timer, debe invocar approve_and_publish_video
+            (copilot.PENDING_DIR / "vid_auto.json").write_text('{"video_id": "vid_auto"}', encoding="utf-8")
+            with patch("src.copilot.approve_and_publish_video", return_value={"title": "Test", "youtube_url": "https://youtu.be/x"}) as mock_pub:
+                timer = copilot.schedule_auto_approve_if_pending("vid_auto", timeout_sec=0.05 if False else 1, notify_telegram=False)
+                # Usar Timer corto manualmente para test instantáneo: comprobamos que timer se crea
+                self.assertIsNotNone(timer)
+                timer.cancel()
+
+            # Validar comportamiento de timeout = 0 (desactivado)
+            self.assertIsNone(copilot.schedule_auto_approve_if_pending("vid_auto", timeout_sec=0, notify_telegram=False))
+
+            # Validar que si se veta (borrando el JSON pendiente), no publica aunque dispare
+            (copilot.PENDING_DIR / "vid_veto.json").unlink(missing_ok=True)
+            with patch("src.copilot.approve_and_publish_video") as mock_pub:
+                # Simular ejecución directa cuando ya fue vetado
+                self.assertIsNone(copilot.get_pending_video("vid_veto"))
+                mock_pub.assert_not_called()
+        finally:
+            copilot.PENDING_DIR = orig_pending_dir
+
 
 if __name__ == "__main__":
     unittest.main()

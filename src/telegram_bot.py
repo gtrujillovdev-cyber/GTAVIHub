@@ -616,6 +616,11 @@ def send_copilot_approval_request(
         "clean": "⚡ Vídeo Original Limpio"
     }.get(mode.lower(), f"🎬 {mode.capitalize()}")
 
+    from .config import COPILOT_AUTO_APPROVE_SECONDS
+    veto_line = (
+        f"⏳ *Auto-publicación en {COPILOT_AUTO_APPROVE_SECONDS}s si no vetas.*\n"
+        if COPILOT_AUTO_APPROVE_SECONDS > 0 else ""
+    )
     caption = (
         "🎬 *VISTA PREVIA DE CLIP EDITADO*\n\n"
         f"📌 *Título:* {clean_title[:80]}\n"
@@ -626,6 +631,7 @@ def send_copilot_approval_request(
         "• [YouTube Shorts](https://www.youtube.com/@gtavihubextra/shorts) | "
         "[TikTok](https://www.tiktok.com/@gtavihubextra) | "
         "[Instagram](https://www.instagram.com/gtavihubextra/)\n\n"
+        f"{veto_line}"
         "👇 *¿Publicar ahora en tus redes?*"
     )
     keyboard = get_copilot_approval_keyboard(video_id, original_url=original_url)
