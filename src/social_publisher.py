@@ -31,7 +31,7 @@ def prepare_social_compatible_video(video_path: Path) -> tuple[Path, bool]:
     Retorna: (compatible_video_path, is_temp)
     """
     video_path = Path(video_path)
-    if not video_path.exists():
+    if not video_path.exists() or video_path.stat().st_size < 1000:
         return video_path, False
 
     try:
@@ -41,10 +41,11 @@ def prepare_social_compatible_video(video_path: Path) -> tuple[Path, bool]:
             capture_output=True, text=True, timeout=10
         )
         parts = probe.stdout.strip().split(",")
-        if len(parts) >= 2:
-            w, h = int(parts[0]), int(parts[1])
-            if w <= 1080 and h <= 1920:
-                return video_path, False
+        if len(parts) < 2 or not parts[0].isdigit() or not parts[1].isdigit():
+            return video_path, False
+        w, h = int(parts[0]), int(parts[1])
+        if w <= 1080 and h <= 1920:
+            return video_path, False
     except Exception:
         return video_path, False
 
