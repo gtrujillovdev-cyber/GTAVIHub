@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Optional, Tuple, Dict, Any, List
 from .config import (
     TEMP_DIR, get_ffmpeg_threads, SHORT_MIN_DURATION, GAMEPLAY_MIN_DURATION,
-    SHORT_MAX_DURATION, SHORT_TARGET_DURATION
+    SHORT_MAX_DURATION, SHORT_TARGET_DURATION, ENABLE_4K_SHORTS, FFMPEG_VIDEO_CODEC
 )
 
 def parse_srt_time(ts_str: str) -> float:
@@ -953,17 +953,18 @@ def download_video_and_subtitles(
 
     src_l = (source_lang or "es").strip().lower()
     audio_lang = "es" if src_l.startswith("es") else "en"
+    max_h = 2160 if ENABLE_4K_SHORTS else 1080
     if is_social_clip:
-        format_selector = "best[ext=mp4]/bestvideo[height<=1080]+bestaudio/best"
+        format_selector = f"best[ext=mp4]/bestvideo[height<={max_h}]+bestaudio/best"
     else:
         format_selector = (
-            f"bestvideo[height<=1080][vcodec^=avc1]+bestaudio[language^={audio_lang}]/"
-            f"bestvideo[height<=1080][vcodec!=av01]+bestaudio[language^={audio_lang}]/"
-            f"bestvideo[height<=1080]+bestaudio[language^={audio_lang}]/"
-            "bestvideo[height<=1080][vcodec^=avc1]+bestaudio/"
-            "bestvideo[height<=1080][vcodec!=av01]+bestaudio/"
-            "bestvideo[height<=1080]+bestaudio/"
-            "best[height<=1080]/best"
+            f"bestvideo[height<={max_h}][vcodec^=avc1]+bestaudio[language^={audio_lang}]/"
+            f"bestvideo[height<={max_h}][vcodec!=av01]+bestaudio[language^={audio_lang}]/"
+            f"bestvideo[height<={max_h}]+bestaudio[language^={audio_lang}]/"
+            f"bestvideo[height<={max_h}][vcodec^=avc1]+bestaudio/"
+            f"bestvideo[height<={max_h}][vcodec!=av01]+bestaudio/"
+            f"bestvideo[height<={max_h}]+bestaudio/"
+            f"best[height<={max_h}]/best"
         )
 
     detected_lang = source_lang
@@ -1126,8 +1127,8 @@ def download_video_and_subtitles(
                 "-avoid_negative_ts", "make_zero",
                 "-t", str(clip_dur),
                 "-threads", n_threads,
-                "-c:v", "h264_videotoolbox",
-                "-b:v", "8M",
+                "-c:v", FFMPEG_VIDEO_CODEC,
+                "-b:v", "18M" if ENABLE_4K_SHORTS else "8M",
                 "-pix_fmt", "yuv420p",
                 "-c:a", "aac",
                 "-b:a", "192k",

@@ -12,7 +12,8 @@ from typing import Optional, Dict, Any, List
 from .config import (
     BASE_DIR, OUTPUT_DIR, LOGS_DIR, PROCESSED_FILE, BUSINESS_EMAIL,
     MONETIZATION_AFFILIATE_URL, ENABLE_AFFILIATE_CTAS,
-    AFFILIATE_CTA_TIKTOK, AFFILIATE_CTA_INSTAGRAM
+    AFFILIATE_CTA_TIKTOK, AFFILIATE_CTA_INSTAGRAM,
+    TEMP_DIR, FFMPEG_VIDEO_CODEC, FFMPEG_THREADS, is_quant_busy
 )
 from .uploader import upload_to_youtube
 from .compliance_auditor import ComplianceAuditor
@@ -21,6 +22,58 @@ from .translator import to_unicode_bold
 # Directorio persistente para la sesión del navegador (TikTok / Instagram)
 BROWSER_PROFILE_DIR = BASE_DIR / "assets" / ".browser_profiles"
 TIKTOK_COOLDOWN_FILE = BASE_DIR / "data" / "tiktok_cooldown.json"
+
+
+def prepare_social_compatible_video(video_path: Path) -> tuple[Path, bool]:
+    """
+    Si el vídeo maestro es 4K (>1080p), genera una versión optimizada a 1080x1920
+    para TikTok e Instagram, evitando rechazo de API o demoras excesivas de subida.
+    Retorna: (compatible_video_path, is_temp)
+    """
+    video_path = Path(video_path)
+    if not video_path.exists():
+        return video_path, False
+
+    try:
+        probe = subprocess.run(
+            ["ffprobe", "-v", "quiet", "-select_streams", "v:0",
+             "-show_entries", "stream=width,height", "-of", "csv=p=0", str(video_path)],
+            capture_output=True, text=True, timeout=10
+        )
+        parts = probe.stdout.strip().split(",")
+        if len(parts) >= 2:
+            w, h = int(parts[0]), int(parts[1])
+            if w <= 1080 and h <= 1920:
+                return video_path, False
+    except Exception:
+        return video_path, False
+
+    temp_1080 = TEMP_DIR / f"{video_path.stem}_1080p.mp4"
+    threads = 1 if is_quant_busy() else FFMPEG_THREADS
+    cmd = [
+        "ffmpeg", "-y",
+        "-threads", str(threads),
+        "-i", str(video_path),
+        "-vf", "scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2",
+        "-map", "0:v:0",
+        "-map", "0:a?",
+        "-c:v", FFMPEG_VIDEO_CODEC,
+        "-b:v", "4500k",
+        "-maxrate", "6500k",
+        "-bufsize", "9000k",
+        "-pix_fmt", "yuv420p",
+        "-c:a", "copy",
+        str(temp_1080)
+    ]
+    try:
+        print(f"[*] [Social Downscale] Adaptando máster 4K a 1080x1920 para compatibilidad social...")
+        subprocess.run(cmd, check=True, capture_output=True, timeout=120)
+        if temp_1080.exists() and temp_1080.stat().st_size > 1000:
+            return temp_1080, True
+    except Exception as e:
+        print(f"[!] [Social Downscale] Error adaptando a 1080p ({e}). Usando original.")
+        temp_1080.unlink(missing_ok=True)
+    return video_path, False
 
 
 def _is_tiktok_blocked_by_cooldown(cooldown_minutes: Optional[int] = None) -> tuple[bool, str]:
@@ -230,13 +283,18 @@ class SocialPublisher:
         """
         print(f"\n[2/3 TikTok] Preparando subida orgánica a TikTok...")
         video_path = Path(video_path)
+        compat_path, is_temp_video = prepare_social_compatible_video(video_path)
         if not AntiBanValidator.check_daily_limit("tiktok"):
+            if is_temp_video and compat_path.exists():
+                compat_path.unlink(missing_ok=True)
             return None
         if not self.dry_run:
             blocked_tt, reason_tt = _is_tiktok_blocked_by_cooldown()
             if blocked_tt:
                 print(f"🛡️ [TikTok Anti-Saturación] Subida aplazada: {reason_tt}")
                 self._notify_telegram(f"⏳ *[TikTok Anti-Saturación]* Clip aplazado para evitar saturar la cuenta:\n_{reason_tt}_")
+                if is_temp_video and compat_path.exists():
+                    compat_path.unlink(missing_ok=True)
                 return None
 
         # Formato 100% orgánico para TikTok: Ultra-compacto (evita tapar la pantalla y evita shadowban/0-views)
@@ -355,7 +413,7 @@ class SocialPublisher:
                         print("[!] Selector de subida no encontrado en TikTok.")
                         return None
 
-                    file_input.set_input_files(str(video_path))
+                    file_input.set_input_files(str(compat_path))
                     print("[*] Esperando que el archivo se procese en TikTok Studio...")
 
                     # Esperar a que post_video_button esté adjunto y habilitado (o DraftEditor disponible) hasta 150s
@@ -675,6 +733,9 @@ class SocialPublisher:
         except Exception as e:
             print(f"[TikTok] Error en automatización: {e}")
             return None
+        finally:
+            if is_temp_video and compat_path.exists():
+                compat_path.unlink(missing_ok=True)
 
     def publish_to_instagram(
         self,
@@ -689,12 +750,17 @@ class SocialPublisher:
         """
         ig_handle = (os.getenv("INSTAGRAM_USERNAME") or "gtavihubextra").strip().lstrip("@")
         video_path = Path(video_path)
+        compat_path, is_temp_video = prepare_social_compatible_video(video_path)
         print(f"\n[3/3 Instagram] Preparando subida a Instagram Reels (@{ig_handle})...")
         if not AntiBanValidator.check_daily_limit("instagram"):
+            if is_temp_video and compat_path.exists():
+                compat_path.unlink(missing_ok=True)
             return None
 
         if self.dry_run:
             print(f"[3/3 Instagram] [DRY RUN] Simulación exitosa. Caption: '{caption[:60]}...'")
+            if is_temp_video and compat_path.exists():
+                compat_path.unlink(missing_ok=True)
             return f"https://www.instagram.com/reel/mock_{video_path.stem}"
 
         ig_user = os.getenv("INSTAGRAM_USERNAME")
@@ -789,7 +855,7 @@ class SocialPublisher:
             if thumbnail_path and Path(thumbnail_path).exists():
                 clip_kwargs["thumbnail"] = Path(thumbnail_path)
                 print(f"[*] Usando miniatura: {Path(thumbnail_path).name}")
-            media = cl.clip_upload(Path(video_path), **clip_kwargs)
+            media = cl.clip_upload(Path(compat_path), **clip_kwargs)
             url = f"https://www.instagram.com/reel/{media.code}/"
             print(f"[✓] Reel publicado en Instagram: {url}")
             return url
@@ -803,6 +869,9 @@ class SocialPublisher:
                     "👉 Ejecuta `scripts/setup_instagram_session.py --user gtavihubextra --fresh --sync` para renovar la sesión."
                 )
             return None
+        finally:
+            if is_temp_video and compat_path.exists():
+                compat_path.unlink(missing_ok=True)
 
     def publish_all(
         self,

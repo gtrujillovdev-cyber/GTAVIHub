@@ -29,20 +29,11 @@ BANNER_FILE = BASE_DIR / "assets" / "banner_extra.jpg"
 SCOPES = ["https://www.googleapis.com/auth/youtube"]
 
 CHANNEL_DESCRIPTION = """\
-🌴 Bienvenido a GTA VI Hub, tu espacio diario en español sobre Grand Theft Auto VI.
+El punto de encuentro de GTA 6 en español: gameplay real en máxima resolución, físicas al límite, comparativas técnicas y los mayores secretos descubiertos en Vice City y Leonida.
 
-🎮 Cobertura rápida, directa y contrastada sobre Vice City y Leonida:
-• Análisis técnicos del motor RAGE 9, comparativas gráficas y rendimiento en consolas.
-• Desgloses detalle a detalle de cada tráiler, mecánica confirmada y novedad oficial de Rockstar Games.
-• Curiosidades del mapa, secretos ocultos y los descubrimientos más relevantes de la comunidad.
+Cobertura editorial diaria con doblaje y análisis transformativo, acreditando siempre las fuentes originales.
 
-📌 Todos los vídeos se publican con fines informativos, de análisis y traducción comentada bajo Fair Use (Art. 107 Copyright Act), acreditando siempre a cada fuente original.
-
-🔔 Suscríbete y activa la campanita para no perderte ninguna novedad rumbo al estreno.
-
-📩 Contacto / Business / Copyright: gabtru@hotmail.com
-
-#GTA6 #GrandTheftAutoVI #RockstarGames #ViceCity #Leonida #Gaming
+Contacto / Colaboraciones: gabtru@hotmail.com
 """
 
 

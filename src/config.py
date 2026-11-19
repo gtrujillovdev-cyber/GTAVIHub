@@ -60,7 +60,16 @@ LAUNCH_AUTOPILOT_MIN_SCORE = int(os.getenv("LAUNCH_AUTOPILOT_MIN_SCORE", "65"))
 
 # FFmpeg Hardware Acceleration (VideoToolbox para Apple Silicon e Intel)
 FFMPEG_VIDEO_CODEC = "h264_videotoolbox"
-FFMPEG_BITRATE = os.getenv("FFMPEG_BITRATE", "4500k")
+
+# Master 4K Ultra HD para Shorts (2160x3840) con perfil VP9/AV1 en YouTube
+ENABLE_4K_SHORTS = os.getenv("ENABLE_4K_SHORTS", "true").lower() in ("1", "true", "yes")
+CANVAS_WIDTH = 2160 if ENABLE_4K_SHORTS else 1080
+CANVAS_HEIGHT = 3840 if ENABLE_4K_SHORTS else 1920
+FFMPEG_BITRATE_4K = os.getenv("FFMPEG_BITRATE_4K", "18000k")
+FFMPEG_BITRATE_1080P = os.getenv("FFMPEG_BITRATE_1080P", "4500k")
+FFMPEG_BITRATE = os.getenv("FFMPEG_BITRATE", FFMPEG_BITRATE_4K if ENABLE_4K_SHORTS else FFMPEG_BITRATE_1080P)
+FFMPEG_MAXRATE = "25000k" if ENABLE_4K_SHORTS else "6500k"
+FFMPEG_BUFSIZE = "35000k" if ENABLE_4K_SHORTS else "9000k"
 
 # Sincronización y calibración de subtítulos (offset negativo para compensar el retardo intrínseco de YouTube ASR captions)
 SUBTITLE_OFFSET = float(os.getenv("SUBTITLE_OFFSET", "-0.45"))

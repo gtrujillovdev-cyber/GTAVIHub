@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Optional, Dict, Any
 from PIL import Image, ImageDraw, ImageFont, ImageEnhance, ImageFilter
 
+from .config import CANVAS_WIDTH, CANVAS_HEIGHT
 from .emoji_renderer import (
     split_text_and_emojis,
     measure_composite_line,
@@ -220,7 +221,7 @@ def create_video_thumbnail(
     elif not temp_frame.exists():
         extract_keyframe(video_path, temp_frame, timestamp_sec=1.0)
 
-    target_w, target_h = (1080, 1920) if is_short else (1280, 720)
+    target_w, target_h = (CANVAS_WIDTH, CANVAS_HEIGHT) if is_short else (1280, 720)
 
     if temp_frame.exists():
         img = Image.open(temp_frame).convert("RGB")

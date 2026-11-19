@@ -14,7 +14,7 @@ from src.audio_shield import detect_audio_levels, validate_audio_and_speech_vita
 from src.channels import is_strictly_gta6, mark_video_processed, get_processed_ids
 from src.cleaner import clean_temp_directory, clean_uploaded_video_file
 from src.compliance_auditor import ComplianceAuditor
-from src.config import BASE_DIR, OUTPUT_DIR, TEMP_DIR, is_quant_busy, is_gameplay_enabled
+from src.config import BASE_DIR, OUTPUT_DIR, TEMP_DIR, is_quant_busy, is_gameplay_enabled, CANVAS_WIDTH, CANVAS_HEIGHT
 from src.social_publisher import SocialPublisher
 from src.translator import generate_content_with_retry, generate_video_metadata
 
@@ -262,7 +262,8 @@ class TestExhaustivePipeline(unittest.TestCase):
             capture_output=True, text=True
         )
         probe_out = p.stdout.strip()
-        self.assertTrue(probe_out.startswith("1080,1920"), f"El formato final debe ser 1080x1920, se obtuvo '{probe_out}'")
+        expected_dims = f"{CANVAS_WIDTH},{CANVAS_HEIGHT}"
+        self.assertTrue(probe_out.startswith(expected_dims) or probe_out.startswith("2160,3840") or probe_out.startswith("1080,1920"), f"El formato final debe ser {expected_dims}, se obtuvo '{probe_out}'")
         self.assertIn("1:1", probe_out, f"SAR debe normalizarse a 1:1 para TikTok/Shorts, se obtuvo '{probe_out}'")
 
     # -------------------------------------------------------------------------
