@@ -1331,13 +1331,15 @@ def start_telegram_bot_daemon():
             now_dt = datetime.now()
             try:
                 from .adaptive_scheduler import get_due_window, mark_window_completed
-                from .config import get_max_videos_per_run, get_daily_upload_cap
-                from .channels import get_daily_published_count
+                from .config import get_max_videos_per_run
+                from .social_publisher import AntiBanValidator
                 due_win = get_due_window(now_dt)
-                daily_cap = get_daily_upload_cap()
                 if due_win:
-                    if get_daily_published_count() >= daily_cap:
-                        print(f"[Scheduler] Cuota diaria alcanzada ({daily_cap}); ventana '{due_win['name']}' omitida.")
+                    yt_avail = AntiBanValidator.check_daily_limit("youtube")
+                    tt_avail = AntiBanValidator.check_daily_limit("tiktok")
+                    ig_avail = AntiBanValidator.check_daily_limit("instagram")
+                    if not (yt_avail or tt_avail or ig_avail):
+                        print(f"[Scheduler] Cuotas diarias agotadas en todas las redes; ventana '{due_win['name']}' omitida.")
                         mark_window_completed(due_win["id"], target_date=now_dt.date())
                         due_win = None
                 if due_win:

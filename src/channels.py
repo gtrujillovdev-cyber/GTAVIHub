@@ -286,8 +286,8 @@ def is_strictly_gta6(title: str, description: str = "") -> bool:
 # Alias para retrocompatibilidad
 is_strictly_gta = is_strictly_gta6
 
-def get_daily_published_count() -> int:
-    """Cuenta cuántos vídeos han sido completados o publicados vía Co-Pilot en el día natural actual."""
+def get_daily_published_count(platform: Optional[str] = None) -> int:
+    """Cuenta cuántos vídeos han sido efectivamente publicados en el día natural actual."""
     if not PROCESSED_FILE.exists():
         return 0
     try:
@@ -301,9 +301,21 @@ def get_daily_published_count() -> int:
                     date_str = v.get("approved_at") or v.get("date")
                     if date_str:
                         try:
-                            v_date = datetime.fromisoformat(date_str.replace("Z", "+00:00"))
-                            if v_date.date() == today:
-                                count += 1
+                            v_date = datetime.fromisoformat(date_str.replace("Z", "+00:00")).date()
+                            if v_date != today:
+                                continue
+                            multi = v.get("multiplatform")
+                            if isinstance(multi, dict):
+                                if platform:
+                                    p_url = multi.get(platform)
+                                    if p_url and str(p_url).startswith("http"):
+                                        count += 1
+                                else:
+                                    if any(str(u).startswith("http") for u in multi.values() if u):
+                                        count += 1
+                            else:
+                                if not platform or platform == "youtube":
+                                    count += 1
                         except Exception:
                             pass
             return count

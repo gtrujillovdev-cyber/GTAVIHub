@@ -138,9 +138,9 @@ class AntiBanValidator:
                     plat_url = multi.get(platform)
                     if plat_url and str(plat_url).startswith("http"):
                         today_uploads.append(r)
-                        continue
-                # 3. Clave genérica para youtube (ej. status='completed')
-                if platform == "youtube" and r.get("status") in ("completed", "published_via_copilot") and (r.get("youtube_title") or r.get("youtube_url")):
+                    continue
+                # 3. Clave genérica para registros legacy (sin 'multiplatform')
+                if platform == "youtube" and r.get("status") in ("completed", "published_via_copilot") and r.get("youtube_title"):
                     today_uploads.append(r)
             limit = cls.get_daily_limit(platform)
             if len(today_uploads) >= limit:

@@ -10,6 +10,8 @@ import src.performance_tracker as pt
 from src.pipeline import process_single_video
 from src.translator import generate_mechanical_editorial_srt, generate_editorial_commentary_srt
 from src.ai_selector import _resolve_recommended_mode
+from src.social_publisher import AntiBanValidator
+from src.channels import get_daily_published_count
 
 
 class TestPhase1Fixes(unittest.TestCase):
@@ -109,6 +111,51 @@ class TestPhase1Fixes(unittest.TestCase):
         self.assertEqual(_resolve_recommended_mode("subs", {"lang": "en", "title": "GTA 6 Secrets"}), "dub")
         self.assertEqual(_resolve_recommended_mode("subs", {"lang": "es", "title": "Willyrex GTA 6"}), "subs")
         self.assertEqual(_resolve_recommended_mode("gameplay", {"lang": "en", "title": "GTA 6 Free Roam"}), "gameplay")
+
+    def test_check_daily_limit_does_not_count_skipped_platform(self):
+        today_iso = datetime.now().isoformat()
+        records = [
+            {
+                "id": "vid1",
+                "title": "GTA 6 Video 1",
+                "status": "completed",
+                "date": today_iso,
+                "youtube_title": "GTA 6 Video 1",
+                "youtube_url": "https://youtube.com/watch?v=source1",
+                "multiplatform": {
+                    "youtube": None,
+                    "tiktok": "https://tiktok.com/@gtavihubextra/1",
+                    "instagram": "Bloqueado por Compliance Shield"
+                }
+            },
+            {
+                "id": "vid2",
+                "title": "GTA 6 Video 2",
+                "status": "completed",
+                "date": today_iso,
+                "youtube_title": "GTA 6 Video 2",
+                "youtube_url": "https://youtube.com/watch?v=source2",
+                "multiplatform": {
+                    "youtube": "https://youtu.be/real_yt",
+                    "tiktok": "https://tiktok.com/@gtavihubextra/2",
+                    "instagram": "https://instagram.com/reel/1"
+                }
+            }
+        ]
+        proc_file = Path(self.test_dir) / "processed.json"
+        proc_file.write_text(json.dumps(records), encoding="utf-8")
+
+        with patch("src.social_publisher.PROCESSED_FILE", proc_file), \
+             patch("src.channels.PROCESSED_FILE", proc_file), \
+             patch.object(AntiBanValidator, "get_daily_limit", return_value=2):
+            # YouTube only has 1 actual upload, so with limit=2 it should be OK (True)
+            self.assertTrue(AntiBanValidator.check_daily_limit("youtube"))
+            # TikTok has 2 uploads, so with limit=2 it should hit limit (False)
+            self.assertFalse(AntiBanValidator.check_daily_limit("tiktok"))
+            # get_daily_published_count only counts videos with at least 1 published URL
+            self.assertEqual(get_daily_published_count(), 2)
+            self.assertEqual(get_daily_published_count("youtube"), 1)
+            self.assertEqual(get_daily_published_count("tiktok"), 2)
 
 
 if __name__ == "__main__":
