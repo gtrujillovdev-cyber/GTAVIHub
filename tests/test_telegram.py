@@ -2,6 +2,7 @@ import unittest
 from src.telegram_bot import (
     URL_PATTERN,
     get_persistent_menu_keyboard,
+    get_dryrun_inline_keyboard,
     get_url_ingest_keyboard,
     get_copilot_approval_keyboard,
     get_copilot_toggle_keyboard,
@@ -52,9 +53,25 @@ class TestTelegramBot(unittest.TestCase):
         self.assertTrue(kb.get("resize_keyboard"))
         buttons = [btn["text"] for row in kb["keyboard"] for btn in row]
         self.assertIn("🚀 Forzar Escaneo", buttons)
+        self.assertIn("🎯 Simular Selección", buttons)
         self.assertIn("🎬 Último Clip", buttons)
+        self.assertIn("🔥 Radar Viral", buttons)
         self.assertIn("📊 Estado", buttons)
         self.assertIn("🛡️ Modo Co-Pilot", buttons)
+        self.assertIn("🐦 X Scout GTA6", buttons)
+        self.assertIn("⚙️ Canales", buttons)
+        self.assertIn("🖥️ Host / GaTDSEQ", buttons)
+        self.assertIn("🧹 Limpiar Temp", buttons)
+        self.assertEqual(len(kb["keyboard"]), 5)  # 5 filas equilibradas 2x2
+
+    def test_dryrun_inline_keyboard(self):
+        dry_kb = get_dryrun_inline_keyboard("https://www.youtube.com/watch?v=test1234")
+        self.assertIn("inline_keyboard", dry_kb)
+        callbacks = [btn.get("callback_data") for row in dry_kb["inline_keyboard"] for btn in row if btn.get("callback_data")]
+        self.assertIn("dryrun_ingest:https://www.youtube.com/watch?v=test1234", callbacks)
+        self.assertIn("dryrun_refresh", callbacks)
+        urls = [btn.get("url") for row in dry_kb["inline_keyboard"] for btn in row if btn.get("url")]
+        self.assertIn("https://www.youtube.com/watch?v=test1234", urls)
 
     def test_inline_keyboards(self):
         ingest_kb = get_url_ingest_keyboard("test_token")

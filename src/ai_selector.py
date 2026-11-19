@@ -74,7 +74,8 @@ def _visual_appeal_adjustment(item: Dict[str, Any]) -> float:
 def select_best_candidate_ai(
     candidates: List[Dict[str, Any]],
     launch_mode: bool = False,
-    playbook: Optional[Dict[str, Any]] = None
+    playbook: Optional[Dict[str, Any]] = None,
+    use_ai: bool = True
 ) -> Dict[str, Any]:
     """
     Motor de Selección con IA (Gemini Flash):
@@ -122,7 +123,7 @@ def select_best_candidate_ai(
             return {}
         l1, l2 = generate_hook_card_texts(chosen.get("title", ""))
         chosen["ai_selection"] = False
-        chosen["ai_justification"] = "Único candidato disponible en la ronda."
+        chosen["ai_justification"] = "Selección heurística pura (Dry-Run 0-IA: único candidato disponible)." if not use_ai else "Único candidato disponible en la ronda."
         chosen["hook_line1"] = l1
         chosen["hook_line2"] = l2
         chosen["recommended_mode"] = _resolve_recommended_mode(chosen.get("recommended_mode", ""), chosen)
@@ -213,8 +214,8 @@ def select_best_candidate_ai(
             "base_score": c.get("score")
         })
 
-    client = get_gemini_client()
-    if client:
+    client = get_gemini_client() if use_ai else None
+    if client and use_ai:
         try:
             mode_context = (
                 "MODO: DÍA DEL ESTRENO (LAUNCH DAY 2026). Prioriza novedad absoluta, misiones iniciales, "
@@ -348,7 +349,10 @@ RESPONDE EXCLUSIVAMENTE CON UN OBJETO JSON VÁLIDO:
     chosen = dict(sorted_pool[0])
     l1, l2 = generate_hook_card_texts(chosen.get("title", ""))
     chosen["ai_selection"] = False
-    chosen["ai_justification"] = "Seleccionado por máxima puntuación heurística de engagement."
-    chosen["hook_line1"] = l1
-    chosen["hook_line2"] = l2
+    chosen["ai_justification"] = "Selección heurística pura (Dry-Run 0-IA: velocidad, frescura y dinamismo visual)."
+    chosen["hook_line1"] = chosen.get("hook_line1") or l1
+    chosen["hook_line2"] = chosen.get("hook_line2") or l2
+    chosen["recommended_mode"] = _resolve_recommended_mode(chosen.get("recommended_mode", ""), chosen)
+    if not chosen.get("recommended_title"):
+        chosen["recommended_title"] = chosen.get("title", "")
     return chosen

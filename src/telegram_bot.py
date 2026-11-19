@@ -73,12 +73,14 @@ def get_api_url(method: str) -> Optional[str]:
     return f"https://api.telegram.org/bot{token}/{method}"
 
 def get_persistent_menu_keyboard() -> Dict[str, Any]:
-    """Retorna el teclado táctil persistente simplificado y limpio."""
+    """Retorna el teclado táctil persistente reestructurado, intuitivo y completo."""
     return {
         "keyboard": [
-            [{"text": "🚀 Forzar Escaneo"}, {"text": "🎬 Último Clip"}],
+            [{"text": "🚀 Forzar Escaneo"}, {"text": "🎯 Simular Selección"}],
+            [{"text": "🎬 Último Clip"}, {"text": "🔥 Radar Viral"}],
             [{"text": "📊 Estado"}, {"text": "🛡️ Modo Co-Pilot"}],
-            [{"text": "🐦 X Scout GTA6"}],
+            [{"text": "🐦 X Scout GTA6"}, {"text": "⚙️ Canales"}],
+            [{"text": "🖥️ Host / GaTDSEQ"}, {"text": "🧹 Limpiar Temp"}],
         ],
         "resize_keyboard": True,
         "persistent": True
@@ -513,6 +515,19 @@ def get_system_actions_inline_keyboard() -> Dict[str, Any]:
         ]
     }
 
+def get_dryrun_inline_keyboard(video_url: str) -> Dict[str, Any]:
+    """Teclado interactivo para accionar sobre el clip simulado en Dry-Run."""
+    buttons = [
+        [
+            {"text": "🚀 Ingestar Este Clip", "callback_data": f"dryrun_ingest:{video_url}"},
+            {"text": "🔄 Re-Simular", "callback_data": "dryrun_refresh"}
+        ],
+        [
+            {"text": "🌐 Ver Vídeo en YouTube", "url": video_url}
+        ]
+    ]
+    return {"inline_keyboard": buttons}
+
 def kill_hung_subprocesses():
     """Mata procesos hijos de ffmpeg o yt-dlp que hayan podido quedar bloqueados."""
     try:
@@ -751,6 +766,90 @@ def run_scan_in_background(chat_id: str, max_videos: int = 2, window_id: Optiona
         with BACKGROUND_LOCK:
             ACTIVE_TASK = None
 
+def run_dryrun_simulation_in_background(chat_id: str):
+    """
+    Ejecuta una simulación de selección pura (0-IA, 0-descargas) para previsualizar
+    qué clip elegiría el motor algorítmico y cómo se configuraría.
+    """
+    global ACTIVE_TASK
+    with BACKGROUND_LOCK:
+        if ACTIVE_TASK:
+            send_telegram_alert(f"⚠️ *Tarea activa en curso:* `{ACTIVE_TASK}`. Espera a que finalice.")
+            return
+        ACTIVE_TASK = "Simulación Dry-Run (0-IA)"
+
+    try:
+        send_telegram_alert(
+            "🎯 *Iniciando simulación Dry-Run (0-IA / 0-Descargas)...*\n"
+            "📡 Escaneando canales prioritarios en tiempo real...",
+            reply_markup=get_persistent_menu_keyboard()
+        )
+        candidates = fetch_channel_candidates(max_per_channel=2)
+        if not candidates:
+            send_telegram_alert("ℹ️ *Dry-Run:* No se encontraron candidatos nuevos pendientes en los canales.")
+            return
+
+        from .channels import filter_repetitive_candidates
+        filtered = filter_repetitive_candidates(candidates)
+        if not filtered:
+            send_telegram_alert("ℹ️ *Dry-Run:* Todos los vídeos encontrados fueron filtrados por el Escudo Anti-Repetición.")
+            return
+
+        from .config import is_gameplay_enabled
+        from .ai_selector import select_best_candidate_ai
+        # Forzar use_ai=False para garantizar 0 consumo de cuota y máxima velocidad determinista
+        chosen = select_best_candidate_ai(filtered, launch_mode=is_gameplay_enabled(), use_ai=False)
+        if not chosen:
+            send_telegram_alert("⚠️ *Dry-Run:* No se pudo determinar un ganador con el algoritmo.")
+            return
+
+        title = chosen.get("title", "GTA 6 Clip")
+        rec_title = chosen.get("recommended_title") or title
+        creator = chosen.get("uploader") or chosen.get("source_name") or "Desconocido"
+        vph = float(chosen.get("views_per_hour") or 0.0)
+        score = chosen.get("score", 0)
+        dur = int(chosen.get("duration") or 0)
+        hours_old = float(chosen.get("hours_old") or 0.0)
+        mode = chosen.get("recommended_mode", "dub").upper()
+        mode_desc = "🎙️ Doblaje Neural ES" if mode == "DUB" else ("💬 Subtítulos ES" if mode == "SUBS" else "🎮 Audio del Juego")
+        h1 = chosen.get("hook_line1", "GRÁFICOS DE INFARTO")
+        h2 = chosen.get("hook_line2", "¡OTRO NIVEL EN GTA 6!")
+        justification = chosen.get("ai_justification", "Selección heurística pura de máximo engagement.")
+        video_url = chosen.get("url") or f"https://www.youtube.com/watch?v={chosen.get('id')}"
+
+        report = (
+            "🎯 *RESULTADO DE LA SIMULACIÓN (DRY-RUN 0-IA)*\n"
+            + ("═" * 38) + "\n\n"
+            f"🏆 *Clip Seleccionado para la Próxima Ventana:*\n"
+            f"🎬 `{title}`\n\n"
+            f"📊 *Telemetría de Selección:*\n"
+            f"• 👤 *Creador:* `{creator}`\n"
+            f"• 🔥 *Velocidad:* `{vph:,.0f} vistas/hora`\n"
+            f"• ⭐ *Puntuación Algorítmica:* `{score}/100`\n"
+            f"• ⏱️ *Duración:* `{dur}s` | ⏳ *Antigüedad:* `{hours_old:.1f}h`\n\n"
+            f"⚙️ *Estrategia Editorial Simulada:*\n"
+            f"• *Modo:* `{mode_desc}`\n"
+            f"• *Gancho L1:* `{h1}`\n"
+            f"• *Gancho L2:* `{h2}`\n"
+            f"• *Título Sugerido:* `{rec_title[:55]}`\n"
+            f"• *Redes Elegibles:* `YouTube Shorts` • `TikTok` • `Instagram Reels`\n\n"
+            f"💡 *Criterio Heurístico:*\n"
+            f"_{justification}_\n\n"
+            f"🔗 {video_url}\n\n"
+            f"👇 _¿Quieres procesar este clip ahora mismo sin esperar a la próxima franja? Toca el botón inferior:_"
+        )
+
+        send_telegram_alert(
+            report,
+            reply_markup=get_dryrun_inline_keyboard(video_url),
+            include_menu=True
+        )
+    except Exception as e:
+        send_telegram_alert(f"❌ *Error en la simulación Dry-Run:* `{e}`")
+    finally:
+        with BACKGROUND_LOCK:
+            ACTIVE_TASK = None
+
 def run_ingest_in_background(
     url: str,
     vid_id: str,
@@ -935,6 +1034,23 @@ def handle_callback_query(cq: Dict[str, Any]):
 
     if not data:
         answer_callback_query(cq_id)
+        return
+
+    # A0) Callbacks de Dry-Run (0-IA)
+    if data == "dryrun_refresh":
+        answer_callback_query(cq_id, "Iniciando re-simulación Dry-Run...")
+        edit_telegram_message(msg_id, "🔄 *Actualizando candidatos y re-simulando selección en 0-IA...*")
+        allowed_chat_id = os.getenv("TELEGRAM_CHAT_ID") or TELEGRAM_CHAT_ID
+        t = threading.Thread(target=run_dryrun_simulation_in_background, args=(allowed_chat_id,), daemon=True)
+        t.start()
+        return
+
+    if data.startswith("dryrun_ingest:"):
+        clip_url = data.split(":", 1)[1]
+        answer_callback_query(cq_id, "Iniciando ingesta del clip...")
+        edit_telegram_message(msg_id, f"🚀 *Iniciando procesamiento editorial para:* `{clip_url}`...")
+        t = threading.Thread(target=handle_url_ingestion, args=(clip_url,), daemon=True)
+        t.start()
         return
 
     # A) Formato de Ingesta de URL
@@ -1414,16 +1530,21 @@ def start_telegram_bot_daemon():
                         "🎮 *CENTRO DE MANDO — GTA VI HUB EXTRA*\n"
                         + ("═" * 34) + "\n\n"
                         + "📱 *BOTONES PRINCIPALES:*\n"
-                        + "• `🚀 Forzar Escaneo` — Busca lo último `<24h` por velocidad real y genera clip.\n"
-                        + "• `🎬 Último Clip` — Muestra el vídeo pendiente o más reciente.\n"
+                        + "• `🚀 Forzar Escaneo` — Busca lo último `<24h` y genera clip de inmediato.\n"
+                        + "• `🎯 Simular Selección` — Previsualiza en 0-IA qué clip elegiría el motor.\n"
+                        + "• `🎬 Último Clip` — Muestra el vídeo o miniatura más reciente.\n"
+                        + "• `🔥 Radar Viral` — Clips con mayor velocidad en tiempo real.\n"
                         + "• `📊 Estado` — Salud del sistema, cuotas y almacenamiento.\n"
-                        + "• `🛡️ Modo Co-Pilot` — Activa/desactiva aprobación previa manual.\n\n"
+                        + "• `🛡️ Modo Co-Pilot` — Activa/desactiva aprobación previa manual.\n"
+                        + "• `🐦 X Scout GTA6` — Escaneo inteligente de clips en X.\n"
+                        + "• `⚙️ Canales` — Activar/desactivar fuentes con 1 toque.\n"
+                        + "• `🖥️ Host / GaTDSEQ` — Telemetría del servidor y cuantitativo.\n"
+                        + "• `🧹 Limpiar Temp` — Purgar archivos temporales a 0 bytes.\n\n"
                         + "📥 *INGESTA DIRECTA:* Pega cualquier enlace de YouTube, TikTok o X en este chat.\n\n"
-                        + "⌨️ *COMANDOS ÚTILES:*\n"
-                        + "• `/radar` — Radar viral en vivo\n"
+                        + "⌨️ *COMANDOS RÁPIDOS:*\n"
+                        + "• `/dryrun` — Simular selección 0-IA\n"
                         + "• `/stats` — Métricas reales de `@gtavihubextra`\n"
-                        + "• `/host` — Telemetría de `mbp1` y GaTDSEQ\n"
-                        + "• `/unlock` / `/clean` — Desbloquear cola y limpiar `temp/`\n"
+                        + "• `/unlock` — Desbloquear tareas colgadas\n"
                         + "• `/restart` — Reinicio rápido del bot"
                     )
                     send_telegram_alert(help_msg, reply_markup=get_persistent_menu_keyboard())
@@ -1435,6 +1556,12 @@ def start_telegram_bot_daemon():
                         t = threading.Thread(target=run_scan_in_background, args=(allowed_chat_id,), daemon=True)
                         t.start()
 
+                elif cmd in ["/dryrun", "/simulate", "/simular", "🎯"] or text in [
+                    "🎯 Simular Selección", "🎯 Dry-Run", "Simular Selección", "[🎯 Simular Selección]"
+                ]:
+                    t = threading.Thread(target=run_dryrun_simulation_in_background, args=(allowed_chat_id,), daemon=True)
+                    t.start()
+
                 elif cmd in ["/status", "📊"] or text in ["📊 Dashboard", "📊 Estado"]:
                     send_telegram_alert(get_dashboard_text(), reply_markup=get_persistent_menu_keyboard())
 
@@ -1442,7 +1569,7 @@ def start_telegram_bot_daemon():
                     from .adaptive_scheduler import format_schedule_summary
                     send_telegram_alert(format_schedule_summary(), reply_markup=get_persistent_menu_keyboard())
 
-                elif cmd in ["/host", "/telemetry", "🖥️"] or text == "🖥️ Estado Host / GaTDSEQ":
+                elif cmd in ["/host", "/telemetry", "🖥️"] or text in ["🖥️ Estado Host / GaTDSEQ", "🖥️ Host / GaTDSEQ", "Host / GaTDSEQ"]:
                     send_telegram_alert(get_host_telemetry_report(), reply_markup=get_system_actions_inline_keyboard())
 
                 elif cmd in ["/restart", "/reiniciar", "/reboot", "/reset"]:

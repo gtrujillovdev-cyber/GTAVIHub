@@ -9,7 +9,7 @@ from unittest.mock import patch, MagicMock
 import src.performance_tracker as pt
 from src.pipeline import process_single_video
 from src.translator import generate_mechanical_editorial_srt, generate_editorial_commentary_srt
-from src.ai_selector import _resolve_recommended_mode
+from src.ai_selector import _resolve_recommended_mode, select_best_candidate_ai
 from src.social_publisher import AntiBanValidator
 from src.channels import get_daily_published_count
 
@@ -156,6 +156,36 @@ class TestPhase1Fixes(unittest.TestCase):
             self.assertEqual(get_daily_published_count(), 2)
             self.assertEqual(get_daily_published_count("youtube"), 1)
             self.assertEqual(get_daily_published_count("tiktok"), 2)
+
+    def test_select_best_candidate_ai_force_heuristic_skips_gemini(self):
+        cands = [
+            {
+                "id": "c1",
+                "title": "GTA 6 Gameplay PS5 Pro 4K Free Roam",
+                "uploader": "Gamer1",
+                "duration": 25,
+                "score": 90,
+                "views_per_hour": 5000,
+                "hours_old": 2,
+                "url": "https://youtu.be/c1"
+            },
+            {
+                "id": "c2",
+                "title": "GTA 6 Podcast Discussion Radio Show",
+                "uploader": "Talk1",
+                "duration": 1800,
+                "score": 70,
+                "views_per_hour": 200,
+                "hours_old": 40,
+                "url": "https://youtu.be/c2"
+            }
+        ]
+        with patch("src.ai_selector.get_gemini_client") as mock_client:
+            chosen = select_best_candidate_ai(cands, launch_mode=True, use_ai=False)
+            mock_client.assert_not_called()
+            self.assertEqual(chosen.get("id"), "c1")
+            self.assertFalse(chosen.get("ai_selection"))
+            self.assertIn("Dry-Run", chosen.get("ai_justification"))
 
 
 if __name__ == "__main__":
