@@ -279,17 +279,29 @@ class SocialPublisher:
         description: str = "",
         creator_name: str = "",
     ) -> str:
-        """Construye una descripción estética, conversacional y SEO-friendly para TikTok."""
+        """Construye una descripción limpia, natural y de alto CTR en TikTok (sin gritos ALL CAPS ni cortes)."""
         clean_title = re.sub(r'[\r\n]+', ' ', title).strip()
-        short_title = truncate_on_word_boundary(clean_title, 75)
+        clean_title = re.sub(r'\s*#\w+', '', clean_title).strip()
+        # Convertir títulos TODO MAYÚSCULAS a formato natural legible manteniendo siglas clave
+        if clean_title == clean_title.upper() and len(clean_title) > 6:
+            clean_title = clean_title.capitalize()
+            for token in ("GTA 6", "GTA VI", "PS5 Pro", "PS5", "Xbox", "RAGE 9", "Vice City", "Leonida", "Lucía", "Jason", "4K", "60FPS", "FPS"):
+                clean_title = re.sub(rf"\b{re.escape(token)}\b", token, clean_title, flags=re.IGNORECASE)
+        short_title = truncate_on_word_boundary(clean_title, 54)
 
         if debate_question:
             q_clean = truncate_on_word_boundary(
-                debate_question.replace("¿", "").replace("?", "").strip(), 80
+                debate_question.replace("¿", "").replace("?", "").strip(), 60
             )
-            debate_line = f"💬 ¿{q_clean}? 👇"
+            debate_line = f"💬 ¿{q_clean}?"
         else:
-            debate_line = "💬 ¿Qué te parece este detalle de Vice City? Te leo 👇"
+            low_title = clean_title.lower()
+            if any(k in low_title for k in ("ps5", "xbox", "pc", "fps", "gráfic", "grafic", "comparativa")):
+                debate_line = "💬 ¿PS5 Pro o esperar a PC? Te leo 👇"
+            elif any(k in low_title for k in ("secret", "ocult", "arma", "mapa", "detalle", "truco", "curiosidad")):
+                debate_line = "🔖 Guárdalo para cuando explores Leonida 👇"
+            else:
+                debate_line = "💬 ¿Del 1 al 10 qué nota le pones a esto? Te leo 👇"
 
         # Extraer contexto editorial limpio sin URLs ni boilerplate legal de YouTube
         editorial_lines = []
@@ -304,12 +316,12 @@ class SocialPublisher:
                 if line.startswith("#"):
                     continue
                 editorial_lines.append(line)
-                if len(" ".join(editorial_lines)) >= 140:
+                if len(" ".join(editorial_lines)) >= 120:
                     break
-        editorial_snippet = truncate_on_word_boundary(" ".join(editorial_lines), 180) if editorial_lines else ""
+        editorial_snippet = truncate_on_word_boundary(" ".join(editorial_lines), 140) if editorial_lines else ""
 
-        # Hashtags curados (máximo 5 para estética limpia y buen SEO)
-        base_tags = ["GTA6", "GTAVI", "ViceCity", "RockstarGames", "Gaming"]
+        # Hashtags curados (máximo 4 limpios de alto alcance en TikTok)
+        base_tags = ["GTA6", "GTAVI", "Leonida", "ViceCity"]
         merged_tags = []
         seen_low = set()
         for t in list(tags or []) + base_tags:
@@ -317,11 +329,11 @@ class SocialPublisher:
             if clean_t and clean_t.lower() not in seen_low:
                 seen_low.add(clean_t.lower())
                 merged_tags.append(f"#{clean_t}")
-            if len(merged_tags) >= 5:
+            if len(merged_tags) >= 4:
                 break
         tags_str = " ".join(merged_tags)
 
-        parts = [f"🎮 {short_title}", debate_line]
+        parts = [short_title, debate_line]
         if editorial_snippet:
             parts.append(editorial_snippet)
         if creator_name and creator_name.strip():
@@ -749,12 +761,15 @@ class SocialPublisher:
                             print(f"[!] Error guardando captura debug TikTok: {shot_err}")
                         return None
 
+                    confirmed_post = False
                     try:
                         page.wait_for_url("**/manage**", timeout=30000)
+                        confirmed_post = True
                     except Exception:
                         try:
                             page.wait_for_selector("[class*='success'], [class*='uploaded'], [class*='posted']",
                                                    timeout=20000)
+                            confirmed_post = True
                         except Exception:
                             pass
 
@@ -768,13 +783,13 @@ class SocialPublisher:
                         except Exception:
                             pass
 
-                    _record_tiktok_upload(title)
-                    if "manage" in current_url or "content" in current_url:
+                    if confirmed_post or "manage" in current_url or "content" in current_url:
+                        _record_tiktok_upload(title)
                         print("[✓] Vídeo publicado en TikTok.")
                         return "https://www.tiktok.com/@gtavihubextra"
                     else:
-                        print(f"[*] URL final: {current_url} — vídeo posiblemente en revisión")
-                        return "https://www.tiktok.com/@gtavihubextra"
+                        print(f"[!] TikTok no confirmó publicación (URL final: {current_url}). Marcando como pendiente/fallido.")
+                        return None
                 finally:
                     for closable in (browser, raw_browser):
                         if closable is not None:

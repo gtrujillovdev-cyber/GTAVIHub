@@ -396,3 +396,110 @@ def generate_learning_telegram_report(playbook: Dict[str, Any]) -> str:
         + "✅ _El Playbook se ha inyectado automáticamente en el pipeline de generación._"
     )
     return msg
+
+
+def sync_tiktok_insights_to_playbook(username: str = "gtavihubextra", force: bool = False) -> Dict[str, Any]:
+    """
+    Extrae métricas reales de TikTok (vistas + likes por vídeo), identifica los ángulos
+    ganadores y perdedores reales, actualiza data/viral_playbook.json y sincroniza
+    tiktok_views/tiktok_likes en data/performance_records.json.
+    """
+    from .youtube_analytics import fetch_tiktok_overview
+
+    pb = load_viral_playbook()
+    diag = pb.setdefault("channel_diagnosis", {})
+    prev_snap = diag.get("tiktok_snapshot") or {}
+    if not force and prev_snap.get("synced_at"):
+        try:
+            prev_dt = datetime.fromisoformat(str(prev_snap["synced_at"]))
+            if (datetime.now() - prev_dt).total_seconds() < 4 * 3600:
+                return {"ok": True, "cached": True, "snapshot": prev_snap}
+        except Exception:
+            pass
+
+    ov = fetch_tiktok_overview(username)
+    if not ov or not ov.get("recent_videos"):
+        return {"ok": False, "reason": "Sin datos recientes de TikTok"}
+
+    videos = ov["recent_videos"]
+    scored = []
+    for v in videos:
+        views = int(v.get("views") or 0)
+        likes = int(v.get("likes") or 0)
+        ratio = (likes / views) if views > 0 else 0.0
+        scored.append({**v, "views": views, "likes": likes, "like_ratio": round(ratio, 4)})
+
+    scored.sort(key=lambda x: (x["views"], x["likes"]), reverse=True)
+    winners = [v for v in scored if v["views"] >= 600][:4]
+    losers = [v for v in scored if v["views"] < 150]
+
+    stopwords = {"gta", "6", "vi", "en", "de", "la", "el", "y", "a", "los", "las", "que", "con", "por", "para", "del", "qué", "te", "es", "lo", "más"}
+    win_kws: List[str] = []
+    for w in winners:
+        clean = re.sub(r"[^\wáéíóúñü\s]", " ", (w.get("title") or "").lower())
+        for tok in clean.split():
+            if len(tok) >= 4 and tok not in stopwords and tok not in win_kws:
+                win_kws.append(tok)
+    for core in ("oculta", "oculto", "secreto", "leonida", "arma", "legendaria", "ps5", "comparativa"):
+        if core not in win_kws:
+            win_kws.append(core)
+
+    avoid_kws: List[str] = []
+    for l_item in losers:
+        clean_l = re.sub(r"[^\wáéíóúñü\s]", " ", (l_item.get("title") or "").lower())
+        for tok in clean_l.split():
+            if len(tok) >= 4 and tok not in stopwords and tok not in win_kws and tok not in avoid_kws:
+                avoid_kws.append(tok)
+
+    heur = pb.setdefault("active_heuristics", {})
+    heur["priority_keywords"] = win_kws[:12]
+    if avoid_kws:
+        heur["avoid_keywords"] = avoid_kws[:8]
+    heur["priority_angle_label"] = "Secretos/Objetos Ocultos en Leonida y Comparativas PS5 Pro"
+
+    total_v = int(ov.get("views") or 0)
+    total_l = int(ov.get("likes") or 0)
+    diag["tiktok_snapshot"] = {
+        "username": username,
+        "videos": len(videos),
+        "total_views": total_v,
+        "total_likes": total_l,
+        "followers": int(ov.get("followers") or 0),
+        "avg_views": round(total_v / max(len(videos), 1), 1),
+        "top_winner": winners[0] if winners else None,
+        "bottom_losers": [{"title": l["title"][:60], "views": l["views"]} for l in losers[:3]],
+        "synced_at": datetime.now().isoformat(),
+    }
+    save_viral_playbook(pb)
+
+    # Sincronizar vistas/likes reales de TikTok hacia performance_records.json
+    try:
+        from difflib import SequenceMatcher
+        from .performance_tracker import _load_records, _save_records
+        records = _load_records()
+        updated_perf = 0
+        for v in scored:
+            v_norm = re.sub(r"[^a-z0-9áéíóúñ ]", "", (v.get("title") or "").lower()).strip()
+            if not v_norm:
+                continue
+            best_rec = None
+            best_sim = 0.0
+            for rec in records:
+                r_norm = re.sub(r"[^a-z0-9áéíóúñ ]", "", (rec.get("title") or "").lower()).strip()
+                if not r_norm:
+                    continue
+                sim = SequenceMatcher(None, v_norm[:45], r_norm[:45]).ratio()
+                if sim > best_sim:
+                    best_sim = sim
+                    best_rec = rec
+            if best_rec is not None and best_sim >= 0.62:
+                best_rec["tiktok_views"] = v["views"]
+                best_rec["tiktok_likes"] = v["likes"]
+                best_rec["tiktok_synced_at"] = datetime.now().isoformat()
+                updated_perf += 1
+        if updated_perf > 0:
+            _save_records(records)
+    except Exception:
+        pass
+
+    return {"ok": True, "snapshot": diag["tiktok_snapshot"], "priority_keywords": heur["priority_keywords"]}

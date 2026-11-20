@@ -70,9 +70,18 @@ def record_published_video(
 def fetch_pending_metrics(max_fetch: int = 5) -> int:
     """
     Busca vídeos publicados hace más de 23h cuyas métricas aún no se han recogido
-    y actualiza sus views/likes reales vía yt-dlp.
+    y actualiza sus views/likes reales priorizando YouTube Data API v3 y usando yt-dlp como respaldo.
     Retorna el número de registros actualizados.
     """
+    try:
+        sync_live_channel_metrics(limit=max(12, max_fetch * 2))
+    except Exception:
+        pass
+    try:
+        from .learning_engine import sync_tiktok_insights_to_playbook
+        sync_tiktok_insights_to_playbook()
+    except Exception:
+        pass
     records = _load_records()
     now = datetime.now(timezone.utc)
     updated = 0
