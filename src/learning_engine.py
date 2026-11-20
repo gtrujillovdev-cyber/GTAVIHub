@@ -452,10 +452,48 @@ def sync_tiktok_insights_to_playbook(username: str = "gtavihubextra", force: boo
                 avoid_kws.append(tok)
 
     heur = pb.setdefault("active_heuristics", {})
-    heur["priority_keywords"] = win_kws[:12]
-    if avoid_kws:
-        heur["avoid_keywords"] = avoid_kws[:8]
-    heur["priority_angle_label"] = "Secretos/Objetos Ocultos en Leonida y Comparativas PS5 Pro"
+    plat_alphas = pb.setdefault("platform_alphas", {})
+    plat_alphas["tiktok"] = {
+        "angle_label": "Secretos Visuales, Curiosidades In-Game y Gameplay Directo (0.0s)",
+        "priority_keywords": win_kws[:12],
+        "avoid_keywords": avoid_kws[:8],
+        "top_winner": winners[0] if winners else None,
+        "avg_views": round(int(ov.get("views") or 0) / max(len(videos), 1), 1),
+        "followers": int(ov.get("followers") or 0),
+        "synced_at": datetime.now().isoformat(),
+    }
+    plat_alphas.setdefault("instagram", {
+        "angle_label": "Reels Narrados / Doblados con Estética Vice City 4K",
+        "priority_keywords": ["secreto", "oculta", "detalle", "comparativa", "leonida"],
+        "requires_voiceover": True,
+    })
+
+    # Solo pasar a avoid_keywords global palabras que NO hayan tenido éxito en YouTube (>=500 vistas)
+    yt_protected_tokens = set()
+    try:
+        from .performance_tracker import _load_records
+        for rec in _load_records():
+            if int(rec.get("views_live") or 0) >= 500 or int(rec.get("views_24h") or 0) >= 500:
+                clean_yt = re.sub(r"[^\wáéíóúñü\s]", " ", (rec.get("title") or "").lower())
+                yt_protected_tokens.update(tok for tok in clean_yt.split() if len(tok) >= 4)
+    except Exception:
+        pass
+
+    global_avoid = [kw for kw in avoid_kws if kw not in yt_protected_tokens]
+    if global_avoid:
+        heur["avoid_keywords"] = global_avoid[:8]
+    elif "avoid_keywords" in heur:
+        heur["avoid_keywords"] = [kw for kw in (heur.get("avoid_keywords") or []) if kw not in yt_protected_tokens]
+
+    # Combinar keywords universales (TikTok + YouTube) sin pisar las de YouTube
+    yt_kws = (plat_alphas.get("youtube") or {}).get("priority_keywords") or heur.get("priority_keywords") or []
+    merged_global = []
+    for kw in list(win_kws[:6]) + list(yt_kws[:6]):
+        if kw not in merged_global:
+            merged_global.append(kw)
+    if merged_global:
+        heur["priority_keywords"] = merged_global[:12]
+    heur.setdefault("priority_angle_label", "Secretos/Objetos Ocultos en Leonida y Comparativas PS5 Pro")
 
     total_v = int(ov.get("views") or 0)
     total_l = int(ov.get("likes") or 0)

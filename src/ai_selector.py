@@ -148,6 +148,9 @@ def select_best_candidate_ai(
     if playbook is None:
         playbook = load_viral_playbook()
     _heur = playbook.get("active_heuristics") or {}
+    _plat_alphas = playbook.get("platform_alphas") or {}
+    _yt_kws = [str(k).lower() for k in ((_plat_alphas.get("youtube") or {}).get("priority_keywords") or []) if k]
+    _tt_kws = [str(k).lower() for k in ((_plat_alphas.get("tiktok") or {}).get("priority_keywords") or []) if k]
     _priority_kws = [str(k).lower() for k in (_heur.get("priority_keywords") or []) if k]
     _avoid_kws = [str(k).lower() for k in (_heur.get("avoid_keywords") or []) if k]
     _priority_angle_label = str(_heur.get("priority_angle_label") or "")
@@ -182,8 +185,12 @@ def select_best_candidate_ai(
         elif vph >= 1000:
             s += 10.0
         t_low = f" {(item.get('title') or '').lower()} "
-        if _priority_kws and any(kw in t_low for kw in _priority_kws):
-            s += 18.0
+        hit_yt = bool(_yt_kws and any(kw in t_low for kw in _yt_kws))
+        hit_tt = bool(_tt_kws and any(kw in t_low for kw in _tt_kws))
+        if hit_yt and hit_tt:
+            s += 22.0
+        elif hit_yt or hit_tt or (_priority_kws and any(kw in t_low for kw in _priority_kws)):
+            s += 15.0
         elif _avoid_kws and not item.get("is_user_liked") and any(kw in t_low for kw in _avoid_kws):
             s -= 8.0
 

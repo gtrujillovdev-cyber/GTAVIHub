@@ -370,18 +370,31 @@ def detect_and_apply_winning_angles(limit: int = 12) -> Dict[str, Any]:
         from .learning_engine import load_viral_playbook, save_viral_playbook
         pb = load_viral_playbook()
         heur = pb.setdefault("active_heuristics", {})
+        plat_alphas = pb.setdefault("platform_alphas", {})
+        plat_alphas["youtube"] = {
+            "priority_angle": win_angle,
+            "priority_angle_label": angle_label,
+            "priority_keywords": priority_kws,
+            "winning_clip": {
+                "video_id": winner["video_id"],
+                "title": winner["title"],
+                "views": winner["views"],
+                "views_per_hour": winner["views_per_hour"],
+                "likes": winner["likes"],
+                "comments": winner["comments"],
+            },
+            "last_winner_sync": datetime.now().isoformat(),
+        }
         heur["priority_angle"] = win_angle
         heur["priority_angle_label"] = angle_label
-        heur["priority_keywords"] = priority_kws
-        heur["winning_clip"] = {
-            "video_id": winner["video_id"],
-            "title": winner["title"],
-            "views": winner["views"],
-            "views_per_hour": winner["views_per_hour"],
-            "likes": winner["likes"],
-            "comments": winner["comments"],
-        }
-        heur["last_winner_sync"] = datetime.now().isoformat()
+        tt_kws = (plat_alphas.get("tiktok") or {}).get("priority_keywords") or []
+        merged_global = []
+        for kw in list(priority_kws[:6]) + list(tt_kws[:6]):
+            if kw not in merged_global:
+                merged_global.append(kw)
+        heur["priority_keywords"] = merged_global[:12] if merged_global else priority_kws
+        heur["winning_clip"] = plat_alphas["youtube"]["winning_clip"]
+        heur["last_winner_sync"] = plat_alphas["youtube"]["last_winner_sync"]
         save_viral_playbook(pb)
     except Exception as e:
         print(f"[PerformanceTracker] Warning actualizando playbook ganador: {e}")
