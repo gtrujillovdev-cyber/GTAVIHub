@@ -1002,27 +1002,21 @@ class SocialPublisher:
                 print(f"\n[Compliance Shield] 🛡️ {reason}")
                 self._notify_telegram(f"🛡️ *[Compliance Shield]* Saltando *{plat.upper()}* para proteger la cuenta:\n_{reason}_")
 
-                # OPCIÓN B: Solo activar Stories rotativas de productos Amazon si is_affiliates_enabled() es True
-                try:
-                    from .affiliates import is_affiliates_enabled
-                    _aff_on = is_affiliates_enabled()
-                except Exception:
-                    _aff_on = False
-                if plat == "instagram" and _aff_on:
-                    print("[Opción B] 🎬 Generando contenido alternativo seguro para Instagram (Story cinemática de hardware)...")
+                if plat == "instagram":
+                    print("[Opción B] 🎬 Generando contenido alternativo orgánico para Instagram (Story cinemática de GTA 6)...")
                     try:
                         from .story_scheduler import publish_scheduled_story
-                        story_res = publish_scheduled_story(force=True, preferred_type="product", dry_run=self.dry_run)
+                        story_res = publish_scheduled_story(force=True, preferred_type="content", dry_run=self.dry_run)
                         if story_res.get("status") in ("published", "simulated", "ok") or (self.dry_run and story_res.get("item")):
-                            story_item = story_res.get("item", "Oferta de hardware")
+                            story_item = story_res.get("item", "Curiosidad GTA 6")
                             story_url = story_res.get("story_url") or "https://www.instagram.com/gtavihubextra/"
                             results["instagram"] = f"Story Alternativa Publicada: {story_item} ({story_url})"
                             print(f"[✓] [Opción B] Story alternativa publicada en Instagram: {story_item}")
                             self._notify_telegram(
                                 f"🛡️ *[Instagram - Opción B Activa]*\n"
                                 f"Reel omitido por seguridad de cuenta (contenido de terceros/streamer).\n"
-                                f"🌟 Publicada *Story alternativa* en Instagram: *{story_item}*\n"
-                                f"👉 Mantiene actividad diaria y monetización sin riesgo de 'Contenido no original'."
+                                f"🌟 Publicada *Story orgánica* en Instagram: *{story_item}*\n"
+                                f"👉 Mantiene actividad diaria e interacción sin riesgo de penalización."
                             )
                             continue
                         else:

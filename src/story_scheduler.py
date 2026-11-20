@@ -105,18 +105,10 @@ def can_publish_story(force: bool = False) -> Tuple[bool, str]:
 
 def get_next_story_type() -> str:
     """
-    Determina si la próxima historia debe ser de contenido/gameplay (70%)
-    o de producto/oferta (30%).
+    Durante la fase de construcción de audiencia y tracción pura:
+    100% Historias editoriales orgánicas (curiosidades, teasers de gameplay y debate).
+    Cero productos ni referidos hasta consolidar retención y seguidores.
     """
-    state = load_stories_state()
-    history = state.get("history", [])
-    if not history:
-        return "content"
-    
-    # Comprobar las últimas 3 historias
-    recent_types = [h.get("type") for h in history[-3:]]
-    if "product" not in recent_types:
-        return "product"
     return "content"
 
 def build_next_rotating_deal_story() -> Tuple[Path, str, str, str]:

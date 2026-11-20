@@ -335,13 +335,15 @@ def publish_story_to_instagram(
         print(f"[Story] [DRY RUN] Simulación exitosa de Historia en Instagram (@gtavihubspain).")
         return f"https://www.instagram.com/stories/mock_story_{Path(image_path).stem}"
 
-    ig_user = os.getenv("INSTAGRAM_USERNAME")
-    ig_pass = os.getenv("INSTAGRAM_PASSWORD")
-    if not ig_user or not ig_pass:
-        print("[Story] Falta INSTAGRAM_USERNAME / INSTAGRAM_PASSWORD en entorno.")
-        return None
+    ig_user = os.getenv("INSTAGRAM_USERNAME", "gtavihubextra").strip().lstrip("@")
+    ig_pass = os.getenv("INSTAGRAM_PASSWORD", "")
 
-    session_file = ASSETS_DIR / ".browser_profiles" / "instagrapi_session.json"
+    # Priorizar la sesión guardada específica del usuario activo
+    session_file = ASSETS_DIR / ".browser_profiles" / f"instagrapi_session_{ig_user}.json"
+    if not session_file.exists():
+        legacy_session = ASSETS_DIR / ".browser_profiles" / "instagrapi_session.json"
+        session_file = legacy_session if legacy_session.exists() else session_file
+
     try:
         from instagrapi import Client
         from instagrapi.types import StoryLink
@@ -351,12 +353,17 @@ def publish_story_to_instagram(
         if session_file.exists():
             try:
                 cl.load_settings(str(session_file))
-                cl.login(ig_user, ig_pass)
+                if ig_user and ig_pass:
+                    cl.login(ig_user, ig_pass)
             except Exception:
-                cl = Client()
-                cl.login(ig_user, ig_pass)
-        else:
+                if ig_user and ig_pass:
+                    cl = Client()
+                    cl.login(ig_user, ig_pass)
+        elif ig_user and ig_pass:
             cl.login(ig_user, ig_pass)
+        else:
+            print(f"[Story] No hay sesión guardada ni credenciales para @{ig_user}.")
+            return None
         cl.dump_settings(str(session_file))
 
         print(f"[*] Subiendo Historia cinemática a Instagram (@{ig_user})...")
