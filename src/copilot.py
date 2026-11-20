@@ -1,5 +1,6 @@
 import os
 import json
+import fcntl
 import shutil
 import threading
 from datetime import datetime
@@ -190,20 +191,28 @@ def approve_and_publish_video(video_id: str) -> Optional[Dict[str, Any]]:
     3. Registra en processed.json.
     4. Purga el archivo de staging y vídeo local (si corresponde).
     """
-    with _PUBLISH_LOCK:
-        data = get_pending_video(video_id)
-        if not data:
-            print(f"[Co-Pilot] No se encontró el vídeo pendiente {video_id}")
-            return None
-        if data.get("status") == "publishing":
-            print(f"[Co-Pilot] El vídeo {video_id} ya se encuentra en proceso de publicación.")
-            return None
-
+    # Lock POSIX cross-process para impedir dobles subidas entre --auto y --telegram
+    os_lock_path = DATA_DIR / ".publish.lock"
+    os_lock_path.parent.mkdir(parents=True, exist_ok=True)
+    with open(os_lock_path, "w") as lock_fh:
+        fcntl.flock(lock_fh.fileno(), fcntl.LOCK_EX)
         try:
-            data["status"] = "publishing"
-            (PENDING_DIR / f"{video_id}.json").write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
-        except Exception:
-            pass
+            with _PUBLISH_LOCK:
+                data = get_pending_video(video_id)
+                if not data:
+                    print(f"[Co-Pilot] No se encontró el vídeo pendiente {video_id}")
+                    return None
+                if data.get("status") == "publishing":
+                    print(f"[Co-Pilot] El vídeo {video_id} ya se encuentra en proceso de publicación.")
+                    return None
+
+                try:
+                    data["status"] = "publishing"
+                    (PENDING_DIR / f"{video_id}.json").write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
+                except Exception:
+                    pass
+        finally:
+            fcntl.flock(lock_fh.fileno(), fcntl.LOCK_UN)
 
     video_path = Path(data["output_video"])
     thumb_path = Path(data["thumbnail"]) if data.get("thumbnail") else None
@@ -259,11 +268,23 @@ def approve_and_publish_video(video_id: str) -> Optional[Dict[str, Any]]:
             target_account="extra"
         )
 
-    # Registro en processed.json
+    # Registro en processed.json (solo marcar published_via_copilot si al menos 1 plataforma devolvió URL real)
     if uploaded_yt_id:
         yt_url = str(uploaded_yt_id) if str(uploaded_yt_id).startswith("http") else f"https://youtu.be/{uploaded_yt_id}"
     else:
         yt_url = None
+    has_published_any = bool(
+        yt_url
+        or (publish_all and any(v and str(v).startswith("http") for v in multiplatform_results.values()))
+    )
+    if not has_published_any:
+        print(f"[Co-Pilot] ⚠️ Ninguna plataforma confirmó publicación para {video_id}. Marcando como 'upload_failed'.")
+        try:
+            data["status"] = "upload_failed"
+            (PENDING_DIR / f"{video_id}.json").write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
+        except Exception:
+            pass
+        return None
     mark_video_processed({
         "id": video_id,
         "title": data.get("original_title"),
@@ -408,7 +429,10 @@ def schedule_auto_approve_if_pending(
 ) -> Optional[threading.Timer]:
     """
     Programa la auto-publicación tras `timeout_sec` segundos si el operador no veta ni aprueba antes.
+    Respeta COPILOT_AUTO_APPROVE_ENABLED salvo que se fuerce timeout_sec explícito en tests.
     """
+    if timeout_sec is None and not COPILOT_AUTO_APPROVE_ENABLED:
+        return None
     delay = COPILOT_AUTO_APPROVE_SECONDS if timeout_sec is None else int(timeout_sec)
     if delay <= 0:
         return None

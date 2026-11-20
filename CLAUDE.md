@@ -11,10 +11,13 @@
 ## Herramientas y flujo de trabajo
 
 ### Módulos clave recientes
-- `src/x_scout.py` — Scout persistente de X (Twitter): extrae clips nativos y enlaces desde tus Likes (`/likes`) y Timeline, actualizando `data/x_taste_profile.json` y alimentando la cola `data/curated_queue.json`.
+- `src/x_scout.py` — Scout persistente de X (Twitter): intercepta GraphQL (`Likes` y `HomeTimeline`) además del DOM, filtra estrictamente con `is_strictly_gta6()` + anti-spam crypto, actualiza `data/x_taste_profile.json` e inyecta automáticamente en `data/curated_queue.json` desde `src/channels.py`.
+- `src/video_editor.py` — Render 4K (`2160×3840 @ 18000k`) con acabado Vice City HDR (`contrast=1.09`, `saturation=1.18`), píldora de marca `@GTAVIHUBEXTRA` translúcida, entrada de hook en `2.4s`, **resaltado inteligente** en cabecera (`_hook_power_score`) y Pop Karaoke (solo palabras clave gancho en Rosa Vice City / Oro Rockstar, conectores en blanco limpio), y *guard* de audio `[0:a]`.
+- `src/learning_engine.py` — `sync_tiktok_insights_to_playbook()` calibra `data/viral_playbook.json` con vistas/likes reales de `@gtavihubextra` en TikTok.
 - `src/community_manager.py` — Interacción comunitaria autónoma: auto-respuestas inteligentes con Gemini/0-API en comentarios de YouTube e Instagram Reels, filtrando spam y con límite de tasa.
-- `src/social_publisher.py` — Constructor de descripciones estéticas en TikTok (`_build_tiktok_caption`) con debate, SEO y hasta 900 caracteres.
-- `src/uploader.py` — Sistema de enfriamiento temporal (`youtube_cooldown_until.txt`), tope diario de 3 Shorts/24h y espaciado de >=4h en YouTube.
+- `src/social_publisher.py` — Captions limpias para TikTok (`_build_tiktok_caption`: Sentence-case `<= 54` chars, sin gritos ALL CAPS, 4 hashtags curados) y confirmación estricta de publicación en TikTok Studio.
+- `src/uploader.py` — Cooldown alineado a 4 slots/día (`MAX_DAILY_UPLOADS_YOUTUBE=4`, espaciado >=165 min), *exponential backoff* en `next_chunk()`, y omisión de `thumbnails().set()` en Shorts.
+- `src/telegram_bot.py` & `src/copilot.py` — Hilo dedicado de heartbeat (cada 30s, inmune al *stagger* anti-ban), lock POSIX cross-process (`fcntl.flock`) y validación real de URLs antes de marcar `published_via_copilot`.
 
 ### Exploración del código
 - El proyecto tiene `.codegraph/` indexado. Usar `codegraph_explore` ANTES de grep/Read para localizar símbolos.

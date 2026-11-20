@@ -115,7 +115,10 @@ EXCLUDED_KEYWORDS = [
     "podcast", "entrevista", "interview", "ex-rockstar", "ex rockstar", "ex-empleado", "ex empleado",
     "ex animador", "ex-animador", "se pronuncia", "declaraciones", "comunicado", "habla sobre",
     "despido", "despidos", "opinion", "opinión", "opinando", "charlas", "video-ensayo",
-    "video ensayo", "video essay", "tertulia", "debate", "hablando", "facecam", "reactor"
+    "video ensayo", "video essay", "tertulia", "debate", "hablando", "facecam", "reactor",
+    # Anti-Spoilers de Historia (CERO FINALES O MUERTES)
+    "good ending", "bad ending", "secret ending", "all endings", "final bueno", "final malo",
+    "final secreto", "todos los finales", "epilogue", "epílogo", "spoiler", "spoilers"
 ]
 
 # Términos cortos que necesitan word-boundary para evitar falsos positivos por substring

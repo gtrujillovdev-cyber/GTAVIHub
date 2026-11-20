@@ -23,13 +23,14 @@ class TestTikTokCaptionAesthetics(unittest.TestCase):
             description=desc,
             creator_name="RockstarIntel",
         )
-        self.assertIn("🎮 Físicas del agua en GTA 6 con RAGE 9", caption)
-        self.assertIn("💬 ¿Crees que correrá a 60 FPS en consola? 👇", caption)
+        self.assertIn("Físicas del agua en GTA 6 con RAGE 9", caption)
+        self.assertNotIn("🎮", caption.splitlines()[0])
+        self.assertIn("💬 ¿Crees que correrá a 60 FPS en consola?", caption)
         self.assertIn("RAGE 9 alcanzan un nivel brutal", caption)
         self.assertIn("📌 Crédito: @RockstarIntel", caption)
         self.assertNotIn("https://", caption)
         self.assertNotIn("Art. 107", caption)
-        self.assertEqual(caption.count("#"), 5)
+        self.assertEqual(caption.count("#"), 4)
 
 
 class TestCommunityManager(unittest.TestCase):

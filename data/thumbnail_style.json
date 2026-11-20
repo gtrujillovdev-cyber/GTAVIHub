@@ -1,24 +1,24 @@
 {
-  "last_updated": "2026-11-16T17:45:53.395268",
-  "saturation": 1.4,
-  "contrast": 1.2,
+  "last_updated": "2026-11-20T23:45:05.583707",
+  "saturation": 1.35,
+  "contrast": 1.25,
   "brightness": 1.05,
   "top_bar": false,
   "bottom_gradient": true,
   "text_hook": true,
   "text_color": [
     255,
-    255,
-    255
+    230,
+    0
   ],
   "text_stroke": [
     0,
     0,
     0
   ],
-  "text_stroke_width": 8,
-  "font_size_ratio": 0.08,
+  "text_stroke_width": 6,
+  "font_size_ratio": 0.07,
   "color_tone": "neon_miami",
   "vignette_alpha": 120,
-  "analysis_source": "gemini_vision"
+  "analysis_source": "default"
 }

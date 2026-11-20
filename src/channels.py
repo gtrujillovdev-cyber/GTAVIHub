@@ -507,6 +507,19 @@ def fetch_channel_candidates(max_per_channel: int = 2) -> List[Dict[str, Any]]:
     processed_ids = get_processed_ids()
     candidates_by_id: Dict[str, Dict[str, Any]] = {}
 
+    # Sincronización automática ligera de Likes de X (con cooldown 10 min para no abrir navegador en exceso)
+    try:
+        from .x_scout import X_STORAGE_STATE_FILE, X_PROFILE_DIR, scan_x_timeline
+        if X_STORAGE_STATE_FILE.exists() or X_PROFILE_DIR.exists():
+            import time as _time
+            x_sync_stamp = DATA_DIR / ".x_scout_last_sync"
+            last_sync = float(x_sync_stamp.read_text().strip()) if x_sync_stamp.exists() else 0.0
+            if (_time.time() - last_sync) >= 600:
+                x_sync_stamp.write_text(str(_time.time()), encoding="utf-8")
+                scan_x_timeline(max_candidates=10, max_scrolls=3, include_likes=True)
+    except Exception as x_err:
+        print(f"[Channels] Info sincronización X Likes: {x_err}")
+
     # Inyección de candidatos verificados prioritarios (Curated Safe Queue)
     if CURATED_QUEUE_FILE.exists():
         try:

@@ -1389,14 +1389,28 @@ def start_telegram_bot_daemon():
     )
     send_telegram_alert(welcome_msg, reply_markup=get_persistent_menu_keyboard())
 
+    def _heartbeat_worker():
+        while True:
+            try:
+                update_heartbeat()
+            except Exception:
+                pass
+            time.sleep(30)
+
+    threading.Thread(target=_heartbeat_worker, daemon=True).start()
+
     while True:
         try:
             update_heartbeat()
 
-            # Revisar auto-aprobación por tiempo de cortesía de Co-Pilot (15 min)
+            # Revisar auto-aprobación por tiempo de cortesía de Co-Pilot en segundo plano (sin bloquear heartbeat/polling)
             try:
-                from .copilot import check_and_auto_approve_expired_videos
-                check_and_auto_approve_expired_videos()
+                from .copilot import check_and_auto_approve_expired_videos, COPILOT_AUTO_APPROVE_ENABLED
+                if COPILOT_AUTO_APPROVE_ENABLED:
+                    with BACKGROUND_LOCK:
+                        _is_busy = (ACTIVE_TASK is not None)
+                    if not _is_busy:
+                        threading.Thread(target=check_and_auto_approve_expired_videos, daemon=True).start()
             except Exception:
                 pass
 

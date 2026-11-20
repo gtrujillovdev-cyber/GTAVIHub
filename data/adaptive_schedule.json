@@ -56,5 +56,160 @@
         "published_url": null
       }
     ]
+  },
+  "2026-11-18": {
+    "date": "2026-11-18",
+    "created_at": "2026-11-19T20:59:57.008592",
+    "windows": [
+      {
+        "id": "morning",
+        "name": "🌅 Mañana (Pico España)",
+        "scheduled_time": "11:13",
+        "hour": 11,
+        "minute": 13,
+        "jitter_sec": -17,
+        "window_start": "10:15",
+        "window_end": "11:20",
+        "completed": false,
+        "completed_at": null,
+        "published_url": null
+      },
+      {
+        "id": "lunch_latam",
+        "name": "🍲 Almuerzo ES / Amanecer LatAm",
+        "scheduled_time": "14:46",
+        "hour": 14,
+        "minute": 46,
+        "jitter_sec": -68,
+        "window_start": "13:45",
+        "window_end": "14:50",
+        "completed": false,
+        "completed_at": null,
+        "published_url": null
+      },
+      {
+        "id": "afternoon",
+        "name": "🌇 Tarde / Salida Laboral",
+        "scheduled_time": "17:46",
+        "hour": 17,
+        "minute": 46,
+        "jitter_sec": -157,
+        "window_start": "17:15",
+        "window_end": "18:25",
+        "completed": false,
+        "completed_at": null,
+        "published_url": null
+      },
+      {
+        "id": "prime_time",
+        "name": "🌙 Prime Time ES / Tarde LatAm",
+        "scheduled_time": "21:27",
+        "hour": 21,
+        "minute": 27,
+        "jitter_sec": -124,
+        "window_start": "20:15",
+        "window_end": "21:30",
+        "completed": false,
+        "completed_at": null,
+        "published_url": null
+      },
+      {
+        "id": "early_gameplay_wave",
+        "name": "🎮 Oleada Primer Gameplay GTA 6",
+        "scheduled_time": "15:58",
+        "hour": 15,
+        "minute": 58,
+        "jitter_sec": 1,
+        "window_start": "15:50",
+        "window_end": "16:35",
+        "completed": false,
+        "completed_at": null,
+        "published_url": null
+      }
+    ]
+  },
+  "2026-11-19": {
+    "date": "2026-11-19",
+    "created_at": "2026-11-19T20:59:58.958898",
+    "windows": [
+      {
+        "id": "midnight_drop",
+        "name": "🚀 Estreno Mundial GTA 6 (00:00 CET)",
+        "scheduled_time": "00:33",
+        "hour": 0,
+        "minute": 33,
+        "jitter_sec": 151,
+        "window_start": "00:10",
+        "window_end": "00:40",
+        "completed": false,
+        "completed_at": null,
+        "published_url": null
+      },
+      {
+        "id": "late_night_wave",
+        "name": "🔥 Oleada Gameplay Madrugada",
+        "scheduled_time": "02:17",
+        "hour": 2,
+        "minute": 17,
+        "jitter_sec": 42,
+        "window_start": "01:30",
+        "window_end": "02:20",
+        "completed": false,
+        "completed_at": null,
+        "published_url": null
+      },
+      {
+        "id": "morning",
+        "name": "🌅 Mañana (Pico España)",
+        "scheduled_time": "11:05",
+        "hour": 11,
+        "minute": 5,
+        "jitter_sec": 40,
+        "window_start": "10:15",
+        "window_end": "11:20",
+        "completed": false,
+        "completed_at": null,
+        "published_url": null
+      },
+      {
+        "id": "lunch_latam",
+        "name": "🍲 Almuerzo ES / Amanecer LatAm",
+        "scheduled_time": "13:56",
+        "hour": 13,
+        "minute": 56,
+        "jitter_sec": -73,
+        "window_start": "13:45",
+        "window_end": "14:50",
+        "completed": false,
+        "completed_at": null,
+        "published_url": null
+      },
+      {
+        "id": "afternoon",
+        "name": "🌇 Tarde / Salida Laboral",
+        "scheduled_time": "18:11",
+        "hour": 18,
+        "minute": 11,
+        "jitter_sec": 78,
+        "window_start": "17:15",
+        "window_end": "18:25",
+        "completed": false,
+        "completed_at": null,
+        "published_url": null
+      },
+      {
+        "id": "prime_time",
+        "name": "🌙 Prime Time ES / Tarde LatAm",
+        "scheduled_time": "20:24",
+        "hour": 20,
+        "minute": 24,
+        "jitter_sec": 92,
+        "window_start": "20:15",
+        "window_end": "21:30",
+        "completed": false,
+        "completed_at": null,
+        "published_url": null
+      }
+    ]
   }
 }

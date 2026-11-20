@@ -54,17 +54,6 @@
       "allow_long_clipping": true
     },
     {
-      "name": "Rockstar Games (Shorts)",
-      "url": "https://www.youtube.com/@RockstarGames/shorts",
-      "type": "official",
-      "lang": "en",
-      "filter_keywords": false,
-      "enabled": false,
-      "description": "Duplicado de Rockstar Games (Oficial) (Shorts)",
-      "allow_official_commentary": true,
-      "allow_long_clipping": true
-    },
-    {
       "name": "PlayStation",
       "url": "https://www.youtube.com/@PlayStation/videos",
       "type": "official",

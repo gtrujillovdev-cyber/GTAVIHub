@@ -1,10 +1,26 @@
 {
-  "updated_at": "2026-11-20T19:58:00.648254",
-  "liked_samples": 1,
-  "preferred_topics": [],
-  "preferred_creators": [
-    "Ben Geskin"
+  "updated_at": "2026-11-20T23:34:59.938438",
+  "liked_samples": 5,
+  "preferred_topics": [
+    "personajes",
+    "comparativa",
+    "gameplay"
   ],
-  "dynamic_queries": [],
-  "topic_weights": {}
+  "preferred_creators": [
+    "TechDroider",
+    "بلو جيمنج",
+    "ehsan1.1.1",
+    "Root",
+    "xam"
+  ],
+  "dynamic_queries": [
+    "GTA 6 personajes",
+    "GTA 6 comparativa",
+    "GTA 6 gameplay"
+  ],
+  "topic_weights": {
+    "personajes": 1,
+    "comparativa": 1,
+    "gameplay": 1
+  }
 }

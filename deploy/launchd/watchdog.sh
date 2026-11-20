@@ -5,6 +5,7 @@
 set -e
 
 export PATH="/usr/local/bin:/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin:$PATH"
+export PYTHONUNBUFFERED=1
 
 # Unset variables de certificados residuales que apunten a rutas temporales inexistentes
 unset REQUESTS_CA_BUNDLE

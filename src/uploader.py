@@ -68,10 +68,11 @@ def _is_youtube_upload_blocked_by_cooldown(title: str, privacy_status: str) -> t
             sim = difflib.SequenceMatcher(None, norm_new, prev_norm).ratio() if (norm_new and prev_norm) else 0.0
             if elapsed_min < 180.0 and sim >= 0.82:
                 return True, f"Título casi idéntico subido hace {elapsed_min:.0f}m (sim={sim:.2f})."
-            if elapsed_min < 240.0:
-                return True, f"Cooldown anti-spam activo: último vídeo subido hace {elapsed_min:.0f}m (<240m)."
-        if uploads_24h >= 3:
-            return True, f"Límite diario YouTube alcanzado: {uploads_24h}/3 subidas en las últimas 24h."
+            if elapsed_min < 165.0:
+                return True, f"Cooldown anti-spam activo: último vídeo subido hace {elapsed_min:.0f}m (<165m)."
+        max_yt_24h = int(os.getenv("MAX_DAILY_UPLOADS_YOUTUBE", "4"))
+        if uploads_24h >= max_yt_24h:
+            return True, f"Límite diario YouTube alcanzado: {uploads_24h}/{max_yt_24h} subidas en las últimas 24h."
     except Exception:
         return False, ""
     return False, ""
@@ -261,11 +262,24 @@ def upload_to_youtube(
             media_body=media
         )
 
+        import time
         response = None
+        chunk_retries = 0
         while response is None:
-            status, response = request.next_chunk()
-            if status:
-                print(f"  -> Progreso de subida: {int(status.progress() * 100)}%")
+            try:
+                status, response = request.next_chunk()
+                chunk_retries = 0
+                if status:
+                    print(f"  -> Progreso de subida: {int(status.progress() * 100)}%")
+            except Exception as chunk_err:
+                chunk_retries += 1
+                err_txt = str(chunk_err).lower()
+                is_transient = any(tok in err_txt for tok in ("500", "502", "503", "504", "timeout", "timed out", "connection", "reset"))
+                if not is_transient or chunk_retries > 3:
+                    raise
+                backoff = min(30, 2 ** chunk_retries)
+                print(f"[!] Error transitorio en subida ({chunk_retries}/3): {chunk_err}. Reintentando en {backoff}s...")
+                time.sleep(backoff)
 
         video_id = response.get("id")
         _record_youtube_upload(video_id, title, privacy_status)
@@ -274,7 +288,7 @@ def upload_to_youtube(
         print(f"    ID: {video_id}")
         print(f"    Enlace: {yt_url}")
 
-        if thumbnail_path and thumbnail_path.exists():
+        if not is_short and thumbnail_path and thumbnail_path.exists():
             try:
                 print(f"[*] Subiendo miniatura personalizada para {video_id}...")
                 youtube.thumbnails().set(

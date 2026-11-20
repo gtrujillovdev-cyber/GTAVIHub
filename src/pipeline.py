@@ -259,7 +259,9 @@ def process_single_video(
     # Pre-check de cuota Anti-Ban antes de descargar o renderizar (evita renders huérfanos en output/)
     if auto_upload:
         from .social_publisher import AntiBanValidator
-        yt_ok = AntiBanValidator.check_daily_limit("youtube")
+        from .uploader import _is_youtube_upload_blocked_by_cooldown
+        yt_cooldown_blocked, yt_cooldown_reason = _is_youtube_upload_blocked_by_cooldown("", effective_privacy)
+        yt_ok = AntiBanValidator.check_daily_limit("youtube") and not yt_cooldown_blocked
         tt_ok = AntiBanValidator.check_daily_limit("tiktok")
         ig_ok = (
             AntiBanValidator.check_daily_limit("instagram")
@@ -267,7 +269,8 @@ def process_single_video(
             and mode not in ("subs", "clean", "gameplay")
         )
         if not (yt_ok or tt_ok or ig_ok):
-            print("[Anti-Ban Pre-Check] Cuotas diarias agotadas en todas las plataformas elegibles. Abortando antes de descargar/renderizar.")
+            reason_extra = f" ({yt_cooldown_reason})" if yt_cooldown_blocked else ""
+            print(f"[Anti-Ban Pre-Check] Cuotas diarias o cooldown activos en todas las plataformas elegibles{reason_extra}. Abortando antes de descargar/renderizar.")
             return None
 
     def report_stage(stage_text: str):

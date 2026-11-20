@@ -1041,7 +1041,7 @@ def download_video_and_subtitles(
             s0 = max(0.0, round(section_arg[0], 2))
             s1 = max(s0 + 8.0, round(section_arg[1], 2))
             extra_args = ["--download-sections", f"*{s0:.2f}-{s1:.2f}"]
-            print(f"[⚡ Fast Section] Descargando solo segmento {s0:.1f}s - {s1:.1f}s (sin bajar vídeo completo)...")
+            print(f"[⚡ Fast Section] Descargando solo segmento {s0:.1f}s - {s1:.1f}s...")
         elif not is_social_clip and not remote_info:
             # Guardia SSD: si falló el inspector de duración remoto, limitar tamaño máx para no llenar el SSD con streams largos
             extra_args = ["--max-filesize", "800M"]
@@ -1215,10 +1215,17 @@ def download_video_and_subtitles(
                             srt_path.unlink(missing_ok=True)
                             srt_path = None
                 else:
-                    print(f"[!] Recorte inválido o duración anómala ({trimmed_dur:.2f}s). Conservando archivo original.")
+                    print(f"[!] Recorte inválido o duración anómala ({trimmed_dur:.2f}s).")
                     if trimmed_video.exists():
                         trimmed_video.unlink()
+                    if raw_d > 65.0:
+                        print(f"[!] Abortando entrega de vídeo largo ({raw_d:.1f}s) sin recortar para proteger el render.")
+                        video_path.unlink(missing_ok=True)
+                        return None, srt_path, detected_lang
             except Exception as e:
                 print(f"[!] No se pudo recortar con VideoToolbox: {e}")
+                if raw_d > 65.0:
+                    video_path.unlink(missing_ok=True)
+                    return None, srt_path, detected_lang
 
     return (video_path if video_path and video_path.exists() else None, srt_path, detected_lang)

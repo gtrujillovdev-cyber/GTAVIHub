@@ -378,7 +378,7 @@ Tu tarea es ADAPTAR EL TONO Y FORMATO AL CONTENIDO REAL:
    - "gameplay_puro" (misiones, jugabilidad real, capturas in-game, mundo abierto)
 2. "viral_title": Título limpio y muy atractivo para búsqueda y móvil en ESPAÑOL (estilo natural mixto, NO todo en mayúsculas gritonas), máx 68 caracteres, con 1 emoji relevante y "#GTA6" opcional al final. NUNCA pongas "#Shorts" ni "#SHORTS" en el título ni promesas falsas de "fecha confirmada".
 3. "summary": Un resumen apasionante de 2 párrafos en español fiel al contenido real del vídeo.
-4. "hook": Titular visual en ESPAÑOL de 2 líneas cortas separado por '\\n' (máx 18 chars por línea, en MAYÚSCULAS, SIN '¿' ni '?') que revele EL DATO CONCRETO del clip en los primeros segundos (ej. "GTA 6 EN PS5 PRO\\nPRIMERA MISIÓN" o "FÍSICAS RAGE 9\\nIMPACTO EN EL AGUA"). PROHIBIDO hooks genéricos vacíos como "IMPRESIONANTE" o "GRÁFICOS TOP".
+4. "hook": Titular visual en ESPAÑOL de 2 líneas cortas separado por '\\n' (máx 18 chars por línea, en MAYÚSCULAS, SIN '¿' ni '?'). Pon SIEMPRE en la Línea 1 el contexto/lugar y en la Línea 2 la PALABRA CLAVE o dato que engancha y frena el scroll (ej. "GTA 6 EN PS5 PRO\\nPRIMERA MISIÓN" o "OCULTA EN LEONIDA\\nARMA LEGENDARIA"). PROHIBIDO hooks genéricos vacíos como "IMPRESIONANTE" o "GRÁFICOS TOP".
 5. "debate_question": Una pregunta binaria/directa sobre lo que se ve en el clip para disparar comentarios en los primeros 30 minutos.
 6. "context_badge": Etiqueta editorial ultra-específica de 3 a 5 palabras (máx 38 chars, MAYÚSCULAS, palabras completas) que identifique la escena/tema exacto para un badge discreto (ej. "PS5 PRO • PERSECUCIÓN LEONIDA", "PRÓLOGO • PRISIÓN DE LUCIA", "RAGE 9 • FÍSICAS DEL AGUA"). PROHIBIDO usar genéricos como "INTRO DE GTA 6" o "GAMEPLAY REAL".
 

@@ -112,5 +112,117 @@ class TestAuditFixes(unittest.TestCase):
             copilot.PENDING_DIR = orig_pending_dir
 
 
+class TestStabilizationFixes(unittest.TestCase):
+    def test_youtube_cooldown_aligned_to_4_slots(self):
+        import json
+        from datetime import datetime, timedelta
+        from src import uploader
+
+        with tempfile.TemporaryDirectory() as td:
+            cd_file = Path(td) / "upload_cooldown.json"
+            pause_file = Path(td) / "youtube_cooldown_until.txt"
+            now = datetime.now()
+            # 3 subidas previas espaciadas >= 170 min (hace 170m, 360m, 550m) -> 4ª subida PERMITIDA
+            records = [
+                {"video_id": "v1", "title": "GTA 6 Fisica Agua", "uploaded_at": (now - timedelta(minutes=550)).isoformat()},
+                {"video_id": "v2", "title": "GTA 6 Mapa Leonida", "uploaded_at": (now - timedelta(minutes=360)).isoformat()},
+                {"video_id": "v3", "title": "GTA 6 PS5 Pro Test", "uploaded_at": (now - timedelta(minutes=170)).isoformat()},
+            ]
+            cd_file.write_text(json.dumps(records), encoding="utf-8")
+
+            with patch.object(uploader, "UPLOAD_COOLDOWN_FILE", cd_file), \
+                 patch.object(uploader, "YOUTUBE_PAUSE_FILE", pause_file), \
+                 patch.dict("os.environ", {"MAX_DAILY_UPLOADS_YOUTUBE": "4"}):
+                blocked, reason = uploader._is_youtube_upload_blocked_by_cooldown("GTA 6 Nuevo Secreto", "public")
+                self.assertFalse(blocked, f"No debería bloquear 4ª subida con 170m de margen: {reason}")
+
+                # Si hay 4 subidas en 24h -> 5ª subida BLOQUEADA
+                records.append({"video_id": "v4", "title": "GTA 6 Coches", "uploaded_at": (now - timedelta(minutes=175)).isoformat()})
+                cd_file.write_text(json.dumps(records), encoding="utf-8")
+                blocked_cap, _ = uploader._is_youtube_upload_blocked_by_cooldown("GTA 6 Quinto", "public")
+                self.assertTrue(blocked_cap)
+
+    def test_copilot_does_not_mark_published_when_all_uploads_fail(self):
+        import json
+        with tempfile.TemporaryDirectory() as td:
+            td_path = Path(td)
+            pending_dir = td_path / "pending"
+            pending_dir.mkdir(parents=True, exist_ok=True)
+            vid_file = td_path / "clip.mp4"
+            vid_file.write_bytes(b"fake")
+            (pending_dir / "fail_vid.json").write_text(json.dumps({
+                "video_id": "fail_vid",
+                "original_url": "https://youtu.be/fail_vid",
+                "original_title": "GTA 6 Fail Test",
+                "creator_name": "TestCreator",
+                "output_video": str(vid_file),
+                "thumbnail": None,
+                "metadata": {"title": "GTA 6 FAIL TEST", "description": "Desc"},
+                "is_short": True,
+                "mode": "subs",
+                "publish_all": True,
+                "privacy_status": "public",
+                "stagger_delay": 0,
+                "keep_local_video": True,
+            }), encoding="utf-8")
+
+            with patch.object(copilot, "PENDING_DIR", pending_dir), \
+                 patch.object(copilot, "DATA_DIR", td_path), \
+                 patch.object(copilot, "mark_video_processed") as mock_mark, \
+                 patch("src.social_publisher.SocialPublisher.publish_all", return_value={"youtube": None, "tiktok": None, "instagram": None}):
+                res = copilot.approve_and_publish_video("fail_vid")
+                self.assertIsNone(res)
+                mock_mark.assert_not_called()
+                saved = json.loads((pending_dir / "fail_vid.json").read_text(encoding="utf-8"))
+                self.assertEqual(saved["status"], "upload_failed")
+
+    def test_video_editor_handles_silent_input_with_dub_audio(self):
+        import subprocess
+        from src import video_editor
+        with tempfile.TemporaryDirectory() as td:
+            td_path = Path(td)
+            silent_vid = td_path / "silent.mp4"
+            dub_mp3 = td_path / "dub.mp3"
+            out_vid = td_path / "out.mp4"
+            # Generar vídeo mudo (sin pista de audio) + audio TTS sintético de 2s
+            subprocess.run([
+                "ffmpeg", "-y", "-f", "lavfi", "-i", "color=c=black:s=640x360:d=2",
+                "-c:v", "h264_videotoolbox", "-pix_fmt", "yuv420p", str(silent_vid)
+            ], check=True, capture_output=True)
+            subprocess.run([
+                "ffmpeg", "-y", "-f", "lavfi", "-i", "sine=frequency=440:duration=2",
+                "-c:a", "libmp3lame", str(dub_mp3)
+            ], check=True, capture_output=True)
+
+            self.assertFalse(video_editor._has_audio_stream(silent_vid))
+            ok = video_editor.render_final_video(
+                input_video=silent_vid,
+                output_video=out_vid,
+                dub_audio=dub_mp3,
+                force_short_format=True,
+                hook_text="TEST SILENT AUDIO",
+                format_preset="D",
+            )
+            self.assertTrue(ok)
+            self.assertTrue(out_vid.exists() and out_vid.stat().st_size > 1000)
+
+    def test_anti_spoiler_shield_blocks_endings_and_allows_comparisons(self):
+        from src.compliance_auditor import is_safe_rrss_candidate
+        safe_sp, reason_sp, _ = is_safe_rrss_candidate(
+            "GTA 6 Good Ending (Jason & Lucia Survive) - Grand Theft Auto VI",
+            uploader="MELOO",
+            duration_sec=45,
+        )
+        self.assertFalse(safe_sp)
+        self.assertIn("Anti-Spoiler", reason_sp)
+
+        safe_ok, _, _ = is_safe_rrss_candidate(
+            "GTA 6: COMPARATIVA GRÁFICA FINAL PS5 VS PS5 PRO",
+            uploader="ElAnalistaDeBits",
+            duration_sec=30,
+        )
+        self.assertTrue(safe_ok)
+
+
 if __name__ == "__main__":
     unittest.main()

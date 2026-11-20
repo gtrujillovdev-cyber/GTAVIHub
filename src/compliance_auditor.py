@@ -364,6 +364,18 @@ def is_safe_rrss_candidate(
         if re.search(pat, text_to_check):
             return False, f"Rechazado por Anti-Leak Shield: contiene referencia a material confidencial/robado ({pat})", {}
 
+    # 3b. Filtro Anti-Spoilers de Historia (cero finales, muertes, supervivencia de Lucía/Jason o epílogos)
+    anti_spoiler_patterns = [
+        r"\b(?:good|bad|secret|true|canon|all)\s+endings?\b",
+        r"\b(?:ending|endings)\b",
+        r"\b(?:final\s+(?:del\s+juego|bueno|malo|secreto|verdadero|canon)|todos\s+los\s+finales)\b",
+        r"\b(?:survives?|sobrevive|dies|death|muere|muerte|betrayal|traici[oó]n|epilogue|ep[ií]logo|post[\s\-]?credits?|final\s+boss|spoilers?)\b",
+        r"\b(?:jason|lucia|luc[ií]a)\s+(?:dies|survives?|kills?|muere|sobrevive|mata)\b",
+    ]
+    for spat in anti_spoiler_patterns:
+        if re.search(spat, text_to_check):
+            return False, f"Rechazado por Anti-Spoiler Shield: contiene spoiler de historia/final ({spat})", {}
+
     # 4. Filtro Anti-Oficial: rechaza Trailer 1 antiguo, teasers de agosto antiguos y reuploads sin transformación
     is_legacy_trailer1 = bool(re.search(r"\btrailer\s*1\b|\bcover\s*art\b|\bcoming\s*august\b", text_to_check))
     if is_legacy_trailer1:

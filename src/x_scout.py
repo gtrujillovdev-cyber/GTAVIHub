@@ -55,7 +55,13 @@ LIKED_BONUS = 15
 
 def _is_gta6_tweet(text: str) -> bool:
     tl = (text or "").lower()
-    return any(kw in tl for kw in GTA6_KEYWORDS)
+    if any(spam in tl for spam in ("saylor", "memecoin", "airdrop", "crypto", "coin", "solana", "token", "nft")):
+        return False
+    try:
+        from .channels import is_strictly_gta6
+        return is_strictly_gta6(text)
+    except Exception:
+        return any(kw in tl for kw in GTA6_KEYWORDS)
 
 
 def _parse_views(text: str) -> int:
@@ -242,7 +248,6 @@ def ingest_x_likes_as_sources(liked_candidates: List[Dict[str, Any]]) -> Dict[st
 def _dismiss_cookie_banner(page: Any) -> None:
     """Cierra el banner modal de cookies de X si aparece tapando la pantalla."""
     try:
-        # Botones típicos: "Refuse non-essential cookies", "Accept all cookies", etc.
         selectors = [
             'button:has-text("Accept all")',
             'button:has-text("Refuse non-essential")',
@@ -253,11 +258,110 @@ def _dismiss_cookie_banner(page: Any) -> None:
         for sel in selectors:
             btn = page.query_selector(sel)
             if btn:
-                btn.click()
-                page.wait_for_timeout(1000)
+                try:
+                    btn.evaluate("b => b.click()")
+                except Exception:
+                    btn.click(force=True, timeout=3000)
+                page.wait_for_timeout(800)
                 break
     except Exception:
         pass
+
+
+def _extract_candidates_from_graphql_payload(
+    payload: Dict[str, Any],
+    seen_ids: set,
+    force_liked: bool = False,
+    source_label: str = "X Timeline",
+    max_candidates: int = 20,
+) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
+    """Extrae tweets GTA6 con vídeo directamente de respuestas GraphQL de X (inmune a DOM headless)."""
+    candidates: List[Dict[str, Any]] = []
+    liked_texts: List[Dict[str, Any]] = []
+
+    def _walk_tweet_results(obj: Any):
+        if isinstance(obj, dict):
+            if "tweet_results" in obj and isinstance(obj["tweet_results"], dict):
+                res = obj["tweet_results"].get("result")
+                if isinstance(res, dict):
+                    yield res
+            for v in obj.values():
+                yield from _walk_tweet_results(v)
+        elif isinstance(obj, list):
+            for item in obj:
+                yield from _walk_tweet_results(item)
+
+    for res in _walk_tweet_results(payload):
+        if len(candidates) >= max_candidates:
+            break
+        if res.get("__typename") == "TweetWithVisibilityResults" and isinstance(res.get("tweet"), dict):
+            res = res["tweet"]
+        legacy = res.get("legacy") or {}
+        if not isinstance(legacy, dict):
+            continue
+        tweet_text = legacy.get("full_text") or ""
+        if not tweet_text or not _is_gta6_tweet(tweet_text):
+            continue
+
+        is_liked = force_liked or bool(legacy.get("favorited"))
+        user_legacy = (res.get("core") or {}).get("user_results", {}).get("result", {}).get("legacy", {})
+        user_core = (res.get("core") or {}).get("user_results", {}).get("result", {}).get("core", {})
+        screen_name = user_legacy.get("screen_name") or user_core.get("screen_name") or ""
+        uploader = f"@{screen_name}" if screen_name else source_label
+
+        if is_liked:
+            liked_texts.append({"title": tweet_text[:180], "uploader": uploader})
+
+        extracted: List[Tuple[str, str, str]] = []
+        for u in (legacy.get("entities") or {}).get("urls", []):
+            exp = u.get("expanded_url") or u.get("url") or ""
+            vid, vurl, plat = _extract_video_url(exp)
+            if vid and vurl and plat:
+                extracted.append((vid, vurl, plat))
+
+        if not extracted:
+            media_list = (legacy.get("extended_entities") or {}).get("media", [])
+            has_vid = any(m.get("type") in ("video", "animated_gif") for m in media_list)
+            status_id = res.get("rest_id") or legacy.get("id_str")
+            if has_vid and status_id:
+                user_handle = screen_name or "i"
+                extracted.append((f"x_{status_id}", f"https://x.com/{user_handle}/status/{status_id}", "x"))
+
+        views_raw = (res.get("views") or {}).get("count")
+        try:
+            tweet_views = int(views_raw) if views_raw is not None else 0
+        except Exception:
+            tweet_views = 0
+
+        for video_id, video_url, platform in extracted:
+            if video_id in seen_ids:
+                continue
+            seen_ids.add(video_id)
+            score_data = calculate_virality_score(
+                title=tweet_text[:120],
+                duration=28,
+                views=tweet_views,
+                days_old=1,
+            )
+            base_score = score_data.get("score", 40)
+            taste_bonus = get_x_taste_boost(tweet_text, uploader)
+            final_score = min(100, base_score + (LIKED_BONUS if is_liked else 0) + taste_bonus)
+            candidates.append({
+                "id": video_id,
+                "url": video_url,
+                "title": tweet_text[:120].strip().replace("\n", " "),
+                "uploader": uploader,
+                "source_name": source_label,
+                "platform": platform,
+                "score": final_score,
+                "is_liked": is_liked,
+                "views": tweet_views,
+                "lang": "en",
+                "is_short": True,
+                "source": "x_likes" if force_liked else "x_scout",
+            })
+
+    return candidates, liked_texts
 
 
 def _collect_tweets_from_current_page(
@@ -410,6 +514,17 @@ def scan_x_timeline(
             return []
 
         page = context.pages[0] if context.pages else context.new_page()
+        api_payloads: List[Tuple[str, Dict[str, Any]]] = []
+
+        def _capture_graphql(resp: Any) -> None:
+            try:
+                if resp.status == 200 and "/i/api/graphql/" in resp.url:
+                    if any(k in resp.url for k in ("Likes", "HomeTimeline", "HomeLatestTimeline")):
+                        api_payloads.append((resp.url, resp.json()))
+            except Exception:
+                pass
+
+        page.on("response", _capture_graphql)
 
         try:
             page.goto("https://x.com/home", wait_until="domcontentloaded", timeout=35000)
@@ -423,12 +538,13 @@ def scan_x_timeline(
             # 1) Escanear Likes del usuario para extraer clips y marcar patrón de gustos
             if include_likes:
                 try:
+                    api_payloads.clear()
                     profile_link = page.query_selector('a[data-testid="AppTabBar_Profile_Link"]')
                     profile_href = profile_link.get_attribute("href") if profile_link else ""
                     likes_url = f"https://x.com{profile_href.rstrip('/')}/likes" if profile_href else "https://x.com/i/history/likes"
                     print(f"[X Scout] Escaneando tus Likes en {likes_url}...")
                     page.goto(likes_url, wait_until="domcontentloaded", timeout=30000)
-                    page.wait_for_timeout(3500)
+                    page.wait_for_timeout(4500)
                     liked_cands, liked_meta = _collect_tweets_from_current_page(
                         page,
                         max_candidates=max(5, max_candidates // 2),
@@ -437,6 +553,17 @@ def scan_x_timeline(
                         force_liked=True,
                         source_label="X Likes",
                     )
+                    for r_url, r_json in api_payloads:
+                        if "Likes" in r_url:
+                            g_cands, g_meta = _extract_candidates_from_graphql_payload(
+                                r_json,
+                                seen_ids=seen_ids,
+                                force_liked=True,
+                                source_label="X Likes",
+                                max_candidates=max(5, max_candidates // 2) - len(liked_cands),
+                            )
+                            liked_cands.extend(g_cands)
+                            liked_meta.extend(g_meta)
                     all_candidates.extend(liked_cands)
                     all_liked_meta.extend(liked_meta)
                     if liked_meta:
@@ -451,8 +578,9 @@ def scan_x_timeline(
             # 2) Escanear Timeline principal
             remaining = max_candidates - len(all_candidates)
             if remaining > 0:
+                api_payloads.clear()
                 page.goto("https://x.com/home", wait_until="domcontentloaded", timeout=30000)
-                page.wait_for_timeout(3500)
+                page.wait_for_timeout(4500)
                 home_cands, home_liked = _collect_tweets_from_current_page(
                     page,
                     max_candidates=remaining,
@@ -461,6 +589,17 @@ def scan_x_timeline(
                     force_liked=False,
                     source_label="X Timeline",
                 )
+                for r_url, r_json in api_payloads:
+                    if "Home" in r_url and len(home_cands) < remaining:
+                        g_cands, g_meta = _extract_candidates_from_graphql_payload(
+                            r_json,
+                            seen_ids=seen_ids,
+                            force_liked=False,
+                            source_label="X Timeline",
+                            max_candidates=remaining - len(home_cands),
+                        )
+                        home_cands.extend(g_cands)
+                        home_liked.extend(g_meta)
                 all_candidates.extend(home_cands)
                 all_liked_meta.extend(home_liked)
                 if home_liked and not include_likes:
