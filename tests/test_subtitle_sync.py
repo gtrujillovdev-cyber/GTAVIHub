@@ -94,5 +94,45 @@ class TestSubtitleSync(unittest.TestCase):
         deduped = deduplicate_phrase_repetitions(repeated)
         self.assertEqual(deduped, "quien está detrás de la cuenta oficial")
 
+    def test_build_karaoke_bursts_from_groq_words(self):
+        from src.video_editor import build_karaoke_bursts_from_words
+
+        sample_words = [
+            {"word": "Nuevo", "start": 0.10, "end": 0.42},
+            {"word": "secreto", "start": 0.40, "end": 0.85},
+            {"word": "en", "start": 0.86, "end": 1.02},
+            {"word": "Vice", "start": 1.00, "end": 1.35},
+            {"word": "City", "start": 1.36, "end": 1.75},
+        ]
+        bursts = build_karaoke_bursts_from_words(sample_words, max_words=3)
+        self.assertEqual(len(bursts), 2)
+        self.assertEqual(bursts[0]["words"], ["NUEVO", "SECRETO", "EN"])
+        self.assertEqual(bursts[1]["words"], ["VICE", "CITY"])
+        # Verificar monotonicidad sin solapamiento entre ráfaga 0 y ráfaga 1
+        self.assertLessEqual(bursts[0]["timings"][-1]["end"], bursts[1]["timings"][0]["start"])
+
+    def test_groq_sync_safe_fallback_without_key(self):
+        import os
+        from src.dubber import get_word_timestamps_groq
+
+        prev_key = os.environ.pop("GROQ_API_KEY", None)
+        try:
+            self.assertEqual(get_word_timestamps_groq(self.test_srt), [])
+        finally:
+            if prev_key is not None:
+                os.environ["GROQ_API_KEY"] = prev_key
+
+    def test_render_follow_cta_pill(self):
+        from src.video_editor import render_follow_cta_pill
+
+        cta_out = TEMP_DIR / "test_follow_cta.png"
+        try:
+            ok = render_follow_cta_pill(cta_out, text="SIGUE PARA + SECRETOS", scale_factor=0.5)
+            self.assertTrue(ok)
+            self.assertTrue(cta_out.exists())
+            self.assertGreater(cta_out.stat().st_size, 0)
+        finally:
+            cta_out.unlink(missing_ok=True)
+
 if __name__ == "__main__":
     unittest.main()

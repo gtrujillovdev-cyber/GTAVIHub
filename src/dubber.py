@@ -1,12 +1,20 @@
+import os
 import re
 import asyncio
 import subprocess
 from pathlib import Path
-from typing import Optional
+from typing import Optional, List, Dict, Any
 import edge_tts
 from .config import DEFAULT_TTS_VOICE
 from .translator import purge_audio_descriptors
 from .downloader import deroll_and_clean_srt_content
+
+VOICE_ENHANCER_CHAIN = (
+    "highpass=f=80,afftdn=nf=-25,"
+    "equalizer=f=180:width_type=o:width=1.5:g=3,"
+    "compand=attacks=0.02:decays=0.15:points=-80/-80|-20/-12|0/-3,"
+    "loudnorm=I=-14:TP=-1.5:LRA=11"
+)
 
 def deduplicate_phrase_repetitions(text: str) -> str:
     """
@@ -89,9 +97,20 @@ def extract_text_from_srt(srt_path: Path) -> str:
     # 2. Purgar cualquier repetición de n-gramas residual (tartamudeo)
     return deduplicate_phrase_repetitions(raw_joined)
 
-async def _synthesize_async(text: str, output_audio: Path, voice: str = DEFAULT_TTS_VOICE, rate: str = "+12%"):
-    communicate = edge_tts.Communicate(text, voice, rate=rate)
-    await communicate.save(str(output_audio))
+async def _synthesize_async(
+    text: str,
+    output_audio: Path,
+    voice: str = DEFAULT_TTS_VOICE,
+    rate: str = "+14%",
+    pitch: str = "+2Hz"
+):
+    try:
+        communicate = edge_tts.Communicate(text, voice, rate=rate, pitch=pitch)
+        await communicate.save(str(output_audio))
+    except Exception:
+        # Fallback seguro sin pitch si una voz concreta de Edge-TTS rechaza el parámetro
+        communicate = edge_tts.Communicate(text, voice, rate=rate)
+        await communicate.save(str(output_audio))
 
 def _probe_audio_duration(audio_path: Path) -> float:
     try:
@@ -103,6 +122,53 @@ def _probe_audio_duration(audio_path: Path) -> float:
     except Exception:
         return 0.0
 
+
+def get_word_timestamps_groq(audio_path: Path, language: str = "es") -> List[Dict[str, Any]]:
+    """
+    Obtiene timestamps exactos palabra por palabra vía Groq Whisper Free Tier ($0).
+    Falla de forma segura devolviendo [] si falta GROQ_API_KEY, hay 429 o error de red,
+    permitiendo que el pipeline continúe con calculate_word_timing() sin detenerse.
+    """
+    api_key = (os.getenv("GROQ_API_KEY") or "").strip()
+    if not api_key or not audio_path or not Path(audio_path).exists():
+        return []
+
+    try:
+        import requests
+        with open(audio_path, "rb") as f:
+            resp = requests.post(
+                "https://api.groq.com/openai/v1/audio/transcriptions",
+                headers={"Authorization": f"Bearer {api_key}"},
+                files={"file": (Path(audio_path).name, f, "audio/mpeg")},
+                data={
+                    "model": os.getenv("GROQ_WHISPER_MODEL", "whisper-large-v3-turbo"),
+                    "language": language,
+                    "response_format": "verbose_json",
+                    "timestamp_granularities[]": "word",
+                },
+                timeout=12,
+            )
+        if resp.status_code != 200:
+            print(f"[!] [Groq Whisper] HTTP {resp.status_code}: usando fallback determinista.")
+            return []
+        payload = resp.json()
+        raw_words = payload.get("words") or []
+        cleaned: List[Dict[str, Any]] = []
+        for w in raw_words:
+            word_txt = (w.get("word") or "").strip()
+            if not word_txt:
+                continue
+            start_s = float(w.get("start", 0.0))
+            end_s = max(start_s + 0.08, float(w.get("end", start_s + 0.25)))
+            cleaned.append({"word": word_txt, "start": round(start_s, 3), "end": round(end_s, 3)})
+        if cleaned:
+            print(f"[✓] [Groq Whisper] {len(cleaned)} timestamps palabra-por-palabra obtenidos ($0).")
+        return cleaned
+    except Exception as e:
+        print(f"[!] [Groq Whisper] Fallback determinista activado ({e}).")
+        return []
+
+
 def generate_voiceover(
     srt_path: Path,
     output_audio_path: Path,
@@ -111,7 +177,7 @@ def generate_voiceover(
 ) -> bool:
     """
     Sintetiza la pista de voz en español usando Edge-TTS (0 recursos locales)
-    con ritmo ágil de Shorts (+12%), ajustando tempo y arranque para sincronía limpia.
+    con ritmo ágil de Shorts (+14%, +2Hz), mejora acústica FFmpeg y sincronía limpia.
     """
     text = extract_text_from_srt(srt_path)
     if not text:
@@ -124,9 +190,13 @@ def generate_voiceover(
         return False
     raw_tts_path = output_audio_path.with_name(f"{output_audio_path.stem}_raw.mp3")
 
-    print(f"[*] Sintetizando locución en español con voz '{voice}' (ritmo +12%)...")
+    tts_rate = os.getenv("TTS_RATE", "+14%")
+    tts_pitch = os.getenv("TTS_PITCH", "+2Hz")
+    enable_enhancer = os.getenv("ENABLE_VOICE_ENHANCER", "true").lower() in ("true", "1", "yes")
+
+    print(f"[*] Sintetizando locución en español con voz '{voice}' (ritmo {tts_rate}, tono {tts_pitch})...")
     try:
-        asyncio.run(_synthesize_async(text, raw_tts_path, voice, rate="+12%"))
+        asyncio.run(_synthesize_async(text, raw_tts_path, voice, rate=tts_rate, pitch=tts_pitch))
 
         filters = []
         raw_dur = _probe_audio_duration(raw_tts_path)
@@ -145,6 +215,9 @@ def generate_voiceover(
             filters.append(f"adelay={delay_ms}|{delay_ms}")
             print(f"[*] Sincronizando inicio de doblaje: delay inicial {effective_delay:.2f}s ({delay_ms}ms)...")
 
+        if enable_enhancer:
+            filters.append(VOICE_ENHANCER_CHAIN)
+
         if filters:
             cmd_fx = [
                 "ffmpeg", "-y",
@@ -158,6 +231,7 @@ def generate_voiceover(
             if res.returncode == 0 and output_audio_path.exists():
                 raw_tts_path.unlink(missing_ok=True)
             else:
+                # Fallback seguro sin enhancer si algún filtro fallase en el host
                 raw_tts_path.rename(output_audio_path)
         else:
             raw_tts_path.rename(output_audio_path)

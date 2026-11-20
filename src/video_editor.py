@@ -53,6 +53,20 @@ def _probe_duration(media_path: Path) -> float:
         return 0.0
 
 
+def _has_audio_stream(media_path: Path) -> bool:
+    """Comprueba con ffprobe si el archivo multimedia tiene al menos una pista de audio."""
+    if not media_path or not media_path.exists():
+        return False
+    try:
+        res = subprocess.run(
+            ["ffprobe", "-v", "error", "-select_streams", "a:0", "-show_entries", "stream=codec_type", "-of", "csv=p=0", str(media_path)],
+            capture_output=True, text=True, timeout=8
+        )
+        return "audio" in (res.stdout or "").lower()
+    except Exception:
+        return False
+
+
 def detect_horizontal_split_screen(video_path: Path, sample_time: float = 3.0) -> bool:
     """
     Detecta empíricamente si un vídeo horizontal (16:9) es una comparativa lado-a-lado 50/50
@@ -445,7 +459,7 @@ HOT_PINK_KEYWORDS = {
     "loco", "flipas", "filtracion", "filtración", "leak", "leaks", "broma",
     "increible", "increíble", "bomba", "bombazo", "lucia", "jason", "vice",
     "leonida", "trailer", "tráiler", "rage", "gellhorn", "brutal", "secreto",
-    "alucinante", "exclusiva", "confirmado"
+    "alucinante", "exclusiva", "confirmado", "arma", "legendaria", "oculta", "pistola"
 }
 
 def render_top_hook_headline(hook_text: str, output_path: Path, scale_factor: float = 1.0) -> bool:
@@ -511,6 +525,29 @@ def render_top_hook_headline(hook_text: str, output_path: Path, scale_factor: fl
     img = Image.new("RGBA", (box_w, box_h), (0, 0, 0, 0))
     d = ImageDraw.Draw(img)
 
+    # Detectar qué línea lleva la palabra clave que realmente engancha (no resaltar al azar siempre la línea 2)
+    def _hook_power_score(txt_line: str) -> float:
+        if not txt_line:
+            return -1.0
+        power_kws = {
+            "arma", "legendaria", "secreto", "secretos", "oculta", "oculto", "gratis",
+            "dinero", "millones", "60fps", "30fps", "fps", "ps5", "pro", "rage", "9",
+            "oficial", "confirmado", "filtrado", "estrellas", "persecucion", "persecución",
+            "mision", "misión", "prologo", "prólogo", "easter", "egg", "fisicas", "físicas",
+            "comparativa", "diferencia", "tiroteo", "atraco", "mapa", "truco", "bug", "error"
+        }
+        toks = [re.sub(r"[^a-záéíóúñü0-9]", "", w.lower()) for w in txt_line.split()]
+        score = sum(3.0 for t in toks if t in power_kws)
+        score += sum(2.0 for t in toks if any(ch.isdigit() for ch in t))
+        # Penalizar si es principalmente ubicación/relleno ("en leonida", "de gta 6")
+        if any(w in ("en", "de", "del") for w in toks[:1]):
+            score -= 1.5
+        return score
+
+    highlight_line1 = bool(line1) and (_hook_power_score(line1) > _hook_power_score(line2))
+    c_line1 = (255, 210, 63, 255) if highlight_line1 else (255, 255, 255, 255)
+    c_line2 = (255, 255, 255, 255) if highlight_line1 else (255, 210, 63, 255)
+
     # Tipografía pura de alto impacto (sin caja de botón ni bordes artificiales)
     cur_y = pad_y
     stroke_w = max(2, int(5 * scale_factor))
@@ -518,13 +555,13 @@ def render_top_hook_headline(hook_text: str, output_path: Path, scale_factor: fl
     if line1:
         x1 = pad_x + (content_w - w1) / 2
         draw_composite_line(img, d, tokens1, int(x1 + shadow_offset), int(cur_y + shadow_offset), font1, fill_color=(0, 0, 0, 235), stroke_width=0, emoji_size=size1)
-        draw_composite_line(img, d, tokens1, int(x1), int(cur_y), font1, fill_color=(255, 255, 255, 255), stroke_color=(0, 0, 0, 255), stroke_width=stroke_w, emoji_size=size1)
+        draw_composite_line(img, d, tokens1, int(x1), int(cur_y), font1, fill_color=c_line1, stroke_color=(0, 0, 0, 255), stroke_width=stroke_w, emoji_size=size1)
         cur_y += h1 + spacing
 
     em2 = max(int(36 * scale_factor), size2 - int(4 * scale_factor))
     x2 = pad_x + (content_w - w2) / 2
     draw_composite_line(img, d, tokens2, int(x2 + shadow_offset), int(cur_y + shadow_offset), font2, fill_color=(0, 0, 0, 235), stroke_width=0, emoji_size=em2)
-    draw_composite_line(img, d, tokens2, int(x2), int(cur_y), font2, fill_color=(255, 210, 63, 255), stroke_color=(0, 0, 0, 255), stroke_width=stroke_w, emoji_size=em2)
+    draw_composite_line(img, d, tokens2, int(x2), int(cur_y), font2, fill_color=c_line2, stroke_color=(0, 0, 0, 255), stroke_width=stroke_w, emoji_size=em2)
 
     img.save(output_path, "PNG")
     return True
@@ -649,6 +686,110 @@ def render_persistent_context_badge(output_path: Path, text: str = "GTA 6 • VI
     return True
 
 
+def build_karaoke_bursts_from_words(
+    groq_words: List[Dict[str, Any]],
+    max_words: int = 3
+) -> List[Dict[str, Any]]:
+    """
+    Agrupa timestamps palabra-por-palabra reales (ej. Groq Whisper) en micro-ráfagas
+    de 2-3 palabras garantizando estricta monotonicidad temporal sin solapamientos.
+    """
+    if not groq_words:
+        return []
+
+    cleaned = []
+    for item in groq_words:
+        txt = clean_text_no_emoji(str(item.get("word", ""))).upper().strip()
+        if not txt:
+            continue
+        start_t = float(item.get("start", 0.0))
+        end_t = max(start_t + 0.08, float(item.get("end", start_t + 0.25)))
+        cleaned.append({"word": txt, "start": start_t, "end": end_t})
+
+    if not cleaned:
+        return []
+
+    bursts: List[Dict[str, Any]] = []
+    for i in range(0, len(cleaned), max_words):
+        chunk = cleaned[i : i + max_words]
+        words = [c["word"] for c in chunk]
+        timings = []
+        for idx, c in enumerate(chunk):
+            w_start = c["start"]
+            w_end = c["end"]
+            if idx + 1 < len(chunk):
+                next_start = chunk[idx + 1]["start"]
+                if next_start > w_start + 0.06:
+                    w_end = min(w_end, next_start)
+            timings.append({
+                "word_idx": idx,
+                "start": round(w_start, 3),
+                "end": round(max(w_start + 0.06, w_end), 3),
+            })
+        bursts.append({"words": words, "timings": timings})
+
+    # Monotonicidad global entre ráfagas consecutivas
+    for b_idx in range(len(bursts) - 1):
+        cur_last = bursts[b_idx]["timings"][-1]
+        nxt_first = bursts[b_idx + 1]["timings"][0]
+        if cur_last["end"] > nxt_first["start"]:
+            cur_last["end"] = round(max(cur_last["start"] + 0.05, nxt_first["start"]), 3)
+
+    return bursts
+
+
+def render_follow_cta_pill(
+    output_path: Path,
+    text: str = "SIGUE PARA + SECRETOS DE LEONIDA",
+    scale_factor: float = 1.0
+) -> bool:
+    """
+    Renderiza una píldora CTA Vice City de alto contraste para los últimos 2.5s
+    del vídeo, orientada a multiplicar la conversión a seguidores sin tapar subtítulos.
+    """
+    clean_cta = (text or "SIGUE PARA + SECRETOS DE LEONIDA").strip().upper()
+    if not clean_cta:
+        return False
+
+    font_size = int(34 * scale_factor)
+    min_font = max(14, int(20 * scale_factor))
+    max_w = int(880 * scale_factor)
+    step = max(1, int(2 * scale_factor))
+    tokens = split_text_and_emojis(clean_cta)
+    while True:
+        font = get_viral_display_font(size=font_size)
+        tw, th = measure_composite_line(tokens, font, emoji_size=font_size)
+        if tw <= max_w or font_size <= min_font:
+            break
+        font_size -= step
+
+    pad_x = int(32 * scale_factor)
+    pad_y = int(16 * scale_factor)
+    canvas_w = tw + pad_x * 2
+    canvas_h = th + pad_y * 2
+
+    img = Image.new("RGBA", (canvas_w, canvas_h), (0, 0, 0, 0))
+    d = ImageDraw.Draw(img)
+    radius = max(10, int(18 * scale_factor))
+    d.rounded_rectangle(
+        [(0, 0), (canvas_w - 1, canvas_h - 1)],
+        radius=radius,
+        fill=(14, 14, 24, 225),
+        outline=(255, 0, 127, 245),
+        width=max(2, int(3 * scale_factor)),
+    )
+    stroke_w = max(1, int(2 * scale_factor))
+    draw_composite_line(
+        img, d, tokens, pad_x, pad_y, font,
+        fill_color=(255, 255, 255, 255),
+        stroke_color=(0, 0, 0, 235),
+        stroke_width=stroke_w,
+        emoji_size=font_size,
+    )
+    img.save(output_path, "PNG")
+    return True
+
+
 def render_karaoke_subtitle_state(words: List[str], active_idx: int, is_vertical: bool, output_path: Path, scale_factor: float = 1.0) -> bool:
     """
     Renderiza subtítulos Pop Broadcast limpios y transparentes (estilo Shorts/TikTok viral):
@@ -722,13 +863,21 @@ def render_karaoke_subtitle_state(words: List[str], active_idx: int, is_vertical
     clean_active = re.sub(r'[^a-zA-ZáéíóúñÁÉÍÓÚÑ0-9]', '', raw_active_word).lower()
     active_emoji = EMOJI_KEYWORDS.get(clean_active) if has_emoji_support else None
     is_hot_pink = clean_active in HOT_PINK_KEYWORDS
-    is_green_pop = clean_active in {"gta", "gta6", "6", "vi", "leonida", "vice", "dinero", "gratis", "reservaste", "precarga"}
+    is_filler_word = clean_active in {
+        "el", "la", "los", "las", "un", "una", "unos", "unas", "de", "del", "al",
+        "en", "y", "o", "a", "con", "por", "para", "que", "se", "su", "es", "son",
+        "lo", "le", "les", "me", "te", "nos", "este", "esta", "esto", "ese", "esa",
+        "muy", "mas", "más", "pero", "si", "sí", "ya"
+    }
 
     if is_hot_pink:
-        active_color = (255, 59, 154, 255)   # Rosa Vice City
-        glow_color = (255, 59, 154, 110)
+        active_color = (255, 59, 154, 255)   # Rosa Vice City para palabras gancho
+        glow_color = (255, 59, 154, 115)
+    elif is_filler_word:
+        active_color = (235, 240, 255, 255)  # Conectores en blanco limpio (no resaltar relleno al azar)
+        glow_color = (255, 255, 255, 45)
     else:
-        active_color = (255, 210, 63, 255)   # Oro Rockstar unificado (sin verde chillón)
+        active_color = (255, 210, 63, 255)   # Oro Rockstar para palabras de contenido real
         glow_color = (255, 210, 63, 100)
 
     base_y = pill_top + pad_y
@@ -838,10 +987,25 @@ def create_subtle_vignette(output_png: Path, fg_top: int = 160, fg_bottom: int =
             alpha = int(110 * (y / max(1, bot_v)))
             d.line([(0, h - bot_v + y), (w, h - bot_v + y)], fill=(0, 0, 0, alpha))
 
-    # Micro-watermark editorial de marca sutil en esquina superior derecha
+    # Píldora editorial de marca en zona segura (evita UI superior derecha y construye recuerdo de marca)
     try:
-        wm_font = get_best_font(size=max(14, int(22 * scale_x)))
-        d.text((w - int(225 * scale_x), int(16 * scale_y)), "@GTAVIHUBEXTRA", font=wm_font, fill=(255, 255, 255, 95))
+        wm_font = get_best_font(size=max(16, int(22 * scale_x)))
+        wm_text = "@GTAVIHUBEXTRA"
+        bb = d.textbbox((0, 0), wm_text, font=wm_font)
+        tw, th = bb[2] - bb[0], bb[3] - bb[1]
+        pad_px, pad_py = int(14 * scale_x), int(6 * scale_y)
+        px2 = w - int(22 * scale_x)
+        px1 = px2 - tw - pad_px * 2
+        py1 = max(int(18 * scale_y), fg_top + int(16 * scale_y))
+        py2 = py1 + th + pad_py * 2
+        d.rounded_rectangle(
+            [(px1, py1), (px2, py2)],
+            radius=max(6, int(12 * scale_x)),
+            fill=(10, 12, 22, 65),
+            outline=(255, 59, 154, 75),
+            width=max(1, int(1.5 * scale_x)),
+        )
+        d.text((px1 + pad_px, py1 + pad_py - int(2 * scale_y)), wm_text, font=wm_font, fill=(255, 255, 255, 130))
     except Exception:
         pass
 
@@ -983,35 +1147,73 @@ def render_final_video(
     # 2b. Micro-tarjeta genérica de los 5.0s desactivada por defecto en estándar Alpha (evita parpadeos y frases cliché)
     retention_png = None
 
+    # 2c. Píldora CTA de seguimiento en los últimos 2.5s (multiplicador de conversión a seguidores)
+    cta_png = None
+    enable_follow_cta = os.getenv("ENABLE_FOLLOW_CTA", "true").lower() in ("true", "1", "yes")
+    if enable_follow_cta and is_vertical:
+        cta_text = os.getenv("FOLLOW_CTA_TEXT", "➕ SIGUE PARA + SECRETOS DE LEONIDA")
+        cta_png = temp_dir / f"{base_name}_cta.png"
+        if not render_follow_cta_pill(cta_png, text=cta_text, scale_factor=scale_factor):
+            cta_png = None
+
     # 3. Generación de estados de Karaoke palabra por palabra
-    # En audio doblado neural, la sincronía fonética es directa (offset=0.0s).
-    # En audio original en inglés con YouTube ASR, se mantiene SUBTITLE_OFFSET (-0.45s).
-    effective_sub_offset = 0.0 if (dub_audio and dub_audio.exists()) else None
-    cues = parse_srt_file(srt_subtitles, offset_seconds=effective_sub_offset) if srt_subtitles else []
-    sub_cues = cues[:250]
+    # Prioridad 1 ($0): Timestamps exactos de Groq Whisper sobre el doblaje si GROQ_API_KEY está configurada.
+    # Fallback determinista: parse_srt_file() + calculate_word_timing() (nunca detiene el render).
     sub_pngs = []
     global_sub_idx = 0
+    groq_bursts: List[Dict[str, Any]] = []
+    enable_groq_sync = os.getenv("ENABLE_GROQ_SYNC", "true").lower() in ("true", "1", "yes")
+    if enable_groq_sync and srt_subtitles and dub_audio and dub_audio.exists() and (os.getenv("GROQ_API_KEY") or "").strip():
+        try:
+            from .dubber import get_word_timestamps_groq
+            groq_words = get_word_timestamps_groq(dub_audio, language="es")
+            if groq_words:
+                groq_bursts = build_karaoke_bursts_from_words(groq_words, max_words=3)
+        except Exception as e:
+            print(f"[!] [Groq Sync] Fallback a cálculo SRT estándar: {e}")
 
-    for cue in sub_cues:
-        cleaned = clean_text_no_emoji(cue["text"]).upper()
-        words = cleaned.split()
-        if not words:
-            continue
+    if groq_bursts:
+        for burst in groq_bursts[:250]:
+            words = burst["words"]
+            for tw in burst["timings"]:
+                sub_png = temp_dir / f"{base_name}_ksub_{global_sub_idx}.png"
+                rendered = render_karaoke_subtitle_state(
+                    words=words,
+                    active_idx=tw["word_idx"],
+                    is_vertical=is_vertical,
+                    output_path=sub_png,
+                    scale_factor=scale_factor
+                )
+                if rendered:
+                    sub_pngs.append((sub_png, tw["start"], tw["end"]))
+                    global_sub_idx += 1
+    else:
+        # En audio doblado neural, la sincronía fonética es directa (offset=0.0s).
+        # En audio original en inglés con YouTube ASR, se mantiene SUBTITLE_OFFSET (-0.45s).
+        effective_sub_offset = 0.0 if (dub_audio and dub_audio.exists()) else None
+        cues = parse_srt_file(srt_subtitles, offset_seconds=effective_sub_offset) if srt_subtitles else []
+        sub_cues = cues[:250]
 
-        timings = calculate_word_timing(words, cue["start"], cue["end"])
-        for tw in timings:
-            active_w_idx = tw["word_idx"]
-            sub_png = temp_dir / f"{base_name}_ksub_{global_sub_idx}.png"
-            rendered = render_karaoke_subtitle_state(
-                words=words,
-                active_idx=active_w_idx,
-                is_vertical=is_vertical,
-                output_path=sub_png,
-                scale_factor=scale_factor
-            )
-            if rendered:
-                sub_pngs.append((sub_png, tw["start"], tw["end"]))
-                global_sub_idx += 1
+        for cue in sub_cues:
+            cleaned = clean_text_no_emoji(cue["text"]).upper()
+            words = cleaned.split()
+            if not words:
+                continue
+
+            timings = calculate_word_timing(words, cue["start"], cue["end"])
+            for tw in timings:
+                active_w_idx = tw["word_idx"]
+                sub_png = temp_dir / f"{base_name}_ksub_{global_sub_idx}.png"
+                rendered = render_karaoke_subtitle_state(
+                    words=words,
+                    active_idx=active_w_idx,
+                    is_vertical=is_vertical,
+                    output_path=sub_png,
+                    scale_factor=scale_factor
+                )
+                if rendered:
+                    sub_pngs.append((sub_png, tw["start"], tw["end"]))
+                    global_sub_idx += 1
 
     print(f"[*] {len(sub_pngs)} estados de Karaoke dinámico con glow generados.")
 
@@ -1057,8 +1259,23 @@ def render_final_video(
         input_idx += 1
 
     # Construcción de la cadena de mezcla de audio (Voice-Over: original atenuado al 6% + Doblaje ES dominante + Ambiente)
+    has_orig_audio = _has_audio_stream(input_video)
     if dub_idx is not None:
-        if pad_sec > 0.0:
+        if not has_orig_audio:
+            if ambient_idx is not None:
+                fade_tail = f",afade=t=out:st={max(0.0, total_dur - 0.35):.2f}:d=0.35" if pad_sec > 0.0 else ""
+                audio_filter = (
+                    f"[{ambient_idx}:a]volume=0.06[amb];"
+                    f"[{dub_idx}:a]aresample=async=1[voice];"
+                    f"[voice][amb]amix=inputs=2:duration=first:normalize=false{fade_tail}[a_mix]"
+                )
+            else:
+                if pad_sec > 0.0:
+                    fade_start = max(0.0, total_dur - 0.35)
+                    audio_filter = f"[{dub_idx}:a]afade=t=out:st={fade_start:.2f}:d=0.35[a_mix]"
+                else:
+                    audio_filter = f"[{dub_idx}:a]anull[a_mix]"
+        elif pad_sec > 0.0:
             fade_start = max(0.0, total_dur - 0.35)
             if ambient_idx is not None:
                 audio_filter = (
@@ -1138,6 +1355,13 @@ def render_final_video(
         retention_idx = input_idx
         input_idx += 1
 
+    # Píldora CTA de seguimiento (últimos 2.5s)
+    cta_idx = None
+    if cta_png and cta_png.exists():
+        cmd.extend(["-i", str(cta_png)])
+        cta_idx = input_idx
+        input_idx += 1
+
     # Subtítulos Karaoke como inputs
     sub_inputs_start = input_idx
     for sp, _, _ in sub_pngs:
@@ -1169,18 +1393,18 @@ def render_final_video(
                 f"[bg][fg]overlay=0:{fg_y}[v_framed]"
             )
         else:
-            # Formato D / C: Plano recortado inmersivo sobre fondo Velvet Blur
+            # Formato D / C: Plano recortado inmersivo sobre fondo Velvet Blur + acabado Vice City HDR
             v_base = (
                 "[0:v]split[v1][v2];"
                 f"[v1]scale={bg_scale_w}:{bg_scale_h},boxblur=10:2,scale={canvas_w}:{canvas_h}:flags=bilinear,eq=brightness=-0.14:contrast=1.06:saturation=1.18[bg];"
-                f"[v2]scale={fg_w}:{fg_h}:force_original_aspect_ratio=increase,crop={fg_w}:{fg_h},unsharp=3:3:0.6:3:3:0.0,eq=contrast=1.06:saturation=1.12[fg];"
+                f"[v2]scale={fg_w}:{fg_h}:force_original_aspect_ratio=increase,crop={fg_w}:{fg_h},unsharp=3:3:0.75:3:3:0.0,eq=contrast=1.09:saturation=1.18[fg];"
                 f"[bg][fg]overlay=0:{fg_y}[v_framed]"
             )
     elif is_vertical:
-        # Formato C (Nativo Vertical 9:16): Pantalla completa sin bandas
-        v_base = f"[0:v]scale={canvas_w}:{canvas_h}:force_original_aspect_ratio=increase,crop={canvas_w}:{canvas_h},unsharp=3:3:0.6:3:3:0.0,eq=contrast=1.06:saturation=1.12[v_framed]"
+        # Formato C (Nativo Vertical 9:16): Pantalla completa sin bandas + acabado Vice City HDR
+        v_base = f"[0:v]scale={canvas_w}:{canvas_h}:force_original_aspect_ratio=increase,crop={canvas_w}:{canvas_h},unsharp=3:3:0.75:3:3:0.0,eq=contrast=1.09:saturation=1.18[v_framed]"
     else:
-        v_base = "[0:v]unsharp=3:3:0.6:3:3:0.0,eq=contrast=1.06:saturation=1.12[v_framed]"
+        v_base = "[0:v]unsharp=3:3:0.75:3:3:0.0,eq=contrast=1.09:saturation=1.18[v_framed]"
     
     filter_chains.append(v_base)
     filter_chains.append("[v_framed]setsar=1[v_sar]")
@@ -1190,14 +1414,25 @@ def render_final_video(
     filter_chains.append(f"[{current_v}][{vignette_idx}:v]overlay=0:0[v_vignetted]")
     current_v = "v_vignetted"
 
-    # C) Superponer Gancho Superior (0.0 a 2.8s)
+    # C) Superponer Gancho Superior (0.0 a 2.4s — entrada más ágil para retención)
     if hook_idx is not None:
-        filter_chains.append(f"[{current_v}][{hook_idx}:v]overlay=(W-w)/2:{hook_y_expr}:enable='between(t,0,2.8)'[v_hooked]")
+        filter_chains.append(f"[{current_v}][{hook_idx}:v]overlay=(W-w)/2:{hook_y_expr}:enable='between(t,0,2.4)'[v_hooked]")
         current_v = "v_hooked"
 
-    # C1) Superponer Titular contextual viral (>= 2.8s, pausado brevemente en 5.0-7.2s si hay retención)
+    # C1) Superponer Titular contextual viral (>= 2.4s, pausado en últimos 2.5s si hay CTA de cierre)
+    effective_total_dur = total_dur if total_dur is not None else max(4.0, v_dur)
+    cta_start = max(3.0, round(effective_total_dur - 2.5, 2))
+    cta_active = (cta_idx is not None) and (effective_total_dur >= 5.5)
+
     if badge_idx is not None:
-        badge_enable = "gte(t,2.8)*lt(t,5.0)+gte(t,7.2)" if retention_idx is not None else "gte(t,2.8)"
+        if retention_idx is not None and cta_active:
+            badge_enable = f"(gte(t,2.4)*lt(t,5.0)+gte(t,7.2))*lt(t,{cta_start:.2f})"
+        elif retention_idx is not None:
+            badge_enable = "gte(t,2.4)*lt(t,5.0)+gte(t,7.2)"
+        elif cta_active:
+            badge_enable = f"gte(t,2.4)*lt(t,{cta_start:.2f})"
+        else:
+            badge_enable = "gte(t,2.4)"
         badge_y = int(28 * scale_factor)
         filter_chains.append(f"[{current_v}][{badge_idx}:v]overlay=(W-w)/2:{badge_y}:enable='{badge_enable}'[v_badged]")
         current_v = "v_badged"
@@ -1208,6 +1443,12 @@ def render_final_video(
         filter_chains.append(f"[{current_v}][{retention_idx}:v]overlay=(W-w)/2:{ret_y}:enable='between(t,5.0,7.2)'[v_retained]")
         current_v = "v_retained"
 
+    # C3) Píldora CTA de seguimiento en los últimos 2.5s (zona editorial superior, cero choque con subtítulos)
+    if cta_active:
+        cta_y = int(28 * scale_factor)
+        filter_chains.append(f"[{current_v}][{cta_idx}:v]overlay=(W-w)/2:{cta_y}:enable='gte(t,{cta_start:.2f})'[v_cta]")
+        current_v = "v_cta"
+
     # D) Superponer Subtítulos Karaoke palabra por palabra
     for s_idx, (_, start_s, end_s) in enumerate(sub_pngs):
         in_id = sub_inputs_start + s_idx
@@ -1217,6 +1458,16 @@ def render_final_video(
             f"[{current_v}][{in_id}:v]overlay=(W-w)/2:{sub_y}:enable='gte(t,{start_s:.2f})*lt(t,{end_s:.2f})'[{next_v}]"
         )
         current_v = next_v
+
+    # E) Barra de progreso neón Vice City (3px en el borde superior, coste ~0 CPU)
+    enable_progress_bar = os.getenv("ENABLE_PROGRESS_BAR", "true").lower() in ("true", "1", "yes")
+    if enable_progress_bar and is_vertical and effective_total_dur > 1.0:
+        bar_h = max(3, int(4 * scale_factor))
+        filter_chains.append(f"color=c=0xFF007F:s={canvas_w}x{bar_h},format=rgba[pbar]")
+        filter_chains.append(
+            f"[{current_v}][pbar]overlay=x='-W+(W*min(1,t/{effective_total_dur:.2f}))':y=0:shortest=1[v_pbar]"
+        )
+        current_v = "v_pbar"
 
     if pad_sec > 0.0:
         filter_chains.append(f"[{current_v}]tpad=stop_mode=clone:stop_duration={pad_sec}[v_body]")
@@ -1276,7 +1527,7 @@ def render_final_video(
                 sp.unlink(missing_ok=True)
             except OSError:
                 pass
-        for extra_png in (vignette_png, hook_png, badge_png, retention_png):
+        for extra_png in (vignette_png, hook_png, badge_png, retention_png, cta_png):
             if extra_png and extra_png.exists():
                 try:
                     extra_png.unlink(missing_ok=True)
