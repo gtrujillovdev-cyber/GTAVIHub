@@ -541,3 +541,52 @@ def sync_tiktok_insights_to_playbook(username: str = "gtavihubextra", force: boo
         pass
 
     return {"ok": True, "snapshot": diag["tiktok_snapshot"], "priority_keywords": heur["priority_keywords"]}
+
+
+def route_platforms_by_alpha(
+    base_platforms: List[str],
+    metadata: Dict[str, Any],
+    creator_name: str = "",
+) -> tuple[List[str], str]:
+    """
+    Enruta cada clip a las plataformas donde su formato tiene alfa real,
+    garantizando siempre >= 1 plataforma destino y respetando cooldowns activos.
+    """
+    platforms = list(base_platforms or ["youtube", "tiktok", "instagram"])
+    if os.getenv("ENABLE_PLATFORM_ALPHA_ROUTING", "true").lower() not in ("true", "1", "yes"):
+        return platforms, "Routing por alfa desactivado (todas las plataformas)."
+    if len(platforms) <= 1:
+        return platforms, "Lista única recibida."
+
+    title_low = (metadata.get("title") or "").lower()
+    creator_low = (creator_name or "").lower()
+    combined = f"{title_low} {creator_low}"
+
+    has_voiceover = bool(metadata.get("has_voiceover") or metadata.get("mode") in ("dub", "voice"))
+    is_split = bool(metadata.get("is_transformed_visual"))
+    is_secret = any(k in title_low for k in ("secret", "ocult", "arma", "legendaria", "detalle", "misterio", "easter", "curiosidad"))
+    is_streamer = any(k in combined for k in ("willyrex", "danirep", "rubius", "illojuan", "thegrefg", "auron", "elxokas", "streamer", "reacción", "reaccion"))
+
+    # 1. Alfa Universal (secretos, comparativas split o voz sin intro lenta de streamer): todas las redes
+    if is_secret or is_split:
+        return platforms, "Alfa Universal (secreto/comparativa): apto para todas las redes."
+
+    # 2. Alfa YouTube-first (streamer hispano sin ángulo de secreto/split):
+    # Evita quemar cuota diaria de TikTok si YouTube está disponible (no en cooldown).
+    if is_streamer and "youtube" in platforms and "tiktok" in platforms:
+        try:
+            from .uploader import _is_youtube_upload_blocked_by_cooldown
+            yt_blocked, _ = _is_youtube_upload_blocked_by_cooldown(metadata.get("title", ""), metadata.get("privacy", "public"))
+        except Exception:
+            yt_blocked = False
+        if not yt_blocked:
+            routed = [p for p in platforms if p != "tiktok"]
+            return routed, "Alfa YouTube-first (streamer hispano): reservando TikTok para clips visuales directos."
+
+    # 3. Alfa TikTok-first (gameplay puro mudo sin voz ni streamer ni comparativa):
+    # Evita desplomes de 3-6 vistas en YouTube Shorts y lo envía a TikTok (+ Story IG).
+    if (not has_voiceover) and (not is_streamer) and "tiktok" in platforms and "youtube" in platforms:
+        routed = [p for p in platforms if p != "youtube"]
+        return routed, "Alfa TikTok-first (gameplay mudo): evitando penalización de Shorts sin voz."
+
+    return platforms, "Alfa Mixto: manteniendo plataformas elegibles."

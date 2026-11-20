@@ -62,5 +62,33 @@ class TestLearningEngine(unittest.TestCase):
         self.assertEqual(second_call_kwargs["model"], "gemini-2.5-flash")
         self.assertEqual(second_call_kwargs["config"], {"response_mime_type": "application/json"})
 
+    def test_route_platforms_by_alpha(self):
+        from unittest.mock import patch
+        from src.learning_engine import route_platforms_by_alpha
+
+        # 1. Universal (secreto / objeto oculto): mantiene todas las redes
+        plats_u, _ = route_platforms_by_alpha(
+            ["youtube", "tiktok", "instagram"],
+            {"title": "ARMA LEGENDARIA OCULTA EN LEONIDA", "has_voiceover": True},
+        )
+        self.assertEqual(plats_u, ["youtube", "tiktok", "instagram"])
+
+        # 2. TikTok-first (gameplay mudo sin voz ni streamer): evita quemar YouTube Shorts
+        plats_tt, _ = route_platforms_by_alpha(
+            ["youtube", "tiktok", "instagram"],
+            {"title": "GTA 6 Mundo Abierto PS5 Pro", "has_voiceover": False, "mode": "gameplay"},
+            creator_name="DubStepZz",
+        )
+        self.assertEqual(plats_tt, ["tiktok", "instagram"])
+
+        # 3. YouTube-first (streamer hispano cuando YouTube no está en cooldown): reserva TikTok
+        with patch("src.uploader._is_youtube_upload_blocked_by_cooldown", return_value=(False, "")):
+            plats_yt, _ = route_platforms_by_alpha(
+                ["youtube", "tiktok", "instagram"],
+                {"title": "Willyrex prueba GTA 6", "has_voiceover": False, "mode": "gameplay"},
+                creator_name="Willyrex",
+            )
+        self.assertEqual(plats_yt, ["youtube", "instagram"])
+
 if __name__ == "__main__":
     unittest.main()

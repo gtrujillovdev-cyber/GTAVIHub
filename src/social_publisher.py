@@ -956,6 +956,14 @@ class SocialPublisher:
         if platforms is None:
             platforms = list(metadata.get("allowed_platforms") or ["youtube", "tiktok", "instagram"])
 
+        if (not self.dry_run) or metadata.get("enable_alpha_routing"):
+            try:
+                from .learning_engine import route_platforms_by_alpha
+                platforms, route_reason = route_platforms_by_alpha(platforms, metadata, creator_name)
+                print(f"[🎯 Platform Alpha Routing] {platforms} — {route_reason}")
+            except Exception:
+                pass
+
         results = {}
         title = metadata.get("title", video_path.stem)
         desc = metadata.get("description", "")
