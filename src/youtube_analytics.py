@@ -158,11 +158,26 @@ def fetch_instagram_overview(username: str = "gtavihubextra") -> Optional[Dict[s
 
 
 def get_multiplatform_analytics_report() -> str:
-    """Genera el reporte integral de todas las plataformas (YouTube, TikTok, Instagram Reels) para Telegram."""
+    """Genera el reporte integral de todas las plataformas (YouTube, TikTok, Instagram Reels) para Telegram con contador global agregado."""
     yt_report = get_youtube_analytics_report()
+    recent_yt = fetch_recent_videos(limit=10) or []
+    yt_views = sum(int(v.get("views", 0) or 0) for v in recent_yt)
+    yt_likes = sum(int(v.get("likes", 0) or 0) for v in recent_yt)
 
     # Consultar TikTok
     tt_data = fetch_tiktok_overview("gtavihubextra")
+    tt_views = int(tt_data.get("views", 0) or 0) if tt_data else 0
+    tt_likes = int(tt_data.get("likes", 0) or 0) if tt_data else 0
+
+    # Consultar Instagram
+    ig_data = fetch_instagram_overview("gtavihubextra")
+    ig_views = int(ig_data.get("views_recent", 0) or 0) if ig_data else 0
+    ig_likes = int(ig_data.get("likes_recent", 0) or 0) if ig_data else 0
+
+    # Contador Global Agregado
+    total_network_views = yt_views + tt_views + ig_views
+    total_network_likes = yt_likes + tt_likes + ig_likes
+
     tt_block = "🎵 *TIKTOK* (@gtavihubextra)\n"
     if tt_data:
         tt_block += (
@@ -173,8 +188,6 @@ def get_multiplatform_analytics_report() -> str:
     else:
         tt_block += "• ⚠️ _Perfil público temporalmente no disponible vía web scraper._\n"
 
-    # Consultar Instagram
-    ig_data = fetch_instagram_overview("gtavihubextra")
     ig_block = "📸 *INSTAGRAM REELS* (@gtavihubextra)\n"
     if ig_data:
         ig_block += (
@@ -186,20 +199,28 @@ def get_multiplatform_analytics_report() -> str:
     else:
         ig_block += "• ⚠️ _Sesión de Instagram no conectada o en espera de actualización._\n"
 
-    # Encabezado unificado
-    header = (
-        "🌐 *MÉTRICAS MULTIPLATAFORMA EN VIVO*\n"
-        + ("═" * 38) + "\n\n"
+    # Banner del Contador Global Agregado
+    banner = (
+        "🌐 *CONTADOR GLOBAL DE AUDIENCIA MULTIPLATAFORMA*\n"
+        + ("═" * 40) + "\n\n"
+        f"🚀 *TOTAL ACUMULADO EN TODAS LAS REDES:*\n"
+        f"• 👁️ *Vistas Totales de Clips:* `{total_network_views:,}`\n"
+        f"• ❤️ *Interacciones / Likes Totales:* `{total_network_likes:,}`\n\n"
+        f"📊 *Reparto de Vistas por Red:*\n"
+        f"  └ 🔴 YouTube Shorts: `{yt_views:,}` vistas ({((yt_views/total_network_views)*100 if total_network_views else 0):.1f}%)\n"
+        f"  └ 📸 Instagram Reels: `{ig_views:,}` vistas ({((ig_views/total_network_views)*100 if total_network_views else 0):.1f}%)\n"
+        f"  └ 🎵 TikTok: `{tt_likes:,}` likes directos\n\n"
+        + ("═" * 40) + "\n\n"
     )
 
     combined = (
-        f"{header}"
+        f"{banner}"
         f"{yt_report}\n\n"
-        + ("═" * 38) + "\n\n"
+        + ("═" * 40) + "\n\n"
         f"{tt_block}\n"
-        + ("─" * 38) + "\n\n"
+        + ("─" * 40) + "\n\n"
         f"{ig_block}\n"
-        + ("═" * 38) + "\n"
+        + ("═" * 40) + "\n"
         "💡 _Monitor centralizado de audiencia unificada (YouTube, TikTok & Reels)._"
     )
     return combined
