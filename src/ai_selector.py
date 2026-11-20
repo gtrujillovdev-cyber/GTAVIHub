@@ -149,6 +149,7 @@ def select_best_candidate_ai(
         playbook = load_viral_playbook()
     _heur = playbook.get("active_heuristics") or {}
     _priority_kws = [str(k).lower() for k in (_heur.get("priority_keywords") or []) if k]
+    _avoid_kws = [str(k).lower() for k in (_heur.get("avoid_keywords") or []) if k]
     _priority_angle_label = str(_heur.get("priority_angle_label") or "")
 
     # Cargar historial de ángulos publicados para rotación temática anti-monocultura
@@ -180,10 +181,11 @@ def select_best_candidate_ai(
             s += 20.0
         elif vph >= 1000:
             s += 10.0
-        if _priority_kws:
-            t_low = f" {(item.get('title') or '').lower()} "
-            if any(kw in t_low for kw in _priority_kws):
-                s += 18.0
+        t_low = f" {(item.get('title') or '').lower()} "
+        if _priority_kws and any(kw in t_low for kw in _priority_kws):
+            s += 18.0
+        elif _avoid_kws and not item.get("is_user_liked") and any(kw in t_low for kw in _avoid_kws):
+            s -= 8.0
 
         # Escudo Anti-Monocultura / Rotación Temática Obligatoria:
         cand_angle = classify_clip_angle(item.get("title") or "", item.get("uploader") or item.get("source_name") or "")

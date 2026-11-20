@@ -215,6 +215,7 @@ def generate_voiceover(
             filters.append(f"adelay={delay_ms}|{delay_ms}")
             print(f"[*] Sincronizando inicio de doblaje: delay inicial {effective_delay:.2f}s ({delay_ms}ms)...")
 
+        timing_filters = list(filters)
         if enable_enhancer:
             filters.append(VOICE_ENHANCER_CHAIN)
 
@@ -230,8 +231,22 @@ def generate_voiceover(
             res = subprocess.run(cmd_fx, capture_output=True)
             if res.returncode == 0 and output_audio_path.exists():
                 raw_tts_path.unlink(missing_ok=True)
+            elif enable_enhancer and timing_filters:
+                # Fallback de segundo nivel: preservar atempo/adelay sin enhancer
+                cmd_timing = [
+                    "ffmpeg", "-y",
+                    "-i", str(raw_tts_path),
+                    "-af", ",".join(timing_filters),
+                    "-c:a", "libmp3lame",
+                    "-b:a", "192k",
+                    str(output_audio_path)
+                ]
+                res2 = subprocess.run(cmd_timing, capture_output=True)
+                if res2.returncode == 0 and output_audio_path.exists():
+                    raw_tts_path.unlink(missing_ok=True)
+                else:
+                    raw_tts_path.rename(output_audio_path)
             else:
-                # Fallback seguro sin enhancer si algún filtro fallase en el host
                 raw_tts_path.rename(output_audio_path)
         else:
             raw_tts_path.rename(output_audio_path)
