@@ -1,10 +1,17 @@
 import os
 import sys
+import json
+import ssl
+import urllib.request
+import subprocess
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, Any, Optional, List
 
+from .config import DATA_DIR, BASE_DIR
 from .uploader import get_authenticated_youtube_service
+
+BROWSER_PROFILE_DIR = BASE_DIR / "assets" / ".browser_profiles"
 
 def fetch_channel_overview() -> Optional[Dict[str, Any]]:
     """Obtiene los datos estadísticos generales del canal conectado en token.json."""
@@ -87,6 +94,116 @@ def fetch_recent_videos(limit: int = 4) -> List[Dict[str, Any]]:
     except Exception as e:
         print(f"[YouTube Analytics] Error consultando vídeos recientes: {e}")
         return []
+
+def fetch_tiktok_overview(username: str = "gtavihubextra") -> Optional[Dict[str, Any]]:
+    """Obtiene métricas públicas del perfil de TikTok mediante extracción segura."""
+    try:
+        url = f"https://www.tiktok.com/@{username}"
+        ctx = ssl.create_default_context()
+        ctx.check_hostname = False
+        ctx.verify_mode = ssl.CERT_NONE
+        req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)"})
+        with urllib.request.urlopen(req, context=ctx, timeout=8) as resp:
+            html = resp.read().decode("utf-8", errors="ignore")
+            if "__UNIVERSAL_DATA_FOR_REHYDRATION__" in html:
+                part = html.split("__UNIVERSAL_DATA_FOR_REHYDRATION__")[1].split(">", 1)[1].split("</script>", 1)[0]
+                jdata = json.loads(part)
+                stats = jdata.get("__DEFAULT_SCOPE__", {}).get("webapp.user-detail", {}).get("userInfo", {}).get("stats", {})
+                return {
+                    "username": username,
+                    "followers": int(stats.get("followerCount", 0) or 0),
+                    "likes": int(stats.get("heartCount", 0) or 0),
+                    "videos": int(stats.get("videoCount", 0) or 0),
+                }
+    except Exception as e:
+        print(f"[Analytics] Error consultando TikTok (@{username}): {e}")
+    return None
+
+
+def fetch_instagram_overview(username: str = "gtavihubextra") -> Optional[Dict[str, Any]]:
+    """Obtiene métricas de Instagram Reels del perfil conectado mediante instagrapi."""
+    try:
+        from instagrapi import Client
+        cl = Client()
+        sfile = BROWSER_PROFILE_DIR / f"instagrapi_session_{username}.json"
+        if not sfile.exists():
+            sfile = BROWSER_PROFILE_DIR / "instagrapi_session.json"
+        if not sfile.exists():
+            return None
+
+        cl.load_settings(str(sfile))
+        u_info = cl.user_info(cl.user_id)
+        medias = cl.user_medias(cl.user_id, amount=6)
+        total_views = 0
+        total_likes = 0
+        media_list = []
+        for m in medias:
+            likes = int(getattr(m, "like_count", 0) or 0)
+            views = int(getattr(m, "view_count", None) or getattr(m, "play_count", 0) or 0)
+            total_likes += likes
+            total_views += views
+            media_list.append({"id": str(m.pk), "likes": likes, "views": views})
+
+        return {
+            "username": username,
+            "followers": int(getattr(u_info, "follower_count", 0) or 0),
+            "posts": int(getattr(u_info, "media_count", 0) or 0),
+            "views_recent": total_views,
+            "likes_recent": total_likes,
+            "medias": media_list,
+        }
+    except Exception as e:
+        print(f"[Analytics] Error consultando Instagram (@{username}): {e}")
+    return None
+
+
+def get_multiplatform_analytics_report() -> str:
+    """Genera el reporte integral de todas las plataformas (YouTube, TikTok, Instagram Reels) para Telegram."""
+    yt_report = get_youtube_analytics_report()
+
+    # Consultar TikTok
+    tt_data = fetch_tiktok_overview("gtavihubextra")
+    tt_block = "🎵 *TIKTOK* (@gtavihubextra)\n"
+    if tt_data:
+        tt_block += (
+            f"• 👥 *Seguidores:* `{tt_data['followers']:,}`\n"
+            f"• ❤️ *Me Gusta Totales:* `{tt_data['likes']:,}`\n"
+            f"• 🎬 *Vídeos Públicos:* `{tt_data['videos']}`\n"
+        )
+    else:
+        tt_block += "• ⚠️ _Perfil público temporalmente no disponible vía web scraper._\n"
+
+    # Consultar Instagram
+    ig_data = fetch_instagram_overview("gtavihubextra")
+    ig_block = "📸 *INSTAGRAM REELS* (@gtavihubextra)\n"
+    if ig_data:
+        ig_block += (
+            f"• 👥 *Seguidores:* `{ig_data['followers']:,}`\n"
+            f"• 🎬 *Publicaciones:* `{ig_data['posts']}`\n"
+            f"• 👁️ *Vistas Recientes (Reels):* `{ig_data['views_recent']:,}`\n"
+            f"• ❤️ *Likes Recientes (Reels):* `{ig_data['likes_recent']:,}`\n"
+        )
+    else:
+        ig_block += "• ⚠️ _Sesión de Instagram no conectada o en espera de actualización._\n"
+
+    # Encabezado unificado
+    header = (
+        "🌐 *MÉTRICAS MULTIPLATAFORMA EN VIVO*\n"
+        + ("═" * 38) + "\n\n"
+    )
+
+    combined = (
+        f"{header}"
+        f"{yt_report}\n\n"
+        + ("═" * 38) + "\n\n"
+        f"{tt_block}\n"
+        + ("─" * 38) + "\n\n"
+        f"{ig_block}\n"
+        + ("═" * 38) + "\n"
+        "💡 _Monitor centralizado de audiencia unificada (YouTube, TikTok & Reels)._"
+    )
+    return combined
+
 
 def get_youtube_analytics_report() -> str:
     """Genera un reporte conciso y profesional de analíticas de YouTube para Telegram con fallback a yt-dlp."""

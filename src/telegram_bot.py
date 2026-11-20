@@ -24,7 +24,7 @@ except Exception:
 from .config import BASE_DIR, DATA_DIR, OUTPUT_DIR, TEMP_DIR, PROCESSED_FILE, is_quant_busy
 from .compliance_auditor import ComplianceAuditor
 from .telemetry import get_host_telemetry_report
-from .youtube_analytics import get_youtube_analytics_report
+from .youtube_analytics import get_youtube_analytics_report, get_multiplatform_analytics_report
 from .copilot import (
     is_copilot_enabled,
     set_copilot_enabled,
@@ -78,9 +78,10 @@ def get_persistent_menu_keyboard() -> Dict[str, Any]:
         "keyboard": [
             [{"text": "🚀 Forzar Escaneo"}, {"text": "🎯 Simular Selección"}],
             [{"text": "🎬 Último Clip"}, {"text": "🔥 Radar Viral"}],
-            [{"text": "📊 Estado"}, {"text": "🛡️ Modo Co-Pilot"}],
-            [{"text": "🐦 X Scout GTA6"}, {"text": "⚙️ Canales"}],
-            [{"text": "🖥️ Host / GaTDSEQ"}, {"text": "🧹 Limpiar Temp"}],
+            [{"text": "📈 Métricas Multiplataforma"}, {"text": "🛡️ Modo Co-Pilot"}],
+            [{"text": "📊 Estado"}, {"text": "🐦 X Scout GTA6"}],
+            [{"text": "⚙️ Canales"}, {"text": "🖥️ Host / GaTDSEQ"}],
+            [{"text": "🧹 Limpiar Temp"}],
         ],
         "resize_keyboard": True,
         "persistent": True
@@ -1629,8 +1630,8 @@ def start_telegram_bot_daemon():
                         reply_markup=get_persistent_menu_keyboard()
                     )
 
-                elif cmd in ["/stats", "/analytics", "📈"] or text == "📈 Métricas YouTube":
-                    send_telegram_alert(get_youtube_analytics_report(), reply_markup=get_persistent_menu_keyboard())
+                elif cmd in ["/stats", "/analytics", "/metricas", "📈"] or text in ["📈 Métricas YouTube", "📈 Métricas Multiplataforma", "📈 Métricas"]:
+                    send_telegram_alert(get_multiplatform_analytics_report(), reply_markup=get_persistent_menu_keyboard())
 
                 elif cmd in ["/channels", "/canales", "⚙️"] or text == "⚙️ Canales":
                     send_telegram_alert(
