@@ -96,7 +96,58 @@ def fetch_recent_videos(limit: int = 4) -> List[Dict[str, Any]]:
         return []
 
 def fetch_tiktok_overview(username: str = "gtavihubextra") -> Optional[Dict[str, Any]]:
-    """Obtiene métricas públicas del perfil de TikTok mediante extracción segura."""
+    """Obtiene métricas públicas del perfil de TikTok (vistas de clips, likes y seguidores) mediante yt-dlp y scraper."""
+    followers = 0
+    total_likes = 0
+    total_videos = 0
+    total_views = 0
+    recent_videos = []
+
+    # 1. Intentar extracción completa de vistas y likes por vídeo mediante yt-dlp
+    try:
+        from .config import BASE_DIR
+        ytdlp_candidates = [
+            "/opt/homebrew/bin/yt-dlp",
+            "/usr/local/bin/yt-dlp",
+            "yt-dlp",
+            str(BASE_DIR / ".venv" / "bin" / "yt-dlp"),
+        ]
+        chosen_bin = None
+        for b in ytdlp_candidates:
+            if b.startswith("/") and os.path.exists(b) and os.access(b, os.X_OK):
+                chosen_bin = b
+                break
+
+        cmd = [
+            chosen_bin or "yt-dlp",
+            "--no-check-certificates",
+            "--flat-playlist", "--dump-json",
+            f"https://www.tiktok.com/@{username}"
+        ]
+
+        res = subprocess.run(cmd, capture_output=True, text=True, timeout=12)
+        if res.returncode == 0 and res.stdout.strip():
+            for line in res.stdout.strip().split("\n"):
+                if line.strip():
+                    try:
+                        v = json.loads(line)
+                        v_views = int(v.get("view_count") or 0)
+                        v_likes = int(v.get("like_count") or 0)
+                        total_views += v_views
+                        total_likes += v_likes
+                        recent_videos.append({
+                            "id": v.get("id"),
+                            "title": v.get("title") or "TikTok Clip",
+                            "views": v_views,
+                            "likes": v_likes
+                        })
+                    except Exception:
+                        pass
+            total_videos = len(recent_videos)
+    except Exception as e:
+        print(f"[Analytics] Info yt-dlp TikTok (@{username}): {e}")
+
+    # 2. Complementar o rescatar seguidores/likes base mediante el rehydration scraper
     try:
         url = f"https://www.tiktok.com/@{username}"
         ctx = ssl.create_default_context()
@@ -109,14 +160,23 @@ def fetch_tiktok_overview(username: str = "gtavihubextra") -> Optional[Dict[str,
                 part = html.split("__UNIVERSAL_DATA_FOR_REHYDRATION__")[1].split(">", 1)[1].split("</script>", 1)[0]
                 jdata = json.loads(part)
                 stats = jdata.get("__DEFAULT_SCOPE__", {}).get("webapp.user-detail", {}).get("userInfo", {}).get("stats", {})
-                return {
-                    "username": username,
-                    "followers": int(stats.get("followerCount", 0) or 0),
-                    "likes": int(stats.get("heartCount", 0) or 0),
-                    "videos": int(stats.get("videoCount", 0) or 0),
-                }
+                followers = int(stats.get("followerCount", 0) or 0)
+                if total_likes == 0:
+                    total_likes = int(stats.get("heartCount", 0) or 0)
+                if total_videos == 0:
+                    total_videos = int(stats.get("videoCount", 0) or 0)
     except Exception as e:
-        print(f"[Analytics] Error consultando TikTok (@{username}): {e}")
+        print(f"[Analytics] Error consultando TikTok web rehydration (@{username}): {e}")
+
+    if total_videos > 0 or total_views > 0 or total_likes > 0:
+        return {
+            "username": username,
+            "followers": followers,
+            "likes": total_likes,
+            "videos": total_videos,
+            "views": total_views,
+            "recent_videos": recent_videos
+        }
     return None
 
 
@@ -182,9 +242,15 @@ def get_multiplatform_analytics_report() -> str:
     if tt_data:
         tt_block += (
             f"• 👥 *Seguidores:* `{tt_data['followers']:,}`\n"
+            f"• 👁️ *Vistas Totales (Clips):* `{tt_data['views']:,}`\n"
             f"• ❤️ *Me Gusta Totales:* `{tt_data['likes']:,}`\n"
             f"• 🎬 *Vídeos Públicos:* `{tt_data['videos']}`\n"
         )
+        if tt_data.get("recent_videos"):
+            tt_block += "\n*Clips destacados en TikTok:*\n"
+            for idx, tv in enumerate(tt_data["recent_videos"][:3], 1):
+                clean_t = str(tv.get("title", ""))[:38] + "..."
+                tt_block += f"  *{idx}.* {clean_t} — `{tv.get('views', 0):,}` vistas | `{tv.get('likes', 0)}` likes\n"
     else:
         tt_block += "• ⚠️ _Perfil público temporalmente no disponible vía web scraper._\n"
 
@@ -208,8 +274,8 @@ def get_multiplatform_analytics_report() -> str:
         f"• ❤️ *Interacciones / Likes Totales:* `{total_network_likes:,}`\n\n"
         f"📊 *Reparto de Vistas por Red:*\n"
         f"  └ 🔴 YouTube Shorts: `{yt_views:,}` vistas ({((yt_views/total_network_views)*100 if total_network_views else 0):.1f}%)\n"
-        f"  └ 📸 Instagram Reels: `{ig_views:,}` vistas ({((ig_views/total_network_views)*100 if total_network_views else 0):.1f}%)\n"
-        f"  └ 🎵 TikTok: `{tt_likes:,}` likes directos\n\n"
+        f"  └ 🎵 TikTok: `{tt_views:,}` vistas ({((tt_views/total_network_views)*100 if total_network_views else 0):.1f}%)\n"
+        f"  └ 📸 Instagram Reels: `{ig_views:,}` vistas ({((ig_views/total_network_views)*100 if total_network_views else 0):.1f}%)\n\n"
         + ("═" * 40) + "\n\n"
     )
 
