@@ -271,12 +271,74 @@ class SocialPublisher:
             return f"https://youtu.be/{video_id}" if not str(video_id).startswith("http") else str(video_id)
         return None
 
+    @staticmethod
+    def _build_tiktok_caption(
+        title: str,
+        tags: List[str],
+        debate_question: str = "",
+        description: str = "",
+        creator_name: str = "",
+    ) -> str:
+        """Construye una descripción estética, conversacional y SEO-friendly para TikTok."""
+        clean_title = re.sub(r'[\r\n]+', ' ', title).strip()
+        short_title = truncate_on_word_boundary(clean_title, 75)
+
+        if debate_question:
+            q_clean = truncate_on_word_boundary(
+                debate_question.replace("¿", "").replace("?", "").strip(), 80
+            )
+            debate_line = f"💬 ¿{q_clean}? 👇"
+        else:
+            debate_line = "💬 ¿Qué te parece este detalle de Vice City? Te leo 👇"
+
+        # Extraer contexto editorial limpio sin URLs ni boilerplate legal de YouTube
+        editorial_lines = []
+        if description:
+            for raw_line in description.splitlines():
+                line = raw_line.strip()
+                if not line:
+                    continue
+                low = line.lower()
+                if any(skip in low for skip in ("http://", "https://", "fair use", "art. 107", "copyright", "por: @", "créditos", "suscríbete")):
+                    continue
+                if line.startswith("#"):
+                    continue
+                editorial_lines.append(line)
+                if len(" ".join(editorial_lines)) >= 140:
+                    break
+        editorial_snippet = truncate_on_word_boundary(" ".join(editorial_lines), 180) if editorial_lines else ""
+
+        # Hashtags curados (máximo 5 para estética limpia y buen SEO)
+        base_tags = ["GTA6", "GTAVI", "ViceCity", "RockstarGames", "Gaming"]
+        merged_tags = []
+        seen_low = set()
+        for t in list(tags or []) + base_tags:
+            clean_t = re.sub(r'[^A-Za-z0-9ÁÉÍÓÚÜÑáéíóúüñ]', '', str(t))
+            if clean_t and clean_t.lower() not in seen_low:
+                seen_low.add(clean_t.lower())
+                merged_tags.append(f"#{clean_t}")
+            if len(merged_tags) >= 5:
+                break
+        tags_str = " ".join(merged_tags)
+
+        parts = [f"🎮 {short_title}", debate_line]
+        if editorial_snippet:
+            parts.append(editorial_snippet)
+        if creator_name and creator_name.strip():
+            clean_creator = creator_name.strip().lstrip("@")
+            parts.append(f"📌 Crédito: @{clean_creator}")
+        if tags_str:
+            parts.append(tags_str)
+        return "\n\n".join(parts)
+
     def publish_to_tiktok(
         self,
         video_path: Path,
         title: str,
         tags: List[str],
-        debate_question: str = ""
+        debate_question: str = "",
+        description: str = "",
+        creator_name: str = "",
     ) -> Optional[str]:
         """
         Publica o programa en TikTok Creator Center mediante navegador automatizado
@@ -293,17 +355,13 @@ class SocialPublisher:
                 self._notify_telegram(f"⏳ *[TikTok Anti-Saturación]* Clip aplazado para evitar saturar la cuenta:\n_{reason_tt}_")
                 return None
 
-        # Formato 100% orgánico para TikTok: Ultra-compacto (evita tapar la pantalla y evita shadowban/0-views)
-        clean_title = re.sub(r'[\r\n]+', ' ', title).strip()
-        # Limitar título a 50 caracteres en límite de palabra para que no corte palabras ni desborde la UI de TikTok
-        short_title = truncate_on_word_boundary(clean_title, 50)
-        tags_str = " ".join([f"#{t.replace(' ', '').replace('#', '')}" for t in tags[:3]])
-
-        if debate_question:
-            q_clean = truncate_on_word_boundary(debate_question.replace("¿", "").replace("?", "").strip(), 42)
-            caption = f"{short_title} 🤯\n¿{q_clean}? 👇\n{tags_str}"
-        else:
-            caption = f"{short_title} 🤯\n¿Qué opinas de esto? 👇\n{tags_str}"
+        caption = self._build_tiktok_caption(
+            title=title,
+            tags=tags,
+            debate_question=debate_question,
+            description=description,
+            creator_name=creator_name,
+        )
         tiktok_profile = BROWSER_PROFILE_DIR / "tiktok_user_data"
 
         if self.dry_run:
@@ -471,7 +529,7 @@ class SocialPublisher:
                         "textarea[placeholder*='caption'], textarea[placeholder*='escribe']"
                     ]
                     caption_filled = False
-                    clean_caption = truncate_on_word_boundary(caption, 220)
+                    clean_caption = truncate_on_word_boundary(caption, 900)
 
                     for sel in editor_selectors:
                         try:
@@ -1013,7 +1071,14 @@ class SocialPublisher:
                     self._notify_telegram(f"✅ *[1/3] YouTube Shorts publicado:* [Ver en YouTube]({url})")
             elif plat == "tiktok":
                 debate_q = metadata.get("debate_question", "")
-                url = self.publish_to_tiktok(video_path, title, tags, debate_question=debate_q)
+                url = self.publish_to_tiktok(
+                    video_path,
+                    title,
+                    tags,
+                    debate_question=debate_q,
+                    description=desc,
+                    creator_name=creator_name,
+                )
                 results["tiktok"] = url
                 if url:
                     self._notify_telegram(f"✅ *[2/3] TikTok publicado:* [Ver en TikTok]({url})")

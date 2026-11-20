@@ -10,6 +10,12 @@
 
 ## Herramientas y flujo de trabajo
 
+### Módulos clave recientes
+- `src/x_scout.py` — Scout persistente de X (Twitter): extrae clips nativos y enlaces desde tus Likes (`/likes`) y Timeline, actualizando `data/x_taste_profile.json` y alimentando la cola `data/curated_queue.json`.
+- `src/community_manager.py` — Interacción comunitaria autónoma: auto-respuestas inteligentes con Gemini/0-API en comentarios de YouTube e Instagram Reels, filtrando spam y con límite de tasa.
+- `src/social_publisher.py` — Constructor de descripciones estéticas en TikTok (`_build_tiktok_caption`) con debate, SEO y hasta 900 caracteres.
+- `src/uploader.py` — Sistema de enfriamiento temporal (`youtube_cooldown_until.txt`), tope diario de 3 Shorts/24h y espaciado de >=4h en YouTube.
+
 ### Exploración del código
 - El proyecto tiene `.codegraph/` indexado. Usar `codegraph_explore` ANTES de grep/Read para localizar símbolos.
 - Para leer archivos grandes de `src/` usar Read con offset/limit.
@@ -23,7 +29,7 @@ rsync -avz --exclude='.venv' --exclude='__pycache__' --exclude='.env' \
 # Reiniciar bot Telegram (si se tocó telegram_bot.py o main.py)
 ssh gabrieltrujillovallejo@100.108.212.124 \
   "pkill -f 'main.py --telegram' ; sleep 2 ; \
-   cd ~/GTAVIHub && nohup python -u main.py --telegram >> logs/telegram.log 2>&1 &"
+   ~/GTAVIHub/deploy/launchd/watchdog.sh"
 ```
 
 ### Verificación de salud post-despliegue

@@ -22,22 +22,36 @@ TOKEN_FILE = BASE_DIR / "token.json"
 TOKEN_EXTRA_FILE = BASE_DIR / "token_extra.json"
 BOOST_STATE_FILE = BASE_DIR / "data" / "engagement_boost.json"
 UPLOAD_COOLDOWN_FILE = BASE_DIR / "data" / "upload_cooldown.json"
+YOUTUBE_PAUSE_FILE = BASE_DIR / "data" / "youtube_cooldown_until.txt"
 
 
 def _is_youtube_upload_blocked_by_cooldown(title: str, privacy_status: str) -> tuple[bool, str]:
-    """Evita dobles subidas en <45 min o títulos duplicados/similares en <3h en YouTube."""
-    if privacy_status != "public" or not UPLOAD_COOLDOWN_FILE.exists():
+    """Evita ráfagas en YouTube: pausa temporal 24h, máx. 3 vídeos/24h, espaciado >=4h y títulos duplicados."""
+    if privacy_status != "public":
         return False, ""
     try:
+        from datetime import datetime
+        now = datetime.now()
+        if YOUTUBE_PAUSE_FILE.exists():
+            raw_until = YOUTUBE_PAUSE_FILE.read_text(encoding="utf-8").strip()
+            if raw_until:
+                try:
+                    pause_until = datetime.fromisoformat(raw_until)
+                    if now < pause_until:
+                        return True, f"Enfriamiento temporal de YouTube activo hasta {pause_until.strftime('%Y-%m-%d %H:%M')}."
+                    YOUTUBE_PAUSE_FILE.unlink(missing_ok=True)
+                except Exception:
+                    pass
+        if not UPLOAD_COOLDOWN_FILE.exists():
+            return False, ""
         import difflib
         import re
-        from datetime import datetime
         records = json.loads(UPLOAD_COOLDOWN_FILE.read_text(encoding="utf-8"))
         if not isinstance(records, list) or not records:
             return False, ""
-        now = datetime.now()
         norm_new = re.sub(r"[^a-z0-9 ]", "", (title or "").lower()).strip()
-        for rec in records[-10:]:
+        uploads_24h = 0
+        for rec in records[-15:]:
             ts_str = rec.get("uploaded_at")
             if not ts_str:
                 continue
@@ -48,12 +62,16 @@ def _is_youtube_upload_blocked_by_cooldown(title: str, privacy_status: str) -> t
             elapsed_min = (now - prev_dt).total_seconds() / 60.0
             if elapsed_min < 0:
                 continue
+            if elapsed_min < 1440.0:
+                uploads_24h += 1
             prev_norm = re.sub(r"[^a-z0-9 ]", "", (rec.get("title") or "").lower()).strip()
             sim = difflib.SequenceMatcher(None, norm_new, prev_norm).ratio() if (norm_new and prev_norm) else 0.0
             if elapsed_min < 180.0 and sim >= 0.82:
                 return True, f"Título casi idéntico subido hace {elapsed_min:.0f}m (sim={sim:.2f})."
-            if elapsed_min < 45.0:
-                return True, f"Cooldown anti-spam activo: último vídeo subido hace {elapsed_min:.0f}m (<45m)."
+            if elapsed_min < 240.0:
+                return True, f"Cooldown anti-spam activo: último vídeo subido hace {elapsed_min:.0f}m (<240m)."
+        if uploads_24h >= 3:
+            return True, f"Límite diario YouTube alcanzado: {uploads_24h}/3 subidas en las últimas 24h."
     except Exception:
         return False, ""
     return False, ""

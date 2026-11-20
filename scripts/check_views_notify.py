@@ -152,3 +152,17 @@ def main():
 
 if __name__ == "__main__":
     main()
+    try:
+        from src.community_manager import run_autonomous_community_cycle
+        comm = run_autonomous_community_cycle(yt_max=6, ig_max=4)
+        if comm.get("total_replied", 0) > 0:
+            print(f"[Community] Respuestas enviadas: {comm['total_replied']} (YT={comm['youtube']['replied']}, IG={comm['instagram']['replied']})")
+    except Exception as e:
+        print(f"[Community] Error en ciclo autónomo: {e}")
+
+    try:
+        from src.x_scout import X_PROFILE_DIR, scan_x_timeline
+        if X_PROFILE_DIR.exists():
+            scan_x_timeline(max_candidates=12, max_scrolls=4, include_likes=True)
+    except Exception as e:
+        print(f"[X Scout] Error en ingesta automática de Likes: {e}")

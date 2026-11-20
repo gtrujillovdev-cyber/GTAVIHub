@@ -364,6 +364,15 @@ def scan_viral_radar(
         if is_gameplay_enabled():
             queries = list(GAMEPLAY_VIRAL_QUERIES) + queries
 
+        try:
+            from .x_scout import load_x_taste_profile
+            x_prof = load_x_taste_profile()
+            x_queries = [f"ytsearch10:{q}" for q in x_prof.get("dynamic_queries", [])[:3] if q]
+            if x_queries:
+                queries = x_queries + queries
+        except Exception:
+            pass
+
     processed_ids = get_processed_ids()
     existing_channels = list_monitored_channels()
     existing_urls = {ch.get("url", "").rstrip("/").lower() for ch in existing_channels}

@@ -80,18 +80,56 @@ with sync_playwright() as p:
         print(f"[!] Aviso cargando X: {e}")
 
     print("\nINSTRUCCIONES:")
-    print("  1. Inicia sesión en X con la cuenta que usas para seguir a creadores de GTA6")
-    print("  2. Vuelve aquí y pulsa ENTER\n")
-    print("  >>> NO CIERRES EL NAVEGADOR — pulsa ENTER aquí cuando hayas terminado <<<")
-    input()
+    print("  1. Inicia sesión en X en la ventana de Chrome que se ha abierto")
+    print("  2. Esperando detección automática de sesión (hasta 10 minutos)...")
+    print("  (También puedes pulsar ENTER en esta terminal cuando estés dentro del feed)\n")
 
-    cur_url = page.url.lower()
-    if "login" in cur_url or "signin" in cur_url:
-        print("[!] No parece que el login se haya completado. Revisa el navegador.")
-        context.close()
-        sys.exit(1)
+    import select
+    start_wait = time.time() if "time" in dir() else 0
+    import time
+    start_wait = time.time()
+
+    logged_in = False
+    while time.time() - start_wait < 600:
+        # 1. Comprobar si el usuario pulsó ENTER
+        if sys.stdin in select.select([sys.stdin], [], [], 0)[0]:
+            sys.stdin.readline()
+            logged_in = True
+            break
+
+        # 2. Comprobar si la URL o cookies ya indican login completado
+        try:
+            cur_url = page.url.lower()
+            if "home" in cur_url or "explore" in cur_url or "notifications" in cur_url:
+                logged_in = True
+                print("\n[✓] ¡Navegación al Feed de X detectada!")
+                break
+            # Detección por cookies de sesión de X ('auth_token' o 'twid')
+            cookies = context.cookies()
+            auth_cookies = [c for c in cookies if c.get("name") in ["auth_token", "twid"]]
+            if auth_cookies:
+                logged_in = True
+                print(f"\n[✓] ¡Cookie de autenticación '{auth_cookies[0]['name']}' detectada con éxito!")
+                break
+        except Exception:
+            pass
+
+        time.sleep(2)
+
+    if not logged_in:
+        cur_url = page.url.lower()
+        if "login" in cur_url or "signin" in cur_url:
+            print("[!] No parece que el login se haya completado. Revisa el navegador.")
+            context.close()
+            sys.exit(1)
 
     print(f"\n[OK] Sesión de X guardada en: {PROFILE_DIR}")
+    storage_state_file = BASE_DIR / "assets" / ".browser_profiles" / "x_storage_state.json"
+    try:
+        context.storage_state(path=str(storage_state_file))
+        print(f"[OK] Storage state exportado en: {storage_state_file}")
+    except Exception as e:
+        print(f"[!] Aviso exportando storage_state: {e}")
     context.close()
 
 if SYNC:

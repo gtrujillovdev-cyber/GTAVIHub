@@ -226,6 +226,16 @@ def select_best_candidate_ai(
             "breaking_news_topics": [n.get("title", "") for n in radar.get("breaking_news", [])[:4]],
             "hottest_keywords": radar.get("trending_keywords", [])[:8]
         }
+        try:
+            from .x_scout import load_x_taste_profile
+            x_prof = load_x_taste_profile()
+            if x_prof.get("preferred_topics") or x_prof.get("preferred_creators"):
+                traffic_radar_summary["x_likes_taste_pattern"] = {
+                    "preferred_topics": x_prof.get("preferred_topics", []),
+                    "preferred_creators": x_prof.get("preferred_creators", [])[:5],
+                }
+        except Exception:
+            pass
         dynamic_editorial_context = get_current_editorial_context()
     except Exception:
         traffic_radar_summary = {}
