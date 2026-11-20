@@ -260,7 +260,8 @@ def select_best_candidate_ai(
             "engagement_rate": engagement_rate,
             "source_count": c.get("source_count", 1),
             "uploader": c.get("uploader") or c.get("source_name", "Desconocido"),
-            "base_score": c.get("score")
+            "base_score": c.get("score"),
+            "is_user_liked": bool(c.get("is_liked") or c.get("source") in ("x_likes", "x_scout")),
         })
 
     client = get_gemini_client() if use_ai else None
@@ -302,7 +303,8 @@ CRITERIOS EDITORIALES DE VICTORIA (PLAYBOOK GAMEPLAY ACTIVO):
    - RECHAZA/EVITA charlas en plató/webcam, vídeos de opinión ('How Long is GTA 6?', 'Worth It?', 'Daily Fix', 'Full Thoughts') y promos musicales si existe cualquier candidato de gameplay real o comparativa técnica.
    - DESCARTAR tráileres antiguos de 2023 ('Trailer 1').
 1. VELOCIDAD VIRAL REAL (views_per_hour / velocity_vpd): Prioriza vídeos en ascenso vertical ahora mismo. Un gameplay recién subido con 20,000+ views/hora vale 10x más que un resumen viejo.
-2. MULTI-FUENTE (source_count > 1): Un vídeo detectado por múltiples fuentes/queries simultáneamente es una señal inequívoca de momento viral. Priorizarlo sobre candidatos únicos.
+2. SEÑAL EDITORIAL HUMANA (is_user_liked = true): Si hay candidatos marcados con 'is_user_liked: true', han sido seleccionados a mano por el creador en X. Otorga un fuerte bonus a estos clips, pero EVALÚA Y SELECCIONA EL MEJOR DE ELLOS si hay varios (comparando cuál tiene mayor impacto visual, mejor momento de gameplay o mayor potencial de retención).
+3. MULTI-FUENTE (source_count > 1): Un vídeo detectado por múltiples fuentes/queries simultáneamente es una señal inequívoca de momento viral. Priorizarlo sobre candidatos únicos.
 3. ENGAGEMENT REAL (engagement_rate): Ratio likes/vistas como proxy de distribución activa por el algoritmo. Un ratio > 0.02 indica audiencia comprometida.
 4. ENGAGEMENT Y CURIOSIDAD: El vídeo debe provocar el deseo irrefrenable de comentar o ver hasta el final.
 5. CERO CLICKBAIT NI HASHTAGS DE CONSOLA EQUIVOCADA: Solo contenido real y coherente (jamás pongas #PS5PRO si el vídeo trata de Xbox, ni viceversa).

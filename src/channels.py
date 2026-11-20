@@ -1004,6 +1004,10 @@ def fetch_channel_candidates(max_per_channel: int = 2) -> List[Dict[str, Any]]:
         elif any(chat in tl_low for chat in ("how long is", "should you buy", "worth it", "opening intro")):
             eng_pts -= 18.0
 
+        # Impulso selectivo por validación humana de Likes en X (señal de interés editorial directo)
+        if c.get("source") in ("x_likes", "x_scout") or c.get("is_liked"):
+            eng_pts += 15.0
+
         c["score"] = min(100, max(0, int(round(vph_pts + recency_pts + eng_pts))))
         fresh_candidates.append(c)
 
