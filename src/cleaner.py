@@ -93,6 +93,20 @@ def clean_uploaded_video_file(video_path: Path):
     except Exception as e:
         print(f"[Cleaner] No se pudo eliminar {video_path}: {e}")
 
+def clean_quarantine_directory(max_age_hours: int = 48):
+    """Limpia videos en quarantine mas antiguos que max_age_hours."""
+    quarantine_dir = OUTPUT_DIR / "quarantine"
+    if not quarantine_dir.exists():
+        return
+    import time
+    cutoff = time.time() - (max_age_hours * 3600)
+    for f in quarantine_dir.iterdir():
+        try:
+            if f.stat().st_mtime < cutoff:
+                f.unlink()
+        except Exception:
+            pass
+
 def enforce_storage_limits(max_mb: int = 1000):
     """
     Regla estricta 3: Auditoría preventiva de almacenamiento y limpieza.
@@ -100,6 +114,7 @@ def enforce_storage_limits(max_mb: int = 1000):
     """
     clean_temp_directory()
     clean_workspace_residuals()
+    clean_quarantine_directory()
     
     if not OUTPUT_DIR.exists():
         return

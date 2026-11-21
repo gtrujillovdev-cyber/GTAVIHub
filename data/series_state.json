@@ -1,0 +1,35 @@
+{
+  "series": {
+    "detalles_enfermizos": {
+      "count": 5,
+      "history": [
+        {
+          "episode": 1,
+          "title": "10 detalles enfermizos de GTA 6 que no viste",
+          "date": "2026-11-21T14:55:13.934904"
+        },
+        {
+          "episode": 2,
+          "title": "10 detalles enfermizos de GTA 6 que no viste",
+          "date": "2026-11-21T14:56:30.516243"
+        },
+        {
+          "episode": 3,
+          "title": "10 detalles enfermizos de GTA 6 que no viste",
+          "date": "2026-11-21T14:57:15.338377"
+        },
+        {
+          "episode": 4,
+          "title": "10 detalles enfermizos de GTA 6 que no viste",
+          "date": "2026-11-21T14:59:00.817538"
+        },
+        {
+          "episode": 5,
+          "title": "10 detalles enfermizos de GTA 6 que no viste",
+          "date": "2026-11-21T15:03:24.787576"
+        }
+      ]
+    }
+  },
+  "last_updated": "2026-11-21T15:03:24.787582"
+}

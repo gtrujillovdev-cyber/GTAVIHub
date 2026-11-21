@@ -1454,6 +1454,11 @@ def start_telegram_bot_daemon():
                         top_views = win_summary["top_clips"][0].get("views", 0)
                         if top_views > 0:
                             send_telegram_alert(format_winner_replication_report(win_summary))
+                    # Feedback Loop: recalibrar scoring basado en outliers reales
+                    from .performance_tracker import recalibrate_scoring_weights
+                    fb_result = recalibrate_scoring_weights()
+                    if fb_result.get("ok") and fb_result.get("action") != "no_adjustment":
+                        print(f"[Feedback Loop] {fb_result.get('action')}")
                 except Exception as e:
                     print(f"[PerformanceTracker] Error obteniendo métricas/ganadores: {e}")
 

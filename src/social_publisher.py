@@ -351,6 +351,7 @@ class SocialPublisher:
         debate_question: str = "",
         description: str = "",
         creator_name: str = "",
+        native_caption_override: str = "",
     ) -> Optional[str]:
         """
         Publica o programa en TikTok Creator Center mediante navegador automatizado
@@ -367,13 +368,16 @@ class SocialPublisher:
                 self._notify_telegram(f"⏳ *[TikTok Anti-Saturación]* Clip aplazado para evitar saturar la cuenta:\n_{reason_tt}_")
                 return None
 
-        caption = self._build_tiktok_caption(
-            title=title,
-            tags=tags,
-            debate_question=debate_question,
-            description=description,
-            creator_name=creator_name,
-        )
+        if native_caption_override and native_caption_override.strip():
+            caption = native_caption_override.strip()
+        else:
+            caption = self._build_tiktok_caption(
+                title=title,
+                tags=tags,
+                debate_question=debate_question,
+                description=description,
+                creator_name=creator_name,
+            )
         tiktok_profile = BROWSER_PROFILE_DIR / "tiktok_user_data"
 
         if self.dry_run:
@@ -1088,47 +1092,65 @@ class SocialPublisher:
                     self._notify_telegram(f"✅ *[1/3] YouTube Shorts publicado:* [Ver en YouTube]({url})")
             elif plat == "tiktok":
                 debate_q = metadata.get("debate_question", "")
-                url = self.publish_to_tiktok(
-                    video_path,
-                    title,
-                    tags,
-                    debate_question=debate_q,
-                    description=desc,
-                    creator_name=creator_name,
-                )
+                # Mejora Multi-Platform Copy: si Gemini genero un caption nativo para TikTok, usarlo
+                tiktok_native_caption = metadata.get("tiktok_caption", "")
+                if tiktok_native_caption:
+                    url = self.publish_to_tiktok(
+                        video_path,
+                        title,
+                        tags,
+                        debate_question=debate_q,
+                        description=desc,
+                        creator_name=creator_name,
+                        native_caption_override=tiktok_native_caption,
+                    )
+                else:
+                    url = self.publish_to_tiktok(
+                        video_path,
+                        title,
+                        tags,
+                        debate_question=debate_q,
+                        description=desc,
+                        creator_name=creator_name,
+                    )
                 results["tiktok"] = url
                 if url:
                     self._notify_telegram(f"✅ *[2/3] TikTok publicado:* [Ver en TikTok]({url})")
                 else:
                     self._notify_telegram("⚠️ *[2/3] TikTok:* Subido y guardado como borrador en TikTok Studio.")
             elif plat == "instagram":
-                debate_q = metadata.get("debate_question", "")
-                bold_debate = to_unicode_bold("DEBATE DE LA COMUNIDAD:")
-                bold_redes = to_unicode_bold("REDES & ENLACES (Link en Bio):")
-                bold_creditos = to_unicode_bold("CRÉDITOS & FUENTE:")
-                bold_contacto = to_unicode_bold("CONTACTO / BUSINESS:")
+                # Mejora Multi-Platform Copy: usar caption nativo de Gemini si existe
+                ig_native_caption = metadata.get("ig_caption", "")
+                if ig_native_caption and ig_native_caption.strip():
+                    caption = ig_native_caption.strip()
+                else:
+                    debate_q = metadata.get("debate_question", "")
+                    bold_debate = to_unicode_bold("DEBATE DE LA COMUNIDAD:")
+                    bold_redes = to_unicode_bold("REDES & ENLACES (Link en Bio):")
+                    bold_creditos = to_unicode_bold("CRÉDITOS & FUENTE:")
+                    bold_contacto = to_unicode_bold("CONTACTO / BUSINESS:")
 
-                debate_block = f"💬 {bold_debate}\n{debate_q}\n👇 ¡Déjanos tu teoría en los comentarios!\n\n" if debate_q else ""
-                cta_block = AFFILIATE_CTA_INSTAGRAM if ENABLE_AFFILIATE_CTAS else "🌴 Cobertura diaria de GTA VI y noticias oficiales en @gtavihubextra."
+                    debate_block = f"💬 {bold_debate}\n{debate_q}\n👇 ¡Déjanos tu teoría en los comentarios!\n\n" if debate_q else ""
+                    cta_block = AFFILIATE_CTA_INSTAGRAM if ENABLE_AFFILIATE_CTAS else "🌴 Cobertura diaria de GTA VI y noticias oficiales en @gtavihubextra."
 
-                links_block = (
-                    f"🌐 {bold_redes}\n"
-                    f"👉 Hub Central: https://linktr.ee/gtavihubextra\n"
-                    f"👉 Síguenos en @gtavihubextra\n\n"
-                    if ENABLE_AFFILIATE_CTAS else
-                    "🌐 Síguenos en @gtavihubextra\n\n"
-                )
-                creator_clean = creator_name or "Rockstar Games"
-                caption = (
-                    f"{title}\n\n"
-                    f"{debate_block}"
-                    f"{desc[:900]}\n\n"
-                    f"{links_block}"
-                    f"{cta_block}\n\n"
-                    f"📌 {bold_creditos} Vía {creator_clean}. Todo el crédito al autor original.\n"
-                    f"📩 {bold_contacto} {BUSINESS_EMAIL}\n\n"
-                    f"#GTA6 #GrandTheftAutoVI #RockstarGames #Gaming #ViceCity #Reels #Videojuegos"
-                )
+                    links_block = (
+                        f"🌐 {bold_redes}\n"
+                        f"👉 Hub Central: https://linktr.ee/gtavihubextra\n"
+                        f"👉 Síguenos en @gtavihubextra\n\n"
+                        if ENABLE_AFFILIATE_CTAS else
+                        "🌐 Síguenos en @gtavihubextra\n\n"
+                    )
+                    creator_clean = creator_name or "Rockstar Games"
+                    caption = (
+                        f"{title}\n\n"
+                        f"{debate_block}"
+                        f"{desc[:900]}\n\n"
+                        f"{links_block}"
+                        f"{cta_block}\n\n"
+                        f"📌 {bold_creditos} Vía {creator_clean}. Todo el crédito al autor original.\n"
+                        f"📩 {bold_contacto} {BUSINESS_EMAIL}\n\n"
+                        f"#GTA6 #GrandTheftAutoVI #RockstarGames #Gaming #ViceCity #Reels #Videojuegos"
+                    )
                 url = self.publish_to_instagram(video_path, caption, thumbnail_path=thumb)
                 results["instagram"] = url
                 if url:

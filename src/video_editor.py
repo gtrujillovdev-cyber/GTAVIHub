@@ -1535,3 +1535,59 @@ def render_final_video(
                     pass
 
     return render_ok
+
+
+def apply_seamless_loop(video_path: Path, crossfade_sec: float = 0.4) -> bool:
+    """
+    Aplica un crossfade visual entre el final y el inicio del video
+    para crear la ilusion de bucle continuo en YouTube Shorts.
+    Modifica el archivo in-place. Retorna True si exitoso.
+    """
+    if not video_path.exists():
+        return False
+
+    try:
+        probe = subprocess.run(
+            ["ffprobe", "-v", "quiet", "-show_entries", "format=duration",
+             "-of", "csv=p=0", str(video_path)],
+            capture_output=True, text=True, timeout=10
+        )
+        duration = float(probe.stdout.strip()) if probe.stdout.strip() else 0
+        if duration < 8.0:
+            return False
+
+        cf = min(crossfade_sec, duration * 0.08)
+        temp_out = video_path.parent / f"{video_path.stem}_loop.mp4"
+        threads = 1 if is_quant_busy() else FFMPEG_THREADS
+
+        # Estrategia: duplicar el video y hacer xfade entre el final de la primera copia
+        # y el inicio de la segunda, luego cortar a la duracion original
+        cmd = [
+            "ffmpeg", "-y", "-threads", str(threads),
+            "-i", str(video_path),
+            "-i", str(video_path),
+            "-filter_complex",
+            f"[0:v][1:v]xfade=transition=fade:duration={cf}:offset={duration - cf}[vout];"
+            f"[0:a][1:a]acrossfade=d={cf}[aout]",
+            "-map", "[vout]", "-map", "[aout]",
+            "-t", str(duration),
+            "-c:v", FFMPEG_VIDEO_CODEC,
+            "-b:v", FFMPEG_BITRATE,
+            "-maxrate", FFMPEG_MAXRATE,
+            "-bufsize", FFMPEG_BUFSIZE,
+            "-pix_fmt", "yuv420p",
+            "-c:a", "aac", "-b:a", "192k",
+            str(temp_out)
+        ]
+        res = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
+        if res.returncode == 0 and temp_out.exists() and temp_out.stat().st_size > 1000:
+            video_path.unlink(missing_ok=True)
+            temp_out.rename(video_path)
+            print(f"[Seamless Loop] Crossfade de {cf:.2f}s aplicado para bucle continuo.")
+            return True
+        else:
+            temp_out.unlink(missing_ok=True)
+            return False
+    except Exception as e:
+        print(f"[Seamless Loop] Info: {e}")
+        return False

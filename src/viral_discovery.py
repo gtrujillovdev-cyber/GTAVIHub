@@ -8,7 +8,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import List, Dict, Any, Optional
 
-from .config import BASE_DIR, DATA_DIR, CHANNELS_FILE
+from .config import BASE_DIR, DATA_DIR, CHANNELS_FILE, ENABLE_REDDIT_SCOUT
 from .channels import get_processed_ids, list_monitored_channels, add_monitored_channel, is_official_or_reupload
 
 DISCOVERED_CHANNELS_FILE = DATA_DIR / "discovered_channels.json"
@@ -508,6 +508,40 @@ def scan_viral_radar(
                     if candidate["score"] > existing.get("score", 0):
                         candidate["source_count"] = existing["source_count"]
                         candidates_by_id[vid_id] = candidate
+
+    # Cross-Border Scout: inyectar candidatos de Reddit con URLs de video reales
+    if ENABLE_REDDIT_SCOUT:
+        try:
+            from .cross_border_scout import scan_reddit_gta6
+            reddit_hits = scan_reddit_gta6(max_results=5)
+            for rh in reddit_hits:
+                if not rh.get("has_video_url"):
+                    continue
+                rid = rh.get("id", "")
+                if rid in candidates_by_id or rid in processed_ids:
+                    continue
+                candidates_by_id[rid] = {
+                    "id": rid,
+                    "title": rh.get("title", ""),
+                    "url": rh.get("url", ""),
+                    "duration": rh.get("duration", 30),
+                    "views": rh.get("views", 0),
+                    "uploader": rh.get("uploader", "Reddit"),
+                    "channel_url": rh.get("reddit_permalink", ""),
+                    "score": rh.get("score", 0),
+                    "velocity_score": 0,
+                    "is_short": True,
+                    "keywords": [],
+                    "is_new_channel": True,
+                    "query_source": "reddit_scout",
+                    "days_old": None,
+                    "velocity": rh.get("views_per_hour"),
+                    "source_count": 1,
+                }
+            if reddit_hits:
+                print(f"[Viral Discovery] +{sum(1 for r in reddit_hits if r.get('has_video_url'))} candidatos de Reddit Scout inyectados.")
+        except Exception as e:
+            print(f"[Viral Discovery] Reddit Scout info: {e}")
 
     # Priorizar clips masivos con alto volumen de reproducciones y alta puntuación
     ranked = sorted(

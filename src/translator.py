@@ -382,6 +382,10 @@ Tu tarea es ADAPTAR EL TONO Y FORMATO AL CONTENIDO REAL:
 5. "debate_question": Una pregunta binaria/directa sobre lo que se ve en el clip para disparar comentarios en los primeros 30 minutos.
 6. "context_badge": Etiqueta editorial ultra-específica de 3 a 5 palabras (máx 38 chars, MAYÚSCULAS, palabras completas) que identifique la escena/tema exacto para un badge discreto (ej. "PS5 PRO • PERSECUCIÓN LEONIDA", "PRÓLOGO • PRISIÓN DE LUCIA", "RAGE 9 • FÍSICAS DEL AGUA"). PROHIBIDO usar genéricos como "INTRO DE GTA 6" o "GAMEPLAY REAL".
 
+7. "tiktok_caption": Frase corta y directa en español (máx 54 chars, sentence-case, NO todo mayúsculas) optimizada para TikTok. Sin hashtags aquí.
+8. "tiktok_pinned_comment": Comentario polémico/debatible para fijar en TikTok y disparar discusiones en los primeros 15 minutos (máx 100 chars).
+9. "ig_caption": Copy orientado a envíos por DM en Instagram (estilo "Mándaselo al que...", máx 80 chars, con 1 emoji).
+
 Devuelve tu respuesta EXACTAMENTE en este formato JSON (sin texto extra):
 {{
   "archetype": "humor_parodia | analisis_tecnico | filtracion_misterio | noticia_oficial | reaccion_streamer | gameplay_puro",
@@ -389,7 +393,10 @@ Devuelve tu respuesta EXACTAMENTE en este formato JSON (sin texto extra):
   "summary": "Resumen en español...",
   "hook": "GANCHO EN MAYUSCULAS",
   "debate_question": "¿Pregunta de debate directa para comentarios? 👇",
-  "context_badge": "ESCENA O TEMA ESPECÍFICO"
+  "context_badge": "ESCENA O TEMA ESPECÍFICO",
+  "tiktok_caption": "Frase corta para TikTok",
+  "tiktok_pinned_comment": "Comentario polémico para fijar",
+  "ig_caption": "Mándaselo al que necesita ver esto 🔥"
 }}
 """
     try:
@@ -406,6 +413,9 @@ Devuelve tu respuesta EXACTAMENTE en este formato JSON (sin texto extra):
         hook = data.get("hook", "GAMEPLAY REAL GTA 6").strip().upper()
         debate_question = data.get("debate_question", "¿Qué nota le das a estas físicas y gráficos de GTA 6 del 1 al 10? 👇").strip()
         context_badge = truncate_on_word_boundary((data.get("context_badge") or "").strip().upper(), 42)
+        tiktok_caption = data.get("tiktok_caption", "").strip()
+        tiktok_pinned_comment = data.get("tiktok_pinned_comment", "").strip()
+        ig_caption = data.get("ig_caption", "").strip()
     except Exception as e:
         print(f"[Warning] Error consultando IA para metadatos: {e}")
         # Inferencia heurística de arquetipo si falla la IA
@@ -431,6 +441,9 @@ Devuelve tu respuesta EXACTAMENTE en este formato JSON (sin texto extra):
         hook = fallback_hook
         debate_question = "¿Qué te parece este gameplay de GTA 6? ¿Supera lo que esperabas? 👇" if is_launched else "¿Crees que GTA 6 cumplirá todas las expectativas? ¡Comenta abajo! 👇"
         context_badge = ""
+        tiktok_caption = ""
+        tiktok_pinned_comment = ""
+        ig_caption = ""
 
     # Sanitización gramatical y estética determinista de título, gancho y badge contextual
     hook = _fix_es_title_grammar(hook).replace("¿", "").replace("?", "").strip()
@@ -617,7 +630,7 @@ Grand Theft Auto VI, GTA VI, Vice City y los logotipos asociados son marcas regi
         entity_tags.append("Leonida")
     tags = base_tags + archetype_tags.get(archetype, ["GTA 6 Viral"]) + entity_tags
 
-    return {
+    result = {
         "title": truncate_on_word_boundary(viral_title, 100),
         "description": full_description[:5000],
         "hook": hook,
@@ -627,6 +640,16 @@ Grand Theft Auto VI, GTA VI, Vice City y los logotipos asociados son marcas regi
         "archetype": archetype,
         "tags": tags
     }
+
+    # Copy Multi-Plataforma (retrocompatible: claves opcionales)
+    if tiktok_caption:
+        result["tiktok_caption"] = truncate_on_word_boundary(tiktok_caption, 54)
+    if tiktok_pinned_comment:
+        result["tiktok_pinned_comment"] = tiktok_pinned_comment[:120]
+    if ig_caption:
+        result["ig_caption"] = ig_caption[:120]
+
+    return result
 
 
 def _format_srt_ts(seconds: float) -> str:

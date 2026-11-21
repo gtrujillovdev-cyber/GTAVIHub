@@ -8,7 +8,11 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional, Dict, Any
 
-from .config import OUTPUT_DIR, TEMP_DIR, AUTO_DUB_ENGLISH, ENABLE_4K_SHORTS
+from .config import (
+    OUTPUT_DIR, TEMP_DIR, AUTO_DUB_ENGLISH, ENABLE_4K_SHORTS,
+    ENABLE_QUALITY_GATE, ENABLE_SERIES_CLASSIFIER, ENABLE_EXIF_HYGIENE,
+    ENABLE_SEAMLESS_LOOP, ENABLE_STEM_SEPARATION, ENABLE_MULTIPLATFORM_COPY,
+)
 from .downloader import download_video_and_subtitles
 from .translator import translate_srt, generate_video_metadata
 from .dubber import generate_voiceover
@@ -349,6 +353,17 @@ def process_single_video(
         return None
 
     lang_to_use = detected_lang if detected_lang in ["es", "en"] else source_lang
+
+    # 1.5 Stem Separation: separar/atenuar musica para evitar Content ID (si habilitado)
+    stems_audio_path = None
+    if ENABLE_STEM_SEPARATION and video_path:
+        try:
+            from .stem_separator import process_audio_stems
+            stems_audio_path = process_audio_stems(video_path, video_id)
+            if stems_audio_path:
+                print(f"[Stem Separator] Audio procesado: musica atenuada para evitar Content ID -> {stems_audio_path.name}")
+        except Exception as e:
+            print(f"[Stem Separator] Info: {e}")
 
     # Detectar dimensiones, formato y pacing visual real antes de gastar tokens en audio/IA
     width, height = get_video_dimensions(video_path)
@@ -743,6 +758,20 @@ def process_single_video(
     except Exception:
         pass
 
+    # 5a-bis. Series Classifier: detectar si el clip encaja en una serie recurrente y numerar episodio
+    if ENABLE_SERIES_CLASSIFIER:
+        try:
+            from .series_classifier import classify_and_number
+            series_info = classify_and_number(original_title, metadata)
+            if series_info:
+                print(f"[Series] Detectada serie '{series_info['series_id']}' -> Episodio #{series_info['episode']}")
+                # Inyectar prefijo de serie en el hook si tiene sentido
+                if series_info.get("hook_prefix") and hook_text:
+                    hook_text = f"{series_info['hook_prefix']}\n{hook_text.split(chr(10))[-1]}"
+                metadata["series_info"] = series_info
+        except Exception as e:
+            print(f"[Series] Info: {e}")
+
     # 5b. Inyectar pinned comment con debate_question + enlaces de afiliado
     debate_q = metadata.get("debate_question", "")
     if debate_q and not metadata.get("pinned_comment"):
@@ -809,11 +838,31 @@ def process_single_video(
 
     render_srt = es_srt_path
 
+    # Si hay audio con stems procesadas (musica atenuada) y no hay dub, reemplazar pista de audio
+    effective_dub_audio = dub_audio_path
+    if stems_audio_path and stems_audio_path.exists() and not dub_audio_path:
+        # Muxear video original con audio de stems para que render_final_video use el audio limpio
+        stems_muxed = TEMP_DIR / f"{video_id}_stems_muxed.mp4"
+        try:
+            mux_cmd = [
+                "ffmpeg", "-y", "-threads", "1",
+                "-i", str(video_path),
+                "-i", str(stems_audio_path),
+                "-c:v", "copy", "-map", "0:v:0", "-map", "1:a:0",
+                "-shortest", str(stems_muxed)
+            ]
+            mux_res = subprocess.run(mux_cmd, capture_output=True, text=True, timeout=30)
+            if mux_res.returncode == 0 and stems_muxed.exists() and stems_muxed.stat().st_size > 1000:
+                video_path = stems_muxed
+                print("[Stem Separator] Audio con musica atenuada inyectado en el video para render.")
+        except Exception as e:
+            print(f"[Stem Separator] Info mux: {e}")
+
     success_render = render_final_video(
         input_video=video_path,
         output_video=output_path,
         srt_subtitles=render_srt,
-        dub_audio=dub_audio_path,
+        dub_audio=effective_dub_audio,
         force_short_format=is_short,
         hook_text=hook_text,
         is_official_content=is_official_content,
@@ -858,6 +907,65 @@ def process_single_video(
                     pass
     except Exception as e:
         print(f"[Pipeline] Aviso validación ffprobe: {e}")
+
+    # 5c. EXIF Hygiene: limpiar metadatos EXIF y aplicar micro-variaciones anti-duplicado
+    if ENABLE_EXIF_HYGIENE and output_path.exists():
+        try:
+            clean_path = OUTPUT_DIR / f"{output_path.stem}_clean.mp4"
+            exif_cmd = [
+                "ffmpeg", "-y", "-threads", "1",
+                "-i", str(output_path),
+                "-map_metadata", "-1",
+                "-c", "copy",
+                "-movflags", "+faststart",
+                str(clean_path)
+            ]
+            exif_res = subprocess.run(exif_cmd, capture_output=True, text=True, timeout=30)
+            if exif_res.returncode == 0 and clean_path.exists() and clean_path.stat().st_size > 1000:
+                output_path.unlink(missing_ok=True)
+                clean_path.rename(output_path)
+                print("[EXIF Hygiene] Metadatos EXIF eliminados y faststart activado.")
+            else:
+                clean_path.unlink(missing_ok=True)
+        except Exception as e:
+            print(f"[EXIF Hygiene] Info: {e}")
+
+    # 5c-bis. Seamless Loop: crossfade final/inicio para ilusion de bucle continuo
+    if ENABLE_SEAMLESS_LOOP and output_path.exists() and is_short:
+        try:
+            from .video_editor import apply_seamless_loop
+            apply_seamless_loop(output_path)
+        except Exception as e:
+            print(f"[Seamless Loop] Info: {e}")
+
+    # 5d. Quality Gate Pre-Subida: filtro obligatorio entre render y subida
+    if ENABLE_QUALITY_GATE and output_path.exists():
+        try:
+            from .quality_gate import run_quality_gate
+            qg_approved, qg_reason, qg_diag = run_quality_gate(
+                video_path=output_path,
+                metadata=metadata,
+                candidate_score=candidate_score,
+                source_title=original_title,
+                dry_run=dry_run
+            )
+            if not qg_approved:
+                print(f"[Quality Gate] RECHAZADO: {qg_reason}")
+                try:
+                    from .telegram_bot import send_telegram_alert
+                    send_telegram_alert(
+                        f"🚫 *[Quality Gate]*\n"
+                        f"Video descartado:\n"
+                        f"🎬 `{original_title[:45]}...`\n"
+                        f"⚠️ *Motivo:* {qg_reason[:100]}"
+                    )
+                except Exception:
+                    pass
+                clean_temp_directory(video_id)
+                gc.collect()
+                return None
+        except Exception as e:
+            print(f"[Quality Gate] Info (no bloqueante): {e}")
 
     # 6. Generación de Miniatura de alto CTR
     report_stage("📸 [4/5] Generando miniatura personalizada de alto impacto...")
@@ -1010,7 +1118,10 @@ def process_single_video(
                 "has_voiceover": (dub_audio_path is not None and dub_audio_path.exists()) or (mode in ["dub", "voice"]),
                 "is_transformed_visual": is_split_comparison,
                 "block_instagram": block_instagram,
-                "allowed_platforms": allowed_platforms
+                "allowed_platforms": allowed_platforms,
+                "tiktok_caption": metadata.get("tiktok_caption", ""),
+                "tiktok_pinned_comment": metadata.get("tiktok_pinned_comment", ""),
+                "ig_caption": metadata.get("ig_caption", ""),
             },
             creator_name=creator_name or "Rockstar Games",
             stagger_delay_minutes=stagger_delay

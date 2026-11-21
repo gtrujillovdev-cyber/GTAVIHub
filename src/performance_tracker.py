@@ -409,6 +409,106 @@ def detect_and_apply_winning_angles(limit: int = 12) -> Dict[str, Any]:
     }
 
 
+def detect_outliers(min_records: int = 6) -> Dict[str, Any]:
+    """
+    Detecta outliers positivos y negativos en el rendimiento real del canal.
+    Un outlier positivo tiene >2x la mediana de vistas; uno negativo <0.3x.
+    Retorna patrones accionables para recalibrar el scoring.
+    """
+    records = _load_records()
+    with_metrics = [r for r in records if r.get("views_24h") is not None and r["views_24h"] > 0]
+    if len(with_metrics) < min_records:
+        return {"ok": False, "reason": f"Insuficientes registros con metricas ({len(with_metrics)}/{min_records})"}
+
+    views_list = sorted([r["views_24h"] for r in with_metrics])
+    median_views = views_list[len(views_list) // 2]
+    if median_views <= 0:
+        return {"ok": False, "reason": "Mediana de vistas es 0"}
+
+    positive_outliers = [r for r in with_metrics if r["views_24h"] > median_views * 2.0]
+    negative_outliers = [r for r in with_metrics if r["views_24h"] < median_views * 0.3]
+
+    # Extraer angulos ganadores y perdedores
+    pos_angles = [classify_clip_angle(r.get("title", "")) for r in positive_outliers]
+    neg_angles = [classify_clip_angle(r.get("title", "")) for r in negative_outliers]
+
+    return {
+        "ok": True,
+        "total_records": len(with_metrics),
+        "median_views": median_views,
+        "positive_outliers": len(positive_outliers),
+        "negative_outliers": len(negative_outliers),
+        "winning_angles": list(set(pos_angles)),
+        "losing_angles": list(set(neg_angles)),
+        "top_performer": max(with_metrics, key=lambda r: r["views_24h"]) if with_metrics else None,
+        "worst_performer": min(with_metrics, key=lambda r: r["views_24h"]) if with_metrics else None,
+    }
+
+
+def recalibrate_scoring_weights() -> Dict[str, Any]:
+    """
+    Feedback Loop autonomo: analiza outliers y ajusta el playbook
+    para priorizar angulos ganadores y penalizar los perdedores.
+    Se invoca desde el ciclo de learning_engine o desde el scheduler.
+    """
+    from .config import ENABLE_FEEDBACK_LOOP
+    if not ENABLE_FEEDBACK_LOOP:
+        return {"ok": False, "reason": "ENABLE_FEEDBACK_LOOP desactivado"}
+
+    analysis = detect_outliers()
+    if not analysis.get("ok"):
+        return analysis
+
+    winning = analysis.get("winning_angles", [])
+    losing = analysis.get("losing_angles", [])
+    median = analysis.get("median_views", 0)
+
+    if not winning and not losing:
+        return {"ok": True, "action": "no_adjustment", "reason": "Sin outliers claros"}
+
+    try:
+        from .learning_engine import load_viral_playbook, save_viral_playbook
+        pb = load_viral_playbook()
+        fb = pb.setdefault("feedback_loop", {})
+        fb["last_run"] = datetime.now().isoformat()
+        fb["median_views_24h"] = median
+        fb["total_records_analyzed"] = analysis["total_records"]
+
+        # Registrar angulos ganadores como boost y perdedores como penalizacion
+        if winning:
+            fb["boosted_angles"] = winning
+        if losing:
+            fb["penalized_angles"] = losing
+
+        # Inyectar keywords de angulos ganadores en priority_keywords del playbook
+        heur = pb.setdefault("active_heuristics", {})
+        existing_kws = heur.get("priority_keywords", [])
+        for angle in winning:
+            angle_kws = list(ANGLE_CATALOG.get(angle, ()))[:5]
+            for kw in angle_kws:
+                if kw not in existing_kws:
+                    existing_kws.append(kw)
+        heur["priority_keywords"] = existing_kws[:15]
+
+        # Registrar en avoid_keywords los terminos de angulos perdedores (maximo 5)
+        if losing:
+            avoid = pb.setdefault("avoid_keywords", [])
+            for angle in losing:
+                label = ANGLE_LABELS.get(angle, angle)
+                if label not in avoid:
+                    avoid.append(label)
+            pb["avoid_keywords"] = avoid[:8]
+
+        save_viral_playbook(pb)
+        action = f"boost={winning}, penalize={losing}"
+        print(f"[Feedback Loop] Recalibrado: {action} (mediana={median} vistas/24h)")
+        return {"ok": True, "action": action, "median": median, "analysis": analysis}
+
+    except Exception as e:
+        print(f"[Feedback Loop] Error recalibrando: {e}")
+        return {"ok": False, "reason": str(e)}
+
+
 def format_winner_replication_report(summary: Dict[str, Any]) -> str:
     """Formatea el informe táctico de clips ganadores y réplica para Telegram."""
     if not summary.get("ok"):

@@ -89,6 +89,16 @@ FORCE_ENABLE_GAMEPLAY = os.getenv("FORCE_ENABLE_GAMEPLAY", "true").lower() in ("
 LAUNCH_MAX_VIDEOS_PER_RUN = int(os.getenv("LAUNCH_MAX_VIDEOS_PER_RUN", "1"))
 LAUNCH_MAX_DAILY_UPLOADS = int(os.getenv("LAUNCH_MAX_DAILY_UPLOADS", "4"))
 
+# Feature Flags — Mejoras Alfa (activables individualmente)
+ENABLE_QUALITY_GATE = os.getenv("ENABLE_QUALITY_GATE", "true").lower() in ("1", "true", "yes")
+ENABLE_SERIES_CLASSIFIER = os.getenv("ENABLE_SERIES_CLASSIFIER", "true").lower() in ("1", "true", "yes")
+ENABLE_EXIF_HYGIENE = os.getenv("ENABLE_EXIF_HYGIENE", "true").lower() in ("1", "true", "yes")
+ENABLE_MULTIPLATFORM_COPY = os.getenv("ENABLE_MULTIPLATFORM_COPY", "true").lower() in ("1", "true", "yes")
+ENABLE_REDDIT_SCOUT = os.getenv("ENABLE_REDDIT_SCOUT", "true").lower() in ("1", "true", "yes")
+ENABLE_SEAMLESS_LOOP = os.getenv("ENABLE_SEAMLESS_LOOP", "true").lower() in ("1", "true", "yes")
+ENABLE_STEM_SEPARATION = os.getenv("ENABLE_STEM_SEPARATION", "false").lower() in ("1", "true", "yes")
+ENABLE_FEEDBACK_LOOP = os.getenv("ENABLE_FEEDBACK_LOOP", "true").lower() in ("1", "true", "yes")
+
 def is_gameplay_enabled() -> bool:
     """Verifica si la fase de Shorts de Gameplay está activa (vía override o desde la fecha objetivo)."""
     if FORCE_ENABLE_GAMEPLAY:
