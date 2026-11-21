@@ -64,13 +64,19 @@ VIRAL_KEYWORDS = [
     # Geografía & Lugares de Leonida
     "vice city", "leonida", "port gellhorn", "ocean drive", "keys", "cayos", "vice beach",
     "grassrivers", "everglades", "little haiti", "venetian islands", "starfish island", "escobar",
-    # Jugabilidad, Físicas & Motor RAGE 9
+    # Jugabilidad, Físicas & Motor RAGE 9 (ES + EN)
     "gameplay", "leak", "leaks", "filtracion", "filtración", "fisicas", "físicas", "physics",
     "graphics", "graficos", "gráficos", "rage 9", "water physics", "interiores", "ia npc",
     "atraco", "armas", "weapon wheel", "saqueo", "animaciones", "rehenes", "gasolinera",
     "deformacion", "deformación", "choque", "accidente", "tiroteo", "gunplay", "cobertura",
     "policia", "policía", "swat", "persecucion", "persecución", "5 estrellas", "helicoptero",
     "helicóptero", "striptease", "discoteca", "maletero",
+    # EN keywords (títulos fuente son mayoritariamente en inglés)
+    "chase", "crash", "explosion", "insane", "crazy", "wtf", "funny", "glitch",
+    "bug", "ragdoll", "detail", "hidden", "secret", "comparison", "realistic",
+    "open world", "mission", "heist", "robbery", "police", "wanted", "helicopter",
+    "shooting", "combat", "driving", "car", "boat", "weapon", "npc", "ai",
+    "next gen", "next-gen", "4k", "60fps", "review", "reaction", "breakdown",
     # Fauna & Ecosistema Salvaje
     "caiman", "caimán", "cocodrilo", "alligator", "tiburon", "tiburón", "shark", "flamenco",
     # Tráilers, Secretos & Novedades
@@ -203,26 +209,25 @@ def calculate_virality_score(
         elif vpd >= 50:
             velocity_score = 3
 
-    # 2. Puntos por visualizaciones absolutas (0 a 25 normalmente, o hasta 45 si days_old no está disponible)
+    # 2. Puntos por visualizaciones absolutas (0 a 25; cap a 20 sin fecha para evitar inflación)
     if days_old is None:
-        # Fallback cuando yt-dlp --flat-playlist no devuelve upload_date:
-        # El volumen de vistas asume la escala combinada para no penalizar artificialmente
+        # Sin upload_date: cap conservador para no inflar score de videos viejos
         if views >= 1_000_000:
-            views_score = 45
+            views_score = 20
         elif views >= 500_000:
-            views_score = 38
-        elif views >= 100_000:
-            views_score = 30
-        elif views >= 50_000:
-            views_score = 24
-        elif views >= 20_000:
             views_score = 18
-        elif views >= 5_000:
+        elif views >= 100_000:
+            views_score = 15
+        elif views >= 50_000:
             views_score = 12
+        elif views >= 20_000:
+            views_score = 9
+        elif views >= 5_000:
+            views_score = 6
         elif views >= 1_000:
-            views_score = 7
+            views_score = 3
         else:
-            views_score = 2
+            views_score = 1
     else:
         if views >= 10_000_000:
             views_score = 25
@@ -524,7 +529,7 @@ def scan_viral_radar(
                     "id": rid,
                     "title": rh.get("title", ""),
                     "url": rh.get("url", ""),
-                    "duration": rh.get("duration", 30),
+                    "duration": rh.get("duration", 0),
                     "views": rh.get("views", 0),
                     "uploader": rh.get("uploader", "Reddit"),
                     "channel_url": rh.get("reddit_permalink", ""),
@@ -543,10 +548,14 @@ def scan_viral_radar(
         except Exception as e:
             print(f"[Viral Discovery] Reddit Scout info: {e}")
 
-    # Priorizar clips masivos con alto volumen de reproducciones y alta puntuación
+    # Priorizar por score de viralidad (velocity-first), no por views brutas
     ranked = sorted(
         candidates_by_id.values(),
-        key=lambda x: (x.get("views", 0) * 0.5 + x.get("score", 0) * 1000),
+        key=lambda x: (
+            x.get("score", 0) * 100
+            + x.get("velocity_score", 0) * 50
+            + min(x.get("views", 0), 500_000) * 0.001
+        ),
         reverse=True
     )
     top_candidates = ranked[:max_candidates]

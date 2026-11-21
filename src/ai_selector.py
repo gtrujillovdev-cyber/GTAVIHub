@@ -78,6 +78,14 @@ def _visual_appeal_adjustment(item: Dict[str, Any]) -> float:
     return delta
 
 
+def _truncate_hook_line(text: str, max_chars: int = 20) -> str:
+    """Trunca un hook a max_chars en límite de palabra."""
+    if len(text) <= max_chars:
+        return text
+    truncated = text[:max_chars].rsplit(" ", 1)[0]
+    return truncated if truncated else text[:max_chars]
+
+
 def select_best_candidate_ai(
     candidates: List[Dict[str, Any]],
     launch_mode: bool = False,
@@ -363,6 +371,9 @@ RESPONDE EXCLUSIVAMENTE CON UN OBJETO JSON VÁLIDO:
 
             l1_clean = _fix_es_title_grammar(decision.get("hook_line1", "").replace("¿", "").replace("?", "")).strip().upper()
             l2_clean = _fix_es_title_grammar(decision.get("hook_line2", "").replace("¿", "").replace("?", "")).strip().upper()
+            # Truncar hooks a 20 chars en límite de palabra para evitar texto desbordado
+            l1_clean = _truncate_hook_line(l1_clean, 20)
+            l2_clean = _truncate_hook_line(l2_clean, 20)
             chosen["hook_line1"] = l1_clean
             chosen["hook_line2"] = l2_clean
             chosen["audience_appeal"] = decision.get("audience_appeal", "")

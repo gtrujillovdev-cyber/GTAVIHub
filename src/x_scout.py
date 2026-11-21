@@ -341,7 +341,7 @@ def _extract_candidates_from_graphql_payload(
             seen_ids.add(video_id)
             score_data = calculate_virality_score(
                 title=tweet_text[:120],
-                duration=28,
+                duration=0,
                 views=tweet_views,
                 days_old=1,
             )
@@ -426,7 +426,7 @@ def _collect_tweets_from_current_page(
 
                     score_data = calculate_virality_score(
                         title=tweet_text[:120],
-                        duration=28,
+                        duration=0,
                         views=tweet_views,
                         days_old=1,
                     )
