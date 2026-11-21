@@ -178,7 +178,7 @@ ANGLE_CATALOG: Dict[str, tuple[str, ...]] = {
         "colisión", "deformacion", "deformación", "choque", "crash", "ragdoll",
         "mecanica", "mecánica", "mecanicas", "mecánicas", "agarre", "animacion",
         "animación", "conduccion", "conducción", "disparo", "combate", "pelea",
-        "ia", "npc", "npcs", "destruccion", "destrucción"
+        " ia ", "npc", "npcs", "destruccion", "destrucción"
     ),
     "reaccion_streamer": (
         "reaccion", "reacción", "reaction", "reacts", "xqc", "ibai", "rubius", "elrubius",
@@ -206,6 +206,12 @@ ANGLE_CATALOG: Dict[str, tuple[str, ...]] = {
         "mapa", "map", "leonida", "vice city", "curiosidad", "curiosidades",
         "loot", "ubicacion", "ubicación", "truco", "trucos", "dinero"
     ),
+    "realismo_inmersion": (
+        "real life", "looks real", "too real", "realistic", "realism", "realismo",
+        "insane", "mindblowing", "mind blowing", "incredible", "amazing",
+        "open world", "mundo abierto", "inmersion", "inmersión", "density",
+        "next gen", "next-gen", "absurdly"
+    ),
 }
 
 ANGLE_LABELS: Dict[str, str] = {
@@ -215,6 +221,7 @@ ANGLE_LABELS: Dict[str, str] = {
     "historia_misiones": "Historia, Misiones y Protagonistas",
     "comparativa_tecnica": "Comparativas Técnicas y Gráficos PS5 Pro",
     "secretos_detalles": "Secretos, Mapa y Detalles Ocultos",
+    "realismo_inmersion": "Realismo, Mundo Abierto e Inmersión",
     "gameplay_general": "Gameplay General",
 }
 

@@ -1032,8 +1032,13 @@ class SocialPublisher:
                 if plat == "instagram":
                     print("[Opción B] 🎬 Generando contenido alternativo orgánico para Instagram (Story cinemática de GTA 6)...")
                     try:
-                        from .story_scheduler import publish_scheduled_story
-                        story_res = publish_scheduled_story(force=True, preferred_type="content", dry_run=self.dry_run)
+                        from .story_scheduler import publish_scheduled_story, can_publish_story
+                        can_story, story_reason = can_publish_story(force=False)
+                        if not can_story:
+                            print(f"[Opción B] Story omitida (límite diario): {story_reason}")
+                            results["instagram"] = f"Bloqueado por Compliance Shield (story cooldown: {story_reason})"
+                            continue
+                        story_res = publish_scheduled_story(force=False, preferred_type="content", dry_run=self.dry_run)
                         if story_res.get("status") in ("published", "simulated", "ok") or (self.dry_run and story_res.get("item")):
                             story_item = story_res.get("item", "Curiosidad GTA 6")
                             story_url = story_res.get("story_url") or "https://www.instagram.com/gtavihubextra/"

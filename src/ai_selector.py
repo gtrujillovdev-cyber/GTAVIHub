@@ -208,15 +208,15 @@ def select_best_candidate_ai(
 
         # Escudo Anti-Monocultura / Rotación Temática Obligatoria:
         cand_angle = classify_clip_angle(item.get("title") or "", item.get("uploader") or item.get("source_name") or "")
-        if last_pub_angle and cand_angle == last_pub_angle and cand_angle != "gameplay_general":
-            # Cooldown inmediato: Evita subir 2 vídeos del mismo ángulo de forma consecutiva
+        if last_pub_angle and cand_angle == last_pub_angle:
+            # Cooldown inmediato: Evita subir 2 vídeos del mismo ángulo consecutivamente (incluido gameplay_general)
             s -= 25.0
-        if recent_window_4.count(cand_angle) >= 2 and cand_angle != "gameplay_general":
-            # Fatiga de categoría: Si el ángulo ya tiene >= 2 apariciones en los últimos 4 vídeos, penalizar fuertemente
+        if recent_window_4.count(cand_angle) >= 2:
+            # Fatiga de categoría: >= 2 apariciones en los últimos 4 vídeos penaliza fuerte (sin excepciones)
             s -= 35.0
-        elif cand_angle in ("fisicas_motor", "secretos_detalles", "policia_caos", "reaccion_streamer", "historia_misiones") and cand_angle not in recent_window_4:
-            # Bonus de frescura temática: Premia categorías desatendidas para mantener el canal variado y vibrante
-            s += 16.0
+        elif cand_angle not in recent_window_4:
+            # Bonus de frescura temática: Premia cualquier categoría desatendida
+            s += 18.0
 
         return s
 

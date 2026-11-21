@@ -185,15 +185,25 @@ def publish_scheduled_story(
         img_path, link_url, caption, prod_key = build_next_rotating_deal_story()
         item_desc = f"Oferta Rotatoria: {prod_key}"
     else:
-        # Buscar último thumbnail disponible de GTA 6 en output
+        # Buscar último thumbnail y extraer título real del info.json
         thumbs = sorted(OUTPUT_DIR.glob("*_thumb.jpg"), key=lambda f: f.stat().st_mtime, reverse=True)
         thumb_path = thumbs[0] if thumbs else None
+        story_title = "NOVEDADES GTA 6"
+        if thumb_path:
+            info_path = thumb_path.with_name(thumb_path.name.replace("_thumb.jpg", "_info.json"))
+            if info_path.exists():
+                try:
+                    info_data = json.loads(info_path.read_text(encoding="utf-8"))
+                    yt_meta = info_data.get("youtube_metadata", info_data)
+                    story_title = yt_meta.get("title", story_title)[:50]
+                except Exception:
+                    pass
         img_path, link_url, caption = build_content_teaser_story(
-            video_title="NOVEDADES Y GAMEPLAY GTA 6",
+            video_title=story_title,
             video_thumb_path=thumb_path,
             reel_url="https://linktr.ee/gtavihubextra"
         )
-        item_desc = "Noticia / Gameplay Teaser GTA VI"
+        item_desc = f"Teaser: {story_title[:40]}"
 
     # Publicar a Instagram Stories
     result_url = publish_story_to_instagram(
