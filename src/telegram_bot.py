@@ -1462,6 +1462,18 @@ def start_telegram_bot_daemon():
                 except Exception as e:
                     print(f"[PerformanceTracker] Error obteniendo métricas/ganadores: {e}")
 
+                # Community Manager: responder comentarios en YouTube e Instagram
+                try:
+                    from .community_manager import run_autonomous_community_cycle
+                    comm = run_autonomous_community_cycle(yt_max=6, ig_max=4)
+                    total = comm.get("total_replied", 0)
+                    if total > 0:
+                        yt_n = comm.get("youtube", {}).get("replied", 0)
+                        ig_n = comm.get("instagram", {}).get("replied", 0)
+                        print(f"[Community Manager] {total} respuestas (YT={yt_n}, IG={ig_n})")
+                except Exception as e:
+                    print(f"[Community Manager] Info: {e}")
+
             # Transición automática a Fase Estreno al cruzar las 00:00 CET (comprobación cada 5 min)
             if not hasattr(start_telegram_bot_daemon, '_last_phase_check'):
                 start_telegram_bot_daemon._last_phase_check = 0

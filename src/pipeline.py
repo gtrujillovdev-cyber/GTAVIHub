@@ -838,25 +838,12 @@ def process_single_video(
 
     render_srt = es_srt_path
 
-    # Si hay audio con stems procesadas (musica atenuada) y no hay dub, reemplazar pista de audio
+    # Si hay audio con stems procesadas (musica atenuada) y no hay dub, usarlo como dub_audio
+    # render_final_video ya sabe mezclar una pista de audio alternativa sin mux intermedio
     effective_dub_audio = dub_audio_path
     if stems_audio_path and stems_audio_path.exists() and not dub_audio_path:
-        # Muxear video original con audio de stems para que render_final_video use el audio limpio
-        stems_muxed = TEMP_DIR / f"{video_id}_stems_muxed.mp4"
-        try:
-            mux_cmd = [
-                "ffmpeg", "-y", "-threads", "1",
-                "-i", str(video_path),
-                "-i", str(stems_audio_path),
-                "-c:v", "copy", "-map", "0:v:0", "-map", "1:a:0",
-                "-shortest", str(stems_muxed)
-            ]
-            mux_res = subprocess.run(mux_cmd, capture_output=True, text=True, timeout=30)
-            if mux_res.returncode == 0 and stems_muxed.exists() and stems_muxed.stat().st_size > 1000:
-                video_path = stems_muxed
-                print("[Stem Separator] Audio con musica atenuada inyectado en el video para render.")
-        except Exception as e:
-            print(f"[Stem Separator] Info mux: {e}")
+        effective_dub_audio = stems_audio_path
+        print("[Stem Separator] Audio con musica atenuada pasado directamente al render (sin mux intermedio).")
 
     success_render = render_final_video(
         input_video=video_path,
@@ -868,7 +855,8 @@ def process_single_video(
         is_official_content=is_official_content,
         archetype=archetype,
         format_preset=target_preset,
-        context_badge=metadata.get("context_badge", "")
+        context_badge=metadata.get("context_badge", ""),
+        cached_dimensions=(width, height)
     )
 
     if not success_render or not output_path.exists():
@@ -908,27 +896,8 @@ def process_single_video(
     except Exception as e:
         print(f"[Pipeline] Aviso validación ffprobe: {e}")
 
-    # 5c. EXIF Hygiene: limpiar metadatos EXIF y aplicar micro-variaciones anti-duplicado
-    if ENABLE_EXIF_HYGIENE and output_path.exists():
-        try:
-            clean_path = OUTPUT_DIR / f"{output_path.stem}_clean.mp4"
-            exif_cmd = [
-                "ffmpeg", "-y", "-threads", "1",
-                "-i", str(output_path),
-                "-map_metadata", "-1",
-                "-c", "copy",
-                "-movflags", "+faststart",
-                str(clean_path)
-            ]
-            exif_res = subprocess.run(exif_cmd, capture_output=True, text=True, timeout=30)
-            if exif_res.returncode == 0 and clean_path.exists() and clean_path.stat().st_size > 1000:
-                output_path.unlink(missing_ok=True)
-                clean_path.rename(output_path)
-                print("[EXIF Hygiene] Metadatos EXIF eliminados y faststart activado.")
-            else:
-                clean_path.unlink(missing_ok=True)
-        except Exception as e:
-            print(f"[EXIF Hygiene] Info: {e}")
+    # 5c. EXIF Hygiene: integrado en render_final_video (-map_metadata -1 -movflags +faststart)
+    # Ya no requiere paso FFmpeg adicional.
 
     # 5c-bis. Seamless Loop: crossfade final/inicio para ilusion de bucle continuo
     if ENABLE_SEAMLESS_LOOP and output_path.exists() and is_short:

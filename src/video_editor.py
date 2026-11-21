@@ -1022,7 +1022,8 @@ def render_final_video(
     is_official_content: bool = False,
     archetype: str = "",
     format_preset: Optional[str] = None,
-    context_badge: str = ""
+    context_badge: str = "",
+    cached_dimensions: Optional[Tuple[int, int]] = None
 ) -> bool:
     """
     Ensamblaje viral definitivo con KARAOKE GLOW, GANCHO SUPERIOR (0-2.5s) y ENCUADRE INTELIGENTE:
@@ -1038,7 +1039,10 @@ def render_final_video(
     """
     temp_dir = input_video.parent
     base_name = input_video.stem
-    width, height = get_video_dimensions(input_video)
+    if cached_dimensions:
+        width, height = cached_dimensions
+    else:
+        width, height = get_video_dimensions(input_video)
     is_already_vertical = (height > width)
     is_vertical = force_short_format or is_already_vertical
 
@@ -1487,6 +1491,7 @@ def render_final_video(
         "-maxrate", FFMPEG_MAXRATE,
         "-bufsize", FFMPEG_BUFSIZE,
         "-pix_fmt", "yuv420p",
+        "-map_metadata", "-1",
         "-movflags", "+faststart"
     ])
 
