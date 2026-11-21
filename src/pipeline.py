@@ -21,6 +21,58 @@ from .monitor import notify_macos
 from .cleaner import clean_temp_directory, clean_uploaded_video_file, enforce_storage_limits
 from .copilot import is_copilot_enabled, stage_pending_video, evaluate_autopilot_eligibility, schedule_auto_approve_if_pending
 
+
+def _describe_segment_visually(video_path: Path, duration_sec: float) -> str:
+    """Extrae keyframes del segmento recortado y pide a Gemini Vision una descripción breve.
+
+    Esto permite que generate_video_metadata base el título en lo que realmente se ve
+    en el clip, no en el título genérico del vídeo completo de origen.
+    """
+    frames = []
+    try:
+        from google.genai import types
+        from .translator import get_gemini_client, generate_content_with_retry
+        client = get_gemini_client()
+
+        eff_dur = max(5.0, min(duration_sec, 50.0))
+        sample_times = [eff_dur * 0.15, eff_dur * 0.50, eff_dur * 0.85]
+        contents = []
+
+        for idx, t in enumerate(sample_times):
+            tmp_jpg = video_path.parent / f"_vis_desc_{video_path.stem}_{idx}.jpg"
+            subprocess.run(
+                ["ffmpeg", "-y", "-ss", f"{t:.2f}", "-i", str(video_path),
+                 "-vframes", "1", "-q:v", "5", "-vf", "scale=480:-1", str(tmp_jpg)],
+                capture_output=True, timeout=10,
+            )
+            if tmp_jpg.exists():
+                frames.append(tmp_jpg)
+                contents.append(types.Part.from_bytes(data=tmp_jpg.read_bytes(), mime_type="image/jpeg"))
+
+        if not contents:
+            return ""
+
+        contents.append(
+            "Describe en 2-3 frases breves en español lo que se ve exactamente en estos fotogramas de GTA 6. "
+            "Menciona acciones concretas (personaje, vehículo, ubicación, acción visible). "
+            "Solo describe lo visible, no inventes nada."
+        )
+        resp = generate_content_with_retry(client=client, contents=contents)
+        desc = (getattr(resp, "text", "") or "").strip()
+        if desc:
+            print(f"[✓ Visual Context] Descripción del segmento: {desc[:120]}...")
+        return desc[:400] if desc else ""
+    except Exception as e:
+        print(f"[Visual Context] No disponible: {e}")
+        return ""
+    finally:
+        for f in frames:
+            try:
+                f.unlink(missing_ok=True)
+            except Exception:
+                pass
+
+
 def _count_spoken_words_in_srt(srt_path: Optional[Path]) -> int:
     """Cuenta palabras habladas reales en un SRT ignorando numeración, marcas de tiempo y etiquetas tipo [Music]."""
     if not srt_path or not srt_path.exists():
@@ -641,6 +693,13 @@ def process_single_video(
             clip_transcript_text = active_srt.read_text(encoding="utf-8", errors="ignore")
         except Exception:
             clip_transcript_text = ""
+
+    # Si el segmento no tiene transcript (gameplay mudo), extraer contexto visual de los keyframes
+    # para que el título generado describa lo que realmente se ve, no el vídeo completo.
+    if not clip_transcript_text and video_path and video_path.exists() and clip_dur_sec > 5:
+        visual_desc = _describe_segment_visually(video_path, clip_dur_sec)
+        if visual_desc:
+            clip_transcript_text = f"[DESCRIPCIÓN VISUAL DEL SEGMENTO RECORTADO]: {visual_desc}"
 
     metadata = generate_video_metadata(
         original_title=original_title or video_id,

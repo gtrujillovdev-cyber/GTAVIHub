@@ -31,12 +31,13 @@ GTA6_KEYWORDS = [
 ]
 
 TASTE_TOPIC_MAP = {
-    "fisicas": ["physics", "fisica", "física", "rage 9", "water", "agua", "destruction", "ragdoll"],
-    "comparativa": ["vs", "comparison", "comparativa", "gta 5", "gta v", "rdr2", "ps5 pro", "graphics", "graficos"],
+    "fisicas": ["physics", "fisica", "física", "rage 9", "water", "agua", "destruction", "ragdoll", "mecanica", "mecánica", "agarre", "colision", "colisión"],
+    "comparativa": ["vs", "comparison", "comparativa", "gta 5", "gta v", "rdr2", "ps5 pro", "graphics", "graficos", "grafica", "gráfica", "4k", "60fps", "fps"],
+    "reaccion_streamer": ["willyrex", "danirep", "rubius", "illojuan", "thegrefg", "auron", "elxokas", "vegetta", "djmariio", "streamer", "reacciona", "prueba", "reaction", "reaccion"],
     "gameplay": ["gameplay", "free roam", "mundo abierto", "mission", "mision", "combate", "driving"],
-    "misterios": ["secret", "secreto", "easter egg", "mystery", "misterio", "map", "mapa", "leak", "hidden"],
+    "misterios": ["secret", "secreto", "easter egg", "mystery", "misterio", "map", "mapa", "leak", "hidden", "oculto", "oculta", "legendaria", "detalle"],
     "personajes": ["lucia", "jason", "npc", "character", "protagonist", "trailer"],
-    "humor_reaccion": ["funny", "caos", "chaos", "reaction", "reaccion", "fail", "wtf", "crazy"],
+    "humor_reaccion": ["funny", "caos", "chaos", "fail", "wtf", "crazy"],
 }
 
 YOUTUBE_RE = re.compile(
@@ -50,7 +51,7 @@ X_STATUS_RE = re.compile(
 )
 VIEWS_RE = re.compile(r'([\d,.]+)\s*([KMB]?)\s*(?:views|visualizaciones)', re.IGNORECASE)
 
-LIKED_BONUS = 15
+LIKED_BONUS = 30
 
 
 def _is_gta6_tweet(text: str) -> bool:
@@ -161,17 +162,18 @@ def update_x_taste_profile(liked_tweets: List[Dict[str, Any]]) -> Dict[str, Any]
 
 
 def get_x_taste_boost(title: str, uploader: str = "") -> int:
-    """Devuelve un bonus de 0 a 15 pts si el candidato encaja con el patrón de Likes en X."""
+    """Devuelve un bonus de 0 a 20 pts si el candidato encaja con el patrón de Likes en X."""
     profile = load_x_taste_profile()
     boost = 0
     low_title = (title or "").lower()
+    low_uploader = (uploader or "").lower()
     for topic in profile.get("preferred_topics", []):
         kws = TASTE_TOPIC_MAP.get(topic, [])
         if any(kw in low_title for kw in kws):
-            boost += 5
-    if uploader and uploader in profile.get("preferred_creators", []):
-        boost += 5
-    return min(15, boost)
+            boost += 7
+    if uploader and (uploader in profile.get("preferred_creators", []) or any(c.lower() in low_uploader for c in profile.get("preferred_creators", []))):
+        boost += 7
+    return min(20, boost)
 
 
 def ingest_x_likes_as_sources(liked_candidates: List[Dict[str, Any]]) -> Dict[str, int]:

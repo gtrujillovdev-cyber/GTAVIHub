@@ -194,6 +194,10 @@ def select_best_candidate_ai(
         elif _avoid_kws and not item.get("is_user_liked") and any(kw in t_low for kw in _avoid_kws):
             s -= 8.0
 
+        # Señal directa de Like en X: el usuario ya validó manualmente este tipo de contenido
+        if item.get("is_liked") or item.get("is_user_liked"):
+            s += 20.0
+
         # Escudo Anti-Monocultura / Rotación Temática Obligatoria:
         cand_angle = classify_clip_angle(item.get("title") or "", item.get("uploader") or item.get("source_name") or "")
         if last_pub_angle and cand_angle == last_pub_angle and cand_angle != "gameplay_general":
