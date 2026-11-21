@@ -238,7 +238,10 @@ def ingest_x_likes_as_sources(liked_candidates: List[Dict[str, Any]]) -> Dict[st
         if reg.get("success"):
             stats["registered_sources"] += 1
 
-    if stats["queued_clips"] > 0:
+    if stats["queued_clips"] > 0 or existing_queue:
+        # Limpiar items con score bajo y ordenar por score desc
+        existing_queue = [it for it in existing_queue if it.get("score", 0) >= 50]
+        existing_queue.sort(key=lambda x: x.get("score", 0), reverse=True)
         CURATED_QUEUE_FILE.parent.mkdir(parents=True, exist_ok=True)
         CURATED_QUEUE_FILE.write_text(
             json.dumps(existing_queue[-50:], indent=2, ensure_ascii=False),
