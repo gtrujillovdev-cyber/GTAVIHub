@@ -525,7 +525,14 @@ def fetch_channel_candidates(max_per_channel: int = 2) -> List[Dict[str, Any]]:
         try:
             with open(CURATED_QUEUE_FILE, "r", encoding="utf-8") as f:
                 curated_items = json.load(f)
-            for item in curated_items:
+            # Limpiar items con score bajo antes de inyectar (evita basura de X Scout)
+            clean_curated = [it for it in curated_items if it.get("score", 0) >= 50]
+            if len(clean_curated) < len(curated_items):
+                print(f"[Channels] Curated queue: descartados {len(curated_items) - len(clean_curated)} items con score < 50")
+                CURATED_QUEUE_FILE.write_text(
+                    json.dumps(clean_curated, indent=2, ensure_ascii=False), encoding="utf-8"
+                )
+            for item in clean_curated:
                 cid = item.get("id")
                 if cid and cid not in processed_ids:
                     candidates_by_id[cid] = item

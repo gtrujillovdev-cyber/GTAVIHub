@@ -212,6 +212,15 @@ ANGLE_CATALOG: Dict[str, tuple[str, ...]] = {
         "open world", "mundo abierto", "inmersion", "inmersión", "density",
         "next gen", "next-gen", "absurdly"
     ),
+    "tips_guias": (
+        "tip", "tips", "trick", "tricks", "guide", "how to", "where to find",
+        "best weapon", "best car", "legendary weapon", "rare car", "money glitch",
+        "fast cash", "loadout", "unlock", "how to get", "how to find",
+        "guia", "guía", "consejo", "consejos", "mejor arma", "mejor coche",
+        "arma legendaria", "coche raro", "dinero rapido", "dinero rápido",
+        "como conseguir", "cómo conseguir", "como encontrar", "cómo encontrar",
+        "desbloquear", "spot", "spots", "farm", "grinding"
+    ),
 }
 
 ANGLE_LABELS: Dict[str, str] = {
@@ -222,6 +231,7 @@ ANGLE_LABELS: Dict[str, str] = {
     "comparativa_tecnica": "Comparativas Técnicas y Gráficos PS5 Pro",
     "secretos_detalles": "Secretos, Mapa y Detalles Ocultos",
     "realismo_inmersion": "Realismo, Mundo Abierto e Inmersión",
+    "tips_guias": "Tips, Guías y Ubicaciones de Loot",
     "gameplay_general": "Gameplay General",
 }
 
@@ -499,12 +509,12 @@ def recalibrate_scoring_weights() -> Dict[str, Any]:
 
         # Registrar en avoid_keywords los terminos de angulos perdedores (maximo 5)
         if losing:
-            avoid = pb.setdefault("avoid_keywords", [])
+            avoid = heur.get("avoid_keywords", [])
             for angle in losing:
                 label = ANGLE_LABELS.get(angle, angle)
                 if label not in avoid:
                     avoid.append(label)
-            pb["avoid_keywords"] = avoid[:8]
+            heur["avoid_keywords"] = avoid[:8]
 
         save_viral_playbook(pb)
         action = f"boost={winning}, penalize={losing}"

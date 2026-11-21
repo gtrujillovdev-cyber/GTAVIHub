@@ -43,7 +43,20 @@ DEFAULT_VIRAL_QUERIES = [
     "ytsearch20:GTA 6 mind blowing physics rage engine",
     "ytsearch20:GTA 6 map size comparison vice city",
     "ytsearch20:GTA 6 secrets you completely missed",
-    "ytsearch20:GTA 6 cosas ocultas detalles analisis"
+    "ytsearch20:GTA 6 cosas ocultas detalles analisis",
+    # Post-Launch: Tips, Guias, Ubicaciones y Secretos Accionables
+    "ytsearch20:GTA 6 tips tricks beginners guide",
+    "ytsearch20:GTA 6 secret weapons locations legendary",
+    "ytsearch20:GTA 6 hidden cars rare vehicles locations",
+    "ytsearch20:GTA 6 money glitch fast cash tips",
+    "ytsearch20:GTA 6 best weapons where to find",
+    "ytsearch20:GTA 6 easter eggs locations found",
+    "ytsearch15:GTA 6 armas secretas ubicaciones legendarias",
+    "ytsearch15:GTA 6 coches raros ubicaciones escondidas",
+    "ytsearch15:GTA 6 trucos dinero rapido tips",
+    "ytsearch15:GTA 6 mejores armas donde encontrar",
+    "ytsearch15:GTA 6 misiones secretas ocultas guia",
+    "ytsearch15:GTA 6 localizaciones secretas mapa leonida",
 ]
 
 # Consultas específicas de Gameplay Puro activas en fase de lanzamiento/gameplay
@@ -77,6 +90,13 @@ VIRAL_KEYWORDS = [
     "open world", "mission", "heist", "robbery", "police", "wanted", "helicopter",
     "shooting", "combat", "driving", "car", "boat", "weapon", "npc", "ai",
     "next gen", "next-gen", "4k", "60fps", "review", "reaction", "breakdown",
+    # Post-Launch: Tips, Guias, Ubicaciones, Armas, Coches (contenido accionable)
+    "tip", "tips", "trick", "tricks", "guide", "how to", "where to find", "location",
+    "legendary", "rare", "unique", "money", "cash", "fast money", "glitch",
+    "best car", "best weapon", "loadout", "unlock", "find", "spot",
+    "guia", "guía", "truco", "trucos", "ubicacion", "ubicación", "legendaria",
+    "legendario", "raro", "unica", "unico", "dinero", "rapido", "desbloquear",
+    "mejor arma", "mejor coche", "donde encontrar",
     # Fauna & Ecosistema Salvaje
     "caiman", "caimán", "cocodrilo", "alligator", "tiburon", "tiburón", "shark", "flamenco",
     # Tráilers, Secretos & Novedades

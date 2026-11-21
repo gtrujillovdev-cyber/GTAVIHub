@@ -206,6 +206,13 @@ def select_best_candidate_ai(
         if item.get("is_liked") or item.get("is_user_liked"):
             s += 20.0
 
+        # Multi-fuente: detectado por varias queries/fuentes = momento viral confirmado
+        src_count = int(item.get("source_count") or 1)
+        if src_count >= 3:
+            s += 18.0
+        elif src_count >= 2:
+            s += 10.0
+
         # Escudo Anti-Monocultura / Rotación Temática Obligatoria:
         cand_angle = classify_clip_angle(item.get("title") or "", item.get("uploader") or item.get("source_name") or "")
         if last_pub_angle and cand_angle == last_pub_angle:
@@ -234,6 +241,14 @@ def select_best_candidate_ai(
                 recent_titles = [item.get("title", "") for item in hist[-8:] if item.get("title")]
     except Exception:
         recent_titles = []
+
+    # Cargar rendimiento real de clips recientes para decisiones informadas
+    performance_context = ""
+    try:
+        from .performance_tracker import get_performance_context_for_playbook
+        performance_context = get_performance_context_for_playbook()
+    except Exception:
+        pass
 
     # Cargar radar de tráfico y contexto editorial reciclado en tiempo real
     traffic_radar_summary = {}
@@ -317,6 +332,8 @@ DEMANDA DE BÚSQUEDA Y TRÁFICO EN TIEMPO REAL (LO QUE INTERNET BUSCA AHORA MISM
 
 VÍDEOS RECIENTES YA PUBLICADOS (EVITA REPETIR ESTAS TEMÁTICAS):
 {json.dumps(recent_titles, indent=2, ensure_ascii=False)}
+
+{f"RENDIMIENTO REAL DE NUESTROS ÚLTIMOS CLIPS (usa esto para decidir qué ÁNGULOS replican éxito):{chr(10)}{performance_context}" if performance_context else ""}
 
 CRITERIOS EDITORIALES DE VICTORIA (PLAYBOOK GAMEPLAY ACTIVO):
 0. PRIORIDAD #1 ABSOLUTA — GAMEPLAY REAL IN-GAME Y COMPARATIVAS TÉCNICAS:
