@@ -1338,7 +1338,7 @@ def handle_callback_query(cq: Dict[str, Any]):
             keyboard = {
                 "inline_keyboard": [
                     [{"text": "🔄 Forzar Actualización Ahora", "callback_data": "deals_force_update"}],
-                    [{"text": "🌐 Ver Linktree Oficial", "url": "https://linktr.ee/gtavihubspain"}]
+                    [{"text": "🌐 Ver Linktree Oficial", "url": "https://linktr.ee/gtavihubextra"}]
                 ]
             }
             edit_telegram_message(msg_id, res["report"], reply_markup=keyboard)
@@ -1754,7 +1754,7 @@ def start_telegram_bot_daemon():
                             keyboard = {
                                 "inline_keyboard": [
                                     [{"text": "🔄 Forzar Actualización Ahora", "callback_data": "deals_force_update"}],
-                                    [{"text": "🌐 Ver Linktree Oficial", "url": "https://linktr.ee/gtavihubspain"}]
+                                    [{"text": "🌐 Ver Linktree Oficial", "url": "https://linktr.ee/gtavihubextra"}]
                                 ]
                             }
                             send_telegram_alert(report, reply_markup=keyboard)

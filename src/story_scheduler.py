@@ -132,7 +132,7 @@ def build_next_rotating_deal_story() -> Tuple[Path, str, str, str]:
 def build_content_teaser_story(
     video_title: str,
     video_thumb_path: Optional[Path] = None,
-    reel_url: str = "https://linktr.ee/gtavihubspain"
+    reel_url: str = "https://linktr.ee/gtavihubextra"
 ) -> Tuple[Path, str, str]:
     """
     Genera una historia cinemática de Noticias / Gameplay de GTA VI

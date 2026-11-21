@@ -87,7 +87,7 @@ Leonida es el estado más extenso y denso jamás diseñado por Rockstar Games (a
 * **Plataformas de Salida:** PlayStation 5 y Xbox Series X|S (con optimizaciones específicas para PlayStation 5 Pro).
 * **Estrategia Comercial de Afiliados:**
   * Puntos de conversión: Reserva oficial del juego en Amazon, consolas PS5 Pro / Slim, periféricos oficiales (mandos DualSense, volantes Logitech G29, auriculares Pulse 3D).
-  * Todos los enlaces se canalizan a través del Linktree oficial: `https://linktr.ee/gtavihubspain` y tag de afiliado `gtavihub-21`.
+  * Todos los enlaces se canalizan a través del Linktree oficial: `https://linktr.ee/gtavihubextra` y tag de afiliado `gtavihub-21`.
 
 ---
 

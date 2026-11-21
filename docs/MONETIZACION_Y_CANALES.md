@@ -28,7 +28,7 @@ Durante los meses previos y el lanzamiento de GTA 6, el volumen de compras de ha
 
 ---
 
-## 2. 🌐 Configuración del Hub de Enlaces (`linktr.ee/gtavihubspain`)
+## 2. 🌐 Configuración del Hub de Enlaces (`linktr.ee/gtavihubextra`)
 
 Agrega estos **7 botones en tu panel de Linktree** en este orden exacto de prioridad:
 
@@ -81,7 +81,7 @@ Agrega estos **7 botones en tu panel de Linktree** en este orden exacto de prior
 
 🔔 ¡Suscríbete y activa la campana para no perderte ni un solo segundo del camino hacia el estreno más esperado de la historia!
 
-🌐 Enlaces oficiales, reserva de GTA 6 y ofertas de hardware: https://linktr.ee/gtavihubspain
+🌐 Enlaces oficiales, reserva de GTA 6 y ofertas de hardware: https://linktr.ee/gtavihubextra
 
 📩 Contacto comercial / Business: gabtru@hotmail.com
 
@@ -94,7 +94,7 @@ Agrega estos **7 botones en tu panel de Linktree** en este orden exacto de prior
 * **Nombre para mostrar:** `GTA VI Hub Spain 🌴`
 * **Nombre de usuario:** `@gtavihubspain`
 * **Categoría:** `Videojuegos`
-* **Enlace web:** `https://linktr.ee/gtavihubspain`
+* **Enlace web:** `https://linktr.ee/gtavihubextra`
 * **Biografía (80 caracteres con saltos):**
 ```text
 🌴 Tu canal #1 de GTA VI en España 🇪🇸
@@ -108,7 +108,7 @@ Agrega estos **7 botones en tu panel de Linktree** en este orden exacto de prior
 * **Nombre:** `GTA VI Hub Spain | Noticias & Gameplay`
 * **Nombre de usuario:** `@gtavihubspain`
 * **Categoría:** `Creador de contenido de videojuegos`
-* **Enlace web:** `https://linktr.ee/gtavihubspain`
+* **Enlace web:** `https://linktr.ee/gtavihubextra`
 * **Biografía:**
 ```text
 🌴 La mayor comunidad de GTA 6 en España 🇪🇸
