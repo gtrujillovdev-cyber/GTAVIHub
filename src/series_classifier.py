@@ -17,35 +17,35 @@ from .config import DATA_DIR
 SERIES_STATE_FILE = DATA_DIR / "series_state.json"
 
 SERIES_PATTERNS: Dict[str, Dict[str, Any]] = {
+    "coches_gratis": {
+        "keywords": ["coche gratis", "supercoche", "supercar", "free car", "rare car", "coche raro", "vehiculo gratis", "vehiculo secreto"],
+        "title_template": "COCHES SECRETOS & GRATIS EN GTA 6 #{n}",
+        "hook_prefix": "COCHE GRATIS #{n}",
+    },
+    "armas_legendarias": {
+        "keywords": ["arma legendaria", "armas legendarias", "arma oculta", "armas ocultas", "arma secreta", "free weapon", "gold weapon", "arma dorada"],
+        "title_template": "ARMAS SECRETAS DE GTA 6 #{n}",
+        "hook_prefix": "ARMA SECRETA #{n}",
+    },
+    "dinero_rapido": {
+        "keywords": ["dinero", "money method", "dinero rapido", "cash", "loot", "dinero facil", "maletin", "loot location"],
+        "title_template": "TRUCOS DE DINERO EN GTA 6 #{n}",
+        "hook_prefix": "DINERO RÁPIDO #{n}",
+    },
+    "secretos_leonida": {
+        "keywords": ["secreto de leonida", "secretos de leonida", "easter egg", "hidden", "secreto oculto", "secretos ocultos", "ubicacion secreta", "hidden location", "misterio"],
+        "title_template": "SECRETOS DEL MAPA DE GTA 6 #{n}",
+        "hook_prefix": "SECRETO MAPA #{n}",
+    },
     "detalles_enfermizos": {
-        "keywords": ["detalle enfermizo", "detalles enfermizos", "detalles ocultos", "detalle oculto", "detalles que no viste"],
-        "title_template": "DETALLES ENFERMIZOS DE GTA 6 #{n}",
+        "keywords": ["detalle enfermizo", "detalles enfermizos", "detalles ocultos", "detalle oculto", "detalles que no viste", "insane detail"],
+        "title_template": "DETALLES OCULTOS DE GTA 6 #{n}",
         "hook_prefix": "DETALLE #{n}",
     },
     "mitos_a_prueba": {
-        "keywords": ["mito", "mitos a prueba", "verdad o mentira", "mitos de gta"],
+        "keywords": ["mito", "mitos a prueba", "verdad o mentira", "mitos de gta", "mythbusters"],
         "title_template": "MITOS A PRUEBA EN GTA 6 #{n}",
         "hook_prefix": "MITO #{n}",
-    },
-    "fisicas_locas": {
-        "keywords": ["fisica loca", "fisicas locas", "ragdoll", "bug de fisicas", "motor de fisicas", "fisicas de gta"],
-        "title_template": "FISICAS LOCAS DE GTA 6 #{n}",
-        "hook_prefix": "FISICAS #{n}",
-    },
-    "secretos_leonida": {
-        "keywords": ["secreto de leonida", "secretos de leonida", "easter egg", "hidden", "secreto oculto", "secretos ocultos"],
-        "title_template": "SECRETOS DE LEONIDA #{n}",
-        "hook_prefix": "SECRETO #{n}",
-    },
-    "armas_legendarias": {
-        "keywords": ["arma legendaria", "armas legendarias", "arma oculta", "armas ocultas", "arma secreta"],
-        "title_template": "ARMAS LEGENDARIAS DE GTA 6 #{n}",
-        "hook_prefix": "ARMA #{n}",
-    },
-    "persecuciones_epicas": {
-        "keywords": ["persecucion epica", "persecuciones epicas", "persecucion policial", "huida policial"],
-        "title_template": "PERSECUCIONES EPICAS EN GTA 6 #{n}",
-        "hook_prefix": "PERSECUCION #{n}",
     },
 }
 
