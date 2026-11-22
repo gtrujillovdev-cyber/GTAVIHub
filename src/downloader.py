@@ -903,6 +903,141 @@ def _select_action_chapter_window(
     return None
 
 
+def extract_multi_clip_guide_segments(
+    srt_path: Path,
+    title: str,
+    total_duration: float,
+    max_total_dur: float = 40.0,
+) -> List[Tuple[float, float]]:
+    """
+    Usa Gemini sobre el .srt de un vídeo largo de guía (>90s) para extraer 2 o 3 segmentos
+    clave no solapados (Recompensa -> Mapa/Localización -> Acción/Pasos) que sumen 16-40s,
+    permitiendo ensamblar un Short propio estilo Caspahz.
+    """
+    if not srt_path or not Path(srt_path).exists() or total_duration <= 90.0:
+        return []
+    try:
+        raw_srt = Path(srt_path).read_text(encoding="utf-8", errors="ignore")
+    except Exception:
+        return []
+
+    blocks = [b.strip() for b in raw_srt.strip().split("\n\n") if b.strip()]
+    cue_lines = []
+    for block in blocks:
+        lines = [l.strip() for l in block.splitlines() if l.strip()]
+        t_idx = next((idx for idx, l in enumerate(lines) if "-->" in l), -1)
+        if t_idx < 0 or t_idx + 1 >= len(lines):
+            continue
+        t_parts = lines[t_idx].split("-->")
+        if len(t_parts) != 2:
+            continue
+        s_sec = parse_srt_time(t_parts[0])
+        e_sec = parse_srt_time(t_parts[1].split()[0])
+        txt = " ".join(lines[t_idx + 1:])
+        txt = re.sub(r"<[^>]+>", "", txt)
+        txt = " ".join(txt.split()).strip()
+        if txt and e_sec > s_sec:
+            cue_lines.append(f"[{s_sec:.1f}s-{e_sec:.1f}s] {txt}")
+        if len(cue_lines) >= 120:
+            break
+
+    if len(cue_lines) < 5:
+        return []
+
+    try:
+        from .translator import get_gemini_client, generate_content_with_retry, clean_srt_response
+        client = get_gemini_client()
+        if not client:
+            return []
+        prompt = (
+            f'Analiza la transcripción de esta guía de GTA 6 titulada "{title}" (duración total {total_duration:.0f}s).\n'
+            "Queremos montar un Short estilo Caspahz de 18 a 40 segundos extrayendo 2 o 3 fragmentos NO solapados del vídeo:\n"
+            "1) Recompensa / Gancho (qué consigues: coche gratis, dinero, arma).\n"
+            "2) Localización / Mapa (dónde está exactamente).\n"
+            "3) Acción / Pasos (qué hacer allí para conseguirlo o venderlo).\n\n"
+            "TRANSCRIPCIÓN:\n" + "\n".join(cue_lines) + "\n\n"
+            'Devuelve EXCLUSIVAMENTE JSON válido: {"segments": [{"start": 4.0, "end": 12.0}, ...]} '
+            "(máximo 3 segmentos, cada uno de 4s a 18s, suma total <= 40s)."
+        )
+        resp = generate_content_with_retry(
+            client=client,
+            contents=prompt,
+            config={"response_mime_type": "application/json"},
+        )
+        data = json.loads(clean_srt_response(resp.text))
+        raw_segs = data.get("segments", [])
+    except Exception:
+        return []
+
+    valid: List[Tuple[float, float]] = []
+    for seg in raw_segs:
+        try:
+            s0 = max(0.0, float(seg.get("start", 0.0)))
+            s1 = min(total_duration, float(seg.get("end", 0.0)))
+        except (TypeError, ValueError):
+            continue
+        if (s1 - s0) < 4.0 or (s1 - s0) > 22.0:
+            continue
+        if any(not (s1 <= a or s0 >= b) for a, b in valid):
+            continue
+        valid.append((round(s0, 2), round(s1, 2)))
+        if len(valid) >= 3:
+            break
+
+    valid.sort(key=lambda x: x[0])
+    total_sel = sum(b - a for a, b in valid)
+    if len(valid) >= 2 and 14.0 <= total_sel <= max_total_dur + 5.0:
+        return valid
+    return []
+
+
+def remap_srt_for_multi_segments(
+    srt_path: Path,
+    segments: List[Tuple[float, float]],
+    output_srt: Path,
+) -> bool:
+    """Reasigna los timestamps de un .srt a la línea temporal concatenada de varios segmentos."""
+    if not srt_path or not Path(srt_path).exists() or not segments:
+        return False
+    try:
+        raw_srt = Path(srt_path).read_text(encoding="utf-8", errors="ignore")
+    except Exception:
+        return False
+
+    blocks = [b.strip() for b in raw_srt.strip().split("\n\n") if b.strip()]
+    out_blocks = []
+    idx_counter = 1
+    timeline_offset = 0.0
+
+    for seg_start, seg_end in segments:
+        seg_dur = seg_end - seg_start
+        for block in blocks:
+            lines = [l.strip() for l in block.splitlines() if l.strip()]
+            t_idx = next((i for i, l in enumerate(lines) if "-->" in l), -1)
+            if t_idx < 0 or t_idx + 1 >= len(lines):
+                continue
+            t_parts = lines[t_idx].split("-->")
+            if len(t_parts) != 2:
+                continue
+            c_start = parse_srt_time(t_parts[0])
+            c_end = parse_srt_time(t_parts[1].split()[0])
+            if c_end <= seg_start or c_start >= seg_end:
+                continue
+            ns = max(0.0, c_start - seg_start) + timeline_offset
+            ne = min(seg_dur, c_end - seg_start) + timeline_offset
+            if ne - ns < 0.25:
+                continue
+            text_body = "\n".join(lines[t_idx + 1:])
+            out_blocks.append(f"{idx_counter}\n{format_srt_time(ns)} --> {format_srt_time(ne)}\n{text_body}")
+            idx_counter += 1
+        timeline_offset += seg_dur
+
+    if not out_blocks:
+        return False
+    output_srt.write_text("\n\n".join(out_blocks) + "\n", encoding="utf-8")
+    return True
+
+
 def _pick_window_for_long_video(
     raw_d: float,
     heatmap: Any,
@@ -1011,6 +1146,7 @@ def download_video_and_subtitles(
     srt_path: Optional[Path] = None
     remote_info: Dict[str, Any] = {}
     section_range: Optional[Tuple[float, float]] = None
+    multi_segments: List[Tuple[float, float]] = []
 
     # Pre-inspección ligera en YouTube: abortar directos, bajar subtítulos antes y elegir sección en gameplays largos
     if not is_social_clip:
@@ -1021,7 +1157,18 @@ def download_video_and_subtitles(
 
         srt_path, detected_lang = _fetch_subtitles_yt(url, video_id, source_lang)
         remote_dur = float(remote_info.get("duration") or 0.0)
-        if remote_dur > 90.0:
+
+        # Multi-Clip Guide Assembler: para guías largas (>90s), ensamblar 2-3 fragmentos clave (Recompensa + Mapa + Pasos)
+        if remote_dur > 90.0 and srt_path and srt_path.exists() and not trim_official_bumpers:
+            try:
+                from .ai_selector import is_location_reward_guide
+                remote_title = remote_info.get("title") or ""
+                if is_location_reward_guide(remote_title):
+                    multi_segments = extract_multi_clip_guide_segments(srt_path, remote_title, remote_dur)
+            except Exception:
+                multi_segments = []
+
+        if remote_dur > 90.0 and not multi_segments:
             section_range = _pick_window_for_long_video(
                 raw_d=remote_dur,
                 heatmap=remote_info.get("heatmap"),
@@ -1091,6 +1238,74 @@ def download_video_and_subtitles(
         return False
 
     print(f"[*] Descargando vídeo de {url}...")
+    if multi_segments:
+        print(f"[🎬 Multi-Clip Guide Assembler] Ensamblando {len(multi_segments)} fragmentos de guía: {multi_segments}")
+        seg_files: List[Path] = []
+        concat_ok = True
+        for seg_idx, (s0, s1) in enumerate(multi_segments):
+            seg_out = TEMP_DIR / f"{video_id}_seg{seg_idx}.mp4"
+            seg_cmd = [
+                sys.executable, "-m", "yt_dlp",
+                "--force-ipv4", "--no-check-certificates", "--no-playlist",
+                "-f", format_selector,
+                "--download-sections", f"*{s0:.2f}-{s1:.2f}",
+                "--merge-output-format", "mp4",
+                "-o", str(seg_out),
+                url,
+            ]
+            try:
+                subprocess.run(seg_cmd, check=True, capture_output=True, text=True, timeout=60)
+                if seg_out.exists() and seg_out.stat().st_size > 10_000:
+                    seg_files.append(seg_out)
+                else:
+                    concat_ok = False
+                    break
+            except Exception as e:
+                print(f"[!] Falló descarga de segmento {seg_idx} ({s0}-{s1}s): {e}")
+                concat_ok = False
+                break
+
+        if concat_ok and len(seg_files) == len(multi_segments):
+            concat_list = TEMP_DIR / f"{video_id}_concat.txt"
+            concat_list.write_text("\n".join(f"file '{sf.resolve()}'" for sf in seg_files), encoding="utf-8")
+            assembled_mp4 = TEMP_DIR / f"{video_id}.mp4"
+            v_enc = ["-c:v", FFMPEG_VIDEO_CODEC, "-b:v", "12M"] if "videotoolbox" in FFMPEG_VIDEO_CODEC else ["-c:v", "libx264", "-preset", "veryfast", "-crf", "20"]
+            try:
+                subprocess.run([
+                    "ffmpeg", "-y", "-f", "concat", "-safe", "0", "-i", str(concat_list),
+                    "-threads", str(get_ffmpeg_threads()),
+                    *v_enc, "-c:a", "aac", "-b:a", "192k",
+                    "-movflags", "+faststart", str(assembled_mp4)
+                ], check=True, capture_output=True, text=True, timeout=120)
+                if assembled_mp4.exists() and assembled_mp4.stat().st_size > 20_000:
+                    for sf in seg_files:
+                        sf.unlink(missing_ok=True)
+                    concat_list.unlink(missing_ok=True)
+                    if srt_path and srt_path.exists():
+                        multi_srt = TEMP_DIR / f"{video_id}_multi.srt"
+                        if remap_srt_for_multi_segments(srt_path, multi_segments, multi_srt):
+                            srt_path.unlink(missing_ok=True)
+                            srt_path = multi_srt
+                    print(f"[✓ Multi-Clip Guide] Short ensamblado con {len(seg_files)} cortes -> {assembled_mp4.name}")
+                    return assembled_mp4, srt_path, detected_lang
+            except Exception as e:
+                print(f"[!] Error concatenando multi-clip guide: {e}")
+            concat_list.unlink(missing_ok=True)
+
+        for sf in seg_files:
+            sf.unlink(missing_ok=True)
+        # Fallback limpio a ventana única si falló el ensamblado
+        section_range = _pick_window_for_long_video(
+            raw_d=float(remote_info.get("duration") or 0.0),
+            heatmap=remote_info.get("heatmap"),
+            srt_path=srt_path,
+            trim_official_bumpers=trim_official_bumpers,
+            video_id=video_id,
+            url=url,
+            is_social_clip=False,
+            chapters=remote_info.get("chapters"),
+        )
+
     downloaded_by_section = False
     if section_range:
         downloaded_by_section = _run_ytdlp_download(section_range)

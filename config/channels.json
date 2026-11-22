@@ -1396,6 +1396,34 @@
       "enabled": true,
       "allow_long_clipping": true,
       "description": "Guías en español: localizaciones de dinero, coches gratis y secretos"
+    },
+    {
+      "query": "ytsearch15:GTA 6 free car location #shorts",
+      "lang": "en",
+      "only_shorts": true,
+      "enabled": true,
+      "description": "Shorts nativos de guías: coches gratis y ubicaciones en GTA 6"
+    },
+    {
+      "query": "ytsearch15:GTA 6 fastest money method #shorts",
+      "lang": "en",
+      "only_shorts": true,
+      "enabled": true,
+      "description": "Shorts nativos de guías: métodos de dinero rápido en GTA 6"
+    },
+    {
+      "query": "ytsearch15:GTA 6 secret weapon location #shorts",
+      "lang": "en",
+      "only_shorts": true,
+      "enabled": true,
+      "description": "Shorts nativos de guías: armas secretas y ubicaciones en GTA 6"
+    },
+    {
+      "query": "ytsearch15:GTA 6 ubicacion coche gratis dinero #shorts",
+      "lang": "es",
+      "only_shorts": true,
+      "enabled": true,
+      "description": "Shorts nativos en español: localizaciones de dinero, coches y secretos"
     }
   ]
 }

@@ -76,6 +76,28 @@ class TestLocationGuideModel(unittest.TestCase):
         )
         self.assertIn("Guárdalo", cap)
 
+    def test_remap_srt_for_multi_segments(self):
+        import tempfile
+        from src.downloader import remap_srt_for_multi_segments
+
+        sample_srt = (
+            "1\n00:00:05,000 --> 00:00:09,000\nFree $24,000 Rolls Royce\n\n"
+            "2\n00:00:20,000 --> 00:00:25,000\nRandom filler talk\n\n"
+            "3\n00:00:42,000 --> 00:00:48,000\nGo here on the map at Bayside\n\n"
+            "4\n00:01:15,000 --> 00:01:22,000\nTake out the guard and sell it\n"
+        )
+        with tempfile.TemporaryDirectory() as tmpdir:
+            in_srt = Path(tmpdir) / "in.srt"
+            out_srt = Path(tmpdir) / "out.srt"
+            in_srt.write_text(sample_srt, encoding="utf-8")
+            ok = remap_srt_for_multi_segments(in_srt, [(4.0, 10.0), (41.0, 49.0), (74.0, 83.0)], out_srt)
+            self.assertTrue(ok)
+            content = out_srt.read_text(encoding="utf-8")
+            self.assertIn("Free $24,000 Rolls Royce", content)
+            self.assertIn("Go here on the map at Bayside", content)
+            self.assertIn("Take out the guard and sell it", content)
+            self.assertNotIn("Random filler talk", content)
+
 
 if __name__ == "__main__":
     unittest.main()

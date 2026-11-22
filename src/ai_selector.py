@@ -90,9 +90,9 @@ def _visual_appeal_adjustment(item: Dict[str, Any]) -> float:
     elif is_junk:
         delta -= 40.0
 
-    # 2. DURACIÓN (formato corto ideal para Shorts: 12-62s)
-    if 12 <= dur <= 62:
-        delta += 12.0
+    # 2. DURACIÓN (Shorts nativos de guías 12-65s tienen máxima prioridad: ya traen la explicación completa)
+    if 12 <= dur <= 65:
+        delta += 25.0 if is_location_guide else 12.0
     elif dur > 360 and not item.get("allow_long_clipping"):
         delta -= 15.0
 
