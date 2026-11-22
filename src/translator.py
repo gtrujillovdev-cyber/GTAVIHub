@@ -559,35 +559,49 @@ Devuelve tu respuesta EXACTAMENTE en este formato JSON (sin texto extra):
         pinned_comment = f"🌴 💬 DEBATE GTA 6:\n{debate_question}\n👇 ¡Déjanos tu teoría en los comentarios!"
 
     if is_short:
-        # Formato optimizado para YouTube Shorts: limpio, con branding insistente y CTA claro
-        short_summary = summary[:600].rsplit(".", 1)[0] + "." if len(summary) > 600 else summary
-        full_description = f"""{short_summary}
+        # Formato optimizado para YouTube Shorts: Reclamo directo, guía paso a paso, marca de canal y CTA masivo
+        short_summary = summary[:420].rsplit(".", 1)[0] + "." if len(summary) > 420 else summary
+        full_description = f"""📍 GUÍA & LOCALIZACIÓN EXACTA [GTA 6]:
+{short_summary}
 
-🔔 SÍGUENOS en @GTAVIHubExtra para una nueva localización y guía secreta de GTA 6 cada día.
-🌐 TikTok, Instagram & X: @gtavihubextra 🌴
+🔑 MÉTODO & PASOS:
+1️⃣ Dirígete al punto exacto mostrado en el mapa.
+2️⃣ Sigue las indicaciones del clip para desbloquearlo.
+3️⃣ Guarda este Short para consultarlo en tu partida.
+
+🔔 SÍGUENOS en @GTAVIHubExtra para una nueva guía y secreto de GTA 6 cada día.
+🌐 TikTok, IG & X ➔ @gtavihubextra 🌴
 
 💬 {to_unicode_bold("DEBATE:")} {debate_question}
 
 📌 Creador / Fuente: {creator_clean}
 🔗 Original: {original_url}
 
-⚖️ Uso Legítimo / Fair Use (Art. 107 Copyright Act) con fines informativos y comentario para la comunidad hispanohablante.
+⚖️ Fair Use (Art. 107 Copyright Act) con fines educativos y de guía para la comunidad.
 📩 Contacto: {BUSINESS_EMAIL}
 
-#GTA6 #GTAVI #RockstarGames #Gaming #Shorts #GTAVIHubExtra
+#GTA6 #GTA6Guias #GTA6Secretos #GTAVI #Shorts #GTAVIHubExtra
 """
     else:
-        full_description = f"""{summary}
+        full_description = f"""🎮 GUÍA COMPLETA & LOCALIZACIÓN SECRETA — GTA 6
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+{summary}
+
+📍 DETALLES DE LA GUÍA & MÉTODO PASO A PASO:
+1️⃣ Ubicación y puntos de referencia en el mapa de Leonida / Vice City.
+2️⃣ Requisitos, recompensas cuantificadas y pasos para completarlo.
+3️⃣ Guarda este vídeo en tu lista de reproducción de GTA 6 para no perderlo.
 
 💬 {to_unicode_bold("DEBATE DE LA COMUNIDAD:")}
 {debate_question}
-👇 ¿Cuál es tu teoría? ¡Te leemos en los comentarios!
+👇 ¿Cuál es tu teoría o estrategia? ¡Te leemos en los comentarios!
 
 🌴 {to_unicode_bold("GTA VI HUB | REDES OFICIALES:")}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-{f"🌐 Hub Central & Enlaces: https://linktr.ee/gtavihubextra{chr(10)}" if affiliate_block else ""}🎬 TikTok Oficial: https://tiktok.com/@gtavihubextra
+🔔 Suscríbete al Canal: https://youtube.com/@gtavihubextra?sub_confirmation=1
+🎬 TikTok Oficial: https://tiktok.com/@gtavihubextra
 📸 Instagram Reels: https://instagram.com/gtavihubextra
-🔴 Suscríbete al Canal: https://youtube.com/@gtavihubextra?sub_confirmation=1
+🌐 Hub Central & Enlaces: https://linktr.ee/gtavihubextra
 
 {affiliate_block}
 
@@ -605,26 +619,26 @@ Todo el reconocimiento al creador original por su excelente cobertura. ¡Apoya e
 {music_disclaimer}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ⚖️ {to_unicode_bold("AVISO LEGAL & USO LEGÍTIMO (FAIR USE):")}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Este vídeo contiene material transformado con fines estrictamente informativos, de divulgación comunitaria, comentario crítico y traducción para la comunidad hispanohablante.
+Este vídeo contiene material transformado con fines estrictamente educativos, informativos, de guía para jugadores, divulgación comunitaria, comentario crítico y traducción para la comunidad hispanohablante.
 
 De conformidad con el Artículo 107 de la Ley de Propiedad Intelectual (Copyright Act de 1976 / Doctrina de 'Fair Use'), se autoriza el uso de material protegido por derechos de autor con fines de crítica, comentarios, noticias, enseñanza y análisis. 
 
 Grand Theft Auto VI, GTA VI, Vice City y los logotipos asociados son marcas registradas de Rockstar Games y Take-Two Interactive Software, Inc. Ninguna infracción de derechos es pretendida.
 
-#GTA6 #GrandTheftAutoVI #RockstarGames #GTAVI #ViceCity #Gaming #Shorts #Videojuegos
+#GTA6 #GTA6Guias #GTA6Secretos #GrandTheftAutoVI #RockstarGames #GTAVI #ViceCity #Gaming #Shorts #Videojuegos #TrucosGTA6 #GTAVIHubExtra
 """
 
     # Tags dinámicos: base común + específicos por archetype para mejorar indexación SEO
-    base_tags = ["GTA 6", "GTA VI", "Grand Theft Auto VI", "Rockstar Games", "Vice City", "Gaming"]
+    base_tags = ["GTA 6", "GTA VI", "GTA 6 Guías", "Secretos GTA 6", "Trucos GTA 6", "Grand Theft Auto VI", "Rockstar Games", "Vice City", "Gaming"]
     if is_short:
-        base_tags.append("Shorts")
+        base_tags.extend(["Shorts", "GTA 6 Shorts"])
     archetype_tags = {
         "humor_parodia": ["GTA 6 Memes", "GTA 6 Divertido", "Parodia GTA 6", "South Park GTA"],
         "analisis_tecnico": ["RAGE 9", "Físicas GTA 6", "Gráficos GTA 6", "Digital Foundry", "PS5 Pro"],
-        "filtracion_misterio": ["GTA 6 Secretos", "Easter Eggs GTA 6", "Mapa GTA 6", "Leonida"],
+        "filtracion_misterio": ["GTA 6 Secretos", "Easter Eggs GTA 6", "Mapa GTA 6", "Leonida", "Ubicaciones GTA 6"],
         "noticia_oficial": ["GTA 6 Noticias", "Tráiler GTA 6", "Rockstar Anuncio", "GTA 6 Fecha"],
         "reaccion_streamer": ["Reacciones GTA 6", "Streamers GTA 6", "Gameplay en Vivo"],
-        "gameplay_puro": ["GTA 6 Gameplay", "Misiones GTA 6", "Tiroteos GTA 6", "Mundo Abierto"],
+        "gameplay_puro": ["GTA 6 Gameplay", "Guía GTA 6", "Misiones GTA 6", "Coches Gratis GTA 6", "Dinero GTA 6", "Mundo Abierto"],
     }
     entity_tags = []
     title_lower = (original_title or "").lower()

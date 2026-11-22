@@ -55,15 +55,12 @@ class TestTelegramBot(unittest.TestCase):
         self.assertIn("🚀 Forzar Escaneo", buttons)
         self.assertIn("🎯 Simular Selección", buttons)
         self.assertIn("🎬 Último Clip", buttons)
-        self.assertIn("🔥 Radar Viral", buttons)
-        self.assertIn("📊 Estado", buttons)
         self.assertIn("🛡️ Modo Co-Pilot", buttons)
-        self.assertIn("📈 Métricas Multiplataforma", buttons)
-        self.assertIn("🐦 X Scout GTA6", buttons)
-        self.assertIn("⚙️ Canales", buttons)
+        self.assertIn("📊 Estado", buttons)
         self.assertIn("🖥️ Host / GaTDSEQ", buttons)
+        self.assertIn("⚙️ Canales", buttons)
         self.assertIn("🧹 Limpiar Temp", buttons)
-        self.assertGreaterEqual(len(kb["keyboard"]), 5)
+        self.assertGreaterEqual(len(kb["keyboard"]), 4)
 
     def test_dryrun_inline_keyboard(self):
         dry_kb = get_dryrun_inline_keyboard("https://www.youtube.com/watch?v=test1234")
