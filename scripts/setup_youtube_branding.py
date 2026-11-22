@@ -29,9 +29,17 @@ BANNER_FILE = BASE_DIR / "assets" / "banner_extra.jpg"
 SCOPES = ["https://www.googleapis.com/auth/youtube"]
 
 CHANNEL_DESCRIPTION = """\
-El punto de encuentro de GTA 6 en español: gameplay real en máxima resolución, físicas al límite, comparativas técnicas y los mayores secretos descubiertos en Vice City y Leonida.
+Bienvenido a GTA VI Hub, tu canal diario de guías, localizaciones y secretos de GTA 6 en español.
 
-Cobertura editorial diaria con doblaje y análisis transformativo, acreditando siempre las fuentes originales.
+Publicamos vídeos diarios rápidos y directos al grano para que consigas dinero rápido, coches gratis y todo lo oculto en Leonida y Vice City:
+
+💰 Métodos más rápidos de dinero y trucos de farmeo
+🚗 Localizaciones de coches raros, supercoches gratis y spawns ocultos
+🔫 Armas únicas, legendarias y dónde encontrarlas
+🏠 Propiedades gratis, garajes y objetos perdibles por capítulo
+🔍 Secretos ocultos, easter eggs y consejos de Vice City
+
+Menos tiempo buscando y más tiempo jugando. Suscríbete para una nueva localización secreta de GTA 6 cada día.
 
 Contacto / Colaboraciones: gabtru@hotmail.com
 """
@@ -97,7 +105,7 @@ def upload_banner_and_description(youtube, channel_id):
     branding_channel = {
         "description": CHANNEL_DESCRIPTION,
         "country": "ES",
-        "keywords": "GTA6 GTA VI GrandTheftAutoVI Rockstar Gaming Videojuegos Espana Shorts"
+        "keywords": "GTA6 GTA VI Guías Secretos Dinero CochesGratis Ubicaciones ViceCity Leonida Shorts"
     }
 
     branding_image = {}

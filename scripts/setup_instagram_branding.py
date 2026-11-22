@@ -26,10 +26,10 @@ USERNAME = os.getenv("INSTAGRAM_USERNAME", "gtavihubextra")
 PASSWORD = os.getenv("INSTAGRAM_PASSWORD", "")
 
 INSTAGRAM_BIO = (
-    "GTA VI Hub 🌴\n"
-    "Análisis RAGE 9, noticias y gameplay en español\n"
-    "YouTube & TikTok: @gtavihubextra\n"
-    "#GTA6 #GrandTheftAutoVI"
+    "GTA VI Hub 🎯 Guías y Secretos de GTA 6\n"
+    "💰 Dinero rápido • 🚗 Coches gratis • 🔫 Armas ocultas\n"
+    "📍 Localizaciones diarias en Leonida y Vice City\n"
+    "YouTube, TikTok & X: @gtavihubextra"
 )
 
 
