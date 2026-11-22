@@ -1463,10 +1463,18 @@ def start_telegram_bot_daemon():
                         if top_views > 0:
                             send_telegram_alert(format_winner_replication_report(win_summary))
                     # Feedback Loop: recalibrar scoring basado en outliers reales
-                    from .performance_tracker import recalibrate_scoring_weights
+                    from .performance_tracker import recalibrate_scoring_weights, diagnose_underperformers
                     fb_result = recalibrate_scoring_weights()
                     if fb_result.get("ok") and fb_result.get("action") != "no_adjustment":
                         print(f"[Feedback Loop] {fb_result.get('action')}")
+                    # Auto-diagnostico de fracasos: detectar, corregir playbook, seguir
+                    diag = diagnose_underperformers()
+                    if diag.get("ok") and diag.get("diagnosed_count", 0) > 0:
+                        fixes = diag["corrections"]
+                        fix_lines = [f"🔬 *AUTO-DIAGNÓSTICO: {diag['diagnosed_count']} clips corregidos*"]
+                        for f in fixes[:3]:
+                            fix_lines.append(f"• _{f.get('cause', '?')}_ → {f.get('fix', '?')}")
+                        print(f"[AutoDiagnosis] {diag['diagnosed_count']} correcciones aplicadas al playbook.")
                 except Exception as e:
                     print(f"[PerformanceTracker] Error obteniendo métricas/ganadores: {e}")
 

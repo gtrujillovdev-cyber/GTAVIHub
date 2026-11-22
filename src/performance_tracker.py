@@ -622,3 +622,143 @@ def format_cross_platform_report() -> str:
             f"   💡 _{o['reason']}_"
         )
     return "\n".join(lines)
+
+
+def diagnose_underperformers(views_threshold: int = 500, max_diagnose: int = 4) -> Dict[str, Any]:
+    """
+    Auto-diagnostica clips con bajo rendimiento, identifica la causa raiz con Gemini
+    y aplica correcciones al playbook para que no se repita el patron.
+
+    Ciclo cerrado: detectar -> diagnosticar -> corregir -> continuar.
+    """
+    records = _load_records()
+    with_metrics = [
+        r for r in records
+        if r.get("views_24h") is not None and r["views_24h"] >= 0
+    ]
+    if len(with_metrics) < 3:
+        return {"ok": False, "reason": "Insuficientes registros para diagnosticar"}
+
+    views_list = sorted([r["views_24h"] for r in with_metrics])
+    median_views = views_list[len(views_list) // 2] if views_list else 0
+
+    # Umbral dinamico: el peor entre el threshold fijo y 0.4x la mediana
+    effective_threshold = min(views_threshold, int(median_views * 0.4)) if median_views > 0 else views_threshold
+    underperformers = [
+        r for r in with_metrics
+        if r["views_24h"] < effective_threshold
+        and not r.get("diagnosed")
+    ]
+
+    if not underperformers:
+        return {"ok": True, "action": "no_underperformers", "median": median_views}
+
+    # Top performers como referencia de lo que SI funciona
+    top_performers = sorted(with_metrics, key=lambda r: r["views_24h"], reverse=True)[:3]
+    top_context = "\n".join(
+        f"  - '{r['title'][:60]}': {r['views_24h']} vistas, {r.get('likes_24h', 0)} likes"
+        for r in top_performers
+    )
+    under_context = "\n".join(
+        f"  - '{r['title'][:60]}': {r['views_24h']} vistas, {r.get('likes_24h', 0)} likes, angulo={classify_clip_angle(r.get('title', ''))}"
+        for r in underperformers[:max_diagnose]
+    )
+
+    corrections = []
+    try:
+        from .translator import get_gemini_client, generate_content_with_retry
+        client = get_gemini_client()
+        if not client:
+            raise ValueError("Gemini no disponible")
+
+        prompt = (
+            "Eres el analista de rendimiento del canal GTA VI Hub Spain en YouTube Shorts/TikTok.\n\n"
+            f"CLIPS QUE FUNCIONARON (referencia):\n{top_context}\n\n"
+            f"CLIPS QUE FRACASARON (<{effective_threshold} vistas/24h):\n{under_context}\n\n"
+            f"Mediana del canal: {median_views} vistas/24h.\n\n"
+            "Analiza cada clip fracasado y responde SOLO con JSON array:\n"
+            '[{"title": "...", "cause": "titulo generico|hook debil|angulo saturado|timing malo|duracion inadecuada|contenido irrelevante", '
+            '"fix": "correccion concreta para el playbook", '
+            '"avoid_pattern": "patron a evitar en titulos futuros"}]\n'
+            "Se breve y accionable. Max 1 frase por campo."
+        )
+
+        resp = generate_content_with_retry(
+            client=client,
+            contents=prompt,
+            config={"response_mime_type": "application/json"}
+        )
+        raw = (getattr(resp, "text", "") or "").strip()
+        corrections = json.loads(raw)
+        if not isinstance(corrections, list):
+            corrections = [corrections]
+    except Exception as e:
+        # Fallback heuristico sin Gemini
+        print(f"[AutoDiagnosis] Gemini no disponible ({e}), usando heuristicas.")
+        for r in underperformers[:max_diagnose]:
+            title = r.get("title", "")
+            dur = float(r.get("duration") or r.get("clip_duration") or 0)
+            cause = "titulo generico"
+            fix = "Usar titulo con dato especifico y numero"
+            if dur > 45:
+                cause = "duracion inadecuada"
+                fix = "Priorizar clips de 18-28s para Shorts"
+            elif dur < 10:
+                cause = "duracion inadecuada"
+                fix = "Clips demasiado cortos sin contexto"
+            elif len(title) < 25:
+                cause = "titulo generico"
+                fix = "Titulo mas largo con detalle concreto y emoji"
+            corrections.append({
+                "title": title[:60],
+                "cause": cause,
+                "fix": fix,
+                "avoid_pattern": title[:30].lower()
+            })
+
+    # Aplicar correcciones al playbook
+    applied = []
+    try:
+        from .learning_engine import load_viral_playbook, save_viral_playbook
+        pb = load_viral_playbook()
+        fb = pb.setdefault("feedback_loop", {})
+        diagnostics = fb.setdefault("underperformer_diagnostics", [])
+        avoid_patterns = fb.get("title_avoid_patterns", [])
+
+        for corr in corrections[:max_diagnose]:
+            diag_entry = {
+                "timestamp": datetime.now().isoformat(),
+                "title": corr.get("title", ""),
+                "cause": corr.get("cause", ""),
+                "fix": corr.get("fix", ""),
+            }
+            diagnostics.append(diag_entry)
+            applied.append(diag_entry)
+
+            avoid = corr.get("avoid_pattern", "")
+            if avoid and len(avoid) > 5 and avoid not in avoid_patterns:
+                avoid_patterns.append(avoid)
+
+        fb["title_avoid_patterns"] = avoid_patterns[-15:]
+        fb["underperformer_diagnostics"] = diagnostics[-20:]
+        fb["last_diagnosis"] = datetime.now().isoformat()
+        save_viral_playbook(pb)
+    except Exception as e:
+        print(f"[AutoDiagnosis] Error actualizando playbook: {e}")
+
+    # Marcar diagnosticados para no repetir
+    ids_diagnosed = {r.get("video_id") for r in underperformers[:max_diagnose]}
+    for r in records:
+        if r.get("video_id") in ids_diagnosed:
+            r["diagnosed"] = True
+    _save_records(records)
+
+    print(f"[AutoDiagnosis] {len(applied)} clips diagnosticados y correcciones aplicadas al playbook.")
+    return {
+        "ok": True,
+        "action": "diagnosed_and_corrected",
+        "diagnosed_count": len(applied),
+        "median": median_views,
+        "threshold": effective_threshold,
+        "corrections": applied,
+    }
