@@ -228,11 +228,12 @@ def ingest_x_likes_as_sources(liked_candidates: List[Dict[str, Any]]) -> Dict[st
             queued_ids.add(cid)
             stats["queued_clips"] += 1
 
-        plat_name = plat_map.get(str(cand.get("platform", "")).lower(), "X")
+        plat_name = "YouTube" if cand.get("channel_url") else plat_map.get(str(cand.get("platform", "")).lower(), "X")
         reg = auto_register_source_from_metadata({
             "uploader": cand.get("uploader", ""),
             "platform": plat_name,
-            "url": cand.get("url", ""),
+            "url": cand.get("channel_url") or cand.get("url", ""),
+            "channel_url": cand.get("channel_url", ""),
             "title": cand.get("title", ""),
         })
         if reg.get("success"):
@@ -314,8 +315,34 @@ def _extract_candidates_from_graphql_payload(
         screen_name = user_legacy.get("screen_name") or user_core.get("screen_name") or ""
         uploader = f"@{screen_name}" if screen_name else source_label
 
+        # Extraer canal de YouTube en la bio / perfil del usuario de X si existe
+        yt_channel_url = None
+        user_desc = user_legacy.get("description", "")
+        # Buscar en enlaces de la bio (url de perfil y desc_entities)
+        bio_urls = []
+        for u_obj in (user_legacy.get("entities", {}).get("url", {}).get("urls", []) + 
+                      user_legacy.get("entities", {}).get("description", {}).get("urls", [])):
+            exp_u = u_obj.get("expanded_url") or u_obj.get("url") or ""
+            if exp_u:
+                bio_urls.append(exp_u)
+        for b_u in bio_urls:
+            if "youtube.com" in b_u.lower() or "youtu.be" in b_u.lower():
+                yt_channel_url = b_u
+                break
+        if not yt_channel_url and user_desc:
+            yt_match = re.search(r'(?:https?://)?(?:www\.)?(?:youtube\.com/(?:c/|channel/|user/|@)?[\w\-\.]+)', user_desc)
+            if yt_match:
+                yt_channel_url = yt_match.group(0)
+                if not yt_channel_url.startswith("http"):
+                    yt_channel_url = f"https://{yt_channel_url}"
+
         if is_liked:
-            liked_texts.append({"title": tweet_text[:180], "uploader": uploader})
+            liked_texts.append({
+                "title": tweet_text[:180],
+                "uploader": uploader,
+                "yt_channel_url": yt_channel_url,
+                "screen_name": screen_name
+            })
 
         extracted: List[Tuple[str, str, str]] = []
         for u in (legacy.get("entities") or {}).get("urls", []):
@@ -356,6 +383,7 @@ def _extract_candidates_from_graphql_payload(
                 "url": video_url,
                 "title": tweet_text[:120].strip().replace("\n", " "),
                 "uploader": uploader,
+                "channel_url": yt_channel_url or "",
                 "source_name": source_label,
                 "platform": platform,
                 "score": final_score,
