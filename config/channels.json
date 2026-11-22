@@ -16,7 +16,7 @@
       "type": "media_global",
       "lang": "en",
       "filter_keywords": true,
-      "enabled": true,
+      "enabled": false,
       "allow_long_clipping": true,
       "allow_official_commentary": true,
       "description": "Tráilers de features PS5/Xbox y breakdowns de IGN"
@@ -37,7 +37,7 @@
       "type": "official",
       "lang": "en",
       "filter_keywords": true,
-      "enabled": true,
+      "enabled": false,
       "allow_long_clipping": true,
       "allow_official_commentary": true,
       "description": "Nuevos tráilers y anuncios oficiales de Rockstar Games (transformados con análisis en español)"
@@ -48,7 +48,7 @@
       "type": "official",
       "lang": "en",
       "filter_keywords": false,
-      "enabled": true,
+      "enabled": false,
       "description": "Tráilers y comunicados oficiales de Rockstar Games",
       "allow_official_commentary": true,
       "allow_long_clipping": true
@@ -59,7 +59,7 @@
       "type": "official",
       "lang": "en",
       "filter_keywords": true,
-      "enabled": true,
+      "enabled": false,
       "allow_official_commentary": true,
       "allow_long_clipping": true,
       "description": "Features trailers y anuncios oficiales de GTA 6 en PlayStation"
@@ -70,7 +70,7 @@
       "type": "official",
       "lang": "es",
       "filter_keywords": true,
-      "enabled": true,
+      "enabled": false,
       "allow_official_commentary": true,
       "allow_long_clipping": true,
       "description": "Tráilers y clips oficiales en español de PlayStation España"
@@ -110,7 +110,7 @@
       "type": "technical_analysis",
       "lang": "es",
       "filter_keywords": true,
-      "enabled": true,
+      "enabled": false,
       "allow_long_clipping": true,
       "description": "Comparativas gráficas 4K limpias 16:9 sin facecam ni logos ajenos"
     },
@@ -140,7 +140,7 @@
       "type": "technical_analysis",
       "lang": "en",
       "filter_keywords": true,
-      "enabled": true,
+      "enabled": false,
       "allow_long_clipping": true,
       "description": "Comparativas visuales 16:9 puras (GTA 6 vs RDR 2 / GTA V) sin facecam"
     },
@@ -150,7 +150,7 @@
       "type": "technical_analysis",
       "lang": "en",
       "filter_keywords": true,
-      "enabled": true,
+      "enabled": false,
       "allow_long_clipping": true,
       "description": "Comparativas gráficas 4K limpias PS5/PC sin presentadores"
     },
@@ -309,7 +309,7 @@
       "lang": "en",
       "filter_keywords": true,
       "allow_long_clipping": true,
-      "enabled": true,
+      "enabled": false,
       "description": "Análisis técnico de rendimiento y tecnología RAGE"
     },
     {
@@ -318,7 +318,7 @@
       "type": "technical_analysis",
       "lang": "es",
       "filter_keywords": true,
-      "enabled": true,
+      "enabled": false,
       "description": "Shorts de comparativas gráficas y rendimiento"
     },
     {

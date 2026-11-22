@@ -353,7 +353,10 @@ def find_best_transcript_hook_window(
         r"oh\s+my\s+god|omg|gameplay|trailer|leak|map|size|gb|download|ray\s?tracing|"
         r"physics|f[ií]sicas?|water|agua|hair|mira|incre[ií]ble|polic[ií]a|persecuci[oó]n|"
         r"choque|explosi[oó]n|atropell|disparo|tiroteo|hostia|madre\s+m[ií]a|qu[eé]\s+locura|"
-        r"realismo|mec[aá]nica|agarre|coche|ragdoll|misi[oó]n)\b",
+        r"realismo|mec[aá]nica|agarre|coche|ragdoll|misi[oó]n|"
+        r"location|ubicaci[oó]n|go\s+to|head\s+to|where\s+to|find|spawn|free|gratis|"
+        r"money|dinero|cash|sell|vender|weapon|arma|supercar|chapter|cap[ií]tulo|"
+        r"glitch|method|m[eé]todo|easter\s+egg|legendary|legendaria)\b",
         re.IGNORECASE,
     )
     menu_admin_re = re.compile(
@@ -925,8 +928,8 @@ def _pick_window_for_long_video(
     if not viral_range and srt_path and srt_path.exists() and not trim_official_bumpers:
         viral_range = find_best_transcript_hook_window(
             srt_path,
-            min_dur=max(GAMEPLAY_MIN_DURATION, 16),
-            max_dur=min(SHORT_MAX_DURATION, 26),
+            min_dur=max(GAMEPLAY_MIN_DURATION, 18),
+            max_dur=min(SHORT_MAX_DURATION, 38),
             total_duration=raw_d,
         )
     if not viral_range:
