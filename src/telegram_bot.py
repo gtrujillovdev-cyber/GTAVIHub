@@ -73,15 +73,13 @@ def get_api_url(method: str) -> Optional[str]:
     return f"https://api.telegram.org/bot{token}/{method}"
 
 def get_persistent_menu_keyboard() -> Dict[str, Any]:
-    """Retorna el teclado táctil persistente reestructurado, intuitivo y completo."""
+    """Retorna el teclado táctil simplificado con los botones esenciales."""
     return {
         "keyboard": [
             [{"text": "🚀 Forzar Escaneo"}, {"text": "🎯 Simular Selección"}],
-            [{"text": "🎬 Último Clip"}, {"text": "🔥 Radar Viral"}],
-            [{"text": "📈 Métricas Multiplataforma"}, {"text": "🛡️ Modo Co-Pilot"}],
-            [{"text": "📊 Estado"}, {"text": "🐦 X Scout GTA6"}],
-            [{"text": "⚙️ Canales"}, {"text": "🖥️ Host / GaTDSEQ"}],
-            [{"text": "🧹 Limpiar Temp"}],
+            [{"text": "🎬 Último Clip"}, {"text": "🛡️ Modo Co-Pilot"}],
+            [{"text": "📊 Estado"}, {"text": "🖥️ Host / GaTDSEQ"}],
+            [{"text": "⚙️ Canales"}, {"text": "🧹 Limpiar Temp"}],
         ],
         "resize_keyboard": True,
         "persistent": True
