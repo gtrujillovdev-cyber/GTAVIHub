@@ -1195,35 +1195,7 @@ class SocialPublisher:
             if not is_eligible:
                 print(f"\n[Compliance Shield] 🛡️ {reason}")
                 self._notify_telegram(f"🛡️ *[Compliance Shield]* Saltando *{plat.upper()}* para proteger la cuenta:\n_{reason}_")
-
-                if plat == "instagram":
-                    print("[Opción B] 🎬 Generando contenido alternativo orgánico para Instagram (Story cinemática de GTA 6)...")
-                    try:
-                        from .story_scheduler import publish_scheduled_story, can_publish_story
-                        can_story, story_reason = can_publish_story(force=False)
-                        if not can_story:
-                            print(f"[Opción B] Story omitida (límite diario): {story_reason}")
-                            results["instagram"] = f"Bloqueado por Compliance Shield (story cooldown: {story_reason})"
-                            continue
-                        story_res = publish_scheduled_story(force=False, preferred_type="content", dry_run=self.dry_run)
-                        if story_res.get("status") in ("published", "simulated", "ok") or (self.dry_run and story_res.get("item")):
-                            story_item = story_res.get("item", "Curiosidad GTA 6")
-                            story_url = story_res.get("story_url") or "https://www.instagram.com/gtavihubextra/"
-                            results["instagram"] = f"Story Alternativa Publicada: {story_item} ({story_url})"
-                            print(f"[✓] [Opción B] Story alternativa publicada en Instagram: {story_item}")
-                            self._notify_telegram(
-                                f"🛡️ *[Instagram - Opción B Activa]*\n"
-                                f"Reel omitido por seguridad de cuenta (contenido de terceros/streamer).\n"
-                                f"🌟 Publicada *Story orgánica* en Instagram: *{story_item}*\n"
-                                f"👉 Mantiene actividad diaria e interacción sin riesgo de penalización."
-                            )
-                            continue
-                        else:
-                            print(f"[Opción B] Fallback de story omitido: {story_res.get('reason')}")
-                    except Exception as story_err:
-                        print(f"[Opción B] Error en fallback de story: {story_err}")
-
-                results[plat] = "Bloqueado por Compliance Shield"
+                results[plat] = f"Bloqueado por Compliance Shield ({reason})"
                 continue
 
             if i > 0 and not self.dry_run:
