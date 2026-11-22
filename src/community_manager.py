@@ -515,6 +515,100 @@ def reply_tiktok_comments(max_replies: int = 3) -> Dict[str, Any]:
     return summary
 
 
+COMMENT_INSIGHTS_FILE = BASE_DIR / "data" / "comment_insights.json"
+
+# Temas que los viewers mencionan → señal de demanda de contenido
+_INSIGHT_TOPICS = {
+    "tips_guias": ["tip", "tips", "guide", "guia", "guía", "how to", "como", "cómo", "donde", "where"],
+    "armas": ["arma", "weapon", "gun", "pistol", "rifle", "escopeta", "legendaria", "legendary"],
+    "coches": ["coche", "car", "vehicle", "vehiculo", "moto", "bike", "mclaren", "lambo"],
+    "mapa": ["mapa", "map", "ubicacion", "ubicación", "location", "leonida", "vice city", "zona"],
+    "misiones": ["mision", "misión", "mission", "historia", "story", "prologo", "prólogo"],
+    "policia": ["policia", "policía", "police", "persecucion", "chase", "estrella", "wanted"],
+    "secretos": ["secreto", "secret", "easter egg", "oculto", "hidden", "detalle"],
+    "dinero": ["dinero", "money", "cash", "millones", "grind", "farm"],
+    "mas_contenido": ["mas", "más", "more", "sigue", "keep", "continue", "otro", "another"],
+    "comparativa": ["comparativa", "comparison", "vs", "ps5", "xbox", "fps", "grafico"],
+}
+
+
+def extract_comment_insights(max_comments: int = 50) -> Dict[str, Any]:
+    """
+    Analiza los comentarios recientes del canal para extraer temas demandados.
+    Usa keyword matching (0 coste API). Persiste en data/comment_insights.json.
+    """
+    token_extra = BASE_DIR / "token_extra.json"
+    token_file = token_extra if token_extra.exists() else (BASE_DIR / "token.json")
+    if not token_file.exists():
+        return {"ok": False, "reason": "No token.json"}
+
+    try:
+        from google.oauth2.credentials import Credentials
+        from google.auth.transport.requests import Request
+        from googleapiclient.discovery import build
+
+        creds = Credentials.from_authorized_user_file(str(token_file))
+        if creds.expired and creds.refresh_token:
+            creds.refresh(Request())
+        yt = build("youtube", "v3", credentials=creds)
+
+        ch_resp = yt.channels().list(part="id", mine=True).execute()
+        items = ch_resp.get("items", [])
+        if not items:
+            return {"ok": False, "reason": "No channel found"}
+        my_channel_id = items[0]["id"]
+
+        threads_resp = yt.commentThreads().list(
+            part="snippet",
+            allThreadsRelatedToChannelId=my_channel_id,
+            maxResults=min(max_comments, 100),
+            order="time",
+        ).execute()
+
+        # Contar menciones de temas
+        topic_counts: Dict[str, int] = {t: 0 for t in _INSIGHT_TOPICS}
+        total_comments = 0
+        sample_requests: List[str] = []
+
+        for thread in threads_resp.get("items", []):
+            snippet = thread.get("snippet", {}).get("topLevelComment", {}).get("snippet", {})
+            text = (snippet.get("textDisplay", "") or "").lower()
+            if not text or len(text) < 5:
+                continue
+            total_comments += 1
+
+            for topic, keywords in _INSIGHT_TOPICS.items():
+                if any(kw in text for kw in keywords):
+                    topic_counts[topic] += 1
+
+            # Detectar peticiones directas
+            if any(w in text for w in ["haz", "hace", "make", "quiero ver", "want to see", "puedes", "podrias", "podrías"]):
+                sample_requests.append(text[:100])
+
+        # Ordenar por demanda
+        sorted_topics = sorted(topic_counts.items(), key=lambda x: x[1], reverse=True)
+        top_demanded = [t for t, c in sorted_topics if c > 0]
+
+        result = {
+            "ok": True,
+            "analyzed_at": datetime.now().isoformat(),
+            "total_comments": total_comments,
+            "topic_demand": {t: c for t, c in sorted_topics if c > 0},
+            "top_demanded_topics": top_demanded[:5],
+            "sample_requests": sample_requests[:5],
+        }
+
+        # Persistir
+        COMMENT_INSIGHTS_FILE.parent.mkdir(parents=True, exist_ok=True)
+        COMMENT_INSIGHTS_FILE.write_text(json.dumps(result, indent=2, ensure_ascii=False), encoding="utf-8")
+        print(f"[Community Insights] Analizados {total_comments} comentarios. Top demanda: {top_demanded[:3]}")
+        return result
+
+    except Exception as e:
+        print(f"[Community Insights] Error: {e}")
+        return {"ok": False, "reason": str(e)}
+
+
 def run_autonomous_community_cycle(
     yt_max: int = 6, ig_max: int = 4,
     tk_max: int = 3, ig_followback_max: int = 3,
@@ -524,6 +618,14 @@ def run_autonomous_community_cycle(
     ig_res = reply_instagram_comments(max_replies=ig_max)
     tk_res = reply_tiktok_comments(max_replies=tk_max)
     fb_res = followback_instagram_commenters(max_follows=ig_followback_max)
+
+    # Extraer insights de comentarios tras responder (aprovecha la API ya autenticada)
+    insights = {}
+    try:
+        insights = extract_comment_insights(max_comments=50)
+    except Exception:
+        pass
+
     return {
         "timestamp": datetime.now().isoformat(),
         "youtube": yt_res,
@@ -532,4 +634,5 @@ def run_autonomous_community_cycle(
         "instagram_followback": fb_res,
         "total_replied": yt_res["replied"] + ig_res["replied"] + tk_res["replied"],
         "total_followed": fb_res["followed"],
+        "comment_insights": insights,
     }

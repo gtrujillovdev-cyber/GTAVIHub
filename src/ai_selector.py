@@ -250,6 +250,18 @@ def select_best_candidate_ai(
     except Exception:
         pass
 
+    # Cargar insights de comentarios (demanda real de los viewers)
+    audience_demand = ""
+    try:
+        from .community_manager import COMMENT_INSIGHTS_FILE
+        if COMMENT_INSIGHTS_FILE.exists():
+            insights = json.loads(COMMENT_INSIGHTS_FILE.read_text(encoding="utf-8"))
+            top_topics = insights.get("top_demanded_topics", [])
+            if top_topics:
+                audience_demand = f"TEMAS MÁS PEDIDOS POR LOS VIEWERS (extraído de comentarios reales): {', '.join(top_topics[:5])}"
+    except Exception:
+        pass
+
     # Cargar radar de tráfico y contexto editorial reciclado en tiempo real
     traffic_radar_summary = {}
     dynamic_editorial_context = ""
@@ -334,6 +346,8 @@ VÍDEOS RECIENTES YA PUBLICADOS (EVITA REPETIR ESTAS TEMÁTICAS):
 {json.dumps(recent_titles, indent=2, ensure_ascii=False)}
 
 {f"RENDIMIENTO REAL DE NUESTROS ÚLTIMOS CLIPS (usa esto para decidir qué ÁNGULOS replican éxito):{chr(10)}{performance_context}" if performance_context else ""}
+
+{audience_demand}
 
 CRITERIOS EDITORIALES DE VICTORIA (PLAYBOOK GAMEPLAY ACTIVO):
 0. PRIORIDAD #1 ABSOLUTA — GAMEPLAY REAL IN-GAME Y COMPARATIVAS TÉCNICAS:

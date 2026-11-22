@@ -1789,6 +1789,16 @@ def start_telegram_bot_daemon():
                             send_telegram_alert(f"⚠️ Error analizando ganadores: {e}")
                     threading.Thread(target=_run_winners, daemon=True).start()
 
+                elif cmd in ["/crossplatform", "/xplat"]:
+                    send_telegram_alert("🔄 *Analizando asimetrías cross-platform...*")
+                    def _run_xplat():
+                        try:
+                            from .performance_tracker import format_cross_platform_report
+                            send_telegram_alert(format_cross_platform_report(), reply_markup=get_persistent_menu_keyboard())
+                        except Exception as e:
+                            send_telegram_alert(f"⚠️ Error analizando cross-platform: {e}")
+                    threading.Thread(target=_run_xplat, daemon=True).start()
+
                 elif cmd in ["/optimize", "/aprender", "/learning", "🧠"] or text == "🧠 Auto-Perfeccionar":
                     send_telegram_alert("🧠 *Iniciando ciclo de auto-perfeccionamiento y benchmark...*\nAuditando vídeos de nuestro canal y extrayendo patrones ganadores de los líderes.")
                     def _run_opt():

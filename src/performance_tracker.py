@@ -122,9 +122,14 @@ def fetch_pending_metrics(max_fetch: int = 5) -> int:
                 rec["views_24h"] = int(parts[0]) if len(parts) > 0 and parts[0].isdigit() else None
                 rec["likes_24h"] = int(parts[1]) if len(parts) > 1 and parts[1].isdigit() else None
                 rec["comments_24h"] = int(parts[2]) if len(parts) > 2 and parts[2].isdigit() else None
+                # Engagement rate como proxy de retención (likes+comments*3 / views)
+                v = rec.get("views_24h") or 0
+                l = rec.get("likes_24h") or 0
+                c = rec.get("comments_24h") or 0
+                rec["engagement_rate_24h"] = round((l + c * 3) / max(v, 1), 4) if v > 0 else 0
                 rec["metrics_fetched_at"] = now.isoformat()
                 updated += 1
-                print(f"[PerformanceTracker] Métricas actualizadas: {rec['title'][:40]} — {rec['views_24h']} vistas")
+                print(f"[PerformanceTracker] Métricas actualizadas: {rec['title'][:40]} — {rec['views_24h']} vistas (engagement: {rec['engagement_rate_24h']:.3f})")
         except Exception as e:
             print(f"[PerformanceTracker] Error obteniendo métricas para {url}: {e}")
 
@@ -153,19 +158,19 @@ def get_performance_context_for_playbook() -> str:
     lines = ["Rendimiento real de nuestros vídeos publicados (primeras 24h):"]
     lines.append("TOP PERFORMERS:")
     for r in top:
-        eng = ""
-        if r.get("likes_24h") and r.get("views_24h", 0) > 0:
-            eng = f", engagement={r['likes_24h']/r['views_24h']:.3f}"
+        eng_rate = r.get("engagement_rate_24h") or 0
+        angle = classify_clip_angle(r.get("title", ""))
         lines.append(
-            f"  - '{r['title'][:50]}': {r['views_24h']} vistas"
-            f", {r.get('likes_24h', '?')} likes{eng}"
+            f"  - '{r['title'][:50]}' [{angle}]: {r['views_24h']} vistas"
+            f", {r.get('likes_24h', '?')} likes, engagement={eng_rate:.3f}"
         )
 
     if bottom:
         lines.append("BOTTOM PERFORMERS:")
         for r in bottom:
+            angle = classify_clip_angle(r.get("title", ""))
             lines.append(
-                f"  - '{r['title'][:50]}': {r['views_24h']} vistas"
+                f"  - '{r['title'][:50]}' [{angle}]: {r['views_24h']} vistas"
                 f", {r.get('likes_24h', '?')} likes"
             )
 
@@ -550,4 +555,70 @@ def format_winner_replication_report(summary: Dict[str, Any]) -> str:
         )
     if winner.get("url"):
         lines.append(f"\n🔗 *Clip #1:* {winner['url']}")
+    return "\n".join(lines)
+
+
+def detect_cross_platform_opportunities(min_views_yt: int = 5000) -> List[Dict[str, Any]]:
+    """
+    Detecta clips que rindieron bien en YouTube pero no se publicaron en TikTok (o viceversa).
+    Retorna lista de oportunidades de re-publicación cross-platform.
+    """
+    records = _load_records()
+    opportunities = []
+
+    for rec in records:
+        views_yt = rec.get("views_24h") or 0
+        tiktok_views = rec.get("tiktok_views") or 0
+        title = rec.get("title", "")
+        video_id = rec.get("video_id", "")
+        published_at = rec.get("published_at", "")
+
+        if not video_id or not title:
+            continue
+
+        # Clip exitoso en YouTube pero sin presencia significativa en TikTok
+        if views_yt >= min_views_yt and tiktok_views < 500:
+            opportunities.append({
+                "video_id": video_id,
+                "title": title,
+                "youtube_views": views_yt,
+                "tiktok_views": tiktok_views,
+                "gap": "youtube_to_tiktok",
+                "reason": f"YT={views_yt} vistas pero TT={tiktok_views}. Re-publicar en TikTok.",
+                "published_at": published_at,
+            })
+
+        # Clip exitoso en TikTok pero bajo en YouTube
+        if tiktok_views >= 10000 and views_yt < 1000:
+            opportunities.append({
+                "video_id": video_id,
+                "title": title,
+                "youtube_views": views_yt,
+                "tiktok_views": tiktok_views,
+                "gap": "tiktok_to_youtube",
+                "reason": f"TT={tiktok_views} vistas pero YT={views_yt}. Re-publicar en YouTube.",
+                "published_at": published_at,
+            })
+
+    opportunities.sort(key=lambda x: max(x["youtube_views"], x["tiktok_views"]), reverse=True)
+    return opportunities[:5]
+
+
+def format_cross_platform_report() -> str:
+    """Genera un reporte Telegram de oportunidades cross-platform."""
+    opps = detect_cross_platform_opportunities()
+    if not opps:
+        return "✅ *Cross-Platform:* Sin asimetrías significativas detectadas."
+
+    lines = [
+        "🔄 *OPORTUNIDADES CROSS-PLATFORM DETECTADAS*",
+        "═" * 34,
+    ]
+    for o in opps:
+        title_clean = str(o["title"]).replace("*", "").replace("`", "")[:45]
+        lines.append(
+            f"• *{title_clean}*\n"
+            f"   📊 YT: `{o['youtube_views']}` | TT: `{o['tiktok_views']}`\n"
+            f"   💡 _{o['reason']}_"
+        )
     return "\n".join(lines)

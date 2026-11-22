@@ -264,16 +264,68 @@ def mark_window_completed(window_id: str, published_url: Optional[str] = None, t
     save_all_schedules(all_sched)
 
 
+def get_window_performance_stats() -> Dict[str, Dict[str, float]]:
+    """
+    Analiza el rendimiento historico por franja horaria.
+    Retorna: { "morning": {"avg_views": 1200, "count": 5}, ... }
+    """
+    try:
+        from .performance_tracker import _load_records
+        records = _load_records()
+    except Exception:
+        return {}
+
+    # Mapear hora de publicacion a window_id
+    stats: Dict[str, list] = {}
+    for rec in records:
+        views = rec.get("views_24h")
+        pub_at = rec.get("published_at", "")
+        if views is None or not pub_at:
+            continue
+        try:
+            pub_hour = datetime.fromisoformat(pub_at).hour
+        except Exception:
+            continue
+        # Mapear hora a window_id
+        if 9 <= pub_hour <= 11:
+            wid = "morning"
+        elif 13 <= pub_hour <= 15:
+            wid = "lunch_latam"
+        elif 16 <= pub_hour <= 18:
+            wid = "afternoon"
+        elif 19 <= pub_hour <= 22:
+            wid = "prime_time"
+        else:
+            continue
+        stats.setdefault(wid, []).append(views)
+
+    result = {}
+    for wid, views_list in stats.items():
+        result[wid] = {
+            "avg_views": round(sum(views_list) / len(views_list), 1),
+            "count": len(views_list),
+            "best": max(views_list),
+        }
+    return result
+
+
 def format_schedule_summary(target_date: Optional[date] = None) -> str:
     """Devuelve un resumen amigable en formato texto para Telegram o logs."""
     sched = get_daily_schedule(target_date)
     lines = [f"📅 *Planificador Adaptativo ({sched.get('date')})*"]
     lines.append("🛡️ _Horarios aleatorizados anti-detección:_\n")
 
+    perf = get_window_performance_stats()
+
     for w in sched.get("windows", []):
         status = "✅ Hecho" if w.get("completed") else "⏳ Pendiente"
+        perf_str = ""
+        wid = w.get("id", "")
+        if wid in perf:
+            p = perf[wid]
+            perf_str = f"\n   📊 _Histórico: {p['avg_views']:.0f} vistas/24h promedio ({p['count']} clips, mejor: {p['best']})_"
         lines.append(
             f"• *{w['name']}*: `{w['scheduled_time']} CET` ({status})\n"
-            f"   _Rango orgánico: {w['window_start']} - {w['window_end']}_"
+            f"   _Rango orgánico: {w['window_start']} - {w['window_end']}_{perf_str}"
         )
     return "\n".join(lines)
