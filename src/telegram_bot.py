@@ -1285,20 +1285,13 @@ def handle_callback_query(cq: Dict[str, Any]):
     # F) Acciones de Sistema y Reinicio de Emergencia
     if data == "system:ask_restart":
         answer_callback_query(cq_id)
-        msg_txt = (
-            "⚠️ *CONFIRMACIÓN DE REINICIO*\n"
-            + ("═" * 36) + "\n\n"
-            + "¿Deseas reiniciar el Centro de Control y cancelar cualquier proceso colgado?\n\n"
-            + "• Se liberarán bloqueos de hardware (`ACTIVE_TASK`).\n"
-            + "• Se purgarán procesos huérfanos de `ffmpeg` y `yt-dlp`.\n"
-            + "• El bot volverá a responder en ~2 segundos."
-        )
+        msg_txt = "¿Reiniciar bot y purgar procesos colgados?"
         send_telegram_alert(msg_txt, reply_markup=get_restart_confirm_keyboard())
         return
 
     if data == "system:confirm_restart":
         answer_callback_query(cq_id, "Reiniciando...")
-        edit_telegram_message(msg_id, "🔄 *Ejecutando reinicio del servicio...*")
+        edit_telegram_message(msg_id, "🔄 *Reiniciando bot...*")
         t = threading.Thread(target=execute_bot_restart, daemon=True)
         t.start()
         return
@@ -1390,11 +1383,7 @@ def start_telegram_bot_daemon():
     except Exception:
         pass
     if not _is_restart:
-        welcome_msg = (
-            "🟢 *GTA VI Hub Bot Activado*\n"
-            + ("═" * 36) + "\n\n"
-            + "Centro de control listo. Usa los botones o pega un enlace."
-        )
+        welcome_msg = "🟢 *GTA VI Hub Bot activo*"
         send_telegram_alert(welcome_msg, reply_markup=get_persistent_menu_keyboard())
 
     def _heartbeat_worker():
@@ -1675,15 +1664,7 @@ def start_telegram_bot_daemon():
                         t = threading.Thread(target=execute_bot_restart, daemon=True)
                         t.start()
                     else:
-                        msg_txt = (
-                            "⚠️ *CONFIRMACIÓN DE REINICIO*\n"
-                            + ("═" * 36) + "\n\n"
-                            + "¿Deseas reiniciar el Centro de Control y cancelar cualquier proceso colgado?\n\n"
-                            + "• Se liberarán bloqueos de hardware (`ACTIVE_TASK`).\n"
-                            + "• Se purgarán procesos huérfanos de `ffmpeg` y `yt-dlp`.\n"
-                            + "• El bot volverá a responder en ~2 segundos.\n\n"
-                            + "💡 _Para reiniciar directamente sin confirmación usa_ `/restart force`."
-                        )
+                        msg_txt = "¿Reiniciar bot y purgar procesos colgados?"
                         send_telegram_alert(msg_txt, reply_markup=get_restart_confirm_keyboard())
 
                 elif cmd in ["/unlock", "/cancel", "/desbloquear"]:
