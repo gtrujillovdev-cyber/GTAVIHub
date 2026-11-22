@@ -74,6 +74,7 @@ Para evitar sobrecalentamiento, estrangulamiento térmico o degradación de los 
 
 1. **Transformación Editorial Real (Anti-Reused Content)**:
    - Todo clip debe incluir reencuadre centrado 83.3% (`1080x1600`), subtítulos Pop Karaoke dinámicos con glow, píldora de gancho superior (0.0s a 2.5s) y audio ducking reactivo a ~18% durante la voz en off.
+   - **Regla Estricta de Marca de Agua Única**: La marca de agua del canal (`@GTAVIHubExtra`) debe generarse y superponerse EXCLUSIVAMENTE a través de `render_brand_watermark_pill()` en `src/video_editor.py`. Queda terminantemente prohibido dibujar marcas de agua secundarias, textos fantasma o píldoras de marca dentro de `create_subtle_vignette()` o capas auxiliares para evitar cualquier solapamiento o efecto doble texto.
 2. **Atribución Transparente**:
    - Obligatorio incluir mención al autor en el primer párrafo de la descripción (`POR: @Creador`), enlace directo al vídeo original y descargo estatutario de Fair Use (Art. 107 Copyright Act).
 3. **Cadencia Orgánica Anti-Spam**:
