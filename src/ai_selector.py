@@ -49,10 +49,17 @@ def _visual_appeal_adjustment(item: Dict[str, Any]) -> float:
             "fps", " vs ", "comparison", "comparativa", "physics", "físicas", "fisicas", "rage 9", "graphics"
         )
     )
+    has_tips_kw = any(
+        k in tl for k in (
+            "how to", "where to", "guide", "tip", "trick", "secret", "easter egg",
+            "hidden", "location", "weapon", "money", "glitch", "find", "rare",
+            "legendary", "unlock", "spot", "bunker", "trophy", "achievement",
+            "guia", "guía", "secreto", "truco", "arma", "dinero", "encontrar", "ubicacion",
+        )
+    )
     if 12 <= dur <= 62:
         delta += 18.0
-    elif item.get("allow_long_clipping") and has_gameplay_kw:
-        # Los gameplays 16:9 largos se recortan al instante por sección viral (--download-sections)
+    elif item.get("allow_long_clipping") and (has_gameplay_kw or has_tips_kw):
         delta += 12.0
     elif dur > 360:
         delta -= 18.0
@@ -62,8 +69,11 @@ def _visual_appeal_adjustment(item: Dict[str, Any]) -> float:
         delta += 24.0
     if any(a in upl for a in ("willyrex", "illojuan", "rubius", "elrubius", "xokas", "elxokas", "auron", "auronplay", "thegrefg", "vegetta", "vegetta777", "djmariio")):
         delta += 28.0
-    if has_gameplay_kw:
-        delta += 24.0
+    # Post-lanzamiento: tips/secrets > gameplay/physics
+    if has_tips_kw:
+        delta += 32.0
+    elif has_gameplay_kw:
+        delta += 10.0
     # Penalizar formatos de tertulia larga/podcast/debate que arruinan la retención en Shorts
     if dur > 500 and any(k in tl for k in ("discussion", "podcast", "talk", "chat", "direct special", "roundtable", "interview", "debate")):
         delta -= 48.0
@@ -201,6 +211,14 @@ def select_best_candidate_ai(
             s += 15.0
         elif _avoid_kws and not item.get("is_user_liked") and any(kw in t_low for kw in _avoid_kws):
             s -= 8.0
+
+        # Post-lanzamiento: boost fuerte para contenido accionable (tips, guías, secretos)
+        _tips_kws = ("how to", "where to", "guide", "tip", "trick", "secret", "easter egg",
+                     "hidden", "location", "weapon", "money", "glitch", "find", "rare",
+                     "legendary", "unlock", "spot", "bunker", "trophy", "achievement",
+                     "guia", "guía", "secreto", "truco", "arma", "dinero", "encontrar")
+        if any(kw in t_low for kw in _tips_kws):
+            s += 28.0
 
         # Señal directa de Like en X: el usuario ya validó manualmente este tipo de contenido
         if item.get("is_liked") or item.get("is_user_liked"):
