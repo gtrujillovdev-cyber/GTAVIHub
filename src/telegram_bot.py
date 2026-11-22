@@ -942,6 +942,10 @@ def run_approval_publish_in_background(video_id: str):
             else:
                 lines_rrss.append("• 📸 *Instagram:* [Perfil @gtavihubextra](https://www.instagram.com/gtavihubextra/)")
 
+            x_val = mp.get("x")
+            if x_val and str(x_val).startswith("http"):
+                lines_rrss.append(f"• 🐦 *X/Twitter:* [Ver Tweet]({x_val})")
+
             rrss_block = "\n".join(lines_rrss)
             clean_res_title = str(res.get("title", "")).replace("*", "").replace("`", "").strip()
 
@@ -1469,12 +1473,13 @@ def start_telegram_bot_daemon():
                 # Community Manager: responder comentarios en YouTube e Instagram
                 try:
                     from .community_manager import run_autonomous_community_cycle
-                    comm = run_autonomous_community_cycle(yt_max=6, ig_max=4)
+                    comm = run_autonomous_community_cycle(yt_max=6, ig_max=4, x_likes_max=10, x_follows_max=5)
                     total = comm.get("total_replied", 0)
-                    if total > 0:
+                    x_likes = comm.get("total_x_likes", 0)
+                    if total > 0 or x_likes > 0:
                         yt_n = comm.get("youtube", {}).get("replied", 0)
                         ig_n = comm.get("instagram", {}).get("replied", 0)
-                        print(f"[Community Manager] {total} respuestas (YT={yt_n}, IG={ig_n})")
+                        print(f"[Community Manager] {total} respuestas (YT={yt_n}, IG={ig_n}), X: {x_likes} likes")
                 except Exception as e:
                     print(f"[Community Manager] Info: {e}")
 
@@ -1515,7 +1520,8 @@ def start_telegram_bot_daemon():
                     yt_avail = AntiBanValidator.check_daily_limit("youtube")
                     tt_avail = AntiBanValidator.check_daily_limit("tiktok")
                     ig_avail = AntiBanValidator.check_daily_limit("instagram")
-                    if not (yt_avail or tt_avail or ig_avail):
+                    x_avail = AntiBanValidator.check_daily_limit("x")
+                    if not (yt_avail or tt_avail or ig_avail or x_avail):
                         print(f"[Scheduler] Cuotas diarias agotadas en todas las redes; ventana '{due_win['name']}' omitida.")
                         mark_window_completed(due_win["id"], target_date=now_dt.date())
                         due_win = None
@@ -1626,6 +1632,8 @@ def start_telegram_bot_daemon():
                         + "⌨️ *COMANDOS RÁPIDOS:*\n"
                         + "• `/dryrun` — Simular selección 0-IA\n"
                         + "• `/stats` — Métricas reales de `@gtavihubextra`\n"
+                        + "• `/xstatus` — Estado de X/Twitter y engagement\n"
+                        + "• `/xengage force` — Ejecutar ciclo de engagement en X\n"
                         + "• `/unlock` — Desbloquear tareas colgadas\n"
                         + "• `/restart` — Reinicio rápido del bot"
                     )
@@ -1918,6 +1926,48 @@ def start_telegram_bot_daemon():
                                     ACTIVE_TASK = None
                         t = threading.Thread(target=_run_x_scout, args=(allowed_chat_id,), daemon=True)
                         t.start()
+
+                elif cmd in ["/xstatus", "/xengagement", "/xengage"]:
+                    def _run_x_status():
+                        try:
+                            from .community_manager import _load_x_engagement_state
+                            state = _load_x_engagement_state()
+                            today_str = datetime.now().strftime("%Y-%m-%d")
+                            if state.get("today_date") != today_str:
+                                state = {"today_date": today_str, "likes_today": 0, "follows_today": 0}
+                            x_handle = os.getenv("X_USERNAME", "gtavihubextra").strip().lstrip("@")
+                            x_storage = Path(os.getenv("BASE_DIR", str(Path(__file__).resolve().parent.parent))) / "assets" / ".browser_profiles" / "x_storage_state.json"
+                            session_ok = "🟢 Activa" if x_storage.exists() else "🔴 Sin configurar"
+                            msg = (
+                                "🐦 *ESTADO DE X/TWITTER (@" + x_handle + ")*\n"
+                                + ("═" * 36) + "\n\n"
+                                + f"• *Sesion:* `{session_ok}`\n"
+                                + f"• *Likes hoy:* `{state.get('likes_today', 0)}/{os.getenv('MAX_X_LIKES_PER_DAY', '20')}`\n"
+                                + f"• *Follows hoy:* `{state.get('follows_today', 0)}/{os.getenv('MAX_X_FOLLOWS_PER_DAY', '10')}`\n\n"
+                                + "💡 _Usa_ `/xengage force` _para ejecutar un ciclo de engagement ahora._"
+                            )
+                            send_telegram_alert(msg, reply_markup=get_persistent_menu_keyboard())
+                        except Exception as e:
+                            send_telegram_alert(f"⚠️ Error consultando estado de X: {e}")
+
+                    if "force" in text.lower():
+                        def _run_x_engage():
+                            try:
+                                send_telegram_alert("🐦 *Ejecutando ciclo de engagement en X...*\n_(Likes, follows y followbacks con delays humanos)_")
+                                from .community_manager import run_x_engagement_cycle
+                                res = run_x_engagement_cycle(max_likes=10, max_follows=5, max_followbacks=3)
+                                msg = (
+                                    "🐦 *CICLO DE ENGAGEMENT EN X COMPLETADO*\n"
+                                    + ("═" * 36) + "\n\n"
+                                    + f"• *Likes dados:* `{res.get('total_x_likes', 0)}`\n"
+                                    + f"• *Follows nuevos:* `{res.get('total_x_follows', 0)}`\n"
+                                )
+                                send_telegram_alert(msg, reply_markup=get_persistent_menu_keyboard())
+                            except Exception as e:
+                                send_telegram_alert(f"⚠️ Error en engagement de X: {e}")
+                        threading.Thread(target=_run_x_engage, daemon=True).start()
+                    else:
+                        threading.Thread(target=_run_x_status, daemon=True).start()
 
                 elif cmd in ["/copilot", "🛡️"] or text == "🛡️ Modo Co-Pilot":
                     enabled = is_copilot_enabled()

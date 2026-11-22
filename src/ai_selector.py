@@ -10,13 +10,13 @@ from .learning_engine import load_viral_playbook, generate_hook_card_texts
 from .channels import get_processed_ids
 
 def _resolve_recommended_mode(raw_mode: str, item: Dict[str, Any]) -> str:
-    """Normaliza recommended_mode preservando audio auténtico en gameplays y priorizando doblaje en inglés."""
+    """Normaliza recommended_mode: subtitulos en español + audio original siempre.
+    NUNCA doblaje TTS — degrada la calidad y suena artificial."""
     norm = (raw_mode or "").strip().lower()
-    is_es_src = (item.get("lang") or "en").lower().startswith("es")
-    if norm == "subs" and not is_es_src:
-        # Promover inglés 'subs' -> 'dub' para desbloquear 3/3 plataformas (YT + TikTok + IG Reels)
-        return "dub"
-    if norm in ("gameplay", "dub", "subs", "clean", "short"):
+    # Dub desactivado permanentemente: solo subtitulos preservando audio original
+    if norm == "dub":
+        norm = "subs"
+    if norm in ("gameplay", "subs", "clean", "short"):
         return norm
     tl = f" {(item.get('title') or '').lower()} "
     is_explicit_visual = any(
@@ -33,7 +33,7 @@ def _resolve_recommended_mode(raw_mode: str, item: Dict[str, Any]) -> str:
         return "gameplay"
     if "gameplay" in tl and not is_spoken_analysis:
         return "gameplay"
-    return "subs" if is_es_src else "dub"
+    return "subs"
 
 
 def _visual_appeal_adjustment(item: Dict[str, Any]) -> float:

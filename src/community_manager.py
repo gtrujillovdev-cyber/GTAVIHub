@@ -609,15 +609,342 @@ def extract_comment_insights(max_comments: int = 50) -> Dict[str, Any]:
         return {"ok": False, "reason": str(e)}
 
 
+X_ENGAGEMENT_FILE = BASE_DIR / "data" / "x_engagement.json"
+X_FOLLOWED_FILE = BASE_DIR / "data" / "x_followed_users.json"
+
+# Cuentas GTA6 de referencia para buscar contenido relevante y hacer engagement
+X_GTA6_CREATORS = [
+    "GTA6Intel", "GTAVInewz", "GTAVI_Countdown", "RockstarGames",
+    "GTA6News_", "GTASeries", "TezFunz2", "GTA6Videos",
+]
+
+MAX_X_LIKES_PER_DAY = int(os.getenv("MAX_X_LIKES_PER_DAY", "20"))
+MAX_X_FOLLOWS_PER_DAY = int(os.getenv("MAX_X_FOLLOWS_PER_DAY", "10"))
+
+
+def _load_x_engagement_state() -> Dict[str, Any]:
+    if not X_ENGAGEMENT_FILE.exists():
+        return {"today_date": "", "likes_today": 0, "follows_today": 0}
+    try:
+        return json.loads(X_ENGAGEMENT_FILE.read_text(encoding="utf-8"))
+    except Exception:
+        return {"today_date": "", "likes_today": 0, "follows_today": 0}
+
+
+def _save_x_engagement_state(state: Dict[str, Any]) -> None:
+    X_ENGAGEMENT_FILE.parent.mkdir(parents=True, exist_ok=True)
+    X_ENGAGEMENT_FILE.write_text(json.dumps(state, indent=2, ensure_ascii=False), encoding="utf-8")
+
+
+def _load_x_followed_ids() -> List[str]:
+    if not X_FOLLOWED_FILE.exists():
+        return []
+    try:
+        data = json.loads(X_FOLLOWED_FILE.read_text(encoding="utf-8"))
+        return [str(x) for x in data] if isinstance(data, list) else []
+    except Exception:
+        return []
+
+
+def _save_x_followed_ids(ids: List[str]) -> None:
+    X_FOLLOWED_FILE.parent.mkdir(parents=True, exist_ok=True)
+    trimmed = ids[-MAX_STORED_FOLLOWED_IDS:]
+    X_FOLLOWED_FILE.write_text(json.dumps(trimmed, indent=2, ensure_ascii=False), encoding="utf-8")
+
+
+def _get_x_browser_context():
+    """Crea un contexto de Playwright con la sesion persistente de X."""
+    from playwright.sync_api import sync_playwright
+    browser_profile_dir = BASE_DIR / "assets" / ".browser_profiles"
+    x_storage_state = browser_profile_dir / "x_storage_state.json"
+    x_profile = browser_profile_dir / "x_user_data"
+
+    headless = os.getenv("HEADLESS_BROWSER", "false").lower() in ["true", "1", "yes"]
+
+    pw = sync_playwright().start()
+    if x_storage_state.exists():
+        raw_browser = pw.chromium.launch(
+            headless=headless,
+            args=["--disable-blink-features=AutomationControlled", "--no-sandbox"],
+        )
+        ctx = raw_browser.new_context(
+            storage_state=str(x_storage_state),
+            locale="es-ES",
+            timezone_id="Europe/Madrid",
+            viewport={"width": 1280, "height": 900},
+        )
+        return pw, raw_browser, ctx
+    elif x_profile.exists():
+        ctx = pw.chromium.launch_persistent_context(
+            user_data_dir=str(x_profile),
+            headless=headless,
+            args=["--disable-blink-features=AutomationControlled", "--no-sandbox"],
+            locale="es-ES",
+            timezone_id="Europe/Madrid",
+            viewport={"width": 1280, "height": 900},
+        )
+        return pw, None, ctx
+    else:
+        pw.stop()
+        raise FileNotFoundError("No hay sesion de X configurada. Ejecuta scripts/setup_x_session.py primero.")
+
+
+def like_relevant_gta6_tweets(max_likes: int = 10) -> Dict[str, Any]:
+    """
+    Da like a tweets recientes de creadores GTA6 de referencia.
+    Conservador: max 20 likes/dia con delays humanos largos.
+    """
+    summary: Dict[str, Any] = {"platform": "x_likes", "liked": 0, "skipped": 0, "errors": []}
+    today_str = datetime.now().strftime("%Y-%m-%d")
+    state = _load_x_engagement_state()
+    if state.get("today_date") != today_str:
+        state = {"today_date": today_str, "likes_today": 0, "follows_today": 0}
+    if state["likes_today"] >= MAX_X_LIKES_PER_DAY:
+        print(f"[X Engagement] Limite diario de likes alcanzado ({MAX_X_LIKES_PER_DAY}).")
+        return summary
+
+    remaining_likes = min(max_likes, MAX_X_LIKES_PER_DAY - state["likes_today"])
+
+    try:
+        pw, raw_browser, ctx = _get_x_browser_context()
+    except (ImportError, FileNotFoundError) as e:
+        summary["errors"].append(str(e))
+        return summary
+
+    try:
+        page = ctx.new_page()
+        # Buscar tweets GTA6 recientes
+        page.goto("https://x.com/search?q=GTA%206%20OR%20GTA6%20OR%20%22Grand%20Theft%20Auto%206%22&src=typed_query&f=live", wait_until="domcontentloaded", timeout=30000)
+        time.sleep(random.uniform(3.0, 5.0))
+
+        if "login" in page.url.lower():
+            summary["errors"].append("Sesion de X caducada")
+            return summary
+
+        # Buscar botones de like en los tweets visibles
+        like_buttons = page.locator('[data-testid="like"]')
+        count = like_buttons.count()
+
+        for i in range(min(count, remaining_likes * 2)):
+            if summary["liked"] >= remaining_likes:
+                break
+            try:
+                btn = like_buttons.nth(i)
+                if btn.is_visible():
+                    btn.click()
+                    summary["liked"] += 1
+                    state["likes_today"] += 1
+                    print(f"[X Engagement] Like #{summary['liked']} dado.")
+                    time.sleep(random.uniform(3.0, 8.0))
+            except Exception:
+                summary["skipped"] += 1
+                time.sleep(random.uniform(1.0, 3.0))
+
+        _save_x_engagement_state(state)
+    except Exception as e:
+        summary["errors"].append(str(e))
+        print(f"[X Engagement] Error en likes: {e}")
+    finally:
+        try:
+            ctx.close()
+            if raw_browser:
+                raw_browser.close()
+            pw.stop()
+        except Exception:
+            pass
+
+    return summary
+
+
+def follow_gta6_creators(max_follows: int = 5) -> Dict[str, Any]:
+    """
+    Sigue cuentas relevantes del nicho GTA6 en X.
+    Conservador: max 10 follows/dia con delays humanos.
+    """
+    summary: Dict[str, Any] = {"platform": "x_follows", "followed": 0, "skipped": 0, "errors": []}
+    today_str = datetime.now().strftime("%Y-%m-%d")
+    state = _load_x_engagement_state()
+    if state.get("today_date") != today_str:
+        state = {"today_date": today_str, "likes_today": 0, "follows_today": 0}
+    if state["follows_today"] >= MAX_X_FOLLOWS_PER_DAY:
+        print(f"[X Engagement] Limite diario de follows alcanzado ({MAX_X_FOLLOWS_PER_DAY}).")
+        return summary
+
+    remaining_follows = min(max_follows, MAX_X_FOLLOWS_PER_DAY - state["follows_today"])
+    followed_list = _load_x_followed_ids()
+    followed_set: Set[str] = set(followed_list)
+
+    try:
+        pw, raw_browser, ctx = _get_x_browser_context()
+    except (ImportError, FileNotFoundError) as e:
+        summary["errors"].append(str(e))
+        return summary
+
+    try:
+        page = ctx.new_page()
+        # Buscar creadores GTA6 en la busqueda de personas
+        page.goto("https://x.com/search?q=GTA%206%20gaming&src=typed_query&f=user", wait_until="domcontentloaded", timeout=30000)
+        time.sleep(random.uniform(3.0, 5.0))
+
+        if "login" in page.url.lower():
+            summary["errors"].append("Sesion de X caducada")
+            return summary
+
+        # Buscar botones de follow
+        follow_buttons = page.locator('[data-testid$="-follow"]')
+        count = follow_buttons.count()
+
+        for i in range(min(count, remaining_follows * 3)):
+            if summary["followed"] >= remaining_follows:
+                break
+            try:
+                btn = follow_buttons.nth(i)
+                # Extraer username del contenedor padre
+                parent = btn.locator("xpath=ancestor::div[@data-testid='UserCell']")
+                username_el = parent.locator("a[href^='/']").first
+                username = ""
+                if username_el.count() > 0:
+                    href = username_el.get_attribute("href") or ""
+                    username = href.strip("/").lower()
+
+                if username in followed_set or not username:
+                    summary["skipped"] += 1
+                    continue
+
+                if btn.is_visible():
+                    btn.click()
+                    summary["followed"] += 1
+                    state["follows_today"] += 1
+                    followed_list.append(username)
+                    followed_set.add(username)
+                    print(f"[X Engagement] Seguido @{username}")
+                    time.sleep(random.uniform(5.0, 10.0))
+            except Exception:
+                summary["skipped"] += 1
+                time.sleep(random.uniform(2.0, 4.0))
+
+        _save_x_engagement_state(state)
+        _save_x_followed_ids(followed_list)
+    except Exception as e:
+        summary["errors"].append(str(e))
+        print(f"[X Engagement] Error en follows: {e}")
+    finally:
+        try:
+            ctx.close()
+            if raw_browser:
+                raw_browser.close()
+            pw.stop()
+        except Exception:
+            pass
+
+    return summary
+
+
+def followback_x_followers(max_follows: int = 5) -> Dict[str, Any]:
+    """
+    Sigue de vuelta a nuevos seguidores en X que no estamos siguiendo.
+    Conservador con delays humanos para evitar restricciones en cuenta nueva.
+    """
+    summary: Dict[str, Any] = {"platform": "x_followback", "followed": 0, "skipped": 0, "errors": []}
+    today_str = datetime.now().strftime("%Y-%m-%d")
+    state = _load_x_engagement_state()
+    if state.get("today_date") != today_str:
+        state = {"today_date": today_str, "likes_today": 0, "follows_today": 0}
+    if state["follows_today"] >= MAX_X_FOLLOWS_PER_DAY:
+        return summary
+
+    remaining = min(max_follows, MAX_X_FOLLOWS_PER_DAY - state["follows_today"])
+    x_handle = os.getenv("X_USERNAME", "gtavihubextra").strip().lstrip("@")
+
+    try:
+        pw, raw_browser, ctx = _get_x_browser_context()
+    except (ImportError, FileNotFoundError) as e:
+        summary["errors"].append(str(e))
+        return summary
+
+    try:
+        page = ctx.new_page()
+        page.goto(f"https://x.com/{x_handle}/followers", wait_until="domcontentloaded", timeout=30000)
+        time.sleep(random.uniform(3.0, 5.0))
+
+        if "login" in page.url.lower():
+            summary["errors"].append("Sesion de X caducada")
+            return summary
+
+        # Buscar botones "Follow" (no "Following") en la lista de seguidores
+        follow_buttons = page.locator('[data-testid$="-follow"]')
+        count = follow_buttons.count()
+
+        for i in range(min(count, remaining * 2)):
+            if summary["followed"] >= remaining:
+                break
+            try:
+                btn = follow_buttons.nth(i)
+                # Solo procesar botones que dicen "Follow" (no "Following")
+                btn_text = (btn.inner_text() or "").strip().lower()
+                if btn_text in ("following", "siguiendo"):
+                    continue
+                if btn.is_visible():
+                    btn.click()
+                    summary["followed"] += 1
+                    state["follows_today"] += 1
+                    print(f"[X Followback] Followback #{summary['followed']}")
+                    time.sleep(random.uniform(5.0, 10.0))
+            except Exception:
+                summary["skipped"] += 1
+                time.sleep(random.uniform(2.0, 4.0))
+
+        _save_x_engagement_state(state)
+    except Exception as e:
+        summary["errors"].append(str(e))
+        print(f"[X Followback] Error: {e}")
+    finally:
+        try:
+            ctx.close()
+            if raw_browser:
+                raw_browser.close()
+            pw.stop()
+        except Exception:
+            pass
+
+    return summary
+
+
+def run_x_engagement_cycle(
+    max_likes: int = 10, max_follows: int = 5, max_followbacks: int = 3,
+) -> Dict[str, Any]:
+    """Ejecuta un ciclo completo de engagement en X/Twitter."""
+    likes_res = like_relevant_gta6_tweets(max_likes=max_likes)
+    follows_res = follow_gta6_creators(max_follows=max_follows)
+    followback_res = followback_x_followers(max_follows=max_followbacks)
+    return {
+        "x_likes": likes_res,
+        "x_follows": follows_res,
+        "x_followback": followback_res,
+        "total_x_likes": likes_res["liked"],
+        "total_x_follows": follows_res["followed"] + followback_res["followed"],
+    }
+
+
 def run_autonomous_community_cycle(
     yt_max: int = 6, ig_max: int = 4,
     tk_max: int = 3, ig_followback_max: int = 3,
+    x_likes_max: int = 10, x_follows_max: int = 5,
 ) -> Dict[str, Any]:
     """Ejecuta un ciclo completo de interacción autónoma con seguidores."""
     yt_res = reply_youtube_comments(max_replies=yt_max)
     ig_res = reply_instagram_comments(max_replies=ig_max)
     tk_res = reply_tiktok_comments(max_replies=tk_max)
     fb_res = followback_instagram_commenters(max_follows=ig_followback_max)
+
+    # Engagement en X/Twitter (likes, follows, followbacks)
+    x_res: Dict[str, Any] = {"total_x_likes": 0, "total_x_follows": 0}
+    try:
+        x_res = run_x_engagement_cycle(
+            max_likes=x_likes_max, max_follows=x_follows_max, max_followbacks=3,
+        )
+    except Exception as e:
+        print(f"[X Engagement] Info: {e}")
 
     # Extraer insights de comentarios tras responder (aprovecha la API ya autenticada)
     insights = {}
@@ -632,7 +959,9 @@ def run_autonomous_community_cycle(
         "instagram": ig_res,
         "tiktok": tk_res,
         "instagram_followback": fb_res,
+        "x_engagement": x_res,
         "total_replied": yt_res["replied"] + ig_res["replied"] + tk_res["replied"],
-        "total_followed": fb_res["followed"],
+        "total_followed": fb_res["followed"] + x_res.get("total_x_follows", 0),
+        "total_x_likes": x_res.get("total_x_likes", 0),
         "comment_insights": insights,
     }

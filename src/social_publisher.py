@@ -166,6 +166,8 @@ class AntiBanValidator:
             return int(os.getenv("MAX_DAILY_UPLOADS_TIKTOK", os.getenv("MAX_DAILY_UPLOADS", "3")))
         elif p == "instagram":
             return int(os.getenv("MAX_DAILY_UPLOADS_INSTAGRAM", os.getenv("MAX_DAILY_UPLOADS", "3")))
+        elif p == "x":
+            return int(os.getenv("MAX_DAILY_UPLOADS_X", "4"))
         return int(os.getenv("MAX_DAILY_UPLOADS", "3"))
 
     @classmethod
@@ -945,6 +947,171 @@ class SocialPublisher:
             if is_temp_video and compat_path.exists():
                 compat_path.unlink(missing_ok=True)
 
+    def publish_to_x(
+        self,
+        video_path: Path,
+        title: str,
+        tags: List[str],
+        description: str = "",
+        creator_name: str = "",
+        native_caption_override: str = "",
+    ) -> Optional[str]:
+        """
+        Publica un vídeo nativo en X/Twitter mediante navegador automatizado (Playwright).
+        Sube el vídeo vertical 9:16 con un caption corto y hashtags.
+        """
+        x_handle = os.getenv("X_USERNAME", "gtavihubextra").strip().lstrip("@")
+        print(f"\n[4/4 X/Twitter] Preparando subida a X (@{x_handle})...")
+        video_path = Path(video_path)
+
+        if not AntiBanValidator.check_daily_limit("x"):
+            return None
+
+        # Construir caption para X (max 280 chars)
+        tag_str = " ".join(f"#{t}" for t in tags[:4]) if tags else "#GTA6 #RockstarGames #Gaming"
+        credit = f"Via {creator_name}" if creator_name and creator_name.lower() not in ("rockstar games",) else ""
+        base_caption = native_caption_override.strip() if native_caption_override else title
+        # Truncar titulo para dejar espacio a hashtags y credito
+        max_title_len = 280 - len(tag_str) - len(credit) - 6  # 6 chars para separadores
+        if len(base_caption) > max_title_len:
+            base_caption = truncate_on_word_boundary(base_caption, max_title_len)
+        caption = f"{base_caption}\n\n{credit}\n{tag_str}".strip()
+        caption = caption[:280]
+
+        x_profile = BROWSER_PROFILE_DIR / "x_user_data"
+        x_storage_state = BROWSER_PROFILE_DIR / "x_storage_state.json"
+
+        if self.dry_run:
+            print(f"[4/4 X] [DRY RUN] Simulacion exitosa. Caption: '{caption[:60]}...'")
+            return f"https://x.com/{x_handle}/status/mock_{video_path.stem}"
+
+        compat_path, is_temp_video = prepare_social_compatible_video(video_path)
+
+        try:
+            from playwright.sync_api import sync_playwright
+            headless = os.getenv("HEADLESS_BROWSER", "false").lower() in ["true", "1", "yes"]
+
+            print(f"[*] Abriendo sesion de X (headless={headless}, storage_state={x_storage_state.exists()})...")
+            for lk_name in ("SingletonLock", "SingletonSocket", "SingletonCookie"):
+                try:
+                    (x_profile / lk_name).unlink(missing_ok=True)
+                except Exception:
+                    pass
+
+            raw_browser = None
+            browser = None
+            with sync_playwright() as p:
+                try:
+                    if x_storage_state.exists():
+                        raw_browser = p.chromium.launch(
+                            headless=headless,
+                            args=["--disable-blink-features=AutomationControlled", "--no-sandbox"],
+                        )
+                        browser = raw_browser.new_context(
+                            storage_state=str(x_storage_state),
+                            locale="es-ES",
+                            timezone_id="Europe/Madrid",
+                            viewport={"width": 1280, "height": 900},
+                        )
+                    else:
+                        x_profile.mkdir(parents=True, exist_ok=True)
+                        browser = p.chromium.launch_persistent_context(
+                            user_data_dir=str(x_profile),
+                            headless=headless,
+                            args=["--disable-blink-features=AutomationControlled", "--no-sandbox"],
+                            locale="es-ES",
+                            timezone_id="Europe/Madrid",
+                            viewport={"width": 1280, "height": 900},
+                        )
+                    page = browser.new_page()
+
+                    # Navegar al compose de X
+                    page.goto("https://x.com/compose/post", wait_until="domcontentloaded", timeout=40000)
+                    time.sleep(random.uniform(3.0, 5.0))
+
+                    # Verificar sesion activa
+                    if "login" in page.url.lower() or "i/flow" in page.url.lower():
+                        print("[!] Sesion de X caducada (redirigido a login).")
+                        self._notify_telegram(
+                            "🛑 *X/Twitter sin sesion activa:* redirigido a `/login`.\n"
+                            "👉 Ejecuta `scripts/setup_x_session.py --fresh --sync` con `@" + x_handle + "`."
+                        )
+                        return None
+
+                    # Escribir el texto del tweet
+                    tweet_box = page.locator('[data-testid="tweetTextarea_0"], [role="textbox"]').first
+                    tweet_box.click()
+                    time.sleep(0.5)
+                    tweet_box.fill(caption)
+                    time.sleep(random.uniform(1.0, 2.0))
+
+                    # Adjuntar video
+                    file_input = page.locator('input[type="file"][accept*="video"]').first
+                    if file_input.count() == 0:
+                        # Fallback: buscar cualquier input de archivo para media
+                        file_input = page.locator('input[type="file"]').first
+                    file_input.set_input_files(str(compat_path))
+                    print("[*] Video adjuntado. Esperando procesamiento de X...")
+
+                    # Esperar a que X procese el video (barra de progreso desaparezca)
+                    for _ in range(90):  # max 3 minutos
+                        time.sleep(2)
+                        progress = page.locator('[role="progressbar"], [data-testid="progressBar"]')
+                        if progress.count() == 0:
+                            break
+                    time.sleep(random.uniform(2.0, 4.0))
+
+                    # Publicar tweet
+                    post_btn = page.locator('[data-testid="tweetButton"], [data-testid="tweetButtonInline"]').first
+                    if post_btn.count() > 0 and post_btn.is_enabled():
+                        post_btn.click()
+                        time.sleep(random.uniform(4.0, 7.0))
+
+                        # Verificar publicacion exitosa
+                        current_url = page.url
+                        if "/status/" in current_url:
+                            print(f"[OK] Tweet publicado con exito: {current_url}")
+                            return current_url
+
+                        # Intentar extraer URL del tweet recien publicado
+                        page.goto(f"https://x.com/{x_handle}", wait_until="domcontentloaded", timeout=30000)
+                        time.sleep(3)
+                        latest_tweet = page.locator(f'a[href*="/{x_handle}/status/"]').first
+                        if latest_tweet.count() > 0:
+                            href = latest_tweet.get_attribute("href") or ""
+                            if href:
+                                tweet_url = f"https://x.com{href}" if href.startswith("/") else href
+                                print(f"[OK] Tweet publicado: {tweet_url}")
+                                return tweet_url
+
+                        print("[OK] Tweet probablemente publicado (no se pudo extraer URL exacta).")
+                        return f"https://x.com/{x_handle}"
+                    else:
+                        print("[!] Boton de publicar no disponible en X.")
+                        self._notify_telegram("⚠️ *X/Twitter:* No se pudo publicar. El boton de enviar no estaba habilitado.")
+                        return None
+                finally:
+                    try:
+                        # Guardar storage state para reusar sesion
+                        if browser and x_storage_state.parent.exists():
+                            browser.storage_state(path=str(x_storage_state))
+                        if browser:
+                            browser.close()
+                        if raw_browser:
+                            raw_browser.close()
+                    except Exception:
+                        pass
+        except ImportError:
+            print("[X] Playwright no disponible. Instala con: pip install playwright && playwright install chromium")
+            return None
+        except Exception as e:
+            print(f"[X] Error publicando en X/Twitter: {e}")
+            self._notify_telegram(f"⚠️ *Error publicando en X (@{x_handle}):* `{str(e)[:140]}`")
+            return None
+        finally:
+            if is_temp_video and compat_path.exists():
+                compat_path.unlink(missing_ok=True)
+
     def publish_all(
         self,
         video_path: Path,
@@ -1160,6 +1327,19 @@ class SocialPublisher:
                 results["instagram"] = url
                 if url:
                     self._notify_telegram(f"✅ *[3/3] Instagram Reels publicado:* [Ver en Instagram]({url})")
+            elif plat == "x":
+                x_native_caption = metadata.get("x_caption", "")
+                url = self.publish_to_x(
+                    video_path,
+                    title,
+                    tags,
+                    description=desc,
+                    creator_name=creator_name,
+                    native_caption_override=x_native_caption,
+                )
+                results["x"] = url
+                if url:
+                    self._notify_telegram(f"✅ *[4/4] X/Twitter publicado:* [Ver en X]({url})")
 
         print("\n" + "=" * 65)
         print("📊 RESUMEN DE PUBLICACIÓN MULTIPLATAFORMA:")

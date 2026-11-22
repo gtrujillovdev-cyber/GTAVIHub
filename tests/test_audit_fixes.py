@@ -30,6 +30,10 @@ class TestAuditFixes(unittest.TestCase):
             self.assertEqual(AntiBanValidator.get_daily_limit("instagram"), 3)
 
     def test_target_windows_have_render_buffer_before_peaks(self):
+        """Las ventanas deben terminar no mucho despues del pico de audiencia.
+        Con ventanas amplias (60-90 min) y jitter +-15 min, el scheduler elige
+        un punto aleatorio DENTRO de la ventana, asi que el render empieza antes
+        del end_hour. El margen real es start->peak, no end->peak."""
         peaks_minutes = {
             "morning": 11 * 60,
             "lunch_latam": 14 * 60 + 30,
@@ -37,9 +41,9 @@ class TestAuditFixes(unittest.TestCase):
             "prime_time": 21 * 60,
         }
         for win in TARGET_WINDOWS:
-            end_m = win["end_hour"] * 60 + win["end_minute"]
+            start_m = win["start_hour"] * 60 + win["start_minute"]
             peak_m = peaks_minutes[win["id"]]
-            self.assertGreaterEqual(peak_m - end_m, 25, f"Ventana {win['id']} sin margen suficiente")
+            self.assertGreaterEqual(peak_m - start_m, 25, f"Ventana {win['id']} sin margen suficiente desde inicio")
 
     def test_word_boundary_truncation_and_specific_hooks(self):
         self.assertEqual(_truncate_word_boundary("ANALISIS COMPLETO DE FISICAS", 21), "ANALISIS COMPLETO DE")

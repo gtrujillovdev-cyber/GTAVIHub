@@ -107,8 +107,10 @@ class TestPhase1Fixes(unittest.TestCase):
         self.assertTrue(ok2)
         self.assertIn("físicas", out_srt2.read_text(encoding="utf-8").lower())
 
-    def test_resolve_recommended_mode_promotes_english_subs_to_dub(self):
-        self.assertEqual(_resolve_recommended_mode("subs", {"lang": "en", "title": "GTA 6 Secrets"}), "dub")
+    def test_resolve_recommended_mode_never_uses_dub(self):
+        # Dub desactivado: siempre subs (subtitulos ES + audio original), nunca TTS
+        self.assertEqual(_resolve_recommended_mode("subs", {"lang": "en", "title": "GTA 6 Secrets"}), "subs")
+        self.assertEqual(_resolve_recommended_mode("dub", {"lang": "en", "title": "GTA 6 Secrets"}), "subs")
         self.assertEqual(_resolve_recommended_mode("subs", {"lang": "es", "title": "Willyrex GTA 6"}), "subs")
         self.assertEqual(_resolve_recommended_mode("gameplay", {"lang": "en", "title": "GTA 6 Free Roam"}), "gameplay")
 

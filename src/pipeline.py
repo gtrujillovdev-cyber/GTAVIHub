@@ -324,7 +324,8 @@ def process_single_video(
             and not block_instagram
             and mode not in ("subs", "clean", "gameplay")
         )
-        if not (yt_ok or tt_ok or ig_ok):
+        x_ok = AntiBanValidator.check_daily_limit("x")
+        if not (yt_ok or tt_ok or ig_ok or x_ok):
             reason_extra = f" ({yt_cooldown_reason})" if yt_cooldown_blocked else ""
             print(f"[Anti-Ban Pre-Check] Cuotas diarias o cooldown activos en todas las plataformas elegibles{reason_extra}. Abortando antes de descargar/renderizar.")
             return None
