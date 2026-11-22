@@ -1054,28 +1054,6 @@ def create_subtle_vignette(output_png: Path, fg_top: int = 160, fg_bottom: int =
             alpha = int(110 * (y / max(1, bot_v)))
             d.line([(0, h - bot_v + y), (w, h - bot_v + y)], fill=(0, 0, 0, alpha))
 
-    # Píldora editorial de marca en zona segura (evita UI superior derecha y construye recuerdo de marca)
-    try:
-        wm_font = get_best_font(size=max(16, int(22 * scale_x)))
-        wm_text = "@GTAVIHUBEXTRA"
-        bb = d.textbbox((0, 0), wm_text, font=wm_font)
-        tw, th = bb[2] - bb[0], bb[3] - bb[1]
-        pad_px, pad_py = int(14 * scale_x), int(6 * scale_y)
-        px2 = w - int(22 * scale_x)
-        px1 = px2 - tw - pad_px * 2
-        py1 = max(int(18 * scale_y), fg_top + int(16 * scale_y))
-        py2 = py1 + th + pad_py * 2
-        d.rounded_rectangle(
-            [(px1, py1), (px2, py2)],
-            radius=max(6, int(12 * scale_x)),
-            fill=(10, 12, 22, 65),
-            outline=(255, 59, 154, 75),
-            width=max(1, int(1.5 * scale_x)),
-        )
-        d.text((px1 + pad_px, py1 + pad_py - int(2 * scale_y)), wm_text, font=wm_font, fill=(255, 255, 255, 130))
-    except Exception:
-        pass
-
     img.save(output_png, "PNG")
     return True
 
