@@ -1413,9 +1413,9 @@ def start_telegram_bot_daemon():
 
             # Revisión de métricas periódicas (cada ~1h en el loop)
             if not hasattr(start_telegram_bot_daemon, '_last_deals_check'):
-                start_telegram_bot_daemon._last_deals_check = 0
+                start_telegram_bot_daemon._last_deals_check = _now_ts
             if not hasattr(start_telegram_bot_daemon, '_last_metrics_check'):
-                start_telegram_bot_daemon._last_metrics_check = 0
+                start_telegram_bot_daemon._last_metrics_check = _now_ts
             _now_ts = time.time()
             if _now_ts - start_telegram_bot_daemon._last_deals_check > 3600:
                 start_telegram_bot_daemon._last_deals_check = _now_ts
@@ -1449,7 +1449,10 @@ def start_telegram_bot_daemon():
                     win_summary = detect_and_apply_winning_angles(limit=12)
                     if win_summary.get("ok") and win_summary.get("top_clips"):
                         top_views = win_summary["top_clips"][0].get("views", 0)
-                        if top_views > 0:
+                        current_winner_angle = win_summary.get("winning_angle") or win_summary["top_clips"][0].get("angle")
+                        last_reported_angle = getattr(start_telegram_bot_daemon, '_last_reported_winner_angle', None)
+                        if top_views > 0 and current_winner_angle != last_reported_angle:
+                            start_telegram_bot_daemon._last_reported_winner_angle = current_winner_angle
                             send_telegram_alert(format_winner_replication_report(win_summary))
                     # Feedback Loop: recalibrar scoring basado en outliers reales
                     from .performance_tracker import recalibrate_scoring_weights, diagnose_underperformers
