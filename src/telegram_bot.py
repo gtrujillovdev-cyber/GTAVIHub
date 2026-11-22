@@ -1426,7 +1426,7 @@ def start_telegram_bot_daemon():
                 except Exception as e:
                     print(f"[DealScanner] Error en chequeo automático: {e}")
 
-            # Feedback loop + Réplica automática de ganadores (cada 2h en lanzamiento, 6h en modo normal)
+            # Métricas pasivas y auto-diagnóstico en segundo plano (100% silencioso)
             try:
                 from .config import is_gameplay_enabled as _is_gp_on
                 _metrics_interval = 7200 if _is_gp_on() else 21600
@@ -1438,35 +1438,22 @@ def start_telegram_bot_daemon():
                 try:
                     from .performance_tracker import (
                         fetch_pending_metrics,
-                        detect_and_apply_winning_angles,
-                        format_winner_replication_report,
+                        recalibrate_scoring_weights,
+                        diagnose_underperformers,
                     )
                     fetched = fetch_pending_metrics(max_fetch=5)
                     if fetched > 0:
                         print(f"[PerformanceTracker] Métricas actualizadas para {fetched} vídeo(s).")
-                    win_summary = detect_and_apply_winning_angles(limit=12)
-                    if win_summary.get("ok") and win_summary.get("top_clips"):
-                        top_views = win_summary["top_clips"][0].get("views", 0)
-                        current_winner_angle = win_summary.get("winning_angle") or win_summary["top_clips"][0].get("angle")
-                        last_reported_angle = getattr(start_telegram_bot_daemon, '_last_reported_winner_angle', None)
-                        if top_views > 0 and current_winner_angle != last_reported_angle:
-                            start_telegram_bot_daemon._last_reported_winner_angle = current_winner_angle
-                            send_telegram_alert(format_winner_replication_report(win_summary))
-                    # Feedback Loop: recalibrar scoring basado en outliers reales
-                    from .performance_tracker import recalibrate_scoring_weights, diagnose_underperformers
+                    # Feedback Loop: recalibrar scoring en segundo plano
                     fb_result = recalibrate_scoring_weights()
                     if fb_result.get("ok") and fb_result.get("action") != "no_adjustment":
                         print(f"[Feedback Loop] {fb_result.get('action')}")
-                    # Auto-diagnostico de fracasos: detectar, corregir playbook, seguir
+                    # Auto-diagnóstico de fracasos silencioso
                     diag = diagnose_underperformers()
                     if diag.get("ok") and diag.get("diagnosed_count", 0) > 0:
-                        fixes = diag["corrections"]
-                        fix_lines = [f"🔬 *AUTO-DIAGNÓSTICO: {diag['diagnosed_count']} clips corregidos*"]
-                        for f in fixes[:3]:
-                            fix_lines.append(f"• _{f.get('cause', '?')}_ → {f.get('fix', '?')}")
                         print(f"[AutoDiagnosis] {diag['diagnosed_count']} correcciones aplicadas al playbook.")
                 except Exception as e:
-                    print(f"[PerformanceTracker] Error obteniendo métricas/ganadores: {e}")
+                    print(f"[PerformanceTracker] Error obteniendo métricas: {e}")
 
                 # Community Manager: responder comentarios en YouTube e Instagram
                 try:
