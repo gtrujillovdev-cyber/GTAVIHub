@@ -780,7 +780,7 @@
       "type": "guides",
       "lang": "es",
       "filter_keywords": true,
-      "enabled": false,
+      "enabled": true,
       "description": "Guías de misiones y secretos de Guías Paso a Paso"
     },
     {
@@ -789,7 +789,7 @@
       "type": "gameplay_guides",
       "lang": "en",
       "filter_keywords": true,
-      "enabled": false,
+      "enabled": true,
       "description": "Shorts de PowerPyx (DESACTIVADO: el canal no dispone de pestaña /shorts activa)"
     },
     {

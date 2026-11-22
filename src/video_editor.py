@@ -790,7 +790,7 @@ def render_follow_cta_pill(
     return True
 
 
-def render_karaoke_subtitle_state(words: List[str], active_idx: int, is_vertical: bool, output_path: Path, scale_factor: float = 1.0) -> bool:
+def render_karaoke_subtitle_state(words: List[str], active_idx: int, is_vertical: bool, output_path: Path, scale_factor: float = 1.0, caspahz_style: bool = False) -> bool:
     """
     Renderiza subtítulos Pop Broadcast limpios y transparentes (estilo Shorts/TikTok viral):
     - Sin caja/píldora oscura detrás (no tapa la acción del gameplay).
@@ -870,7 +870,25 @@ def render_karaoke_subtitle_state(words: List[str], active_idx: int, is_vertical
         "muy", "mas", "más", "pero", "si", "sí", "ya"
     }
 
-    if is_hot_pink:
+    if caspahz_style:
+        is_money_or_num = ("$" in raw_active_word) or clean_active in {
+            "dinero", "money", "cash", "mil", "hora", "hour", "dolar", "dolares", "dólar", "dólares"
+        }
+        is_caspahz_gold = clean_active in {
+            "oro", "gold", "gratis", "free", "coche", "supercoche", "supercar", "rolls", "royce",
+            "arma", "weapon", "legendaria", "legendary", "secreto", "secret", "oculta", "mapa",
+            "ubicacion", "ubicación", "location", "glitch", "truco", "metodo", "método"
+        }
+        if is_money_or_num:
+            active_color = (0, 255, 59, 255)      # Verde neón dinero estilo Caspahz
+            glow_color = (0, 255, 59, 70)
+        elif is_caspahz_gold:
+            active_color = (255, 230, 0, 255)     # Amarillo brillante estilo Caspahz
+            glow_color = (255, 230, 0, 70)
+        else:
+            active_color = (255, 255, 255, 255)   # Blanco puro limpio estilo Caspahz
+            glow_color = (0, 0, 0, 0)
+    elif is_hot_pink:
         active_color = (255, 59, 154, 255)   # Rosa Vice City para palabras gancho
         glow_color = (255, 59, 154, 115)
     elif is_filler_word:
@@ -1023,7 +1041,8 @@ def render_final_video(
     archetype: str = "",
     format_preset: Optional[str] = None,
     context_badge: str = "",
-    cached_dimensions: Optional[Tuple[int, int]] = None
+    cached_dimensions: Optional[Tuple[int, int]] = None,
+    caspahz_style: bool = False
 ) -> bool:
     """
     Ensamblaje viral definitivo con KARAOKE GLOW, GANCHO SUPERIOR (0-2.5s) y ENCUADRE INTELIGENTE:
@@ -1129,10 +1148,10 @@ def render_final_video(
     create_subtle_vignette(vignette_png, fg_top=fg_y, fg_bottom=fg_bottom, is_cinema=is_cinema_layout, w=canvas_w, h=canvas_h)
 
     # 2. Gancho textual superior (0 a 2.8s) y Badge persistente editorial (>= 2.8s)
-    # En vídeo vertical nativo (is_already_vertical) o SPLIT (toca arriba), mantener limpio arriba.
+    # En estilo Caspahz, vídeo vertical nativo (is_already_vertical) o SPLIT, mantener 100% limpio arriba.
     hook_png = None
     badge_png = None
-    if hook_text and is_vertical and not is_already_vertical:
+    if hook_text and is_vertical and not is_already_vertical and not caspahz_style:
         hook_png = temp_dir / f"{base_name}_hook.png"
         rendered_hook = render_top_hook_headline(hook_text, hook_png, scale_factor=scale_factor)
         if not rendered_hook:
@@ -1151,10 +1170,10 @@ def render_final_video(
     # 2b. Micro-tarjeta genérica de los 5.0s desactivada por defecto en estándar Alpha (evita parpadeos y frases cliché)
     retention_png = None
 
-    # 2c. Píldora CTA de seguimiento en los últimos 2.5s (multiplicador de conversión a seguidores)
+    # 2c. Píldora CTA de seguimiento en los últimos 2.5s (desactivada en estilo Caspahz limpio)
     cta_png = None
     enable_follow_cta = os.getenv("ENABLE_FOLLOW_CTA", "true").lower() in ("true", "1", "yes")
-    if enable_follow_cta and is_vertical:
+    if enable_follow_cta and is_vertical and not caspahz_style:
         cta_text = os.getenv("FOLLOW_CTA_TEXT", "➕ SIGUE PARA + SECRETOS DE LEONIDA")
         cta_png = temp_dir / f"{base_name}_cta.png"
         if not render_follow_cta_pill(cta_png, text=cta_text, scale_factor=scale_factor):
@@ -1186,7 +1205,8 @@ def render_final_video(
                     active_idx=tw["word_idx"],
                     is_vertical=is_vertical,
                     output_path=sub_png,
-                    scale_factor=scale_factor
+                    scale_factor=scale_factor,
+                    caspahz_style=caspahz_style
                 )
                 if rendered:
                     sub_pngs.append((sub_png, tw["start"], tw["end"]))
@@ -1213,7 +1233,8 @@ def render_final_video(
                     active_idx=active_w_idx,
                     is_vertical=is_vertical,
                     output_path=sub_png,
-                    scale_factor=scale_factor
+                    scale_factor=scale_factor,
+                    caspahz_style=caspahz_style
                 )
                 if rendered:
                     sub_pngs.append((sub_png, tw["start"], tw["end"]))

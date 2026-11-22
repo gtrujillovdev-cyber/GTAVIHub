@@ -11,9 +11,11 @@ class TestLocationGuideModel(unittest.TestCase):
     def test_channels_json_includes_caspahz_and_guide_queries(self):
         cfg_path = Path(__file__).resolve().parent.parent / "config" / "channels.json"
         data = json.loads(cfg_path.read_text(encoding="utf-8"))
-        names = {c.get("name") for c in data.get("channels", [])}
-        self.assertIn("Caspahz (Shorts)", names)
-        self.assertIn("Caspahz (Guías)", names)
+        names = {c.get("name"): c.get("enabled") for c in data.get("channels", [])}
+        self.assertTrue(names.get("Caspahz (Shorts)"))
+        self.assertTrue(names.get("Caspahz (Guías)"))
+        self.assertTrue(names.get("PowerPyx (Shorts)"))
+        self.assertTrue(names.get("Guías Paso a Paso (Shorts)"))
 
         queries = [q.get("query", "") for q in data.get("search_queries", [])]
         self.assertTrue(any("free car location" in q for q in queries))
@@ -49,6 +51,30 @@ class TestLocationGuideModel(unittest.TestCase):
         l1, l2 = generate_hook_card_texts("GTA 6: FREE $32,000 Supercar!")
         self.assertEqual(l1, "EN ESTA UBICACIÓN")
         self.assertIn("GRATIS", l2)
+
+    def test_caspahz_subtitle_style_and_social_caption(self):
+        import tempfile
+        from src.video_editor import render_karaoke_subtitle_state
+        from src.social_publisher import SocialPublisher
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            out_png = Path(tmpdir) / "sub_test.png"
+            ok = render_karaoke_subtitle_state(
+                words=["COCHE", "GRATIS", "$24000"],
+                active_idx=2,
+                is_vertical=True,
+                output_path=out_png,
+                scale_factor=1.0,
+                caspahz_style=True,
+            )
+            self.assertTrue(ok)
+            self.assertTrue(out_png.exists())
+
+        cap = SocialPublisher._build_tiktok_caption(
+            title="GTA 6: Coche GRATIS de $24.000",
+            tags=["GTA6", "GTAVI"],
+        )
+        self.assertIn("Guárdalo", cap)
 
 
 if __name__ == "__main__":

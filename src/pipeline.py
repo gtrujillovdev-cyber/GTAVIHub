@@ -828,10 +828,14 @@ def process_single_video(
         )
     )
 
+    from .ai_selector import is_location_reward_guide
+    is_caspahz_guide = is_location_reward_guide(original_title)
+
     if is_split_comparison:
         target_preset = "SPLIT"
-    elif is_comparison_or_breakdown:
-        # Formato C (4:5 / 70.3% de pantalla): mantiene barras comparativas visibles pero con 2.2x más área que FIT
+    elif is_caspahz_guide or is_comparison_or_breakdown:
+        # Formato C (4:5 / 1080x1350 @ y=285 con Ambient Blur Canvas):
+        # Réplica exacta del encuadre de Caspahz que mantiene el minimapa/HUD visible.
         target_preset = "C"
     else:
         # Formato D (1080x1600 / 83.3% de pantalla): reencuadre vertical inmersivo obligatorio según Regla 5.1 de GEMINI.md
@@ -857,7 +861,8 @@ def process_single_video(
         archetype=archetype,
         format_preset=target_preset,
         context_badge=metadata.get("context_badge", ""),
-        cached_dimensions=(width, height)
+        cached_dimensions=(width, height),
+        caspahz_style=is_caspahz_guide
     )
 
     if not success_render or not output_path.exists():

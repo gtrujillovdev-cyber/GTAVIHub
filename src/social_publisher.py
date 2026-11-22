@@ -300,7 +300,7 @@ class SocialPublisher:
             low_title = clean_title.lower()
             if any(k in low_title for k in ("ps5", "xbox", "pc", "fps", "gráfic", "grafic", "comparativa")):
                 debate_line = "💬 ¿PS5 Pro o esperar a PC? Te leo 👇"
-            elif any(k in low_title for k in ("secret", "ocult", "arma", "mapa", "detalle", "truco", "curiosidad")):
+            elif any(k in low_title for k in ("secret", "ocult", "arma", "mapa", "detalle", "truco", "curiosidad", "gratis", "dinero", "coche", "ubicacion", "ubicación", "$")):
                 debate_line = "🔖 Guárdalo para cuando explores Leonida 👇"
             else:
                 debate_line = "💬 ¿Del 1 al 10 qué nota le pones a esto? Te leo 👇"
