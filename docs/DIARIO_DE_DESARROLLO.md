@@ -241,5 +241,25 @@ Tras realizar ingeniería inversa sobre el modelo de **Caspahz** (`@Caspahz` en 
 4. **Validación ([`tests/test_location_guide_model.py`](file:///Users/gabrieltrujillovallejo/Documents/GtrujilloMacDoc/GitHub/GitGa/Developer/Projects/GTA6Channel/tests/test_location_guide_model.py)):**
    - Batería unitaria verificada junto a `test_config.py`, `test_ai_selector.py` y `test_improvements.py` (42/42 tests OK).
 
+---
+
+### 17. 🚀 Clonado Integral de Branding, Despliegue en X y Pipeline Multi-Clip (22 de Noviembre de 2026 - Sesión Nocturna)
+Para culminar la replicación 1:1 del modelo y negocio de **Caspahz** en todas las redes (`YouTube`, `TikTok`, `Instagram Reels`, `X`):
+
+1. **Clonado Estético y Render Caspahz (`src/video_editor.py` y `src/pipeline.py`):**
+   - Modo `caspahz_style=True`: suprime titulares flotantes y badges superiores para dejar un encuadre ultra-limpio `4:5` (`1080x1350 @ y=285` sobre Velvet Canvas) que preserva 100% visible el minimapa y el HUD de juego.
+   - Subtítulos Pop Karaoke idénticos: texto base en blanco puro (`#FFFFFF`) con trazo negro grueso; cifras y dinero (`$`, `dinero`, `mil`) en verde neón (`#00FF3B`); palabras de valor (`oro`, `gratis`, `coche`, `arma`, `ubicación`) en amarillo flúor (`#FFE600`).
+2. **Priorización Shorts Nativos & Multi-Clip Guide Assembler (`src/downloader.py`):**
+   - Se priorizan Shorts nativos (`12-65s`) que ya traen la guía condensada sin riesgo de recortes rotos.
+   - Para vídeos largos (>90s): nuevo motor `extract_multi_clip_guide_segments()` que utiliza Gemini sobre la transcripción para extraer 2 o 3 fragmentos no solapados (Recompensa -> Mapa -> Pasos) y los concatena limpiamente con `remap_srt_for_multi_segments()`.
+3. **Despliegue y Branding en X (Twitter):**
+   - Transformación de la cuenta en `mbp1` a **GTA VI Hub Extra**: nuevo banner metálico oscuro `assets/banner_extra.jpg` (*GTA VI HUB • GUÍAS • SECRETOS • DINERO*), avatar minimalista `VI`, bio directa (*Guías diarias de GTA 6 en español... Menos buscar, más jugar*), ubicación en *Vice City, Leonida* y web hacia el canal.
+   - Script automatizado en `scripts/setup_x_branding.py` ejecutado y verificado en vivo.
+4. **Higiene Algorítmica y Depuración en Producción:**
+   - Auditoría y pase a privado de 5 vídeos en YouTube con < 1.000 visualizaciones para elevar el CTR promedio y sanear la recomendación del canal.
+   - Programación de dos pases diarios en el cron de `mbp1` (10:15 y 17:15) para precargar la cola de Co-Pilot automáticamente.
+   - Suite completa de 44 tests unitarios ejecutada y validada en `mbp1`.
+
+
 
 
