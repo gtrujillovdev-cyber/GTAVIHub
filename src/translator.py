@@ -559,10 +559,12 @@ Devuelve tu respuesta EXACTAMENTE en este formato JSON (sin texto extra):
         pinned_comment = f"🌴 💬 DEBATE GTA 6:\n{debate_question}\n👇 ¡Déjanos tu teoría en los comentarios!"
 
     if is_short:
-        # Formato optimizado para YouTube Shorts: limpio, natural y libre de spam de enlaces
-        # (Las ofertas y enlaces de afiliados se ubican en el COMENTARIO FIJADO para no disparar el filtro anti-spam)
+        # Formato optimizado para YouTube Shorts: limpio, con branding insistente y CTA claro
         short_summary = summary[:600].rsplit(".", 1)[0] + "." if len(summary) > 600 else summary
         full_description = f"""{short_summary}
+
+🔔 SÍGUENOS en @GTAVIHubExtra para una nueva localización y guía secreta de GTA 6 cada día.
+🌐 TikTok, Instagram & X: @gtavihubextra 🌴
 
 💬 {to_unicode_bold("DEBATE:")} {debate_question}
 
@@ -572,7 +574,7 @@ Devuelve tu respuesta EXACTAMENTE en este formato JSON (sin texto extra):
 ⚖️ Uso Legítimo / Fair Use (Art. 107 Copyright Act) con fines informativos y comentario para la comunidad hispanohablante.
 📩 Contacto: {BUSINESS_EMAIL}
 
-#GTA6 #GTAVI #RockstarGames #Gaming #Shorts
+#GTA6 #GTAVI #RockstarGames #Gaming #Shorts #GTAVIHubExtra
 """
     else:
         full_description = f"""{summary}

@@ -41,12 +41,13 @@ def is_affiliates_enabled() -> bool:
 
 def format_pinned_comment_clean(debate_question: str) -> str:
     """
-    Genera un comentario anclado 100% orgánico enfocado solo en debate comunitario,
-    libre de enlaces externos salientes (protección anti-spam en canales nuevos de Shorts).
+    Genera un comentario anclado 100% orgánico enfocado en debate comunitario y visibilidad del canal.
     """
     return f"""🌴 💬 𝗗𝗘𝗕𝗔𝗧𝗘 𝗚𝗧𝗔 𝟲:
 {debate_question}
-👇 ¡Déjanos tu opinión en los comentarios!"""
+👇 ¡Déjanos tu opinión en los comentarios!
+
+🔔 Síguenos en @GTAVIHubExtra para no perderte ninguna guía secreta ni truco diario de GTA 6."""
 
 def get_hub_linktree() -> str:
     """Obtiene la URL central de Linktree / Hub de enlaces."""

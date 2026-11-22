@@ -738,6 +738,55 @@ def build_karaoke_bursts_from_words(
     return bursts
 
 
+def render_brand_watermark_pill(
+    output_path: Path,
+    brand_text: str = "@GTAVIHubExtra",
+    scale_factor: float = 1.0
+) -> bool:
+    """
+    Renderiza una marca de agua de canal semi-transparente y elegante (estilo top creators):
+    - Tipografía compacta y limpia con trazo negro y fondo cápsula oscuro sutil (alpha ~175).
+    - Preserva la visibilidad permanente de nuestra marca sin tapar elementos del HUD del juego.
+    """
+    clean_brand = (brand_text or "@GTAVIHubExtra").strip()
+    font_size = max(18, int(26 * scale_factor))
+    font = get_viral_display_font(size=font_size)
+
+    temp_img = Image.new("RGBA", (1, 1))
+    d_temp = ImageDraw.Draw(temp_img)
+    bbox = d_temp.textbbox((0, 0), clean_brand, font=font)
+    tw = bbox[2] - bbox[0]
+    th = bbox[3] - bbox[1]
+
+    pad_x = int(18 * scale_factor)
+    pad_y = int(8 * scale_factor)
+    canvas_w = tw + pad_x * 2
+    canvas_h = th + pad_y * 2
+
+    img = Image.new("RGBA", (canvas_w, canvas_h), (0, 0, 0, 0))
+    d = ImageDraw.Draw(img)
+    radius = max(6, int(10 * scale_factor))
+    # Cápsula semi-transparente oscura con borde neón sutil
+    d.rounded_rectangle(
+        [(0, 0), (canvas_w - 1, canvas_h - 1)],
+        radius=radius,
+        fill=(10, 10, 16, 175),
+        outline=(255, 0, 127, 210),
+        width=max(1, int(2 * scale_factor)),
+    )
+    # Texto de marca blanco nítido con trazo fino
+    d.text(
+        (pad_x, pad_y - int(2 * scale_factor)),
+        clean_brand,
+        font=font,
+        fill=(255, 255, 255, 240),
+        stroke_fill=(0, 0, 0, 220),
+        stroke_width=max(1, int(1.5 * scale_factor))
+    )
+    img.save(output_path, "PNG")
+    return True
+
+
 def render_follow_cta_pill(
     output_path: Path,
     text: str = "SIGUE PARA + SECRETOS DE LEONIDA",
@@ -1179,6 +1228,15 @@ def render_final_video(
         if not render_follow_cta_pill(cta_png, text=cta_text, scale_factor=scale_factor):
             cta_png = None
 
+    # 2d. Marca de agua de canal semi-transparente (visibilidad e insistencia de marca permanente)
+    watermark_png = None
+    enable_watermark = os.getenv("ENABLE_BRAND_WATERMARK", "true").lower() in ("true", "1", "yes")
+    if enable_watermark and is_vertical:
+        brand_handle = os.getenv("BRAND_WATERMARK_TEXT", "@GTAVIHubExtra")
+        watermark_png = temp_dir / f"{base_name}_brand_wm.png"
+        if not render_brand_watermark_pill(watermark_png, brand_text=brand_handle, scale_factor=scale_factor):
+            watermark_png = None
+
     # 3. Generación de estados de Karaoke palabra por palabra
     # Prioridad 1 ($0): Timestamps exactos de Groq Whisper sobre el doblaje si GROQ_API_KEY está configurada.
     # Fallback determinista: parse_srt_file() + calculate_word_timing() (nunca detiene el render).
@@ -1387,6 +1445,13 @@ def render_final_video(
         cta_idx = input_idx
         input_idx += 1
 
+    # Marca de agua de canal semi-transparente
+    watermark_idx = None
+    if watermark_png and watermark_png.exists():
+        cmd.extend(["-i", str(watermark_png)])
+        watermark_idx = input_idx
+        input_idx += 1
+
     # Subtítulos Karaoke como inputs
     sub_inputs_start = input_idx
     for sp, _, _ in sub_pngs:
@@ -1473,6 +1538,13 @@ def render_final_video(
         cta_y = int(28 * scale_factor)
         filter_chains.append(f"[{current_v}][{cta_idx}:v]overlay=(W-w)/2:{cta_y}:enable='gte(t,{cta_start:.2f})'[v_cta]")
         current_v = "v_cta"
+
+    # C4) Marca de agua de canal persistente y discreta (esquina superior derecha, permanente durante todo el clip)
+    if watermark_idx is not None:
+        wm_x = f"W-w-{int(28 * scale_factor)}"
+        wm_y = int(32 * scale_factor)
+        filter_chains.append(f"[{current_v}][{watermark_idx}:v]overlay={wm_x}:{wm_y}[v_branded]")
+        current_v = "v_branded"
 
     # D) Superponer Subtítulos Karaoke palabra por palabra
     for s_idx, (_, start_s, end_s) in enumerate(sub_pngs):
