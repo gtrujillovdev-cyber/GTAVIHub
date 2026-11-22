@@ -319,13 +319,16 @@ def select_best_candidate_ai(
                 "MODO: DÍA DEL ESTRENO (LAUNCH DAY 2026). Prioriza novedad absoluta, misiones iniciales, "
                 "gameplay real, descubrimientos en el mapa y velocidad explosiva de vistas por hora."
                 if launch_mode else
-                "MODO: COBERTURA VIRAL DE ALTO IMPACTO (GTA 6 PURO). Prioriza clips con MÁXIMA VELOCIDAD ACTUAL (views_per_hour y hours_old <= 24), "
-                "reacciones genuinas, desgloses de detalles, gameplay real y análisis técnicos RAGE 9. "
+                "MODO: POST-LANZAMIENTO GTA 6 (CONTENIDO ACCIONABLE). "
+                "PRIORIDAD MÁXIMA: Tips, guías, ubicaciones secretas, armas legendarias, coches raros, easter eggs y trucos de dinero. "
+                "Este tipo de contenido genera 3-5x más saves/shares porque los viewers VUELVEN a verlo para seguir instrucciones. "
+                "SEGUNDA PRIORIDAD: Secretos, detalles ocultos, misiones y persecuciones policiales. "
+                "EVITAR: Vídeos de SOLO físicas/gráficos/comparativas técnicas a menos que NO haya NINGÚN candidato de tips/secretos disponible. "
                 "ESTRICTAMENTE PROHIBIDO: parodias, memes, clips de GTA 5 o rellenos viejos de semanas pasadas."
             )
 
             _winning_angle_block = (
-                f"\nÁNGULO GANADOR COMPROBADO EN TU CANAL AHORA MISMO (REPLICAR PRIORITARIAMENTE): {_priority_angle_label}\n"
+                f"\nÁNGULO CON BUEN RENDIMIENTO RECIENTE: {_priority_angle_label} (considerar, pero NO repetir si ya se publicó uno similar hoy).\n"
                 if _priority_angle_label else ""
             )
 
@@ -349,10 +352,12 @@ VÍDEOS RECIENTES YA PUBLICADOS (EVITA REPETIR ESTAS TEMÁTICAS):
 
 {audience_demand}
 
-CRITERIOS EDITORIALES DE VICTORIA (PLAYBOOK GAMEPLAY ACTIVO):
-0. PRIORIDAD #1 ABSOLUTA — GAMEPLAY REAL IN-GAME Y COMPARATIVAS TÉCNICAS:
-   - YA HAY GAMEPLAY REAL DE GTA 6. Elige SIEMPRE gameplay real (primera misión, free roam, persecuciones policiales, open world, PS5 Pro vs Xbox Series X, físicas RAGE 9) INCLUSO si el vídeo fuente dura 10, 30 o 60 minutos (el sistema extrae automáticamente el tramo viral de 25-35s).
-   - RECHAZA/EVITA charlas en plató/webcam, vídeos de opinión ('How Long is GTA 6?', 'Worth It?', 'Daily Fix', 'Full Thoughts') y promos musicales si existe cualquier candidato de gameplay real o comparativa técnica.
+CRITERIOS EDITORIALES DE VICTORIA (POST-LANZAMIENTO - CONTENIDO ACCIONABLE):
+0. PRIORIDAD #1 ABSOLUTA — TIPS, GUÍAS, SECRETOS Y UBICACIONES:
+   - GTA 6 YA ESTÁ LANZADO. Los viewers buscan VALOR ACCIONABLE: dónde encontrar armas legendarias, coches raros, easter eggs, trucos de dinero, misiones secretas, bunkers ocultos.
+   - Este contenido genera 3-5x más saves/shares/comments que las comparativas de físicas porque los viewers VUELVEN A VERLO para seguir las instrucciones en su propia partida.
+   - Si hay CUALQUIER candidato de tips/guías/secretos/ubicaciones, PRIORÍZALO SOBRE comparativas técnicas o vídeos de solo-físicas.
+   - RECHAZA/EVITA charlas en plató/webcam, vídeos de opinión ('How Long is GTA 6?', 'Worth It?', 'Daily Fix') y promos musicales.
    - DESCARTAR tráileres antiguos de 2023 ('Trailer 1').
 1. VELOCIDAD VIRAL REAL (views_per_hour / velocity_vpd): Prioriza vídeos en ascenso vertical ahora mismo. Un gameplay recién subido con 20,000+ views/hora vale 10x más que un resumen viejo.
 2. SEÑAL EDITORIAL HUMANA (is_user_liked = true): Si hay candidatos marcados con 'is_user_liked: true', han sido seleccionados a mano por el creador en X. Otorga un fuerte bonus a estos clips, pero EVALÚA Y SELECCIONA EL MEJOR DE ELLOS si hay varios (comparando cuál tiene mayor impacto visual, mejor momento de gameplay o mayor potencial de retención).
