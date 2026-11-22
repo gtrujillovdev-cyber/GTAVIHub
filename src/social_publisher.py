@@ -1125,7 +1125,7 @@ class SocialPublisher:
         para evitar que las redes detecten una firma robótica sincronizada.
         """
         if platforms is None:
-            platforms = list(metadata.get("allowed_platforms") or ["youtube", "tiktok", "instagram"])
+            platforms = list(metadata.get("allowed_platforms") or ["youtube", "tiktok", "instagram", "x"])
 
         if (not self.dry_run) or metadata.get("enable_alpha_routing"):
             try:

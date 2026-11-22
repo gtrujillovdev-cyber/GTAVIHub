@@ -558,7 +558,7 @@ def route_platforms_by_alpha(
     Enruta cada clip a las plataformas donde su formato tiene alfa real,
     garantizando siempre >= 1 plataforma destino y respetando cooldowns activos.
     """
-    platforms = list(base_platforms or ["youtube", "tiktok", "instagram"])
+    platforms = list(base_platforms or ["youtube", "tiktok", "instagram", "x"])
     if os.getenv("ENABLE_PLATFORM_ALPHA_ROUTING", "true").lower() not in ("true", "1", "yes"):
         return platforms, "Routing por alfa desactivado (todas las plataformas)."
     if len(platforms) <= 1:
@@ -570,7 +570,11 @@ def route_platforms_by_alpha(
 
     has_voiceover = bool(metadata.get("has_voiceover") or metadata.get("mode") in ("dub", "voice"))
     is_split = bool(metadata.get("is_transformed_visual"))
-    is_secret = any(k in title_low for k in ("secret", "ocult", "arma", "legendaria", "detalle", "misterio", "easter", "curiosidad"))
+    is_secret = any(k in title_low for k in (
+        "secret", "ocult", "arma", "legendaria", "detalle", "misterio", "easter",
+        "curiosidad", "gratis", "dinero", "coche", "ubicacion", "ubicación", "free",
+        "money", "location", "$"
+    ))
     is_streamer = any(k in combined for k in ("willyrex", "danirep", "rubius", "illojuan", "thegrefg", "auron", "elxokas", "streamer", "reacción", "reaccion"))
 
     # 1. Alfa Universal (secretos, comparativas split o voz sin intro lenta de streamer): todas las redes

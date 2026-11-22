@@ -385,6 +385,7 @@ Tu tarea es ADAPTAR EL TONO Y FORMATO AL CONTENIDO REAL:
 7. "tiktok_caption": Frase corta y directa en español (máx 54 chars, sentence-case, NO todo mayúsculas) optimizada para TikTok. Sin hashtags aquí.
 8. "tiktok_pinned_comment": Comentario polémico/debatible para fijar en TikTok y disparar discusiones en los primeros 15 minutos (máx 100 chars).
 9. "ig_caption": Copy orientado a envíos por DM en Instagram (estilo "Mándaselo al que...", máx 80 chars, con 1 emoji).
+10. "x_caption": Post corto estilo Caspahz para X/Twitter (máx 150 chars, beneficio cuantificado + gancho directo de localización/secreto, sin hashtags porque se añaden luego).
 
 Devuelve tu respuesta EXACTAMENTE en este formato JSON (sin texto extra):
 {{
@@ -396,7 +397,8 @@ Devuelve tu respuesta EXACTAMENTE en este formato JSON (sin texto extra):
   "context_badge": "ESCENA O TEMA ESPECÍFICO",
   "tiktok_caption": "Frase corta para TikTok",
   "tiktok_pinned_comment": "Comentario polémico para fijar",
-  "ig_caption": "Mándaselo al que necesita ver esto 🔥"
+  "ig_caption": "Mándaselo al que necesita ver esto 🔥",
+  "x_caption": "Coche GRATIS de $24.000 en GTA 6 🤑 Localización exacta y qué hacer allí 👇"
 }}
 """
     try:
@@ -416,6 +418,7 @@ Devuelve tu respuesta EXACTAMENTE en este formato JSON (sin texto extra):
         tiktok_caption = data.get("tiktok_caption", "").strip()
         tiktok_pinned_comment = data.get("tiktok_pinned_comment", "").strip()
         ig_caption = data.get("ig_caption", "").strip()
+        x_caption = data.get("x_caption", "").strip()
     except Exception as e:
         print(f"[Warning] Error consultando IA para metadatos: {e}")
         # Inferencia heurística de arquetipo si falla la IA
@@ -444,6 +447,7 @@ Devuelve tu respuesta EXACTAMENTE en este formato JSON (sin texto extra):
         tiktok_caption = ""
         tiktok_pinned_comment = ""
         ig_caption = ""
+        x_caption = ""
 
     # Sanitización gramatical y estética determinista de título, gancho y badge contextual
     hook = _fix_es_title_grammar(hook).replace("¿", "").replace("?", "").strip()
@@ -648,6 +652,8 @@ Grand Theft Auto VI, GTA VI, Vice City y los logotipos asociados son marcas regi
         result["tiktok_pinned_comment"] = tiktok_pinned_comment[:120]
     if ig_caption:
         result["ig_caption"] = ig_caption[:120]
+    if x_caption:
+        result["x_caption"] = x_caption[:200]
 
     return result
 
