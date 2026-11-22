@@ -580,10 +580,7 @@ def execute_bot_restart():
     except Exception:
         pass
 
-    send_telegram_alert(
-        "🔄 *Reiniciando Centro de Control...*\n"
-        + "Cancelando procesos colgados y arrancando nueva instancia. Listo en ~2 segundos."
-    )
+    # Reinicio silencioso — no ensuciar el chat con mensajes de restart
     time.sleep(1)
 
     main_script = str(BASE_DIR / "main.py")
@@ -712,17 +709,13 @@ def run_scan_in_background(chat_id: str, max_videos: int = 1, window_id: Optiona
         from .ai_selector import select_best_candidate_ai
         from .channels import filter_repetitive_candidates
         from .adaptive_scheduler import mark_window_completed
-        send_telegram_alert("⏳ *Iniciando escaneo inteligente (Escudo Anti-Repetición + IA)...*")
         candidates = fetch_channel_candidates(max_per_channel=max_videos)
-        
+
         if not candidates:
             if window_id:
                 mark_window_completed(window_id)
                 window_id = None
-            send_telegram_alert("✓ *Escaneo finalizado:* No hay vídeos nuevos ni distintos pendientes.")
             return
-
-        send_telegram_alert(f"🎯 *{len(candidates)} candidato(s) único(s) validado(s).* Seleccionando el mejor...")
         remaining = list(candidates)
         max_attempts = min(len(remaining), max_videos + 4)
         for _ in range(max_attempts):
@@ -745,7 +738,7 @@ def run_scan_in_background(chat_id: str, max_videos: int = 1, window_id: Optiona
             if item.get("hook_line1") and item.get("hook_line2"):
                 hook_custom = f"{item['hook_line1']}\n{item['hook_line2']}"
 
-            send_telegram_alert(f"🎬 *Procesando ({count+1}/{max_videos}):* `{title_display[:55]}`...")
+            # Silencioso durante procesamiento — solo notificar resultado final
             res = process_single_video(
                 url=item["url"],
                 video_id=item["id"],
@@ -779,7 +772,8 @@ def run_scan_in_background(chat_id: str, max_videos: int = 1, window_id: Optiona
         if window_id:
             # Evitar que una tanda sin candidatos re-dispare en bucle cada 20s durante 45m
             mark_window_completed(window_id)
-        send_telegram_alert(f"🎉 *Tanda finalizada con éxito.* Total procesados: `{count}` vídeos.")
+        if count == 0:
+            send_telegram_alert("ℹ️ No se encontró contenido nuevo para publicar.")
     except Exception as e:
         send_telegram_alert(f"❌ *Error durante el escaneo autónomo:* `{e}`")
     finally:
@@ -1381,13 +1375,23 @@ def start_telegram_bot_daemon():
     last_update_id = 0
     url_updates = get_api_url("getUpdates")
 
-    welcome_msg = (
-        "🟢 *GTA VI Hub Bot Activado*\n"
-        + ("═" * 36) + "\n\n"
-        + "Centro de control interactivo listo en tu móvil.\n"
-        + "Usa los botones del teclado inferior o pega cualquier enlace de YouTube/TikTok para procesarlo."
-    )
-    send_telegram_alert(welcome_msg, reply_markup=get_persistent_menu_keyboard())
+    # Solo enviar welcome si es arranque fresco (no restart de watchdog)
+    # Detectamos restart si el heartbeat tiene menos de 10 minutos
+    _is_restart = False
+    try:
+        _hb_path = Path(os.getenv("BASE_DIR", str(Path(__file__).resolve().parent.parent))) / "data" / "heartbeat.txt"
+        if _hb_path.exists():
+            _hb_age = time.time() - _hb_path.stat().st_mtime
+            _is_restart = _hb_age < 600  # < 10 min = restart automático
+    except Exception:
+        pass
+    if not _is_restart:
+        welcome_msg = (
+            "🟢 *GTA VI Hub Bot Activado*\n"
+            + ("═" * 36) + "\n\n"
+            + "Centro de control listo. Usa los botones o pega un enlace."
+        )
+        send_telegram_alert(welcome_msg, reply_markup=get_persistent_menu_keyboard())
 
     def _heartbeat_worker():
         while True:
@@ -1522,12 +1526,7 @@ def start_telegram_bot_daemon():
                     with BACKGROUND_LOCK:
                         busy = (ACTIVE_TASK is not None)
                     if not busy:
-                        send_telegram_alert(
-                            f"🎲 *[DISPARO ALEATORIO ANTI-DETECCIÓN]*\n"
-                            f"Franja: *{win_name}*\n"
-                            f"Horario estocástico: `{win_time} CET` (margen orgánico)\n"
-                            f"🚀 Iniciando ciclo de publicación autónoma..."
-                        )
+                        # Publicación silenciosa — solo notifica si publica algo
                         t = threading.Thread(
                             target=run_scan_in_background,
                             args=(allowed_chat_id, get_max_videos_per_run(), win_id),
@@ -1536,6 +1535,32 @@ def start_telegram_bot_daemon():
                         t.start()
             except Exception as sched_err:
                 print(f"[AdaptiveScheduler] Error verificando ventanas: {sched_err}")
+
+            # Modo Oportunista: si no hay ventana activa, comprobar cada ~10 min si hay contenido ultra-viral
+            if not hasattr(start_telegram_bot_daemon, "_last_opp_check"):
+                start_telegram_bot_daemon._last_opp_check = 0
+            opp_elapsed = time.time() - start_telegram_bot_daemon._last_opp_check
+            if opp_elapsed > 600:  # cada 10 minutos
+                start_telegram_bot_daemon._last_opp_check = time.time()
+                try:
+                    from .adaptive_scheduler import can_opportunistic_publish, register_opportunistic_window
+                    with BACKGROUND_LOCK:
+                        busy = (ACTIVE_TASK is not None)
+                    if not busy and can_opportunistic_publish(now_dt):
+                        # Chequeo rápido: hay candidatos con >20K vph?
+                        _opp_cands = fetch_channel_candidates(max_per_channel=1)
+                        _hot = [c for c in _opp_cands if float(c.get("views_per_hour") or 0) >= 20000]
+                        if _hot:
+                            print(f"[Oportunista] Detectado contenido ultra-viral ({len(_hot)} clips >20K vph). Publicando fuera de ventana.")
+                            register_opportunistic_window(now_dt)
+                            t = threading.Thread(
+                                target=run_scan_in_background,
+                                args=(allowed_chat_id, 1, None),
+                                daemon=True
+                            )
+                            t.start()
+                except Exception as opp_err:
+                    print(f"[Oportunista] Error: {opp_err}")
 
             params = {"offset": last_update_id + 1, "timeout": 20}
             if not hasattr(start_telegram_bot_daemon, "_session"):

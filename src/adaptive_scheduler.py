@@ -27,42 +27,44 @@ from .config import DATA_DIR
 SCHEDULE_FILE = DATA_DIR / "adaptive_schedule.json"
 
 # Definición de ventanas objetivo con margen previo de 25-45 min para render 4K + GaTDSEQ
+# Ventanas amplias (60-90 min) con jitter ±15 min para parecer orgánico.
+# Cada día el scheduler elige un punto aleatorio dentro de cada ventana.
 TARGET_WINDOWS = [
     {
         "id": "morning",
-        "name": "🌅 Mañana (Pico España 11:00)",
-        "start_hour": 10,
-        "start_minute": 15,
-        "end_hour": 10,
-        "end_minute": 35,
-        "target_label": "10:15 - 10:35 CET"
+        "name": "🌅 Mañana (Pico España)",
+        "start_hour": 9,
+        "start_minute": 30,
+        "end_hour": 11,
+        "end_minute": 0,
+        "target_label": "09:30 - 11:00 CET"
     },
     {
         "id": "lunch_latam",
-        "name": "🍲 Almuerzo ES / Amanecer LatAm (14:30)",
+        "name": "🍲 Almuerzo ES / Amanecer LatAm",
         "start_hour": 13,
-        "start_minute": 45,
+        "start_minute": 15,
         "end_hour": 14,
-        "end_minute": 5,
-        "target_label": "13:45 - 14:05 CET"
+        "end_minute": 45,
+        "target_label": "13:15 - 14:45 CET"
     },
     {
         "id": "afternoon",
-        "name": "🌇 Tarde / Salida Laboral (18:00)",
-        "start_hour": 17,
-        "start_minute": 15,
-        "end_hour": 17,
-        "end_minute": 35,
-        "target_label": "17:15 - 17:35 CET"
+        "name": "🌇 Tarde / Salida Laboral",
+        "start_hour": 16,
+        "start_minute": 45,
+        "end_hour": 18,
+        "end_minute": 15,
+        "target_label": "16:45 - 18:15 CET"
     },
     {
         "id": "prime_time",
-        "name": "🌙 Prime Time ES / Tarde LatAm (21:00)",
-        "start_hour": 20,
-        "start_minute": 15,
-        "end_hour": 20,
-        "end_minute": 35,
-        "target_label": "20:15 - 20:35 CET"
+        "name": "🌙 Prime Time ES / Tarde LatAm",
+        "start_hour": 19,
+        "start_minute": 45,
+        "end_hour": 21,
+        "end_minute": 15,
+        "target_label": "19:45 - 21:15 CET"
     }
 ]
 
@@ -125,7 +127,7 @@ def _build_window_plan(win: Dict[str, Any]) -> Dict[str, Any]:
         "scheduled_time": f"{h:02d}:{m:02d}",
         "hour": h,
         "minute": m,
-        "jitter_sec": random.randint(-180, 180),
+        "jitter_sec": random.randint(-900, 900),
         "window_start": f"{win['start_hour']:02d}:{win['start_minute']:02d}",
         "window_end": f"{win['end_hour']:02d}:{win['end_minute']:02d}",
         "completed": False,
@@ -240,6 +242,65 @@ def get_due_window(now_dt: Optional[datetime] = None) -> Optional[Dict[str, Any]
             return window
 
     return None
+
+
+def can_opportunistic_publish(now_dt: Optional[datetime] = None) -> bool:
+    """
+    Permite publicación oportunista fuera de ventana si no se ha publicado
+    en la última hora y no se han agotado las ventanas del día.
+    Máximo 1 oportunista por día.
+    """
+    if now_dt is None:
+        now_dt = datetime.now()
+    today_sched = get_daily_schedule(now_dt.date())
+    windows = today_sched.get("windows", [])
+    completed = [w for w in windows if w.get("completed")]
+    pending = [w for w in windows if not w.get("completed")]
+
+    # No publicar oportunista si ya se completaron todas las ventanas (cuota agotada)
+    if not pending:
+        return False
+
+    # Máximo 1 oportunista por día: comprobar si ya hubo una
+    if any(w.get("id") == "opportunistic" for w in windows):
+        return False
+
+    # No publicar si se publicó algo en la última hora
+    for w in completed:
+        completed_at = w.get("completed_at")
+        if completed_at:
+            try:
+                ct = datetime.fromisoformat(completed_at)
+                if (now_dt - ct).total_seconds() < 3600:
+                    return False
+            except Exception:
+                pass
+
+    return True
+
+
+def register_opportunistic_window(now_dt: Optional[datetime] = None):
+    """Registra una ventana oportunista completada para controlar la cuota diaria."""
+    if now_dt is None:
+        now_dt = datetime.now()
+    date_str = now_dt.date().isoformat()
+    all_sched = load_all_schedules()
+    if date_str not in all_sched:
+        return
+    all_sched[date_str].setdefault("windows", []).append({
+        "id": "opportunistic",
+        "name": "⚡ Oportunista (contenido viral detectado)",
+        "scheduled_time": now_dt.strftime("%H:%M"),
+        "hour": now_dt.hour,
+        "minute": now_dt.minute,
+        "jitter_sec": 0,
+        "window_start": now_dt.strftime("%H:%M"),
+        "window_end": now_dt.strftime("%H:%M"),
+        "completed": True,
+        "completed_at": now_dt.isoformat(),
+        "published_url": None,
+    })
+    save_all_schedules(all_sched)
 
 
 def mark_window_completed(window_id: str, published_url: Optional[str] = None, target_date: Optional[date] = None):

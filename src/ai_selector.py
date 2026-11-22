@@ -37,54 +37,33 @@ def _resolve_recommended_mode(raw_mode: str, item: Dict[str, Any]) -> str:
 
 
 def _visual_appeal_adjustment(item: Dict[str, Any]) -> float:
-    """Ajuste de prioridad editorial: premia gameplay real/comparativas y penaliza cháchara/tertulias."""
+    """Ajuste editorial simplificado: 3 factores — tipo de contenido, duración y penalizaciones."""
     delta = 0.0
     tl = f" {(item.get('title') or '').lower()} "
-    upl = (item.get("uploader") or item.get("source_name") or "").lower()
     dur = float(item.get("duration") or 0)
-    has_gameplay_kw = any(
-        k in tl for k in (
-            "gameplay", "free roam", "first mission", "primera mision", "primera misión",
-            "police chase", "open world", "mundo abierto", "walkthrough",
-            "fps", " vs ", "comparison", "comparativa", "physics", "físicas", "fisicas", "rage 9", "graphics"
-        )
-    )
-    has_tips_kw = any(
-        k in tl for k in (
-            "how to", "where to", "guide", "tip", "trick", "secret", "easter egg",
-            "hidden", "location", "weapon", "money", "glitch", "find", "rare",
-            "legendary", "unlock", "spot", "bunker", "trophy", "achievement",
-            "guia", "guía", "secreto", "truco", "arma", "dinero", "encontrar", "ubicacion",
-        )
-    )
+
+    # 1. TIPO DE CONTENIDO (el factor dominante)
+    is_tips = any(k in tl for k in (
+        "how to", "where to", "guide", "tip", "trick", "secret", "easter egg",
+        "hidden", "location", "weapon", "money", "glitch", "find", "rare",
+        "legendary", "unlock", "spot", "bunker", "trophy", "achievement",
+        "guia", "guía", "secreto", "truco", "arma", "dinero", "encontrar",
+    ))
+    is_junk = any(k in tl for k in (
+        "how long is", "worth it", "should you buy", "daily fix", "thoughts",
+        "opinion", "pissed", "don't buy", "podcast", "discussion", "roundtable",
+    ))
+    if is_tips:
+        delta += 30.0
+    elif is_junk:
+        delta -= 40.0
+
+    # 2. DURACIÓN (formato corto ideal para Shorts)
     if 12 <= dur <= 62:
-        delta += 18.0
-    elif item.get("allow_long_clipping") and (has_gameplay_kw or has_tips_kw):
         delta += 12.0
-    elif dur > 360:
-        delta -= 18.0
-    if (item.get("lang") or "").lower() == "es":
-        delta += 12.0
-    if any(a in upl for a in ("elanalistadebits", "onespot gaming", "cycu1", "digital foundry", "gta series videos", "powerpyx", "gameriot", "gamev")):
-        delta += 24.0
-    if any(a in upl for a in ("willyrex", "illojuan", "rubius", "elrubius", "xokas", "elxokas", "auron", "auronplay", "thegrefg", "vegetta", "vegetta777", "djmariio")):
-        delta += 28.0
-    # Post-lanzamiento: tips/secrets > gameplay/physics
-    if has_tips_kw:
-        delta += 32.0
-    elif has_gameplay_kw:
-        delta += 10.0
-    # Penalizar formatos de tertulia larga/podcast/debate que arruinan la retención en Shorts
-    if dur > 500 and any(k in tl for k in ("discussion", "podcast", "talk", "chat", "direct special", "roundtable", "interview", "debate")):
-        delta -= 48.0
-    is_trusted_streamer = any(a in upl for a in ("willyrex", "illojuan", "rubius", "elrubius", "xokas", "elxokas", "auron", "thegrefg", "vegetta", "djmariio"))
-    if any(k in tl for k in (
-        "how long is", "worth it", "should you buy", "opening intro",
-        "daily fix", "thoughts", "things we found", "opinion", "pissed", "don't buy"
-    )) or ("review" in tl and "digital foundry" not in upl and "gameplay" not in tl):
-        delta -= 42.0
-    if any(k in tl for k in ("reaction", "reaccion", "reacciona")) and not is_trusted_streamer and not has_gameplay_kw:
-        delta -= 42.0
+    elif dur > 360 and not item.get("allow_long_clipping"):
+        delta -= 15.0
+
     return delta
 
 
@@ -194,54 +173,31 @@ def select_best_candidate_ai(
 
     # Ordenar pre-pool priorizando ritmo dinámico, velocidad real y ángulo ganador actual del canal
     def _pre_rank(item: Dict[str, Any]) -> float:
+        """Ranking simplificado: tipo contenido + velocidad viral + anti-repetición."""
+        # 1. Base: score bruto + ajuste editorial (tips vs basura)
         s = float(item.get("score") or 0) + _visual_appeal_adjustment(item)
+
+        # 2. Velocidad viral (views/hour) — el indicador más fiable
         vph = float(item.get("views_per_hour") or 0)
         if vph >= 50000:
-            s += 30.0
+            s += 25.0
         elif vph >= 10000:
-            s += 20.0
-        elif vph >= 1000:
-            s += 10.0
-        t_low = f" {(item.get('title') or '').lower()} "
-        hit_yt = bool(_yt_kws and any(kw in t_low for kw in _yt_kws))
-        hit_tt = bool(_tt_kws and any(kw in t_low for kw in _tt_kws))
-        if hit_yt and hit_tt:
-            s += 22.0
-        elif hit_yt or hit_tt or (_priority_kws and any(kw in t_low for kw in _priority_kws)):
             s += 15.0
-        elif _avoid_kws and not item.get("is_user_liked") and any(kw in t_low for kw in _avoid_kws):
-            s -= 8.0
+        elif vph >= 1000:
+            s += 8.0
 
-        # Post-lanzamiento: boost fuerte para contenido accionable (tips, guías, secretos)
-        _tips_kws = ("how to", "where to", "guide", "tip", "trick", "secret", "easter egg",
-                     "hidden", "location", "weapon", "money", "glitch", "find", "rare",
-                     "legendary", "unlock", "spot", "bunker", "trophy", "achievement",
-                     "guia", "guía", "secreto", "truco", "arma", "dinero", "encontrar")
-        if any(kw in t_low for kw in _tips_kws):
-            s += 28.0
-
-        # Señal directa de Like en X: el usuario ya validó manualmente este tipo de contenido
+        # 3. Like manual en X = validación humana directa
         if item.get("is_liked") or item.get("is_user_liked"):
-            s += 20.0
-
-        # Multi-fuente: detectado por varias queries/fuentes = momento viral confirmado
-        src_count = int(item.get("source_count") or 1)
-        if src_count >= 3:
             s += 18.0
-        elif src_count >= 2:
-            s += 10.0
 
-        # Escudo Anti-Monocultura / Rotación Temática Obligatoria:
+        # 4. Anti-monocultura: no repetir ángulo consecutivo ni saturar categoría
         cand_angle = classify_clip_angle(item.get("title") or "", item.get("uploader") or item.get("source_name") or "")
         if last_pub_angle and cand_angle == last_pub_angle:
-            # Cooldown inmediato: Evita subir 2 vídeos del mismo ángulo consecutivamente (incluido gameplay_general)
             s -= 25.0
         if recent_window_4.count(cand_angle) >= 2:
-            # Fatiga de categoría: >= 2 apariciones en los últimos 4 vídeos penaliza fuerte (sin excepciones)
             s -= 35.0
         elif cand_angle not in recent_window_4:
-            # Bonus de frescura temática: Premia cualquier categoría desatendida
-            s += 18.0
+            s += 15.0
 
         return s
 
