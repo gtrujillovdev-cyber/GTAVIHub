@@ -744,10 +744,22 @@ def render_brand_watermark_pill(
     scale_factor: float = 1.0
 ) -> bool:
     """
-    Renderiza una marca de agua de canal semi-transparente y elegante (estilo top creators):
-    - Tipografía compacta y limpia con trazo negro y fondo cápsula oscuro sutil (alpha ~175).
-    - Preserva la visibilidad permanente de nuestra marca sin tapar elementos del HUD del juego.
+    Renderiza la marca de agua de canal Vice City con el icónico Testarossa y 'GTA6X'.
+    Usa el asset de alta gama 'assets/watermark_gta6x_testarossa.png' si existe,
+    con fallback procedural vectorizado.
     """
+    custom_asset = BASE_DIR / "assets" / "watermark_gta6x_testarossa.png"
+    if custom_asset.exists():
+        try:
+            wm_img = Image.open(custom_asset).convert("RGBA")
+            target_w = max(180, int(230 * scale_factor))
+            target_h = int(target_w * (wm_img.height / max(1, wm_img.width)))
+            resized = wm_img.resize((target_w, target_h), Image.Resampling.LANCZOS)
+            resized.save(output_path, "PNG")
+            return True
+        except Exception as e:
+            print(f"[!] Aviso cargando asset de marca de agua: {e}")
+
     clean_brand = (brand_text or "@GTAVIHubExtra").strip()
     font_size = max(18, int(26 * scale_factor))
     font = get_viral_display_font(size=font_size)
