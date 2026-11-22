@@ -49,6 +49,7 @@ Para evitar sobrecalentamiento, estrangulamiento térmico o degradación de los 
    - El watchdog verifica cada 5 minutos la salud de `main.py --telegram` y lo resucita automáticamente si cayó o tras el reinicio preventivo diario de las **04:30 CET** (`com.gatdseq.maintenance`).
 2. **Tareas Programadas en Horas Punta (Sweet Spot Algorítmico - 4 Vídeos/Día)**:
    - Registradas en cron con 15 minutos de anticipación (**10:45**, **14:15**, **17:45** y **20:45 CET**) para que la ingesta, renderizado con FFmpeg (limitado por GaTDSEQ), subida e indexación algorítmica culminen exactamente listos para los 4 picos de audiencia diarios (**11:00**, **14:30**, **18:00** y **21:00 CET** en España y LatAm).
+   - **Rastreador Nocturno de Likes de X (`00:02 CET`)**: `scripts/x_daily_scout.py` inspecciona los 'Me gusta' de la cuenta (@GaBtc1888) en X cada medianoche, extrayendo nuevos creadores de guías, localizaciones y secretos para auto-registrarlos en `config/channels.json` y enviar reporte a Telegram.
 3. **Prevención de Suspensión**:
    - En el host headless, mantener `sudo pmset -c disablesleep 1` activo.
 4. **Salida de Logs en Tiempo Real**:
