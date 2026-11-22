@@ -36,13 +36,43 @@ def _resolve_recommended_mode(raw_mode: str, item: Dict[str, Any]) -> str:
     return "subs"
 
 
+_LOCATION_CUES = (
+    "location", "where to", "find", "spawn", "ubicacion", "ubicación",
+    "donde", "dónde", "mapa", "spot", "chapter", "capítulo", "capitulo",
+    "secret", "secreto", "hidden", "escondid", "early", "miss", "perder"
+)
+_REWARD_ACTION_CUES = (
+    "free", "gratis", "money", "dinero", "$", "cash", "car", "coche",
+    "supercar", "rolls royce", "weapon", "arma", "smg", "gold", "oro",
+    "glitch", "method", "método", "metodo", "sell", "vender", "unlock",
+    "desbloquear", "legendary", "legendaria", "rare", "raro", "easter egg"
+)
+
+
+def is_location_reward_guide(title: str) -> bool:
+    """Detecta el formato ganador: localización concreta + acción/recompensa (dinero, coche, arma, secreto)."""
+    tl = f" {(title or '').lower()} "
+    has_loc = any(k in tl for k in _LOCATION_CUES)
+    has_reward = any(k in tl for k in _REWARD_ACTION_CUES)
+    has_quantified_action = (
+        ("$" in tl or "free " in tl or "gratis" in tl)
+        and any(k in tl for k in (
+            "car", "coche", "supercar", "rolls royce", "weapon", "arma", "smg",
+            "gold", "oro", "sell", "vender", "per hour", "por hora", "method",
+            "método", "metodo", "get ", "conseguir"
+        ))
+    )
+    return (has_loc and has_reward) or has_quantified_action
+
+
 def _visual_appeal_adjustment(item: Dict[str, Any]) -> float:
     """Ajuste editorial simplificado: 3 factores — tipo de contenido, duración y penalizaciones."""
     delta = 0.0
     tl = f" {(item.get('title') or '').lower()} "
     dur = float(item.get("duration") or 0)
 
-    # 1. TIPO DE CONTENIDO (el factor dominante)
+    # 1. TIPO DE CONTENIDO (el factor dominante: guías de localización + recompensa primero)
+    is_location_guide = is_location_reward_guide(tl)
     is_tips = any(k in tl for k in (
         "how to", "where to", "guide", "tip", "trick", "secret", "easter egg",
         "hidden", "location", "weapon", "money", "glitch", "find", "rare",
@@ -53,12 +83,14 @@ def _visual_appeal_adjustment(item: Dict[str, Any]) -> float:
         "how long is", "worth it", "should you buy", "daily fix", "thoughts",
         "opinion", "pissed", "don't buy", "podcast", "discussion", "roundtable",
     ))
-    if is_tips:
+    if is_location_guide:
+        delta += 45.0
+    elif is_tips:
         delta += 30.0
     elif is_junk:
         delta -= 40.0
 
-    # 2. DURACIÓN (formato corto ideal para Shorts)
+    # 2. DURACIÓN (formato corto ideal para Shorts: 12-62s)
     if 12 <= dur <= 62:
         delta += 12.0
     elif dur > 360 and not item.get("allow_long_clipping"):
@@ -290,14 +322,16 @@ def select_best_candidate_ai(
     if client and use_ai:
         try:
             mode_context = (
-                "MODO: DÍA DEL ESTRENO (LAUNCH DAY 2026). Prioriza novedad absoluta, misiones iniciales, "
-                "gameplay real, descubrimientos en el mapa y velocidad explosiva de vistas por hora."
+                "MODO: DÍA DEL ESTRENO (LAUNCH DAY 2026). PRIORIDAD #1 ABSOLUTA: Guías de localización + acción/recompensa "
+                "(dónde ir en el mapa y qué hacer allí: recoger dinero, conseguir un coche gratis, arma rara o secreto). "
+                "Segunda prioridad: misiones iniciales, gameplay real y velocidad de vistas por hora."
                 if launch_mode else
-                "MODO: POST-LANZAMIENTO GTA 6 (CONTENIDO ACCIONABLE). "
-                "PRIORIDAD MÁXIMA: Tips, guías, ubicaciones secretas, armas legendarias, coches raros, easter eggs y trucos de dinero. "
-                "Este tipo de contenido genera 3-5x más saves/shares porque los viewers VUELVEN a verlo para seguir instrucciones. "
-                "SEGUNDA PRIORIDAD: Secretos, detalles ocultos, misiones y persecuciones policiales. "
-                "EVITAR: Vídeos de SOLO físicas/gráficos/comparativas técnicas a menos que NO haya NINGÚN candidato de tips/secretos disponible. "
+                "MODO: POST-LANZAMIENTO GTA 6 (GUÍAS DE LOCALIZACIÓN Y SECRETOS). "
+                "PRIORIDAD #1 ABSOLUTA: Vídeos donde te dicen una localización exacta y qué hacer en esa localización "
+                "(recoger dinero, conseguir un coche gratis/raro, arma legendaria, método de farmeo, easter egg o secreto por capítulo). "
+                "Este tipo de contenido genera 3-5x más guardados y compartidos porque los viewers VUELVEN a verlo para seguir los pasos. "
+                "SEGUNDA PRIORIDAD: Secretos, detalles ocultos y misiones clave. "
+                "EVITAR: Vídeos de SOLO físicas/gráficos/comparativas técnicas a menos que NO haya NINGÚN candidato de guías/secretos disponible. "
                 "ESTRICTAMENTE PROHIBIDO: parodias, memes, clips de GTA 5 o rellenos viejos de semanas pasadas."
             )
 

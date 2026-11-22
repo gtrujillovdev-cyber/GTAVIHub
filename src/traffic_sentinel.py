@@ -51,7 +51,13 @@ SUGGEST_SEEDS = [
     "gta 6 reserva ",
     "gta 6 ps5 pro ",
     "gta vi ",
-    "gta 6 lucia jason "
+    "gta 6 lucia jason ",
+    "gta 6 free ",
+    "gta 6 location ",
+    "gta 6 money method ",
+    "gta 6 secret weapon ",
+    "gta 6 coche gratis ",
+    "gta 6 donde encontrar "
 ]
 
 # Variantes alfabéticas de barrido rápido para detectar long-tail de GTA 6

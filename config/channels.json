@@ -115,6 +115,26 @@
       "description": "Comparativas gráficas 4K limpias 16:9 sin facecam ni logos ajenos"
     },
     {
+      "name": "Caspahz (Shorts)",
+      "url": "https://www.youtube.com/@Caspahz/shorts",
+      "type": "gta_guides",
+      "lang": "en",
+      "filter_keywords": true,
+      "enabled": true,
+      "allow_long_clipping": true,
+      "description": "Guías rápidas de localización, coches gratis, armas raras y métodos de dinero en GTA 6"
+    },
+    {
+      "name": "Caspahz (Guías)",
+      "url": "https://www.youtube.com/@Caspahz/videos",
+      "type": "gta_guides",
+      "lang": "en",
+      "filter_keywords": true,
+      "enabled": true,
+      "allow_long_clipping": true,
+      "description": "Guías detalladas de ubicaciones, dinero rápido y secretos en GTA 6"
+    },
+    {
       "name": "Onespot Gaming",
       "url": "https://www.youtube.com/@OnespotGaming/videos",
       "type": "technical_analysis",
@@ -1340,6 +1360,42 @@
       "enabled": true,
       "allow_long_clipping": true,
       "description": "Pruebas de físicas del agua y colisiones RAGE 9 en GTA 6"
+    },
+    {
+      "query": "ytsearch15:GTA 6 free car location",
+      "lang": "en",
+      "only_shorts": false,
+      "sp": "EgQIAhAB",
+      "enabled": true,
+      "allow_long_clipping": true,
+      "description": "Guías de localización: coches gratis y spawns raros en GTA 6"
+    },
+    {
+      "query": "ytsearch15:GTA 6 fastest money method location",
+      "lang": "en",
+      "only_shorts": false,
+      "sp": "EgQIAhAB",
+      "enabled": true,
+      "allow_long_clipping": true,
+      "description": "Guías de localización: métodos rápidos de dinero y farmeo en GTA 6"
+    },
+    {
+      "query": "ytsearch15:GTA 6 secret weapon location free",
+      "lang": "en",
+      "only_shorts": false,
+      "sp": "EgQIAhAB",
+      "enabled": true,
+      "allow_long_clipping": true,
+      "description": "Guías de localización: armas secretas y objetos perdibles en GTA 6"
+    },
+    {
+      "query": "ytsearch15:GTA 6 ubicacion coche gratis dinero secreto",
+      "lang": "es",
+      "only_shorts": false,
+      "sp": "EgQIAhAB",
+      "enabled": true,
+      "allow_long_clipping": true,
+      "description": "Guías en español: localizaciones de dinero, coches gratis y secretos"
     }
   ]
 }

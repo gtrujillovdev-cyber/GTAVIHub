@@ -69,7 +69,7 @@ Filtro obligatorio pre-render y pre-publicación contra penalizaciones por falta
 - **Pool:** 15 candidatos pre-filtrados (subida de 10 → 15 en oct 2026).
 - **Modelo:** Gemini Flash (`GEMINI_MODEL` en `config.py`).
 - **Señales clave expuestas a la IA:** `velocity_vpd`, `source_count`, `engagement_rate`, `days_old`, `base_score`.
-- **Criterios editoriales:** velocidad viral, multi-fuente, engagement, cultura pop, anti-clickbait.
+- **Criterios editoriales:** velocidad viral, multi-fuente, engagement, cultura pop, anti-clickbait y **prioridad #1 absoluta para Guías de Localización + Acción/Recompensa** (`is_location_reward_guide()` en `src/ai_selector.py`, con `+45.0` en `_visual_appeal_adjustment()` y `+5` en `calculate_virality_score()`).
 - **Fallback heurístico:** si Gemini falla, ordena por `score` descendente (o por velocidad en `launch_mode`).
 
 ## 6. Playbook de Optimización Continua (`data/viral_playbook.json`)

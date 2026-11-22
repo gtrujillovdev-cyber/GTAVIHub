@@ -328,6 +328,10 @@ def calculate_virality_score(
     if creator_matches:
         bonus = min(10, bonus + 3)
 
+    from .ai_selector import is_location_reward_guide
+    if is_location_reward_guide(title_lower):
+        bonus = min(10, bonus + 5)
+
     from .config import is_gameplay_enabled
     if is_gameplay_enabled() and any(
         gp in title_lower for gp in (

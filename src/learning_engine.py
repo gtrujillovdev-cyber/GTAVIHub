@@ -148,10 +148,12 @@ def generate_hook_card_texts(title: str, topic: str = "") -> tuple:
         return ("NIVEL 5 ESTRELLAS", "PERSECUCIÓN POLICIAL 🚨")
     elif any(k in t_lower for k in ["trailer", "tráiler", "launch", "pre-order", "cover art"]):
         return ("AVANCE OFICIAL", "NOVEDAD EN GTA 6")
+    elif any(k in t_lower for k in ["free", "gratis", "money", "dinero", "$", "cash", "rolls royce", "supercar"]):
+        return ("EN ESTA UBICACIÓN", "DINERO Y COCHE GRATIS 🤑")
     elif any(k in t_lower for k in ["tip", "tips", "trick", "guide", "how to", "best weapon", "best car", "where to find",
                                       "guia", "guía", "consejo", "mejor arma", "mejor coche", "como conseguir",
-                                      "legendary", "legendaria", "rare", "raro", "money", "dinero", "unlock", "desbloquear"]):
-        return ("GUIA EXCLUSIVA", "ENCUENTRA ESTO EN GTA 6")
+                                      "legendary", "legendaria", "rare", "raro", "unlock", "desbloquear"]):
+        return ("GUÍA DE UBICACIÓN", "CONSIGUE ESTO EN GTA 6")
 
     # Fallback estricto en español con corte en límite de palabra
     is_spanish = any(w in t_lower for w in [" de ", " el ", " la ", " los ", " las ", " en ", " por ", " con ", " que "])

@@ -223,4 +223,23 @@ Tras auditar el rendimiento en YouTube y verificar que la falta de `token_extra.
 4. **Purga de Plantillas Cliché en [`src/learning_engine.py`](file:///Users/gabrieltrujillovallejo/Documents/GtrujilloMacDoc/GitHub/GitGa/Developer/Projects/GTA6Channel/src/learning_engine.py):**
    - Se eliminó la plantilla repetitiva `"LAS FÍSICAS DE {TOPIC} NO TIENEN NINGÚN SENTIDO"` y se añadió a `forbidden_cliches`, purgando `data/viral_playbook.json` para regenerar heurísticas limpias.
 
+---
+
+### 16. 🎯 Pivote Editorial al Modelo Caspahz: Guías de Localización y Secretos (22 de Noviembre de 2026)
+Tras realizar ingeniería inversa sobre el modelo de **Caspahz** (`@Caspahz` en YouTube Shorts/TikTok/X), se reorientó el embudo completo de ingesta, selección y metadatos hacia el formato de mayor retención y guardados: **localización exacta + acción/recompensa** (coches gratis, métodos rápidos de dinero, armas ocultas y secretos por capítulo):
+
+1. **Extracción Multicanal ([`config/channels.json`](file:///Users/gabrieltrujillovallejo/Documents/GtrujilloMacDoc/GitHub/GitGa/Developer/Projects/GTA6Channel/config/channels.json) y [`src/traffic_sentinel.py`](file:///Users/gabrieltrujillovallejo/Documents/GtrujilloMacDoc/GitHub/GitGa/Developer/Projects/GTA6Channel/src/traffic_sentinel.py)):**
+   - Alta de **`Caspahz (Shorts)`** y **`Caspahz (Guías)`** (`type: "gta_guides"`) con `allow_long_clipping: true`.
+   - Incorporación de 4 `search_queries` globales (`free car location`, `fastest money method location`, `secret weapon location free`, `ubicacion coche gratis dinero secreto`) y 6 nuevas `SUGGEST_SEEDS` en `traffic_sentinel.py` para capturar este formato desde cualquier creador.
+2. **Detector y Scoring de Guías de Localización ([`src/ai_selector.py`](file:///Users/gabrieltrujillovallejo/Documents/GtrujilloMacDoc/GitHub/GitGa/Developer/Projects/GTA6Channel/src/ai_selector.py) y [`src/viral_discovery.py`](file:///Users/gabrieltrujillovallejo/Documents/GtrujilloMacDoc/GitHub/GitGa/Developer/Projects/GTA6Channel/src/viral_discovery.py)):**
+   - Nueva función `is_location_reward_guide()` que cruza señales de ubicación/capítulo con recompensas cuantificadas (`$`, `free`, `gratis`, `car`, `coche`, `money`, `weapon`, `glitch`).
+   - `_visual_appeal_adjustment()` otorga **`+45.0`** puntos a este arquetipo y el prompt de `select_best_candidate_ai()` lo fija como **Prioridad #1 absoluta** tanto en `launch_mode` como en post-lanzamiento.
+   - `calculate_virality_score()` añade un bonus de `+5` puntos (acotado al tope) en el radar viral.
+3. **Metadatos, Ganchos y Compliance ([`src/translator.py`](file:///Users/gabrieltrujillovallejo/Documents/GtrujilloMacDoc/GitHub/GitGa/Developer/Projects/GTA6Channel/src/translator.py) y [`src/learning_engine.py`](file:///Users/gabrieltrujillovallejo/Documents/GtrujilloMacDoc/GitHub/GitGa/Developer/Projects/GTA6Channel/src/learning_engine.py)):**
+   - `generate_video_metadata()` adapta título (`[Beneficio cuantificado] + [Localización]`), `summary` (ubicación exacta, pasos y CTA de serie diaria) y `hook` de 2 líneas (`LOCALIZACIÓN` / `RECOMPENSA`), manteniendo intactos los créditos `POR: @Creador`, enlace original y descargo Fair Use.
+   - `generate_hook_card_texts()` incorpora tarjeta específica `EN ESTA UBICACIÓN / DINERO Y COCHE GRATIS 🤑`.
+4. **Validación ([`tests/test_location_guide_model.py`](file:///Users/gabrieltrujillovallejo/Documents/GtrujilloMacDoc/GitHub/GitGa/Developer/Projects/GTA6Channel/tests/test_location_guide_model.py)):**
+   - Batería unitaria verificada junto a `test_config.py`, `test_ai_selector.py` y `test_improvements.py` (42/42 tests OK).
+
+
 
