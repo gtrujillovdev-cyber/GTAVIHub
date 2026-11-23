@@ -108,7 +108,7 @@ class TestAdaptiveScheduler(unittest.TestCase):
 
         pub = SocialPublisher(dry_run=False)
         sleep_calls = []
-        with patch.dict("os.environ", {"ENABLE_INSTAGRAM": "true"}), \
+        with patch.dict("os.environ", {"ENABLE_INSTAGRAM": "true", "MAX_DAILY_UPLOADS_INSTAGRAM": "2"}), \
              patch("src.social_publisher.time.sleep", side_effect=lambda s: sleep_calls.append(s)), \
              patch("src.audio_shield.detect_audio_levels", return_value={"has_audio": True, "mean_volume": -18.0}), \
              patch("src.social_publisher.AntiBanValidator.validate_metadata", return_value=True), \
