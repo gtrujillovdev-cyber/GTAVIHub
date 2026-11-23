@@ -1187,16 +1187,17 @@ def render_final_video(
     create_subtle_vignette(vignette_png, fg_top=fg_y, fg_bottom=fg_bottom, is_cinema=is_cinema_layout, w=canvas_w, h=canvas_h)
 
     # 2. Gancho textual superior (0 a 2.8s) y Badge persistente editorial (>= 2.8s)
-    # En estilo Caspahz, vídeo vertical nativo (is_already_vertical) o SPLIT, mantener 100% limpio arriba.
+    # En vídeo vertical nativo (is_already_vertical) o SPLIT, mantener limpio arriba.
+    # En estilo Caspahz desde 16:9, conservar hook superior 0-2.8s para frenar scroll si el frame 0 abre en mapa.
     hook_png = None
     badge_png = None
-    if hook_text and is_vertical and not is_already_vertical and not caspahz_style:
+    if hook_text and is_vertical and not is_already_vertical:
         hook_png = temp_dir / f"{base_name}_hook.png"
         rendered_hook = render_top_hook_headline(hook_text, hook_png, scale_factor=scale_factor)
         if not rendered_hook:
             hook_png = None
 
-        if effective_preset != "SPLIT":
+        if effective_preset != "SPLIT" and not caspahz_style:
             hook_lines = [ln.strip() for ln in hook_text.splitlines() if ln.strip()]
             badge_label = (context_badge or "").strip()
             if not badge_label:

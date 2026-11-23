@@ -1058,6 +1058,22 @@ class SocialPublisher:
             if is_temp_video and compat_path.exists():
                 compat_path.unlink(missing_ok=True)
 
+    def _find_visible_x_textbox(self, page, timeout_ms: int = 15000):
+        """Localiza el cuadro de texto visible de X sin quedar bloqueado por textboxes ocultos del DOM."""
+        for sel in (
+            '[data-testid="tweetTextarea_0"]',
+            'div[role="dialog"] [role="textbox"]',
+            'main [role="textbox"]',
+            '[role="textbox"]',
+        ):
+            try:
+                loc = page.locator(f"{sel}:visible").first
+                loc.wait_for(state="visible", timeout=timeout_ms if sel == '[data-testid="tweetTextarea_0"]' else 4000)
+                return loc
+            except Exception:
+                continue
+        return None
+
     def _post_x_youtube_reply(self, page, tweet_url: str, youtube_url: str) -> None:
         """Publica un primer auto-reply en el tuit con el enlace de YouTube sin penalizar el alcance del post principal."""
         if not tweet_url or "/status/" not in tweet_url:
@@ -1071,8 +1087,8 @@ class SocialPublisher:
 
             page.goto(tweet_url, wait_until="domcontentloaded", timeout=30000)
             time.sleep(random.uniform(2.5, 4.0))
-            reply_box = page.locator('[data-testid="tweetTextarea_0"], [role="textbox"]').first
-            if reply_box.count() > 0:
+            reply_box = self._find_visible_x_textbox(page, timeout_ms=8000)
+            if reply_box is not None:
                 reply_box.click()
                 time.sleep(0.5)
                 reply_box.fill(reply_text[:280])
@@ -1177,8 +1193,34 @@ class SocialPublisher:
                         )
                         return None
 
-                    # Escribir el texto del tweet
-                    tweet_box = page.locator('[data-testid="tweetTextarea_0"], [role="textbox"]').first
+                    # Cerrar posibles banners de cookies o modales de bienvenida si bloquean el compose
+                    for dismiss_sel in (
+                        '[data-testid="xMigrationBottomBar"] button',
+                        'button:has-text("Aceptar todas las cookies")',
+                        'button:has-text("Accept all cookies")',
+                        'button:has-text("Refuse non-essential cookies")',
+                    ):
+                        try:
+                            btn = page.locator(dismiss_sel).first
+                            if btn.count() > 0 and btn.is_visible():
+                                btn.click(timeout=2000)
+                                time.sleep(0.6)
+                        except Exception:
+                            pass
+
+                    # Escribir el texto del tweet (si /compose/post no abrió modal, pulsar botón Postear)
+                    tweet_box = self._find_visible_x_textbox(page, timeout_ms=12000)
+                    if tweet_box is None:
+                        try:
+                            new_btn = page.locator('[data-testid="SideNav_NewTweet_Button"]').first
+                            if new_btn.count() > 0 and new_btn.is_visible():
+                                new_btn.click(timeout=5000)
+                                time.sleep(1.5)
+                                tweet_box = self._find_visible_x_textbox(page, timeout_ms=10000)
+                        except Exception:
+                            pass
+                    if tweet_box is None:
+                        raise RuntimeError("No se encontró un cuadro de texto visible en X (tweetTextarea_0).")
                     tweet_box.click()
                     time.sleep(0.5)
                     tweet_box.fill(caption)

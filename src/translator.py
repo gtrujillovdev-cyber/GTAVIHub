@@ -382,7 +382,7 @@ Tu tarea es ADAPTAR EL TONO Y FORMATO AL CONTENIDO REAL:
 5. "debate_question": Una pregunta binaria/directa sobre lo que se ve en el clip para disparar comentarios en los primeros 30 minutos.
 6. "context_badge": Etiqueta editorial ultra-específica de 3 a 5 palabras (máx 38 chars, MAYÚSCULAS, palabras completas) que identifique la escena/tema exacto para un badge discreto (ej. "PS5 PRO • PERSECUCIÓN LEONIDA", "PRÓLOGO • PRISIÓN DE LUCIA", "RAGE 9 • FÍSICAS DEL AGUA"). PROHIBIDO usar genéricos como "INTRO DE GTA 6" o "GAMEPLAY REAL".
 
-7. "tiktok_caption": Frase corta y directa en español (máx 54 chars, sentence-case, NO todo mayúsculas) optimizada para TikTok. Sin hashtags aquí.
+7. "tiktok_caption": Frase corta, gancho completo y directa en español (máx 110 chars, sentence-case, NO todo mayúsculas, sin cortar frases a medias) optimizada para TikTok. Sin hashtags aquí.
 8. "tiktok_pinned_comment": Comentario polémico/debatible para fijar en TikTok y disparar discusiones en los primeros 15 minutos (máx 100 chars).
 9. "ig_caption": Copy orientado a envíos por DM en Instagram (estilo "Mándaselo al que...", máx 80 chars, con 1 emoji).
 10. "x_caption": Post corto estilo Caspahz para X/Twitter (máx 150 chars, beneficio cuantificado + gancho directo de localización/secreto, sin hashtags porque se añaden luego).
@@ -663,7 +663,7 @@ Grand Theft Auto VI, GTA VI, Vice City y los logotipos asociados son marcas regi
 
     # Copy Multi-Plataforma (retrocompatible: claves opcionales)
     if tiktok_caption:
-        result["tiktok_caption"] = truncate_on_word_boundary(tiktok_caption, 54)
+        result["tiktok_caption"] = truncate_on_word_boundary(tiktok_caption, 120)
     if tiktok_pinned_comment:
         result["tiktok_pinned_comment"] = tiktok_pinned_comment[:120]
     if ig_caption:

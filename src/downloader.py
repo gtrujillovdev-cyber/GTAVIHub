@@ -889,7 +889,7 @@ def _select_action_chapter_window(
 
         if sc > best_score:
             best_score = sc
-            clip_dur = min(float(target_duration), max(18.0, span - 2.0))
+            clip_dur = min(max(float(target_duration), 22.0), max(21.0, span - 2.0))
             offset = 3.0 if span > (clip_dur + 6.0) else 0.0
             win_start = s_t + offset
             win_end = min(duration, win_start + clip_dur)

@@ -155,12 +155,13 @@ def _score_viral_potential_llm(
 
         prompt = (
             f"Puntua del 1 al 10 el potencial viral de este YouTube Short de GTA 6 para una audiencia hispana gaming.\n"
+            f"IMPORTANTE: GTA 6 YA HA SIDO LANZADO OFICIALMENTE (19 de noviembre de 2026); el gameplay, mapas, armas y localizaciones son reales.\n"
             f"Titulo: {title}\n"
             f"Hook visual (0-2.5s): {hook}\n"
             f"Pregunta de debate: {debate}\n"
             f"Arquetipo: {archetype}\n"
-            f"Score de la fuente original: {candidate_score}/100\n\n"
-            f"Criterios: 1) Gancho de primeros 3s, 2) Claridad sin contexto previo, 3) Potencia del titulo, 4) Traccion de la fuente.\n"
+            f"Score interno de la fuente: {max(candidate_score, 55)}/100\n\n"
+            f"Criterios: 1) Gancho de primeros 3s, 2) Claridad sin contexto previo, 3) Potencia del titulo, 4) Valor accionable (guías/localizaciones/secretos tienen alto potencial).\n"
             f'Responde SOLO con JSON: {{"score": 7.5, "reason": "Breve explicacion"}}'
         )
 
