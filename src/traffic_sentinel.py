@@ -39,25 +39,20 @@ RADAR_FILE = DATA_DIR / "traffic_radar.json"
 
 # Semillas base de búsqueda para explorar sugerencias (100% EXCLUSIVAS DE GTA 6 Y LANZAMIENTO)
 SUGGEST_SEEDS = [
-    "gta 6 ",
-    "gta 6 19 noviembre ",
-    "gta 6 gameplay ",
-    "gta 6 gameplay real ",
-    "gta 6 comparativa ",
-    "gta 6 fisicas ",
-    "gta 6 mapa leonida ",
-    "gta 6 fecha lanzamiento ",
-    "gta 6 preventa ",
-    "gta 6 reserva ",
-    "gta 6 ps5 pro ",
-    "gta vi ",
-    "gta 6 lucia jason ",
     "gta 6 free ",
     "gta 6 location ",
     "gta 6 money method ",
     "gta 6 secret weapon ",
     "gta 6 coche gratis ",
-    "gta 6 donde encontrar "
+    "gta 6 donde encontrar ",
+    "gta 6 secret ",
+    "gta 6 como conseguir ",
+    "gta 6 ubicacion ",
+    "gta 6 secretos ",
+    "gta 6 trucos ",
+    "gta 6 arma oculta ",
+    "gta 6 dinero infinito ",
+    "gta 6 easter egg "
 ]
 
 # Variantes alfabéticas de barrido rápido para detectar long-tail de GTA 6

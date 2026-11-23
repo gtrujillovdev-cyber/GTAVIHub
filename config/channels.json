@@ -81,7 +81,7 @@
       "type": "breakdowns",
       "lang": "en",
       "filter_keywords": false,
-      "enabled": true,
+      "enabled": false,
       "description": "Shorts de análisis técnicos y secretos de GTA Series"
     },
     {
@@ -90,7 +90,7 @@
       "type": "breakdowns",
       "lang": "en",
       "filter_keywords": false,
-      "enabled": true,
+      "enabled": false,
       "description": "Análisis técnicos y comparativas oficiales de GTA",
       "allow_long_clipping": true
     },
@@ -188,7 +188,7 @@
       "lang": "en",
       "filter_keywords": true,
       "allow_long_clipping": true,
-      "enabled": true,
+      "enabled": false,
       "description": "Físicas, mapa y secretos de Sonny Evans (@sonnyfnevans)"
     },
     {
@@ -225,7 +225,7 @@
       "lang": "en",
       "filter_keywords": true,
       "allow_long_clipping": true,
-      "enabled": true,
+      "enabled": false,
       "description": "Comparativas visuales y físicas de INTER GTA (@intergta)"
     },
     {
@@ -270,7 +270,7 @@
       "type": "breakdowns",
       "lang": "en",
       "filter_keywords": true,
-      "enabled": true,
+      "enabled": false,
       "description": "Análisis técnico de vehículos, armas y físicas"
     },
     {
@@ -280,7 +280,7 @@
       "lang": "en",
       "filter_keywords": true,
       "allow_long_clipping": true,
-      "enabled": true,
+      "enabled": false,
       "description": "Documentales de diseño y detalles de mundo abierto (@enxgma_yt)"
     },
     {
@@ -843,7 +843,7 @@
       "query": "ytsearch15:GTA 6 graficos comparativa RAGE 9 #shorts",
       "lang": "es",
       "only_shorts": true,
-      "enabled": true,
+      "enabled": false,
       "description": "Comparativas gráficas y físicas RAGE 9 en español"
     },
     {
@@ -852,7 +852,7 @@
       "lang": "en",
       "only_shorts": false,
       "allow_long_clipping": true,
-      "enabled": true,
+      "enabled": false,
       "description": "Comparativas técnicas FPS / consola de esta semana (auto-clipping 16:9)"
     },
     {
@@ -861,7 +861,7 @@
       "lang": "en",
       "only_shorts": false,
       "allow_long_clipping": true,
-      "enabled": true,
+      "enabled": false,
       "description": "Comparativas visuales y mecánicas GTA 6 vs RDR2/GTA5 de esta semana"
     },
     {
@@ -870,7 +870,7 @@
       "lang": "en",
       "only_shorts": false,
       "allow_long_clipping": true,
-      "enabled": true,
+      "enabled": false,
       "description": "Última hora HOY: análisis gráficos/físicas GTA 6 PS5 Pro (auto-clipping)"
     },
     {
@@ -884,7 +884,7 @@
       "query": "ytsearch15:GTA 6 gameplay conduccion fisicas detalles #shorts",
       "lang": "es",
       "only_shorts": true,
-      "enabled": true,
+      "enabled": false,
       "description": "Gameplay real y físicas en español"
     },
     {
@@ -893,7 +893,7 @@
       "lang": "en",
       "only_shorts": false,
       "allow_long_clipping": true,
-      "enabled": true,
+      "enabled": false,
       "description": "Comparativas visuales puras GTA 6 vs GTA 5/RDR2 de esta semana (auto-clipping)"
     },
     {
@@ -977,14 +977,14 @@
       "query": "ytsearch15:GTA 6 secretos ocultos vice city #shorts",
       "lang": "es",
       "only_shorts": true,
-      "enabled": false,
+      "enabled": true,
       "description": "Secretos y misterios ocultos en Vice City"
     },
     {
       "query": "ytsearch15:GTA 6 easter eggs misterios mapa #shorts",
       "lang": "es",
       "only_shorts": true,
-      "enabled": false,
+      "enabled": true,
       "description": "Easter eggs ocultos y mitos en el mapa de GTA 6"
     },
     {
@@ -1096,14 +1096,14 @@
       "query": "ytsearch15:GTA 6 Puerta al Sotano secretos #shorts",
       "lang": "es",
       "only_shorts": true,
-      "enabled": false,
+      "enabled": true,
       "description": "Secretos y comparativas de Puerta al Sótano"
     },
     {
       "query": "ytsearch15:GTA 6 Ray Snakeet secretos #shorts",
       "lang": "es",
       "only_shorts": true,
-      "enabled": false,
+      "enabled": true,
       "description": "Secretos del universo GTA con Ray Snakeet"
     },
     {
@@ -1131,7 +1131,7 @@
       "query": "ytsearch15:GTA 6 Leyendas Videojuegos secretos #shorts",
       "lang": "es",
       "only_shorts": true,
-      "enabled": false,
+      "enabled": true,
       "description": "Secretos y misterios en Leyendas & Videojuegos"
     },
     {
@@ -1193,7 +1193,7 @@
       "query": "ytsearch15:GTA 6 viral breakdown secrets #shorts",
       "lang": "en",
       "only_shorts": true,
-      "enabled": false,
+      "enabled": true,
       "description": "Viral breakdown of secrets in English"
     },
     {
@@ -1214,7 +1214,7 @@
       "query": "ytsearch15:GTA 6 biggest easter eggs leonida #shorts",
       "lang": "en",
       "only_shorts": true,
-      "enabled": false,
+      "enabled": true,
       "description": "Biggest easter eggs hidden across Leonida"
     },
     {
@@ -1244,7 +1244,7 @@
       "lang": "es",
       "only_shorts": false,
       "allow_long_clipping": true,
-      "enabled": true,
+      "enabled": false,
       "active_after": "2026-11-19",
       "description": "Lanzamiento HOY: primera misión y prólogo de GTA 6 en español (auto-clipping)"
     },
@@ -1264,7 +1264,7 @@
       "lang": "en",
       "only_shorts": false,
       "allow_long_clipping": true,
-      "enabled": true,
+      "enabled": false,
       "active_after": "2026-11-19",
       "description": "Lanzamiento HOY: comparativa real de FPS y gráficos en consolas"
     },
@@ -1274,7 +1274,7 @@
       "lang": "es",
       "only_shorts": false,
       "allow_long_clipping": true,
-      "enabled": true,
+      "enabled": false,
       "active_after": "2026-11-19",
       "description": "Lanzamiento HOY: físicas, conducción y detalles de mundo abierto en español"
     },
@@ -1284,7 +1284,7 @@
       "lang": "en",
       "only_shorts": false,
       "allow_long_clipping": true,
-      "enabled": true,
+      "enabled": false,
       "active_after": "2026-11-19",
       "description": "Lanzamiento HOY: tiroteos, persecuciones policiales y sistema de búsqueda"
     },
@@ -1304,7 +1304,7 @@
       "lang": "en",
       "only_shorts": false,
       "allow_long_clipping": true,
-      "enabled": true,
+      "enabled": false,
       "description": "Breaking HOY: gameplay real de GTA 6 en PS5 Pro (auto-clipping por sección)"
     },
     {
@@ -1313,7 +1313,7 @@
       "lang": "en",
       "only_shorts": false,
       "allow_long_clipping": true,
-      "enabled": true,
+      "enabled": false,
       "description": "Breaking HOY: mundo abierto / free roam real de GTA 6"
     },
     {
@@ -1322,7 +1322,7 @@
       "lang": "en",
       "only_shorts": false,
       "allow_long_clipping": true,
-      "enabled": true,
+      "enabled": false,
       "description": "Breaking HOY: gameplay puro sin comentaristas (audio auténtico del juego)"
     },
     {
@@ -1330,7 +1330,7 @@
       "lang": "en",
       "only_shorts": false,
       "sp": "EgQIAhAB",
-      "enabled": true,
+      "enabled": false,
       "allow_long_clipping": true,
       "description": "Comparativas de físicas y motor RAGE 9 de GTA 6 vs GTA 5 subidas hoy"
     },
@@ -1339,7 +1339,7 @@
       "lang": "es",
       "only_shorts": false,
       "sp": "EgQIAhAB",
-      "enabled": true,
+      "enabled": false,
       "allow_long_clipping": true,
       "description": "Gameplay puro en español en PS5 Pro subido hoy"
     },
@@ -1357,7 +1357,7 @@
       "lang": "en",
       "only_shorts": false,
       "sp": "EgQIAhAB",
-      "enabled": true,
+      "enabled": false,
       "allow_long_clipping": true,
       "description": "Pruebas de físicas del agua y colisiones RAGE 9 en GTA 6"
     },
