@@ -428,6 +428,14 @@ def process_single_video(
 
     print(f"    Formato Final: {'Vertical 9:16 (Shorts/TikTok/Reels)' if is_short else 'Horizontal 16:9'}")
 
+    # Guardián de Frame 0 (antes de doblar/transcribir para mantener sincronía exacta de audio/vídeo)
+    if is_short:
+        try:
+            from .video_editor import ensure_non_map_first_frame
+            video_path = ensure_non_map_first_frame(video_path, TEMP_DIR)
+        except Exception:
+            pass
+
     # 2. Procesar/Traducir subtítulos si existen (o transcribir audio / comentario editorial con Gemini Flash)
     report_stage("🤖 [2/5] Analizando pistas y generando subtítulos/metadatos...")
     # Usar tanto source_lang como detected_lang e inferencia del título para jamás colar inglés sin doblar
@@ -829,7 +837,13 @@ def process_single_video(
     )
 
     from .ai_selector import is_location_reward_guide
-    is_caspahz_guide = is_location_reward_guide(original_title)
+    _tl_orig = (original_title or "").lower()
+    is_caspahz_guide = is_location_reward_guide(original_title) or any(
+        k in _tl_orig for k in (
+            "location", "walkthrough", "guide", "secret", "ubicacion", "ubicación",
+            "secreto", "guia", "guía", "truco", "oculto", "oculta", "easter egg"
+        )
+    )
 
     if is_split_comparison:
         target_preset = "SPLIT"
@@ -849,13 +863,6 @@ def process_single_video(
     if stems_audio_path and stems_audio_path.exists() and not dub_audio_path:
         effective_dub_audio = stems_audio_path
         print("[Stem Separator] Audio con musica atenuada pasado directamente al render (sin mux intermedio).")
-
-    # Guardián de Frame 0: evitar que el clip abra con un mapa estático en t=0.0s
-    try:
-        from .video_editor import ensure_non_map_first_frame
-        video_path = ensure_non_map_first_frame(video_path, TEMP_DIR)
-    except Exception:
-        pass
 
     success_render = render_final_video(
         input_video=video_path,
