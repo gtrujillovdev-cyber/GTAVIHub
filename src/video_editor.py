@@ -868,7 +868,7 @@ def render_karaoke_subtitle_state(words: List[str], active_idx: int, is_vertical
     if not display_words:
         return False
 
-    max_w = int((920 if is_vertical else 1040) * scale_factor)
+    max_w = int((740 if is_vertical else 1040) * scale_factor)
     font_size = int((70 if is_vertical else 50) * scale_factor)
     font = get_best_font(size=font_size)
 
@@ -1154,9 +1154,9 @@ def render_final_video(
             fg_y = int(210 * scale_factor)
             fg_bottom = canvas_h
             is_cinema_layout = True
-            hook_y_expr = str(int(28 * scale_factor))
-            ret_y_expr = str(int(28 * scale_factor))
-            sub_y = str(int(1280 * scale_factor))
+            hook_y_expr = str(int(175 * scale_factor))
+            ret_y_expr = str(int(175 * scale_factor))
+            sub_y = str(int(1260 * scale_factor))
             print(f"[*] Modo Formato D Pro-Cinema (89.1% cobertura Edge-to-Bottom): {fg_w}x{fg_h} @ y={fg_y} ({canvas_w}x{canvas_h}).")
         else:
             # Formato C (Smart Frame Inmersivo 4:5, 70.3% de cobertura):
@@ -1166,8 +1166,8 @@ def render_final_video(
             fg_y = int(285 * scale_factor)
             fg_bottom = int(1635 * scale_factor)
             is_cinema_layout = True
-            hook_y_expr = str(int(100 * scale_factor))
-            ret_y_expr = str(int(160 * scale_factor))
+            hook_y_expr = str(int(175 * scale_factor))
+            ret_y_expr = str(int(190 * scale_factor))
             sub_y = str(int(1240 * scale_factor))
             print(f"[*] Modo Formato C Smart Frame 4:5 (70.3% cobertura): {fg_w}x{fg_h} @ y={fg_y} con Ambient Canvas.")
     else:
@@ -1177,7 +1177,7 @@ def render_final_video(
         fg_y = 0
         fg_bottom = canvas_h
         is_cinema_layout = False
-        hook_y_expr = str(int(110 * scale_factor))
+        hook_y_expr = str(int(175 * scale_factor))
         ret_y_expr = str(int(210 * scale_factor))
         sub_y = str(int(1240 * scale_factor)) if is_vertical else "H-h-90"
         print(f"[*] Modo Vertical Nativo 9:16: Pantalla completa sin deformación (Vertical: {is_vertical}, {canvas_w}x{canvas_h}).")
@@ -1514,36 +1514,37 @@ def render_final_video(
             badge_enable = f"gte(t,2.4)*lt(t,{cta_start:.2f})"
         else:
             badge_enable = "gte(t,2.4)"
-        badge_y = int(28 * scale_factor)
+        badge_y = int(178 * scale_factor)
         filter_chains.append(f"[{current_v}][{badge_idx}:v]overlay=(W-w)/2:{badge_y}:enable='{badge_enable}'[v_badged]")
         current_v = "v_badged"
 
     # C2) Superponer segundo gancho de retención (5.0 a 7.2s) — frena el swipe mid-scroll
     if retention_idx is not None:
-        ret_y = int(54 * scale_factor)
+        ret_y = int(190 * scale_factor)
         filter_chains.append(f"[{current_v}][{retention_idx}:v]overlay=(W-w)/2:{ret_y}:enable='between(t,5.0,7.2)'[v_retained]")
         current_v = "v_retained"
 
     # C3) Píldora CTA de seguimiento en los últimos 2.5s (zona editorial superior, cero choque con subtítulos)
     if cta_active:
-        cta_y = int(28 * scale_factor)
+        cta_y = int(178 * scale_factor)
         filter_chains.append(f"[{current_v}][{cta_idx}:v]overlay=(W-w)/2:{cta_y}:enable='gte(t,{cta_start:.2f})'[v_cta]")
         current_v = "v_cta"
 
-    # C4) Marca de agua de canal persistente y discreta (esquina superior derecha, permanente durante todo el clip)
+    # C4) Marca de agua de canal persistente y discreta (esquina superior derecha debajo de cabecera UI iOS/YT)
     if watermark_idx is not None:
-        wm_x = f"W-w-{int(28 * scale_factor)}"
-        wm_y = int(32 * scale_factor)
+        wm_x = f"W-w-{int(34 * scale_factor)}"
+        wm_y = int(178 * scale_factor)
         filter_chains.append(f"[{current_v}][{watermark_idx}:v]overlay={wm_x}:{wm_y}[v_branded]")
         current_v = "v_branded"
 
-    # D) Superponer Subtítulos Karaoke palabra por palabra
+    # D) Superponer Subtítulos Karaoke palabra por palabra (margen derecho libre para botones Like/Guardar)
+    sub_x_expr = f"(W-w)/2-{int(45 * scale_factor)}" if is_vertical else "(W-w)/2"
     for s_idx, (_, start_s, end_s) in enumerate(sub_pngs):
         in_id = sub_inputs_start + s_idx
         next_v = f"v_sub_{s_idx}"
         # Transición limpia al frame gte*lt (evita parpadeo y solapamiento entre estados consecutivos)
         filter_chains.append(
-            f"[{current_v}][{in_id}:v]overlay=(W-w)/2:{sub_y}:enable='gte(t,{start_s:.2f})*lt(t,{end_s:.2f})'[{next_v}]"
+            f"[{current_v}][{in_id}:v]overlay={sub_x_expr}:{sub_y}:enable='gte(t,{start_s:.2f})*lt(t,{end_s:.2f})'[{next_v}]"
         )
         current_v = next_v
 
