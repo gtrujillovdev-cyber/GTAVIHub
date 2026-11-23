@@ -14,8 +14,9 @@ from .uploader import get_authenticated_youtube_service
 BROWSER_PROFILE_DIR = BASE_DIR / "assets" / ".browser_profiles"
 
 def fetch_channel_overview() -> Optional[Dict[str, Any]]:
-    """Obtiene los datos estadísticos generales del canal conectado en token.json."""
-    youtube = get_authenticated_youtube_service()
+    """Obtiene los datos estadísticos generales del canal conectado (prioriza token_extra.json)."""
+    target = "extra" if (BASE_DIR / "token_extra.json").exists() else "main"
+    youtube = get_authenticated_youtube_service(target_channel=target)
     if not youtube:
         return None
 
