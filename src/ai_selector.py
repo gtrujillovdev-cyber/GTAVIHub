@@ -240,6 +240,14 @@ def select_best_candidate_ai(
         return s
 
     base_pool = sorted(base_pool, key=_pre_rank, reverse=True)
+    # Prioridad absoluta a Shorts nativos de guías/localizaciones (12-65s) sobre vídeos largos 16:9
+    native_guide_shorts = [
+        c for c in base_pool
+        if 12 <= float(c.get("duration") or 0) <= 65
+        and _visual_appeal_adjustment(c) >= 35.0
+    ]
+    if native_guide_shorts:
+        base_pool = native_guide_shorts
     # Limitar a los 15 mejores según ranking dinámico para la IA
     pool = base_pool[:15]
 
