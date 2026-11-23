@@ -169,6 +169,40 @@ def get_authenticated_youtube_service(account: str = "extra"):
         print(f"[!] Error cargando credenciales de YouTube ({chosen_file.name}): {e}")
         return None
 
+def _get_or_create_series_playlist(youtube, series_id: str) -> Optional[str]:
+    """Busca o crea una lista de reproducción oficial en YouTube para la serie dada."""
+    playlist_titles = {
+        "coches_gratis": "Coches Secretos & Gratis en GTA 6",
+        "armas_legendarias": "Armas Secretas y Legendarias de GTA 6",
+        "dinero_rapido": "Trucos y Métodos de Dinero en GTA 6",
+        "secretos_leonida": "Secretos y Misterios del Mapa de GTA 6",
+        "detalles_enfermizos": "Detalles Ocultos de GTA 6",
+        "mitos_a_prueba": "Mitos a Prueba en GTA 6",
+    }
+    target_title = playlist_titles.get(series_id)
+    if not target_title:
+        return None
+    try:
+        resp = youtube.playlists().list(part="snippet", mine=True, maxResults=25).execute()
+        for item in resp.get("items", []):
+            if item.get("snippet", {}).get("title", "").strip().lower() == target_title.lower():
+                return item.get("id")
+        created = youtube.playlists().insert(
+            part="snippet,status",
+            body={
+                "snippet": {
+                    "title": target_title,
+                    "description": f"Guías, secretos y clips diarios de la serie {target_title} en GTA VI.",
+                },
+                "status": {"privacyStatus": "public"},
+            },
+        ).execute()
+        return created.get("id")
+    except Exception as e:
+        print(f"[Info] No se pudo obtener/crear playlist '{target_title}': {e}")
+        return None
+
+
 def upload_to_youtube(
     video_path: Path,
     title: str,
@@ -178,7 +212,8 @@ def upload_to_youtube(
     is_short: bool = False,
     thumbnail_path: Optional[Path] = None,
     pinned_comment: Optional[str] = None,
-    target_account: str = "extra"
+    target_account: str = "extra",
+    series_id: Optional[str] = None,
 ) -> Optional[str]:
     """
     Sube un vídeo a YouTube mediante la API v3 exclusivamente al canal autorizado (@GTAVIHubExtra).
@@ -332,6 +367,24 @@ def upload_to_youtube(
                     print(f"[Info] Comentario automático omitido: {e}")
         else:
             print(f"[*] [Boost Algorítmico 1 de cada 2] Omitido para {video_id}: Publicación orgánica pura sin auto-interacción.")
+
+        # Asignar automáticamente a su Playlist oficial de YouTube si pertenece a una serie
+        if series_id and privacy_status == "public":
+            try:
+                pl_id = _get_or_create_series_playlist(youtube, series_id)
+                if pl_id:
+                    youtube.playlistItems().insert(
+                        part="snippet",
+                        body={
+                            "snippet": {
+                                "playlistId": pl_id,
+                                "resourceId": {"kind": "youtube#video", "videoId": video_id},
+                            }
+                        },
+                    ).execute()
+                    print(f"[✓ Playlist Serie] Vídeo {video_id} añadido a playlist oficial ({series_id}).")
+            except Exception as pl_err:
+                print(f"[Info] Playlist de serie omitida: {pl_err}")
 
         return video_id
     except Exception as e:

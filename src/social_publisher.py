@@ -248,7 +248,8 @@ class SocialPublisher:
         privacy: str = "public",
         thumbnail_path: Optional[Path] = None,
         pinned_comment: Optional[str] = None,
-        target_account: str = "main"
+        target_account: str = "main",
+        series_id: Optional[str] = None,
     ) -> Optional[str]:
         """Sube el vídeo a YouTube Shorts mediante API oficial v3."""
         print(f"\n[1/3 YouTube] Iniciando publicación de '{video_path.name}' (Cuenta: {target_account.upper()})...")
@@ -267,7 +268,8 @@ class SocialPublisher:
             is_short=True,
             thumbnail_path=thumbnail_path,
             pinned_comment=pinned_comment,
-            target_account=target_account
+            target_account=target_account,
+            series_id=series_id,
         )
         if video_id:
             return f"https://youtu.be/{video_id}" if not str(video_id).startswith("http") else str(video_id)
@@ -1283,7 +1285,8 @@ class SocialPublisher:
                     privacy=target_privacy,
                     thumbnail_path=thumb,
                     pinned_comment=pinned_comment,
-                    target_account=target_acc
+                    target_account=target_acc,
+                    series_id=metadata.get("series_id") or (metadata.get("series_info") or {}).get("series_id"),
                 )
                 results["youtube"] = url
                 if url:

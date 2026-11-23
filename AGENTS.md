@@ -113,3 +113,15 @@ Para evitar sobrecalentamiento, estrangulamiento térmico o degradación de los 
 7. **Centinela de Tráfico e Intención de Búsqueda en Vivo (`src/traffic_sentinel.py`)**:
    - `/traffic` o `/sentinel`: Rastreo en tiempo real de intenciones de búsqueda activas mediante YouTube Suggest API y noticias de última hora en Google News (últimas 24h).
    - Genera consultas dinámicas que alimentan a `viral_discovery.py` y sincroniza las palabras clave más tecleadas por los usuarios con los metadatos y ganchos de `ai_selector.py`.
+
+---
+
+## 8. 📜 Directriz Permanente: Compliance Multiplataforma y Sincronización de Repositorios
+
+1. **Adaptación Obligatoria al Compliance y ToS de Cada Red Social**:
+   - Toda nueva funcionalidad, automatización, ajuste de copy o estrategia de crecimiento debe revisarse y adaptarse **por diseño** a los Términos y Condiciones (ToS) y políticas anti-spam vigentes de cada plataforma (**YouTube, TikTok, X, Instagram**).
+   - **Prohibido** implementar prácticas sancionables: spam de comentarios o menciones a terceros, enlaces externos en cuerpos principales donde la red los penaliza, clientes privados móviles no oficiales en cuentas nuevas (`instagrapi`), o duplicación masiva entre cuentas.
+   - Priorizar siempre **APIs oficiales** (YouTube Data API v3 para subidas, playlists y metadatos) y señales orgánicas reales.
+2. **Actualización Obligatoria de Repositorios y Diario**:
+   - Todo cambio verificado con tests (`python3 -m unittest discover -s tests`) debe quedar **commiteado, pusheado a `origin/main` y sincronizado en el MacBook Pro (`100.108.212.124`)**.
+   - Los hitos arquitectónicos, reglas operativas y cambios relevantes de estrategia deben quedar registrados en `docs/DIARIO_DE_DESARROLLO.md` y `AGENTS.md`.

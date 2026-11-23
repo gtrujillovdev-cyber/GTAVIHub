@@ -4,6 +4,15 @@ Este documento recoge de forma cronológica los hitos de ingeniería, arquitectu
 
 ---
 
+## [2026-11-23] — Unificación Visual `VI EXTRA`, Anti-Patrón Intraredes y Compliance Multiplataforma
+
+- **Identidad visual unificada (`assets/avatar_extra.jpg`, `assets/banner_extra.jpg`, `assets/watermark_gta6x_testarossa.png`)**: Marca de agua circular `VI EXTRA` y banner panorámico doble neón cyan/magenta derivados directamente del avatar oficial, aplicados a YouTube (`GTA VI Hub Extra`) y X.
+- **Planificación estocástica y publicación dinámica intraredes (`src/adaptive_scheduler.py`, `src/social_publisher.py`)**: Eliminados disparos fijos en crontab, prohibidos minutos múltiplos de 5 y segundos `:00`/`10`, orden dinámico entre redes y pausas variables `8–18 min` con micro-jitter inicial (`17–73s`).
+- **Corrección crítica y OAuth YouTube (`src/telegram_bot.py`)**: Resuelto `UnboundLocalError` en `_now_ts` del daemon y renovado `token_extra.json` sobre el canal oficial `GTA VI Hub Extra` (`UCB35xEmRUm64zgyYOUnqrUg`).
+- **Compliance Multiplataforma (`AGENTS.md` §8, `src/uploader.py`, `src/story_scheduler.py`)**: Desactivado Instagram (`ENABLE_INSTAGRAM=false`) tras suspensión permanente por `instagrapi`; añadido auto-reply con enlace de YouTube en X sin enlaces en el tuit principal y asignación automática a Playlists oficiales de YouTube por serie (`upload_to_youtube`).
+
+---
+
 ## [2026-11-04] — Hito Mayor: Despliegue de Red de Respaldo (Extra), Formatos Adaptativos y Motor AVD
 
 ### 1. 🎯 Contexto y Motivación
