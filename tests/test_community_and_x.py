@@ -85,6 +85,35 @@ class TestXTasteProfile(unittest.TestCase):
                 self.assertTrue(queue_path.exists())
                 mock_reg.assert_called_once()
 
+    def test_tiktok_official_api_upload(self):
+        import json as _json
+        import time as _time
+        from unittest.mock import MagicMock
+        from src.social_publisher import SocialPublisher
+
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_p = Path(tmp)
+            vid = tmp_p / "clip.mp4"
+            vid.write_bytes(b"0" * 1024)
+            tok = tmp_p / "tiktok_token.json"
+            tok.write_text(_json.dumps({"access_token": "tok_123", "obtained_at": int(_time.time()), "expires_in": 86400}))
+
+            init_resp = MagicMock()
+            init_resp.json.return_value = {"error": {"code": "ok"}, "data": {"upload_url": "https://open.tiktokapis.com/upload/abc", "publish_id": "pub_99"}}
+            put_resp = MagicMock()
+            put_resp.status_code = 201
+
+            pub = SocialPublisher(dry_run=False)
+            with patch("requests.post", return_value=init_resp) as m_post, \
+                 patch("requests.put", return_value=put_resp) as m_put, \
+                 patch("src.social_publisher._record_tiktok_upload") as m_rec:
+                url = pub._publish_to_tiktok_official_api(vid, "Armas secretas GTA 6 #GTA6", tok)
+
+            self.assertEqual(url, "https://www.tiktok.com/@gtavihubextra")
+            m_post.assert_called_once()
+            m_put.assert_called_once()
+            m_rec.assert_called_once()
+
 
 if __name__ == "__main__":
     unittest.main()

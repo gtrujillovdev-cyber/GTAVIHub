@@ -59,4 +59,5 @@ data/scheduler_slots_state.json
 .codegraph/
 branding_token.json
 token_extra.json
+tiktok_token.json
 scripts/_inspect_ig.py

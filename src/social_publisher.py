@@ -347,6 +347,97 @@ class SocialPublisher:
             parts.append(tags_str)
         return "\n\n".join(parts)
 
+    def _publish_to_tiktok_official_api(
+        self,
+        video_path: Path,
+        caption: str,
+        token_file: Path,
+    ) -> Optional[str]:
+        """
+        Publica en TikTok usando la Content Posting API v2 oficial (OAuth 2.0).
+        Requiere `tiktok_token.json` generado por `scripts/auth_tiktok.py`.
+        """
+        import requests as _req
+        try:
+            token_data = json.loads(token_file.read_text(encoding="utf-8"))
+            obtained_at = int(token_data.get("obtained_at", 0))
+            expires_in = int(token_data.get("expires_in", 86400))
+            if obtained_at and (time.time() - obtained_at) >= (expires_in - 300):
+                try:
+                    from scripts.auth_tiktok import refresh_tiktok_token
+                    token_data = refresh_tiktok_token(token_data)
+                except Exception as ref_err:
+                    print(f"[TikTok API] Aviso renovando token: {ref_err}")
+
+            access_token = token_data.get("access_token", "")
+            if not access_token:
+                print("[TikTok API] access_token ausente en tiktok_token.json")
+                return None
+
+            video_size = video_path.stat().st_size
+            privacy_level = os.getenv("TIKTOK_API_PRIVACY", "PUBLIC_TO_EVERYONE").strip() or "PUBLIC_TO_EVERYONE"
+            init_payload = {
+                "post_info": {
+                    "title": caption[:2200],
+                    "privacy_level": privacy_level,
+                    "disable_duet": False,
+                    "disable_comment": False,
+                    "disable_stitch": False,
+                },
+                "source_info": {
+                    "source": "FILE_UPLOAD",
+                    "video_size": video_size,
+                    "chunk_size": video_size,
+                    "total_chunk_count": 1,
+                },
+            }
+            print(f"[TikTok API Oficial] Inicializando subida ({video_size / (1024*1024):.1f} MB, privacy={privacy_level})...")
+            init_resp = _req.post(
+                "https://open.tiktokapis.com/v2/post/publish/video/init/",
+                headers={
+                    "Authorization": f"Bearer {access_token}",
+                    "Content-Type": "application/json; charset=UTF-8",
+                },
+                json=init_payload,
+                timeout=30,
+            )
+            init_json = init_resp.json()
+            err = init_json.get("error", {})
+            if err.get("code") not in (None, "ok"):
+                print(f"[TikTok API Oficial] Error en init: {init_json}")
+                return None
+
+            data = init_json.get("data", {})
+            upload_url = data.get("upload_url")
+            publish_id = data.get("publish_id")
+            if not upload_url:
+                print(f"[TikTok API Oficial] Sin upload_url: {init_json}")
+                return None
+
+            with open(video_path, "rb") as vf:
+                video_bytes = vf.read()
+
+            put_resp = _req.put(
+                upload_url,
+                headers={
+                    "Content-Range": f"bytes 0-{video_size - 1}/{video_size}",
+                    "Content-Type": "video/mp4",
+                },
+                data=video_bytes,
+                timeout=180,
+            )
+            if put_resp.status_code not in (200, 201, 204):
+                print(f"[TikTok API Oficial] Error subiendo binario ({put_resp.status_code}): {put_resp.text[:200]}")
+                return None
+
+            _record_tiktok_upload()
+            print(f"[✓ TikTok API Oficial] Subida completada (publish_id={publish_id}).")
+            tt_handle = os.getenv("TIKTOK_USERNAME", "gtavihubextra").strip().lstrip("@")
+            return f"https://www.tiktok.com/@{tt_handle}"
+        except Exception as e:
+            print(f"[TikTok API Oficial] Excepción: {e}")
+            return None
+
     def publish_to_tiktok(
         self,
         video_path: Path,
@@ -390,6 +481,20 @@ class SocialPublisher:
             return f"https://www.tiktok.com/@gtavihubextra/video/mock_{video_path.stem}"
 
         compat_path, is_temp_video = prepare_social_compatible_video(video_path)
+
+        # Priorizar TikTok Content Posting API v2 oficial si existe tiktok_token.json
+        tiktok_token_file = BASE_DIR / "tiktok_token.json"
+        if tiktok_token_file.exists():
+            api_url = self._publish_to_tiktok_official_api(compat_path, caption, tiktok_token_file)
+            if api_url:
+                if is_temp_video and compat_path.exists():
+                    compat_path.unlink(missing_ok=True)
+                return api_url
+            if os.getenv("TIKTOK_REQUIRE_OFFICIAL_API", "false").lower() in ("true", "1", "yes"):
+                if is_temp_video and compat_path.exists():
+                    compat_path.unlink(missing_ok=True)
+                return None
+            print("[!] API oficial de TikTok no completó la subida; usando fallback Playwright...")
 
         try:
             # Comprobar si playwright está disponible en el entorno
