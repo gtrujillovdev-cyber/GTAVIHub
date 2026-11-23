@@ -4,6 +4,16 @@ Este documento recoge de forma cronológica los hitos de ingeniería, arquitectu
 
 ---
 
+## [2026-11-24] — Blindaje del Estándar Alfa: Guías/Secretos, Frame 0 Gameplay y Safe Zones Móviles
+
+- **Filtro exclusivo de Guías/Localizaciones/Secretos (`config/channels.json`, `src/traffic_sentinel.py`, `src/ai_selector.py`)**: Desactivadas fuentes y queries de físicas/comparativas/noticias; prioridad absoluta a **Shorts nativos (`12–65s`)** de guías y penalización a comparativas/físicas puras.
+- **Escudo Frame 0 Anti-Mapa (`src/video_editor.py`, `src/pipeline.py`)**: `ensure_non_map_first_frame()` detecta mapas en `0.2s` y antepone 1.5s de gameplay/recompensa (`4.0s–11.0s`) para abrir con acción real antes del mapa; en `caspahz_style=True` se suprimen titulares cambiantes superiores.
+- **Safe Zones iOS/Shorts (`src/video_editor.py`)**: Top safe zone `y >= 175px` para marca de agua/overlays y subtítulos acotados (`max_w=740px`, offset `-45px`) para evitar solapamiento con el botón Guardar.
+- **Locución directa y limpia (`src/dubber.py`, `src/translator.py`)**: Delay inicial capado a `0.25s`, prohibidas preguntas retóricas iniciales (modelo de coche/arma/recompensa directo primero) y sanitizador `sanitize_banned_words()` (`cocaína`/`drogas` → `recompensa`/`mercancía`).
+- **Higiene y Anti-Ban (`100.108.212.124`)**: Corregido `publish_to_x` (cookies JS + `/home` fallback), `youtube_analytics.py` (`account="extra"`), límites `2/día` con `LAUNCH_AUTOPILOT=false`, `TIKTOK_COOLDOWN_MINUTES=240` y limpieza de `409.9 MB` de `.mp4` huérfanos.
+
+---
+
 ## [2026-11-23] — Unificación Visual `VI EXTRA`, Anti-Patrón Intraredes y Compliance Multiplataforma
 
 - **Identidad visual unificada (`assets/avatar_extra.jpg`, `assets/banner_extra.jpg`, `assets/watermark_gta6x_testarossa.png`)**: Marca de agua circular `VI EXTRA` y banner panorámico doble neón cyan/magenta derivados directamente del avatar oficial, aplicados a YouTube (`GTA VI Hub Extra`) y X.

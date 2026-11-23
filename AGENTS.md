@@ -125,3 +125,24 @@ Para evitar sobrecalentamiento, estrangulamiento térmico o degradación de los 
 2. **Actualización Obligatoria de Repositorios y Diario**:
    - Todo cambio verificado con tests (`python3 -m unittest discover -s tests`) debe quedar **commiteado, pusheado a `origin/main` y sincronizado en el MacBook Pro (`100.108.212.124`)**.
    - Los hitos arquitectónicos, reglas operativas y cambios relevantes de estrategia deben quedar registrados en `docs/DIARIO_DE_DESARROLLO.md` y `AGENTS.md`.
+
+---
+
+## 9. 🏆 Estándar Alfa Blindado: Guías, Localizaciones y Secretos (2026-11-24)
+
+Este formato queda **blindado como directriz obligatoria** para toda la red (`YouTube Shorts`, `TikTok`, `X`):
+
+1. **Nicho Exclusivo (100% Guías, Localizaciones, Recompensas y Secretos):**
+   - `config/channels.json`, `src/traffic_sentinel.py` y `src/ai_selector.py` quedan restringidos a guías accionables (coches gratis, métodos de dinero, armas ocultas, recompensas y secretos con ubicación). Prohibido seleccionar comparativas técnicas, físicas puras o noticias genéricas.
+   - Prioridad absoluta a **Shorts nativos (`12–65s`)** sobre vídeos largos 16:9 cuando existan en el pool.
+2. **Estructura Visual Obligatoria (Frame 0 Gameplay → Mapa → Gameplay):**
+   - **Prohibido abrir con mapa estático en Frame 0 (`0.0s`):** `ensure_non_map_first_frame()` en `src/video_editor.py` muestrea `4.0s–11.0s` y antepone un gancho de 1.5s con gameplay puro/recompensa si `0.2s` muestra mapa o menú. El mapa aparece inmediatamente después (`t >= 1.5s`), seguido de la ejecución en gameplay.
+   - **Cabecera limpia en modo Caspahz (`caspahz_style=True`):** Prohibidos los titulares cambiantes superiores que distraen de la voz en off; solo gameplay limpio, logo `VI EXTRA` y subtítulos karaoke.
+3. **Safe Zones Móviles (`1080x1920` / `2160x3840`):**
+   - Barra superior UI libre (`y >= 175px` para logo `VI EXTRA` y overlays); subtítulos acotados a `max_w=740px` con desplazamiento izquierdo `-45px` para no colisionar con la barra lateral derecha (Like, Guardar, Compartir).
+4. **Locución Directa y Segura (`0.25s` + Recompensa Primero + Vocabulario Limpio):**
+   - Arranque de voz capado a **`0.25s` (`250ms`)** máximo en `src/dubber.py` (cero silencios largos iniciales).
+   - **Sin preguntas retóricas:** La primera frase anuncia directamente el modelo exacto del coche, arma o recompensa, seguido de la ubicación y pasos.
+   - **Sanitización anti-shadowban (`sanitize_banned_words` en `src/translator.py`):** Sustitución automática de términos sensibles (`cocaína`, `drogas`, `marihuana`, etc.) por `recompensa` / `mercancía` en títulos, descripciones, voz y subtítulos.
+5. **Protección Anti-Ban de Cuentas (Máximo 2/día en Co-Pilot):**
+   - `LAUNCH_AUTOPILOT=false`, tope de `2/día` en YouTube y TikTok, `TIKTOK_COOLDOWN_MINUTES=240`, `ENABLE_INSTAGRAM=false` y prohibido privatizar vídeos en ráfaga durante los primeros 14 días.
