@@ -198,7 +198,8 @@ def translate_srt(
         "6. Usa un español dinámico, fresco y actual (apto para YouTube Shorts / TikTok).\n"
         "7. Respeta nombres canónicos (Vice City, Lucia, Jason, Leonida, Rockstar Games, etc.).\n"
         "8. CERO TARTAMUDEO / CERO REPETICIÓN: Los subtítulos de entrada pueden contener líneas rodantes o correcciones de YouTube ASR. NUNCA repitas una misma frase o cláusula dos veces consecutivas. Traduce la idea una sola vez con fluidez profesional continua.\n"
-        "9. Devuelve ÚNICAMENTE el texto SRT resultante, sin explicaciones ni bloques markdown extra."
+        "9. GANCHO DE RECOMPENSA PRIMERO: Si es una guía, secreto o truco (coche gratis, dinero, arma, ubicación), la PRIMERA frase (bloque 1) DEBE anunciar la RECOMPENSA concreta primero (ej. 'Consigue este Ferrari gratis en GTA 6...' o 'Así ganas 500 mil por hora...'), nunca empieces solo diciendo 'Ve a este punto del mapa'.\n"
+        "10. Devuelve ÚNICAMENTE el texto SRT resultante, sin explicaciones ni bloques markdown extra."
     )
 
     try:
@@ -793,9 +794,10 @@ def generate_editorial_commentary_srt(
             f"Estás viendo fotogramas reales de un clip de gameplay/imágenes de '{original_title}' (créditos a {creator_name}).\n"
             f"Duración del clip: {eff_dur:.1f} segundos.\n\n"
             f"TAREA:\n"
-            f"Redacta un comentario editorial original, informativo y con alto gancho de retención en ESPAÑOL para locutarlo sobre estas imágenes.\n"
-            f"- Describe lo que realmente se ve en las escenas y analiza su iluminación, detalles gráficos o ambientación en Vice City / Leonida (SIN inventar historias falsas de streamers ni mentir sobre lo que aparece en pantalla).\n"
-            f"- Empieza en 00:00:00,400 con un gancho potente en la primera frase.\n"
+            f"Redacta un guion de guía/secreto en ESPAÑOL para locutarlo sobre estas imágenes.\n"
+            f"- REGLA DE ORO (SEGUNDO 0): La PRIMERA frase (00:00:00,250) DEBE anunciar directamente la RECOMPENSA o SECRETO concreto (coche, arma, dinero o misión) antes de explicar dónde está en el mapa.\n"
+            f"- Describe lo que realmente se ve en las escenas (SIN inventar historias falsas ni mencionar gráficos/iluminación si es una guía).\n"
+            f"- Empieza en 00:00:00,250 con un gancho potente de recompensa.\n"
             f"- Distribuye entre 6 y 9 bloques SRT desde 00:00:00,400 hasta 00:00:{int(target_speech_end):02d},000 (aprox 3-5 palabras por bloque, lectura natural y ágil ~2.5 palabras/segundo).\n"
             f"- Formato ESTRICTO SubRip (.srt) puro (1, 2, 3... con 'HH:MM:SS,mmm --> HH:MM:SS,mmm').\n"
             f"- Devuelve ÚNICAMENTE el texto SRT puro, sin markdown (```) ni comentarios."

@@ -850,6 +850,13 @@ def process_single_video(
         effective_dub_audio = stems_audio_path
         print("[Stem Separator] Audio con musica atenuada pasado directamente al render (sin mux intermedio).")
 
+    # Guardián de Frame 0: evitar que el clip abra con un mapa estático en t=0.0s
+    try:
+        from .video_editor import ensure_non_map_first_frame
+        video_path = ensure_non_map_first_frame(video_path, TEMP_DIR)
+    except Exception:
+        pass
+
     success_render = render_final_video(
         input_video=video_path,
         output_video=output_path,

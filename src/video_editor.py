@@ -1069,6 +1069,82 @@ def create_subtle_vignette(output_png: Path, fg_top: int = 160, fg_bottom: int =
     img.save(output_png, "PNG")
     return True
 
+def ensure_non_map_first_frame(video_path: Path, temp_dir: Path) -> Path:
+    """
+    Verifica con Gemini Vision si el frame 0 (0.2s) es una pantalla de mapa/menú estático.
+    Si lo es, antepone un corte visual de 1.5s con la recompensa/acción (coche, arma, personaje)
+    para que Frame 0 enganche al instante y el mapa salga después (t >= 1.5s).
+    """
+    if not os.getenv("GEMINI_API_KEY", "").strip():
+        return video_path
+    samples = []
+    try:
+        from google.genai import types
+        from .translator import get_gemini_client, generate_content_with_retry, clean_srt_response
+
+        sample_times = [0.2, 2.0, 4.0, 6.5]
+        contents = []
+        valid_times = []
+        for idx, t in enumerate(sample_times):
+            jpg = temp_dir / f"_f0check_{video_path.stem}_{idx}.jpg"
+            cmd = [
+                "ffmpeg", "-y", "-ss", f"{t:.2f}", "-i", str(video_path),
+                "-vframes", "1", "-q:v", "5", "-vf", "scale=480:-1", str(jpg)
+            ]
+            r = subprocess.run(cmd, capture_output=True, timeout=8)
+            if r.returncode == 0 and jpg.exists():
+                samples.append(jpg)
+                valid_times.append(t)
+                contents.append(types.Part.from_bytes(data=jpg.read_bytes(), mime_type="image/jpeg"))
+
+        if len(valid_times) < 2:
+            return video_path
+
+        prompt = (
+            "Te paso 4 frames de un clip de GTA 6 en orden (Frame 0=0.2s, Frame 1=2.0s, Frame 2=4.0s, Frame 3=6.5s). "
+            "¿El Frame 0 muestra principalmente una pantalla de MAPA / menú de pausa en lugar del coche, arma, dinero o gameplay real? "
+            "Si es así, indica qué índice (1, 2 o 3) muestra mejor la recompensa/acción (coche, arma, personaje) para usarlo como gancho visual inicial. "
+            'Responde SOLO JSON: {"frame_0_is_map": true/false, "best_action_idx": 1}'
+        )
+        contents.append(prompt)
+        client = get_gemini_client()
+        resp = generate_content_with_retry(client=client, contents=contents)
+        data = json.loads(clean_srt_response(resp.text or "{}"))
+        if not data.get("frame_0_is_map"):
+            return video_path
+
+        act_idx = int(data.get("best_action_idx", 1))
+        if act_idx < 1 or act_idx >= len(valid_times):
+            act_idx = 1
+        hook_t = valid_times[act_idx]
+
+        # Anteponer 1.5s del momento de acción/recompensa al inicio manteniendo el audio original sincronizado
+        out_path = temp_dir / f"{video_path.stem}_f0hook.mp4"
+        cmd_hook = [
+            "ffmpeg", "-y", "-threads", "1",
+            "-ss", f"{hook_t:.2f}", "-t", "1.5", "-i", str(video_path),
+            "-i", str(video_path),
+            "-filter_complex",
+            "[0:v]setpts=PTS-STARTPTS[vh];[1:v]setpts=PTS-STARTPTS[vm];[vh][vm]concat=n=2:v=1:a=0[vout]",
+            "-map", "[vout]", "-map", "1:a?",
+            "-c:v", "h264_videotoolbox" if os.uname().sysname == "Darwin" else "libx264",
+            "-b:v", "8M", "-c:a", "copy", "-shortest", str(out_path)
+        ]
+        res_h = subprocess.run(cmd_hook, capture_output=True, timeout=45)
+        if res_h.returncode == 0 and out_path.exists() and out_path.stat().st_size > 10000:
+            print(f"[✓ Frame 0 Shield] Mapa detectado en 0.2s -> Antepuesto gancho visual de recompensa (t={hook_t:.1f}s) en Frame 0.")
+            return out_path
+    except Exception as e:
+        print(f"[Frame 0 Shield] Aviso no bloqueante: {e}")
+    finally:
+        for s in samples:
+            try:
+                s.unlink(missing_ok=True)
+            except Exception:
+                pass
+    return video_path
+
+
 def render_final_video(
     input_video: Path,
     output_video: Path,
