@@ -167,16 +167,17 @@ if __name__ == "__main__":
     except Exception as e:
         print(f"[X Scout] Error en ingesta automática de Likes: {e}")
 
-    try:
-        from src.story_scheduler import can_publish_story, publish_scheduled_story
-        can_story, story_reason = can_publish_story(force=False)
-        if can_story:
-            print("[Stories] Ventana óptima detectada. Publicando historia autónoma...")
-            res_url, story_name, story_kind = publish_scheduled_story(force=False, dry_run=False)
-            if res_url:
-                print(f"[Stories] [✓] Historia autónoma publicada con éxito: {story_name} ({story_kind}) -> {res_url}")
-                send_telegram(f"📸 *¡Nueva Historia en Instagram!*\n\n🌴 *Contenido:* `{story_name}`\n🏷️ *Tipo:* `{story_kind.upper()}`\n🔗 {res_url}")
-        else:
-            print(f"[Stories] Cooldown activo: {story_reason}")
-    except Exception as e:
-        print(f"[Stories] Error en ciclo de historias: {e}")
+    if os.getenv("ENABLE_INSTAGRAM", "false").lower() in ("true", "1", "yes"):
+        try:
+            from src.story_scheduler import can_publish_story, publish_scheduled_story
+            can_story, story_reason = can_publish_story(force=False)
+            if can_story:
+                print("[Stories] Ventana óptima detectada. Publicando historia autónoma...")
+                res_url, story_name, story_kind = publish_scheduled_story(force=False, dry_run=False)
+                if res_url:
+                    print(f"[Stories] [✓] Historia autónoma publicada con éxito: {story_name} ({story_kind}) -> {res_url}")
+                    send_telegram(f"📸 *¡Nueva Historia en Instagram!*\n\n🌴 *Contenido:* `{story_name}`\n🏷️ *Tipo:* `{story_kind.upper()}`\n🔗 {res_url}")
+            else:
+                print(f"[Stories] Cooldown activo: {story_reason}")
+        except Exception as e:
+            print(f"[Stories] Error en ciclo de historias: {e}")

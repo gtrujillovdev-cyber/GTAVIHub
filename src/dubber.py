@@ -229,7 +229,7 @@ def generate_voiceover(
                 "-b:a", "192k",
                 str(output_audio_path)
             ]
-            res = subprocess.run(cmd_fx, capture_output=True)
+            res = subprocess.run(cmd_fx, capture_output=True, timeout=60)
             if res.returncode == 0 and output_audio_path.exists():
                 raw_tts_path.unlink(missing_ok=True)
             elif enable_enhancer and timing_filters:
@@ -242,7 +242,7 @@ def generate_voiceover(
                     "-b:a", "192k",
                     str(output_audio_path)
                 ]
-                res2 = subprocess.run(cmd_timing, capture_output=True)
+                res2 = subprocess.run(cmd_timing, capture_output=True, timeout=60)
                 if res2.returncode == 0 and output_audio_path.exists():
                     raw_tts_path.unlink(missing_ok=True)
                 else:

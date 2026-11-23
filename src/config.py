@@ -136,10 +136,32 @@ def is_quant_busy() -> bool:
         res = subprocess.run(
             ["pgrep", "-f", "optimize_fleet.py|run_backtest.py|xgboost_gate.py"],
             capture_output=True,
-            text=True
+            text=True,
+            timeout=5,
         )
         my_pid = str(os.getpid())
         pids = [p for p in res.stdout.strip().split() if p and p != my_pid]
         return len(pids) > 0
     except Exception:
         return False
+
+
+def atomic_write_json(path: Path, data, indent: int = 2) -> None:
+    """Escribe JSON de forma atómica (archivo temporal + os.replace) para evitar corrupción ante cortes."""
+    import json
+    import tempfile
+    target = Path(path)
+    target.parent.mkdir(parents=True, exist_ok=True)
+    fd, tmp_name = tempfile.mkstemp(prefix=f".{target.stem}_", suffix=".tmp", dir=str(target.parent))
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            json.dump(data, f, indent=indent, ensure_ascii=False)
+            f.flush()
+            os.fsync(f.fileno())
+        os.replace(tmp_name, target)
+    except Exception:
+        try:
+            Path(tmp_name).unlink(missing_ok=True)
+        except Exception:
+            pass
+        raise

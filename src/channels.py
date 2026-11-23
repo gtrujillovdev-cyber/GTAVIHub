@@ -352,8 +352,8 @@ def mark_video_processed(entry: Dict[str, Any]):
             processed.append(entry)
     else:
         processed.append(entry)
-    with open(PROCESSED_FILE, "w", encoding="utf-8") as f:
-        json.dump(processed, f, indent=2, ensure_ascii=False)
+    from .config import atomic_write_json
+    atomic_write_json(PROCESSED_FILE, processed)
 
 _STOPWORDS = {
     "gta", "vi", "gtavi", "gta6", "grand", "theft", "auto", "rockstar", "games",
@@ -1175,8 +1175,8 @@ def list_monitored_channels() -> List[Dict[str, Any]]:
 def save_channels_config(config: Dict[str, Any]) -> bool:
     """Guarda la configuración actualizada en channels.json."""
     try:
-        with open(CHANNELS_FILE, "w", encoding="utf-8") as f:
-            json.dump(config, f, indent=2, ensure_ascii=False)
+        from .config import atomic_write_json
+        atomic_write_json(CHANNELS_FILE, config)
         return True
     except Exception as e:
         print(f"[Channels] Error guardando {CHANNELS_FILE}: {e}")

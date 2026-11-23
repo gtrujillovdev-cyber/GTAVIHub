@@ -831,7 +831,7 @@ def _fetch_subtitles_yt(
                     chosen = found_subs[0]
                     if chosen.suffix.lower() == ".vtt":
                         converted_srt = chosen.with_suffix(".srt")
-                        subprocess.run(["ffmpeg", "-y", "-i", str(chosen), str(converted_srt)], capture_output=True)
+                        subprocess.run(["ffmpeg", "-y", "-i", str(chosen), str(converted_srt)], capture_output=True, timeout=30)
                         if converted_srt.exists():
                             chosen = converted_srt
                     clean_and_deroll_srt(chosen)
