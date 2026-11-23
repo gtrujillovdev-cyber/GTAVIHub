@@ -1082,7 +1082,7 @@ def ensure_non_map_first_frame(video_path: Path, temp_dir: Path) -> Path:
         from google.genai import types
         from .translator import get_gemini_client, generate_content_with_retry, clean_srt_response
 
-        sample_times = [0.2, 2.0, 4.0, 6.5]
+        sample_times = [0.2, 4.0, 7.5, 11.0]
         contents = []
         valid_times = []
         for idx, t in enumerate(sample_times):
@@ -1101,10 +1101,10 @@ def ensure_non_map_first_frame(video_path: Path, temp_dir: Path) -> Path:
             return video_path
 
         prompt = (
-            "Te paso 4 frames de un clip de GTA 6 en orden (Frame 0=0.2s, Frame 1=2.0s, Frame 2=4.0s, Frame 3=6.5s). "
-            "¿El Frame 0 muestra principalmente una pantalla de MAPA / menú de pausa en lugar del coche, arma, dinero o gameplay real? "
-            "Si es así, indica qué índice (1, 2 o 3) muestra mejor la recompensa/acción (coche, arma, personaje) para usarlo como gancho visual inicial. "
-            'Responde SOLO JSON: {"frame_0_is_map": true/false, "best_action_idx": 1}'
+            "Te paso 4 frames de un clip de GTA 6 en orden (Frame 0=0.2s, Frame 1=4.0s, Frame 2=7.5s, Frame 3=11.0s). "
+            "¿El Frame 0 muestra una pantalla de MAPA / minimapa grande / menú de pausa en lugar de gameplay puro? "
+            "Si es así, elige el índice (1, 2 o 3) que muestre GAMEPLAY PURO (coche, arma, personaje o recompensa) y CERO mapa en pantalla. "
+            'Responde SOLO JSON: {"frame_0_is_map": true/false, "best_action_idx": 2}'
         )
         contents.append(prompt)
         client = get_gemini_client()
@@ -1263,17 +1263,16 @@ def render_final_video(
     create_subtle_vignette(vignette_png, fg_top=fg_y, fg_bottom=fg_bottom, is_cinema=is_cinema_layout, w=canvas_w, h=canvas_h)
 
     # 2. Gancho textual superior (0 a 2.8s) y Badge persistente editorial (>= 2.8s)
-    # En vídeo vertical nativo (is_already_vertical) o SPLIT, mantener limpio arriba.
-    # En estilo Caspahz desde 16:9, conservar hook superior 0-2.8s para frenar scroll si el frame 0 abre en mapa.
+    # En estilo Caspahz, vídeo vertical nativo (is_already_vertical) o SPLIT, mantener 100% limpio arriba (sin titulares cambiantes).
     hook_png = None
     badge_png = None
-    if hook_text and is_vertical and not is_already_vertical:
+    if hook_text and is_vertical and not is_already_vertical and not caspahz_style:
         hook_png = temp_dir / f"{base_name}_hook.png"
         rendered_hook = render_top_hook_headline(hook_text, hook_png, scale_factor=scale_factor)
         if not rendered_hook:
             hook_png = None
 
-        if effective_preset != "SPLIT" and not caspahz_style:
+        if effective_preset != "SPLIT":
             hook_lines = [ln.strip() for ln in hook_text.splitlines() if ln.strip()]
             badge_label = (context_badge or "").strip()
             if not badge_label:
