@@ -1410,11 +1410,11 @@ def start_telegram_bot_daemon():
                 pass
 
             # Revisión de métricas periódicas (cada ~1h en el loop)
+            _now_ts = time.time()
             if not hasattr(start_telegram_bot_daemon, '_last_deals_check'):
                 start_telegram_bot_daemon._last_deals_check = _now_ts
             if not hasattr(start_telegram_bot_daemon, '_last_metrics_check'):
                 start_telegram_bot_daemon._last_metrics_check = _now_ts
-            _now_ts = time.time()
             if _now_ts - start_telegram_bot_daemon._last_deals_check > 3600:
                 start_telegram_bot_daemon._last_deals_check = _now_ts
                 try:
