@@ -132,8 +132,35 @@ def clean_srt_response(text: str) -> str:
         text = re.sub(r"\n```$", "", text)
     return text.strip()
 
+_BANNED_WORD_REPLACEMENTS = [
+    (r"\bcoca[ií]na\b", "recompensa"),
+    (r"\bcocaine\b", "recompensa"),
+    (r"\bdrogas?\b", "recompensa"),
+    (r"\bdrugs?\b", "recompensa"),
+    (r"\bmarihuana\b", "mercancía"),
+    (r"\bweed\b", "mercancía"),
+    (r"\bmetanfetamina\b", "mercancía"),
+    (r"\bmeth\b", "mercancía"),
+    (r"\bhero[ií]na\b", "mercancía"),
+    (r"\bheroin\b", "mercancía"),
+    (r"\bnarco\w*\b", "contrabandista"),
+    (r"\bsuicidio\b", "eliminación"),
+    (r"\basesinato\b", "misión"),
+]
+
+
+def sanitize_banned_words(text: str) -> str:
+    """Reemplaza términos sensibles/prohibidos por RRSS (TikTok/YouTube) por equivalentes seguros ('recompensa', 'mercancía')."""
+    if not text:
+        return text
+    out = str(text)
+    for pattern, repl in _BANNED_WORD_REPLACEMENTS:
+        out = re.sub(pattern, lambda m, r=repl: r.upper() if m.group(0).isupper() else r, out, flags=re.IGNORECASE)
+    return out
+
+
 def sanitize_srt_content(srt_text: str) -> str:
-    """Limpia línea por línea el contenido de un SRT purgando etiquetas acústicas."""
+    """Limpia línea por línea el contenido de un SRT purgando etiquetas acústicas y palabras prohibidas."""
     lines = srt_text.splitlines()
     cleaned_lines = []
     for line in lines:
@@ -142,7 +169,7 @@ def sanitize_srt_content(srt_text: str) -> str:
         if re.match(r"^\d+$", stripped) or "-->" in stripped:
             cleaned_lines.append(line)
         else:
-            purged = purge_audio_descriptors(line)
+            purged = sanitize_banned_words(purge_audio_descriptors(line))
             cleaned_lines.append(purged)
     return "\n".join(cleaned_lines)
 
@@ -652,25 +679,25 @@ Grand Theft Auto VI, GTA VI, Vice City y los logotipos asociados son marcas regi
     tags = base_tags + archetype_tags.get(archetype, ["GTA 6 Viral"]) + entity_tags
 
     result = {
-        "title": truncate_on_word_boundary(viral_title, 100),
-        "description": full_description[:5000],
-        "hook": hook,
-        "context_badge": context_badge,
-        "debate_question": debate_question,
-        "pinned_comment": pinned_comment,
+        "title": truncate_on_word_boundary(sanitize_banned_words(viral_title), 100),
+        "description": sanitize_banned_words(full_description)[:5000],
+        "hook": sanitize_banned_words(hook),
+        "context_badge": sanitize_banned_words(context_badge),
+        "debate_question": sanitize_banned_words(debate_question),
+        "pinned_comment": sanitize_banned_words(pinned_comment),
         "archetype": archetype,
         "tags": tags
     }
 
     # Copy Multi-Plataforma (retrocompatible: claves opcionales)
     if tiktok_caption:
-        result["tiktok_caption"] = truncate_on_word_boundary(tiktok_caption, 120)
+        result["tiktok_caption"] = truncate_on_word_boundary(sanitize_banned_words(tiktok_caption), 120)
     if tiktok_pinned_comment:
-        result["tiktok_pinned_comment"] = tiktok_pinned_comment[:120]
+        result["tiktok_pinned_comment"] = sanitize_banned_words(tiktok_pinned_comment)[:120]
     if ig_caption:
-        result["ig_caption"] = ig_caption[:120]
+        result["ig_caption"] = sanitize_banned_words(ig_caption)[:120]
     if x_caption:
-        result["x_caption"] = x_caption[:200]
+        result["x_caption"] = sanitize_banned_words(x_caption)[:200]
 
     return result
 
