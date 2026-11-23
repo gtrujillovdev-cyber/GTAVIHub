@@ -16,7 +16,7 @@ BROWSER_PROFILE_DIR = BASE_DIR / "assets" / ".browser_profiles"
 def fetch_channel_overview() -> Optional[Dict[str, Any]]:
     """Obtiene los datos estadísticos generales del canal conectado (prioriza token_extra.json)."""
     target = "extra" if (BASE_DIR / "token_extra.json").exists() else "main"
-    youtube = get_authenticated_youtube_service(target_channel=target)
+    youtube = get_authenticated_youtube_service(account=target)
     if not youtube:
         return None
 
