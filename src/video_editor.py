@@ -1469,7 +1469,7 @@ def render_final_video(
             # Formato FIT: 16:9 completo sin recorte lateral sobre Velvet Blur reactivo
             v_base = (
                 "[0:v]split[v1][v2];"
-                f"[v1]scale={bg_scale_w}:{bg_scale_h},boxblur=10:2,scale={canvas_w}:{canvas_h}:flags=bilinear,eq=brightness=-0.14:contrast=1.06:saturation=1.18[bg];"
+                f"[v1]scale={bg_scale_w}:{bg_scale_h},boxblur=10:2,scale={canvas_w}:{canvas_h}:flags=bilinear,setsar=1,eq=brightness=-0.14:contrast=1.06:saturation=1.18[bg];"
                 f"[v2]scale={fg_w}:{fg_h}:force_original_aspect_ratio=decrease,pad={fg_w}:{fg_h}:(ow-iw)/2:(oh-ih)/2:color=black,unsharp=3:3:0.6:3:3:0.0,eq=contrast=1.06:saturation=1.12[fg];"
                 f"[bg][fg]overlay=0:{fg_y}[v_framed]"
             )
@@ -1477,7 +1477,7 @@ def render_final_video(
             # Formato D / C: Plano recortado inmersivo sobre fondo Velvet Blur + acabado Vice City HDR
             v_base = (
                 "[0:v]split[v1][v2];"
-                f"[v1]scale={bg_scale_w}:{bg_scale_h},boxblur=10:2,scale={canvas_w}:{canvas_h}:flags=bilinear,eq=brightness=-0.14:contrast=1.06:saturation=1.18[bg];"
+                f"[v1]scale={bg_scale_w}:{bg_scale_h},boxblur=10:2,scale={canvas_w}:{canvas_h}:flags=bilinear,setsar=1,eq=brightness=-0.14:contrast=1.06:saturation=1.18[bg];"
                 f"[v2]scale={fg_w}:{fg_h}:force_original_aspect_ratio=increase,crop={fg_w}:{fg_h},unsharp=3:3:0.75:3:3:0.0,eq=contrast=1.09:saturation=1.18[fg];"
                 f"[bg][fg]overlay=0:{fg_y}[v_framed]"
             )
