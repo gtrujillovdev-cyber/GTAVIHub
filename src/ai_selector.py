@@ -82,17 +82,19 @@ def _visual_appeal_adjustment(item: Dict[str, Any]) -> float:
     is_junk = any(k in tl for k in (
         "how long is", "worth it", "should you buy", "daily fix", "thoughts",
         "opinion", "pissed", "don't buy", "podcast", "discussion", "roundtable",
-        "physics", "físicas", "fisicas", "comparison", "comparativa", "vs gta 5",
-        "vs rdr", "fps", "ray tracing", "graphics", "gráficos", "graficos",
-        "water physics", "car damage", "launch screenshots", "pre-load", "preload",
-        "full walkthrough", "part 1", "part 2", "first mission",
+        "comparison", "comparativa", "vs gta 5", "vs rdr", "fps", "ray tracing",
+        "graphics", "gráficos", "graficos", "launch screenshots", "pre-load", "preload",
+        "full walkthrough", "part 1", "part 2", "first mission", "tech review",
     ))
+    is_pure_physics = any(k in tl for k in ("physics", "físicas", "fisicas", "water physics", "car damage"))
     if is_location_guide:
         delta += 55.0
     elif is_tips:
         delta += 35.0
     if is_junk and not is_location_guide:
         delta -= 60.0
+    elif is_pure_physics and not is_location_guide:
+        delta -= 25.0
 
     # 2. DURACIÓN (Shorts nativos de guías 12-65s tienen máxima prioridad: ya traen la explicación completa)
     if 12 <= dur <= 65:

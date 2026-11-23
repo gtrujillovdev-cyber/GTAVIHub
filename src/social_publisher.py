@@ -1059,17 +1059,17 @@ class SocialPublisher:
                 compat_path.unlink(missing_ok=True)
 
     def _find_visible_x_textbox(self, page, timeout_ms: int = 15000):
-        """Localiza el cuadro de texto visible de X sin quedar bloqueado por textboxes ocultos del DOM."""
+        """Localiza el cuadro de texto de X evitando textboxes ocultos del DOM."""
         for sel in (
             '[data-testid="tweetTextarea_0"]',
             'div[role="dialog"] [role="textbox"]',
             'main [role="textbox"]',
-            '[role="textbox"]',
         ):
             try:
-                loc = page.locator(f"{sel}:visible").first
-                loc.wait_for(state="visible", timeout=timeout_ms if sel == '[data-testid="tweetTextarea_0"]' else 4000)
-                return loc
+                loc = page.locator(sel).first
+                loc.wait_for(state="attached", timeout=timeout_ms if sel == '[data-testid="tweetTextarea_0"]' else 4000)
+                if loc.count() > 0:
+                    return loc
             except Exception:
                 continue
         return None
@@ -1193,35 +1193,40 @@ class SocialPublisher:
                         )
                         return None
 
-                    # Cerrar posibles banners de cookies o modales de bienvenida si bloquean el compose
+                    # Cerrar posibles banners de cookies o modales de bienvenida vía JS (evita timeout por viewport)
                     for dismiss_sel in (
-                        '[data-testid="xMigrationBottomBar"] button',
-                        'button:has-text("Aceptar todas las cookies")',
                         'button:has-text("Accept all cookies")',
+                        'button:has-text("Aceptar todas las cookies")',
                         'button:has-text("Refuse non-essential cookies")',
+                        '[data-testid="xMigrationBottomBar"] button',
                     ):
                         try:
                             btn = page.locator(dismiss_sel).first
-                            if btn.count() > 0 and btn.is_visible():
-                                btn.click(timeout=2000)
+                            if btn.count() > 0:
+                                btn.evaluate("el => el.click()")
                                 time.sleep(0.6)
                         except Exception:
                             pass
 
-                    # Escribir el texto del tweet (si /compose/post no abrió modal, pulsar botón Postear)
-                    tweet_box = self._find_visible_x_textbox(page, timeout_ms=12000)
+                    # Escribir el texto del tweet (si /compose/post no abrió modal, ir a /home o pulsar Postear)
+                    tweet_box = self._find_visible_x_textbox(page, timeout_ms=10000)
+                    if tweet_box is None:
+                        page.goto("https://x.com/home", wait_until="domcontentloaded", timeout=30000)
+                        time.sleep(random.uniform(2.5, 4.0))
+                        tweet_box = self._find_visible_x_textbox(page, timeout_ms=10000)
                     if tweet_box is None:
                         try:
                             new_btn = page.locator('[data-testid="SideNav_NewTweet_Button"]').first
-                            if new_btn.count() > 0 and new_btn.is_visible():
-                                new_btn.click(timeout=5000)
+                            if new_btn.count() > 0:
+                                new_btn.evaluate("el => el.click()")
                                 time.sleep(1.5)
-                                tweet_box = self._find_visible_x_textbox(page, timeout_ms=10000)
+                                tweet_box = self._find_visible_x_textbox(page, timeout_ms=8000)
                         except Exception:
                             pass
                     if tweet_box is None:
-                        raise RuntimeError("No se encontró un cuadro de texto visible en X (tweetTextarea_0).")
-                    tweet_box.click()
+                        raise RuntimeError("No se encontró un cuadro de texto en X (tweetTextarea_0).")
+                    tweet_box.scroll_into_view_if_needed()
+                    tweet_box.click(force=True)
                     time.sleep(0.5)
                     tweet_box.fill(caption)
                     time.sleep(random.uniform(1.0, 2.0))
