@@ -825,6 +825,10 @@ class SocialPublisher:
         Credenciales en .env: INSTAGRAM_USERNAME, INSTAGRAM_PASSWORD.
         Session cache en assets/.browser_profiles/instagrapi_session.json.
         """
+        if os.getenv("ENABLE_INSTAGRAM", "true").lower() not in ("true", "1", "yes") or AntiBanValidator.get_daily_limit("instagram") <= 0:
+            print("[Instagram] Subidas desactivadas temporalmente (ENABLE_INSTAGRAM=false / límite 0).")
+            return None
+
         ig_handle = (os.getenv("INSTAGRAM_USERNAME") or "gtavihubextra").strip().lstrip("@")
         video_path = Path(video_path)
         print(f"\n[3/3 Instagram] Preparando subida a Instagram Reels (@{ig_handle})...")
@@ -1185,6 +1189,13 @@ class SocialPublisher:
         # Publicación dinámica intraredes: variar el orden de publicación en producción
         # para evitar huellas robóticas repetitivas (YT -> TT -> IG -> X).
         ordered_platforms = list(platforms)
+        if not self.dry_run and (
+            os.getenv("ENABLE_INSTAGRAM", "true").lower() not in ("true", "1", "yes")
+            or AntiBanValidator.get_daily_limit("instagram") <= 0
+        ):
+            if "instagram" in ordered_platforms:
+                ordered_platforms = [p for p in ordered_platforms if p != "instagram"]
+                print("[Instagram] Omitido en publicación multiplataforma (ENABLE_INSTAGRAM=false).")
         if not self.dry_run and len(ordered_platforms) > 1:
             random.shuffle(ordered_platforms)
             print(f"[🎲 Orden Dinámico Intraredes] {' → '.join(p.upper() for p in ordered_platforms)}")

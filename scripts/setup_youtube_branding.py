@@ -47,26 +47,32 @@ Contacto / Colaboraciones: gabtru@hotmail.com
 
 def get_youtube_service():
     creds = None
-    if BRANDING_TOKEN_FILE.exists():
+    for tok_path in [BRANDING_TOKEN_FILE, BASE_DIR / "token_extra.json"]:
+        if not tok_path.exists():
+            continue
         try:
-            creds = Credentials.from_authorized_user_file(str(BRANDING_TOKEN_FILE), SCOPES)
-        except Exception:
+            candidate = Credentials.from_authorized_user_file(str(tok_path), SCOPES)
+            if candidate and candidate.expired and candidate.refresh_token:
+                print(f"[*] Renovando {tok_path.name}...")
+                candidate.refresh(Request())
+            if candidate and candidate.valid:
+                creds = candidate
+                print(f"[OK] Usando credenciales válidas de {tok_path.name}")
+                break
+        except Exception as e:
+            print(f"[!] {tok_path.name} no válido ({e}); probando alternativa...")
             creds = None
 
     if not creds or not creds.valid:
-        if creds and creds.expired and creds.refresh_token:
-            print("[*] Renovando token de branding...")
-            creds.refresh(Request())
-        else:
-            if not CLIENT_SECRETS_FILE.exists():
-                print(f"[ERROR] Falta {CLIENT_SECRETS_FILE.name}")
-                sys.exit(1)
-            print("[*] Iniciando autorizacion OAuth (scope youtube completo)...")
-            flow = InstalledAppFlow.from_client_secrets_file(str(CLIENT_SECRETS_FILE), SCOPES)
-            try:
-                creds = flow.run_local_server(port=8081, prompt="consent")
-            except Exception:
-                creds = flow.run_console()
+        if not CLIENT_SECRETS_FILE.exists():
+            print(f"[ERROR] Falta {CLIENT_SECRETS_FILE.name}")
+            sys.exit(1)
+        print("[*] Iniciando autorizacion OAuth (scope youtube completo)...")
+        flow = InstalledAppFlow.from_client_secrets_file(str(CLIENT_SECRETS_FILE), SCOPES)
+        try:
+            creds = flow.run_local_server(port=8081, prompt="consent")
+        except Exception:
+            creds = flow.run_console()
 
         with open(BRANDING_TOKEN_FILE, "w") as f:
             f.write(creds.to_json())

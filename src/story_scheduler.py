@@ -172,6 +172,12 @@ def publish_scheduled_story(
     """
     Ejecuta el ciclo de publicación programada de historias si las condiciones de algoritmo son óptimas.
     """
+    if os.getenv("ENABLE_INSTAGRAM", "true").lower() not in ("true", "1", "yes"):
+        return {
+            "status": "skipped",
+            "reason": "Instagram desactivado (ENABLE_INSTAGRAM=false)"
+        }
+
     allowed, reason = can_publish_story(force=force)
     if not allowed and not force:
         return {

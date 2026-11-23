@@ -6,7 +6,7 @@ from playwright.sync_api import sync_playwright
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 storage_file = BASE_DIR / "assets" / ".browser_profiles" / "x_storage_state.json"
-avatar_path = BASE_DIR / "assets" / "avatar.jpg"
+avatar_path = BASE_DIR / "assets" / "avatar_extra.jpg"
 banner_path = BASE_DIR / "assets" / "banner_extra.jpg"
 
 new_name = "GTA VI Hub Extra"
