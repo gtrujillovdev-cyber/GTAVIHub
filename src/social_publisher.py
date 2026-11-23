@@ -951,6 +951,33 @@ class SocialPublisher:
             if is_temp_video and compat_path.exists():
                 compat_path.unlink(missing_ok=True)
 
+    def _post_x_youtube_reply(self, page, tweet_url: str, youtube_url: str) -> None:
+        """Publica un primer auto-reply en el tuit con el enlace de YouTube sin penalizar el alcance del post principal."""
+        if not tweet_url or "/status/" not in tweet_url:
+            return
+        try:
+            target_link = youtube_url if (youtube_url and "youtu" in str(youtube_url)) else "https://youtube.com/@gtavihubextra"
+            if "youtu.be/" in target_link or "youtube.com/watch" in target_link or "youtube.com/shorts" in target_link:
+                reply_text = f"🎬 Ver en YouTube Shorts y más guías diarias de GTA 6 👉 {target_link}"
+            else:
+                reply_text = f"📺 Más guías, armas y secretos diarios de GTA 6 en nuestro canal de YouTube 👉 {target_link}"
+
+            page.goto(tweet_url, wait_until="domcontentloaded", timeout=30000)
+            time.sleep(random.uniform(2.5, 4.0))
+            reply_box = page.locator('[data-testid="tweetTextarea_0"], [role="textbox"]').first
+            if reply_box.count() > 0:
+                reply_box.click()
+                time.sleep(0.5)
+                reply_box.fill(reply_text[:280])
+                time.sleep(random.uniform(1.0, 2.0))
+                reply_btn = page.locator('[data-testid="tweetButtonInline"], [data-testid="tweetButton"]').first
+                if reply_btn.count() > 0 and reply_btn.is_enabled():
+                    reply_btn.click()
+                    time.sleep(random.uniform(2.5, 4.0))
+                    print(f"[✓ X Auto-Reply] Enlace de YouTube añadido en el primer comentario: {target_link}")
+        except Exception as e:
+            print(f"[!] Aviso X Auto-Reply (no bloqueante): {e}")
+
     def publish_to_x(
         self,
         video_path: Path,
@@ -959,6 +986,7 @@ class SocialPublisher:
         description: str = "",
         creator_name: str = "",
         native_caption_override: str = "",
+        youtube_url: Optional[str] = None,
     ) -> Optional[str]:
         """
         Publica un vídeo nativo en X/Twitter mediante navegador automatizado (Playwright).
@@ -1075,6 +1103,7 @@ class SocialPublisher:
                         current_url = page.url
                         if "/status/" in current_url:
                             print(f"[OK] Tweet publicado con exito: {current_url}")
+                            self._post_x_youtube_reply(page, current_url, youtube_url or "https://youtube.com/@gtavihubextra")
                             return current_url
 
                         # Intentar extraer URL del tweet recien publicado
@@ -1086,6 +1115,7 @@ class SocialPublisher:
                             if href:
                                 tweet_url = f"https://x.com{href}" if href.startswith("/") else href
                                 print(f"[OK] Tweet publicado: {tweet_url}")
+                                self._post_x_youtube_reply(page, tweet_url, youtube_url or "https://youtube.com/@gtavihubextra")
                                 return tweet_url
 
                         print("[OK] Tweet probablemente publicado (no se pudo extraer URL exacta).")
@@ -1325,6 +1355,7 @@ class SocialPublisher:
                     self._notify_telegram(f"✅ *[3/3] Instagram Reels publicado:* [Ver en Instagram]({url})")
             elif plat == "x":
                 x_native_caption = metadata.get("x_caption", "")
+                yt_link = results.get("youtube") if str(results.get("youtube", "")).startswith("http") else "https://youtube.com/@gtavihubextra"
                 url = self.publish_to_x(
                     video_path,
                     title,
@@ -1332,6 +1363,7 @@ class SocialPublisher:
                     description=desc,
                     creator_name=creator_name,
                     native_caption_override=x_native_caption,
+                    youtube_url=yt_link,
                 )
                 results["x"] = url
                 if url:
