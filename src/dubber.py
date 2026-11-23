@@ -200,7 +200,8 @@ def generate_voiceover(
 
         filters = []
         raw_dur = _probe_audio_duration(raw_tts_path)
-        effective_delay = first_start if first_start > 0.15 else 0.0
+        # En Shorts/Reels nunca dejar >0.25s de silencio inicial (evita swipe-away en los primeros 2s)
+        effective_delay = min(first_start, 0.25) if first_start > 0.15 else 0.0
 
         # Ajustar ligeramente el tempo si la locución excede la duración del clip (evita cortes al final)
         if max_duration and raw_dur > 1.0:
