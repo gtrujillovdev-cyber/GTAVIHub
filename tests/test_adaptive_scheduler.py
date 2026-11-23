@@ -84,5 +84,51 @@ class TestAdaptiveScheduler(unittest.TestCase):
         self.assertIn("midnight_drop", reloaded_ids)
         self.assertIn("late_night_wave", reloaded_ids)
 
+    def test_no_round_minutes_or_zero_seconds(self):
+        test_day = date(2026, 11, 24)
+        for _ in range(15):
+            sched = generate_daily_schedule(target_date=test_day, force_regenerate=True)
+            for win in sched["windows"]:
+                self.assertNotEqual(win["minute"] % 5, 0, f"Minuto redondo detectado: {win}")
+                self.assertIn("second", win)
+                self.assertNotEqual(win["second"] % 10, 0, f"Segundo redondo detectado: {win}")
+
+        # Verificar que get_due_window respeta el segundo exacto
+        first_win = sched["windows"][0]
+        before_sec = datetime(2026, 11, 24, first_win["hour"], first_win["minute"], first_win["second"] - 1)
+        exact_sec = datetime(2026, 11, 24, first_win["hour"], first_win["minute"], first_win["second"])
+        self.assertIsNone(get_due_window(now_dt=before_sec))
+        due = get_due_window(now_dt=exact_sec)
+        self.assertIsNotNone(due)
+        self.assertEqual(due["id"], first_win["id"])
+
+    def test_dynamic_intra_network_stagger_respects_skipped_platforms(self):
+        from unittest.mock import patch, MagicMock
+        from src.social_publisher import SocialPublisher
+
+        pub = SocialPublisher(dry_run=False)
+        sleep_calls = []
+        with patch("src.social_publisher.time.sleep", side_effect=lambda s: sleep_calls.append(s)), \
+             patch("src.audio_shield.detect_audio_levels", return_value={"has_audio": True, "mean_volume": -18.0}), \
+             patch("src.social_publisher.AntiBanValidator.validate_metadata", return_value=True), \
+             patch("src.social_publisher.ComplianceAuditor.is_platform_eligible", side_effect=lambda platform, **kw: (platform != "instagram", "blocked_ig")), \
+             patch.object(pub, "publish_to_youtube", return_value="https://youtu.be/ok"), \
+             patch.object(pub, "publish_to_tiktok", return_value="https://tiktok.com/ok"), \
+             patch.object(pub, "_notify_telegram"):
+            res = pub.publish_all(
+                video_path=Path("dummy.mp4"),
+                metadata={"title": "GTA 6 secreto oculto", "description": "Desc"},
+                creator_name="Creator",
+                platforms=["instagram", "youtube", "tiktok"],
+                stagger_delay_minutes=12,
+            )
+
+        self.assertIn("Bloqueado", res["instagram"])
+        # Exactamente 2 publicaciones reales -> 1 micro-jitter inicial (17-73s) + 1 pausa intraredes (480-1080s+)
+        self.assertEqual(len(sleep_calls), 2)
+        self.assertTrue(17 <= sleep_calls[0] <= 73)
+        self.assertTrue(sleep_calls[1] >= 480)
+        self.assertNotEqual(sleep_calls[1] % 60, 0)
+
 if __name__ == "__main__":
     unittest.main()

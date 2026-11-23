@@ -108,11 +108,16 @@ EARLY_GAMEPLAY_WINDOWS = [
 
 
 def _generate_random_time_in_range(start_h: int, start_m: int, end_h: int, end_m: int) -> tuple[int, int]:
-    """Genera una hora y minuto pseudoaleatorios uniformes dentro de una franja."""
+    """
+    Genera una hora y minuto pseudoaleatorios dentro de una franja,
+    evitando minutos redondos (múltiplos de 5 como :00, :15, :30, :45) para
+    eliminar cualquier patrón tipo cron.
+    """
     total_start = start_h * 60 + start_m
     total_end = end_h * 60 + end_m
-    random_minute = random.randint(total_start, total_end)
-    return (random_minute // 60, random_minute % 60)
+    non_round = [m for m in range(total_start, total_end + 1) if (m % 60) % 5 != 0]
+    chosen = random.choice(non_round) if non_round else random.randint(total_start, total_end)
+    return (chosen // 60, chosen % 60)
 
 
 def _build_window_plan(win: Dict[str, Any]) -> Dict[str, Any]:
@@ -121,12 +126,15 @@ def _build_window_plan(win: Dict[str, Any]) -> Dict[str, Any]:
         win["start_hour"], win["start_minute"],
         win["end_hour"], win["end_minute"]
     )
+    sec_candidates = [s for s in range(7, 54) if s % 10 != 0]
+    sec = random.choice(sec_candidates)
     return {
         "id": win["id"],
         "name": win["name"],
         "scheduled_time": f"{h:02d}:{m:02d}",
         "hour": h,
         "minute": m,
+        "second": sec,
         "jitter_sec": random.randint(-900, 900),
         "window_start": f"{win['start_hour']:02d}:{win['start_minute']:02d}",
         "window_end": f"{win['end_hour']:02d}:{win['end_minute']:02d}",
@@ -227,7 +235,7 @@ def get_due_window(now_dt: Optional[datetime] = None) -> Optional[Dict[str, Any]
         now_dt = datetime.now()
 
     today_sched = get_daily_schedule(now_dt.date())
-    now_minutes = now_dt.hour * 60 + now_dt.minute
+    now_total_sec = now_dt.hour * 3600 + now_dt.minute * 60 + now_dt.second
 
     for window in today_sched.get("windows", []):
         if window.get("completed", False):
@@ -235,10 +243,11 @@ def get_due_window(now_dt: Optional[datetime] = None) -> Optional[Dict[str, Any]
 
         sched_h = window["hour"]
         sched_m = window["minute"]
-        sched_total = sched_h * 60 + sched_m
+        sched_s = window.get("second", 0)
+        sched_total_sec = sched_h * 3600 + sched_m * 60 + sched_s
 
-        # Si ya llegamos a la hora programada y estamos en el margen de 45 min
-        if sched_total <= now_minutes <= (sched_total + 45):
+        # Si ya llegamos a la hora:minuto:segundo programados y estamos en el margen de 45 min
+        if sched_total_sec <= now_total_sec <= (sched_total_sec + 45 * 60):
             return window
 
     return None

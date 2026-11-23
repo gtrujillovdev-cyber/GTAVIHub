@@ -1182,7 +1182,15 @@ class SocialPublisher:
         orig_url = metadata.get("original_url", "")
         is_compliant = AntiBanValidator.validate_metadata(metadata, creator_name, orig_url)
 
-        for i, plat in enumerate(platforms):
+        # Publicación dinámica intraredes: variar el orden de publicación en producción
+        # para evitar huellas robóticas repetitivas (YT -> TT -> IG -> X).
+        ordered_platforms = list(platforms)
+        if not self.dry_run and len(ordered_platforms) > 1:
+            random.shuffle(ordered_platforms)
+            print(f"[🎲 Orden Dinámico Intraredes] {' → '.join(p.upper() for p in ordered_platforms)}")
+
+        published_so_far = False
+        for plat in ordered_platforms:
             # Cortafuegos de Originalidad y Compliance específico de la plataforma
             has_voice = metadata.get("has_voiceover", False) or metadata.get("mode") in ["dub", "voice"]
             is_eligible, reason = ComplianceAuditor.is_platform_eligible(
@@ -1198,20 +1206,25 @@ class SocialPublisher:
                 results[plat] = f"Bloqueado por Compliance Shield ({reason})"
                 continue
 
-            if i > 0 and not self.dry_run:
-                if stagger_delay_minutes <= 0:
-                    jitter_seconds = 0
+            if not self.dry_run and stagger_delay_minutes > 0:
+                if not published_so_far:
+                    # Micro-jitter inicial antes de la primera red para nunca publicar al segundo exacto
+                    initial_jitter = random.randint(17, 73)
+                    print(f"\n⏳ [Jitter Inicial Anti-Bot] Esperando {initial_jitter}s antes de iniciar en {plat.upper()}...")
+                    time.sleep(initial_jitter)
                 else:
-                    # Escalonamiento con jitter aleatorio humano (ej. 10 a 16 minutos)
-                    jitter_seconds = random.randint(
-                        max(1, (stagger_delay_minutes - 2) * 60),
-                        (stagger_delay_minutes + 4) * 60
-                    )
-                if jitter_seconds > 0:
-                    wait_msg = f"⏳ *[Escalonamiento Anti-Ban]* Pausando {jitter_seconds // 60} minutos antes de publicar en *{plat.upper()}*..."
+                    # Escalonamiento dinámico intraredes (ej. 8 a 18 min) con segundos no redondos
+                    min_sec = max(60, (stagger_delay_minutes - 4) * 60)
+                    max_sec = (stagger_delay_minutes + 6) * 60
+                    jitter_seconds = random.randint(min_sec, max_sec)
+                    if jitter_seconds % 60 == 0:
+                        jitter_seconds += random.randint(7, 43)
+                    mins, secs = divmod(jitter_seconds, 60)
+                    wait_msg = f"⏳ *[Escalonamiento Intraredes]* Pausando {mins}m {secs}s antes de publicar en *{plat.upper()}*..."
                     print(f"\n{wait_msg}")
                     self._notify_telegram(wait_msg)
                     time.sleep(jitter_seconds)
+            published_so_far = True
 
             if plat == "youtube":
                 target_privacy = metadata.get("privacy") or os.getenv("YOUTUBE_PRIVACY_STATUS", "public")
