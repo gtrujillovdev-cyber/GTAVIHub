@@ -278,9 +278,13 @@ def approve_and_publish_video(video_id: str) -> Optional[Dict[str, Any]]:
         or (publish_all and any(v and str(v).startswith("http") for v in multiplatform_results.values()))
     )
     if not has_published_any:
-        print(f"[Co-Pilot] ⚠️ Ninguna plataforma confirmó publicación para {video_id}. Marcando como 'upload_failed'.")
+        deferred_by_cooldown = bool(
+            publish_all and any("cooldown" in str(v).lower() for v in multiplatform_results.values() if v)
+        )
+        new_status = "staged_copilot" if deferred_by_cooldown else "upload_failed"
+        print(f"[Co-Pilot] ⚠️ Ninguna plataforma confirmó publicación para {video_id}. Marcando como '{new_status}'.")
         try:
-            data["status"] = "upload_failed"
+            data["status"] = new_status
             (PENDING_DIR / f"{video_id}.json").write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
         except Exception:
             pass

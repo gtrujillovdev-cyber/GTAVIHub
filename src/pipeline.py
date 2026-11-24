@@ -927,6 +927,23 @@ def process_single_video(
         except Exception as e:
             print(f"[Seamless Loop] Info: {e}")
 
+    # 5c-ter. Portada Caspahz en Frame 0 (0.12s) para que el feed de YouTube Shorts luzca uniforme
+    caspahz_cover_ready = False
+    if is_short and output_path.exists():
+        try:
+            from .thumbnail_generator import render_caspahz_cover_image
+            from .video_editor import inject_first_frame_cover
+            cover_res = render_caspahz_cover_image(
+                video_path=output_path,
+                output_cover_path=thumb_path,
+                title_text=metadata.get("title", original_title),
+                category_hint=f"{archetype} {original_title}",
+            )
+            if cover_res and cover_res.exists():
+                caspahz_cover_ready = inject_first_frame_cover(output_path, cover_res, duration_sec=0.12)
+        except Exception as e:
+            print(f"[Caspahz Cover] Aviso no bloqueante: {e}")
+
     # 5d. Quality Gate Pre-Subida: filtro obligatorio entre render y subida
     if ENABLE_QUALITY_GATE and output_path.exists():
         try:
@@ -958,13 +975,14 @@ def process_single_video(
 
     # 6. Generación de Miniatura de alto CTR
     report_stage("📸 [4/5] Generando miniatura personalizada de alto impacto...")
-    create_video_thumbnail(
-        video_path=output_path,
-        output_thumb_path=thumb_path,
-        hook_text=hook_text,
-        creator_tag=creator_name,
-        is_short=is_short
-    )
+    if not (caspahz_cover_ready and thumb_path.exists()):
+        create_video_thumbnail(
+            video_path=output_path,
+            output_thumb_path=thumb_path,
+            hook_text=hook_text,
+            creator_tag=creator_name,
+            is_short=is_short
+        )
 
     full_info = {
         "id": video_id,

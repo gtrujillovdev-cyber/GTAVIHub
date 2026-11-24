@@ -1145,6 +1145,88 @@ def ensure_non_map_first_frame(video_path: Path, temp_dir: Path) -> Path:
     return video_path
 
 
+def inject_first_frame_cover(video_path: Path, cover_image_path: Path, duration_sec: float = 0.12) -> bool:
+    """
+    Inyecta una portada estática de `duration_sec` (0.12s = ~4 frames) al inicio exacto (Frame 0)
+    del vídeo renderizado para que el feed de YouTube Shorts / TikTok muestre una portada limpia estilo Caspahz.
+    """
+    if not video_path.exists() or not cover_image_path.exists():
+        return False
+    try:
+        probe = subprocess.run(
+            [
+                "ffprobe", "-v", "quiet", "-print_format", "json",
+                "-show_streams", str(video_path)
+            ],
+            capture_output=True, text=True, timeout=10
+        )
+        if probe.returncode != 0:
+            return False
+        streams = json.loads(probe.stdout or "{}").get("streams", [])
+        v_stream = next((s for s in streams if s.get("codec_type") == "video"), None)
+        if not v_stream:
+            return False
+        has_audio = any(s.get("codec_type") == "audio" for s in streams)
+        width = int(v_stream.get("width", 1080))
+        height = int(v_stream.get("height", 1920))
+        fps_str = v_stream.get("r_frame_rate", "30/1")
+        if "/" in fps_str:
+            num, den = fps_str.split("/", 1)
+            fps_val = float(num) / max(1.0, float(den))
+        else:
+            fps_val = float(fps_str)
+        fps_val = max(24.0, min(60.0, fps_val))
+
+        threads = "1" if is_quant_busy() else "2"
+        vcodec = "h264_videotoolbox" if os.uname().sysname == "Darwin" else "libx264"
+        tmp_out = video_path.with_name(f"{video_path.stem}_caspahz_cov.mp4")
+
+        if has_audio:
+            filter_complex = (
+                f"[0:v]scale={width}:{height}:force_original_aspect_ratio=decrease,"
+                f"pad={width}:{height}:(ow-iw)/2:(oh-ih)/2,setsar=1,fps={fps_val:.3f},format=yuv420p[vc];"
+                f"[1:v]setsar=1,fps={fps_val:.3f},format=yuv420p[vm];"
+                f"[vc][2:a][vm][1:a]concat=n=2:v=1:a=1[vout][aout]"
+            )
+            cmd = [
+                "ffmpeg", "-y", "-threads", threads,
+                "-loop", "1", "-t", f"{duration_sec:.2f}", "-i", str(cover_image_path),
+                "-i", str(video_path),
+                "-f", "lavfi", "-t", f"{duration_sec:.2f}", "-i", "anullsrc=channel_layout=stereo:sample_rate=44100",
+                "-filter_complex", filter_complex,
+                "-map", "[vout]", "-map", "[aout]",
+                "-c:v", vcodec, "-b:v", "8M", "-c:a", "aac", "-b:a", "192k",
+                "-movflags", "+faststart", str(tmp_out)
+            ]
+        else:
+            filter_complex = (
+                f"[0:v]scale={width}:{height}:force_original_aspect_ratio=decrease,"
+                f"pad={width}:{height}:(ow-iw)/2:(oh-ih)/2,setsar=1,fps={fps_val:.3f},format=yuv420p[vc];"
+                f"[1:v]setsar=1,fps={fps_val:.3f},format=yuv420p[vm];"
+                f"[vc][vm]concat=n=2:v=1:a=0[vout]"
+            )
+            cmd = [
+                "ffmpeg", "-y", "-threads", threads,
+                "-loop", "1", "-t", f"{duration_sec:.2f}", "-i", str(cover_image_path),
+                "-i", str(video_path),
+                "-filter_complex", filter_complex,
+                "-map", "[vout]",
+                "-c:v", vcodec, "-b:v", "8M",
+                "-movflags", "+faststart", str(tmp_out)
+            ]
+
+        res = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
+        if res.returncode == 0 and tmp_out.exists() and tmp_out.stat().st_size > 10000:
+            tmp_out.replace(video_path)
+            print(f"[✓ Caspahz Cover] Portada inyectada en Frame 0 ({duration_sec:.2f}s @ {width}x{height}).")
+            return True
+        if tmp_out.exists():
+            tmp_out.unlink(missing_ok=True)
+    except Exception as e:
+        print(f"[Caspahz Cover] Aviso inyectando Frame 0: {e}")
+    return False
+
+
 def render_final_video(
     input_video: Path,
     output_video: Path,

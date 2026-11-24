@@ -171,8 +171,11 @@ class AntiBanValidator:
         return int(os.getenv("MAX_DAILY_UPLOADS", "3"))
 
     @classmethod
-    def check_daily_limit(cls, platform: str) -> bool:
+    def check_daily_limit(cls, platform: str, quiet: bool = False) -> bool:
         """Comprueba que no se supere el límite configurado de vídeos diarios."""
+        limit = cls.get_daily_limit(platform)
+        if limit <= 0:
+            return False
         if not PROCESSED_FILE.exists():
             return True
         try:
@@ -198,9 +201,9 @@ class AntiBanValidator:
                 # 3. Clave genérica para registros legacy (sin 'multiplatform')
                 if platform == "youtube" and r.get("status") in ("completed", "published_via_copilot") and r.get("youtube_title"):
                     today_uploads.append(r)
-            limit = cls.get_daily_limit(platform)
             if len(today_uploads) >= limit:
-                print(f"[Anti-Ban] Límite diario alcanzado para {platform.upper()} ({len(today_uploads)}/{limit}). Saltando para proteger la cuenta.")
+                if not quiet:
+                    print(f"[Anti-Ban] Límite diario alcanzado para {platform.upper()} ({len(today_uploads)}/{limit}). Saltando para proteger la cuenta.")
                 return False
             return True
         except Exception as e:
@@ -1380,6 +1383,21 @@ class SocialPublisher:
             if "instagram" in ordered_platforms:
                 ordered_platforms = [p for p in ordered_platforms if p != "instagram"]
                 print("[Instagram] Omitido en publicación multiplataforma (ENABLE_INSTAGRAM=false).")
+        if not self.dry_run:
+            eligible_platforms = []
+            for p in ordered_platforms:
+                if not AntiBanValidator.check_daily_limit(p):
+                    results[p] = "Omitido por límite diario"
+                    continue
+                if p == "tiktok":
+                    blocked_tt, reason_tt = _is_tiktok_blocked_by_cooldown()
+                    if blocked_tt:
+                        print(f"🛡️ [TikTok Anti-Saturación] Subida aplazada sin espera: {reason_tt}")
+                        self._notify_telegram(f"⏳ *[TikTok Anti-Saturación]* Clip aplazado para evitar saturar la cuenta:\n_{reason_tt}_")
+                        results[p] = f"En cooldown ({reason_tt})"
+                        continue
+                eligible_platforms.append(p)
+            ordered_platforms = eligible_platforms
         if not self.dry_run and len(ordered_platforms) > 1:
             random.shuffle(ordered_platforms)
             print(f"[🎲 Orden Dinámico Intraredes] {' → '.join(p.upper() for p in ordered_platforms)}")
@@ -1419,7 +1437,6 @@ class SocialPublisher:
                     print(f"\n{wait_msg}")
                     self._notify_telegram(wait_msg)
                     time.sleep(jitter_seconds)
-            published_so_far = True
 
             if plat == "youtube":
                 target_privacy = metadata.get("privacy") or os.getenv("YOUTUBE_PRIVACY_STATUS", "public")
@@ -1523,6 +1540,8 @@ class SocialPublisher:
                 results["x"] = url
                 if url:
                     self._notify_telegram(f"✅ *[4/4] X/Twitter publicado:* [Ver en X]({url})")
+            if results.get(plat) and str(results.get(plat)).startswith("http"):
+                published_so_far = True
 
         print("\n" + "=" * 65)
         print("📊 RESUMEN DE PUBLICACIÓN MULTIPLATAFORMA:")

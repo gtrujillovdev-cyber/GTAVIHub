@@ -46,7 +46,8 @@ def fetch_channel_overview() -> Optional[Dict[str, Any]]:
 
 def fetch_recent_videos(limit: int = 4) -> List[Dict[str, Any]]:
     """Obtiene los últimos vídeos subidos con sus métricas individuales de rendimiento."""
-    youtube = get_authenticated_youtube_service()
+    target = "extra" if (BASE_DIR / "token_extra.json").exists() else "main"
+    youtube = get_authenticated_youtube_service(account=target)
     if not youtube:
         return []
 

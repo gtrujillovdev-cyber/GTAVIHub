@@ -270,3 +270,165 @@ def create_video_thumbnail(
     source = style.get("analysis_source", "default")
     print(f"[✓] Miniatura viral generada ({tone}, {source}) -> {output_thumb_path.name}")
     return output_thumb_path
+
+
+def _classify_caspahz_cover_badge(title_text: str, category_hint: str = "") -> tuple[str, tuple[int, int, int], tuple[int, int, int]]:
+    """Devuelve (texto_pildora, color_fondo_rgb, color_texto_rgb) consistente para el feed estilo Caspahz."""
+    blob = f"{title_text} {category_hint}".lower()
+    if any(k in blob for k in ("coche", "auto", "bugatti", "supercar", "vehic", "moto", "car", "gratis")):
+        if any(k in blob for k in ("arma", "cuchillo", "pistola", "rifle", "gun", "weapon", "knife")):
+            return ("ARMA OCULTA", (255, 68, 45), (255, 255, 255))
+        if any(k in blob for k in ("dinero", "hora", "método", "metodo", "$", "millon", "money")):
+            return ("MÉTODO $", (0, 210, 120), (12, 14, 18))
+        return ("COCHE GRATIS", (255, 198, 0), (12, 14, 18))
+    if any(k in blob for k in ("arma", "cuchillo", "pistola", "rifle", "gun", "weapon", "knife", "oro", "gold")):
+        return ("ARMA OCULTA", (255, 68, 45), (255, 255, 255))
+    if any(k in blob for k in ("dinero", "hora", "método", "metodo", "$", "millon", "money")):
+        return ("MÉTODO $", (0, 210, 120), (12, 14, 18))
+    return ("SECRETO GTA 6", (0, 212, 255), (12, 14, 18))
+
+
+def _condense_caspahz_cover_title(title_text: str, max_chars: int = 26) -> str:
+    """Condensa el título a 2-4 palabras de alto impacto visual sin hashtags ni emojis sueltos."""
+    import re
+    clean = re.sub(r"#\w+", "", title_text or "")
+    clean = clean_text_preserve_emojis(clean)
+    # Quitar signos/emojis no imprimibles en fuentes estándar para portada limpia
+    clean = re.sub(r"[^\w\sáéíóúÁÉÍÓÚñÑüÜ$€!¡?¿\-]", " ", clean)
+    clean = re.sub(r"\s+", " ", clean).strip().upper()
+    for prefix in ("GTA 6 ", "GTA VI ", "CÓMO CONSEGUIR ", "COMO CONSEGUIR ", "DÓNDE ENCONTRAR ", "DONDE ENCONTRAR "):
+        if clean.startswith(prefix) and len(clean) > len(prefix) + 4:
+            clean = clean[len(prefix):].strip()
+            break
+    if len(clean) <= max_chars:
+        return clean or "SECRETO EN LEONIDA"
+    words = clean.split()
+    out = []
+    for w in words:
+        cand = " ".join(out + [w])
+        if len(cand) <= max_chars:
+            out.append(w)
+        else:
+            break
+    return " ".join(out) if out else clean[:max_chars].strip()
+
+
+def render_caspahz_cover_image(
+    video_path: Path,
+    output_cover_path: Path,
+    title_text: str,
+    category_hint: str = "",
+) -> Optional[Path]:
+    """
+    Genera una portada vertical 9:16 estilo Caspahz para inyectar en Frame 0 (0.12s):
+    - Selecciona el fotograma de gameplay más luminoso y nítido (t >= 1.5s, evitando mapas/oscuridad).
+    - Respeta Safe Zones de YouTube Shorts / TikTok (píldora y titular en tercio superior y=16%-30%).
+    - Mantiene el tercio central 100% limpio para mostrar la recompensa/coche/arma en el feed.
+    """
+    target_w, target_h = CANVAS_WIDTH, CANVAS_HEIGHT
+    try:
+        probe = subprocess.run(
+            ["ffprobe", "-v", "quiet", "-select_streams", "v:0",
+             "-show_entries", "stream=width,height", "-of", "csv=s=x:p=0", str(video_path)],
+            capture_output=True, text=True, timeout=8
+        )
+        if probe.returncode == 0 and "x" in probe.stdout:
+            pw, ph = probe.stdout.strip().splitlines()[0].split("x")
+            if int(pw) > 0 and int(ph) > 0:
+                target_w, target_h = int(pw), int(ph)
+    except Exception:
+        pass
+
+    from PIL import ImageStat
+    best_frame = None
+    best_energy = -1.0
+    for ts in (1.5, 4.0, 7.5, 11.0):
+        cand = output_cover_path.with_suffix(f".caspahz_{ts:.1f}.jpg")
+        if extract_keyframe(video_path, cand, timestamp_sec=ts) and cand.exists():
+            try:
+                c_img = Image.open(cand).convert("RGB").resize((270, 480), Image.Resampling.LANCZOS)
+                stat = ImageStat.Stat(c_img)
+                luma = sum(stat.mean) / 3.0
+                dark_pen = -160.0 if luma < 42.0 else 0.0
+                energy = sum(stat.stddev) * 1.8 + luma * 0.9 + dark_pen
+                if energy > best_energy:
+                    best_energy = energy
+                    if best_frame and best_frame.exists():
+                        best_frame.unlink(missing_ok=True)
+                    best_frame = cand
+                else:
+                    cand.unlink(missing_ok=True)
+            except Exception:
+                cand.unlink(missing_ok=True)
+
+    if best_frame and best_frame.exists():
+        img = Image.open(best_frame).convert("RGB")
+        best_frame.unlink(missing_ok=True)
+    else:
+        img = Image.new("RGB", (target_w, target_h), (20, 22, 30))
+
+    if img.size != (target_w, target_h):
+        img = img.resize((target_w, target_h), Image.Resampling.LANCZOS)
+
+    # Realce limpio de color/contraste para que destaque en el grid del feed
+    img = ImageEnhance.Color(img).enhance(1.14)
+    img = ImageEnhance.Contrast(img).enhance(1.12)
+    img = ImageEnhance.Brightness(img).enhance(1.04)
+    img = img.convert("RGBA")
+
+    # Viñeta sutil superior para legibilidad de la portada sin oscurecer el gameplay central
+    overlay = Image.new("RGBA", (target_w, target_h), (0, 0, 0, 0))
+    draw_ov = ImageDraw.Draw(overlay)
+    top_grad_h = int(target_h * 0.36)
+    for y in range(top_grad_h):
+        alpha = int(155 * (1.0 - (y / top_grad_h)))
+        draw_ov.line([(0, y), (target_w, y)], fill=(8, 10, 16, alpha))
+    img = Image.alpha_composite(img, overlay)
+
+    draw = ImageDraw.Draw(img)
+    scale = target_w / 1080.0
+
+    # 1. Píldora de categoría en Safe Zone superior (y = 15.5% de altura)
+    badge_text, badge_bg, badge_fg = _classify_caspahz_cover_badge(title_text, category_hint)
+    badge_font = get_best_font(max(28, int(40 * scale)))
+    bb = draw.textbbox((0, 0), badge_text, font=badge_font)
+    bw, bh = bb[2] - bb[0], bb[3] - bb[1]
+    pad_x, pad_y = int(28 * scale), int(14 * scale)
+    pill_w, pill_h = bw + pad_x * 2, bh + pad_y * 2
+    pill_x = (target_w - pill_w) // 2
+    pill_y = int(target_h * 0.155)
+    draw.rounded_rectangle(
+        [pill_x, pill_y, pill_x + pill_w, pill_y + pill_h],
+        radius=int(18 * scale),
+        fill=badge_bg + (245,),
+    )
+    draw.text(
+        (pill_x + pad_x - bb[0], pill_y + pad_y - bb[1]),
+        badge_text,
+        font=badge_font,
+        fill=badge_fg + (255,),
+    )
+
+    # 2. Titular corto bold (1-2 líneas) justo debajo de la píldora
+    headline = _condense_caspahz_cover_title(title_text, max_chars=26)
+    head_font = get_best_font(max(44, int(74 * scale)))
+    wrapped = textwrap.wrap(headline, width=14)[:2]
+    stroke_w = max(4, int(8 * scale))
+    cur_y = pill_y + pill_h + int(22 * scale)
+    for line in wrapped:
+        lbb = draw.textbbox((0, 0), line, font=head_font)
+        lw, lh = lbb[2] - lbb[0], lbb[3] - lbb[1]
+        lx = (target_w - lw) // 2 - lbb[0]
+        draw.text(
+            (lx, cur_y - lbb[1]),
+            line,
+            font=head_font,
+            fill=(255, 255, 255, 255),
+            stroke_width=stroke_w,
+            stroke_fill=(0, 0, 0, 255),
+        )
+        cur_y += lh + int(16 * scale)
+
+    img.convert("RGB").save(output_cover_path, "JPEG", quality=95)
+    print(f"[✓ Caspahz Cover] Portada Frame 0 generada ({badge_text}: '{headline}') -> {output_cover_path.name}")
+    return output_cover_path

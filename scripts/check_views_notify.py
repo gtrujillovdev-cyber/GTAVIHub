@@ -153,6 +153,13 @@ def main():
 if __name__ == "__main__":
     main()
     try:
+        from src.channel_sentinel import update_realtime_metrics
+        updated_sentinel = update_realtime_metrics(max_items=6)
+        if updated_sentinel > 0:
+            print(f"[ChannelSentinel] {updated_sentinel} checkpoints de analíticas actualizados.")
+    except Exception as e:
+        print(f"[ChannelSentinel] Error actualizando checkpoints: {e}")
+    try:
         from src.community_manager import run_autonomous_community_cycle
         comm = run_autonomous_community_cycle(yt_max=6, ig_max=4)
         if comm.get("total_replied", 0) > 0:
