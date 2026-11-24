@@ -18,6 +18,8 @@ import os
 import sys
 import json
 import time
+import base64
+import hashlib
 import secrets
 import webbrowser
 import urllib.parse
@@ -78,12 +80,19 @@ def authenticate_tiktok():
         sys.exit(1)
 
     state = secrets.token_urlsafe(16)
+    code_verifier = "".join(
+        secrets.choice("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~")
+        for _ in range(64)
+    )
+    code_challenge = hashlib.sha256(code_verifier.encode("utf-8")).hexdigest()
     auth_params = urllib.parse.urlencode({
         "client_key": client_key,
         "scope": SCOPES,
         "response_type": "code",
         "redirect_uri": DEFAULT_REDIRECT,
         "state": state,
+        "code_challenge": code_challenge,
+        "code_challenge_method": "S256",
     })
     auth_url = f"https://www.tiktok.com/v2/auth/authorize/?{auth_params}"
 
@@ -134,6 +143,7 @@ def authenticate_tiktok():
             "code": received["code"],
             "grant_type": "authorization_code",
             "redirect_uri": DEFAULT_REDIRECT,
+            "code_verifier": code_verifier,
         },
         timeout=20,
     )
