@@ -11,11 +11,11 @@ _client = None
 FALLBACK_GEMINI_MODELS = list(dict.fromkeys([
     GEMINI_MODEL,
     *GEMINI_FALLBACK_MODELS,
-    "gemini-flash-lite-latest",
-    "gemini-flash-latest",
     "gemini-3.5-flash-lite",
     "gemini-3.5-flash",
     "gemini-3.8-flash",
+    "gemini-flash-lite-latest",
+    "gemini-flash-latest",
 ]))
 
 def truncate_on_word_boundary(text: str, max_chars: int) -> str:

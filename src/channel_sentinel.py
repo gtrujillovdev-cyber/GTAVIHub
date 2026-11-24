@@ -275,7 +275,12 @@ def evaluate_and_heal_channels() -> Dict[str, Any]:
         ch_data["consecutive_flops"] = consecutive_flops
         ch_data["last_checked"] = datetime.now().isoformat()
 
-        # Detección de Anomalía / Supresión
+        # Detección de Anomalía / Supresión (no cuarentenar el canal de respaldo activo en force_extra)
+        if target_name == "extra" and state.get("routing_preference") == "force_extra":
+            ch_data["status"] = "healthy"
+            ch_data["cooldown_until"] = None
+            continue
+
         if consecutive_flops >= CONSECUTIVE_FLOPS_THRESHOLD:
             prev_status = ch_data.get("status")
             ch_data["status"] = "quarantine"
