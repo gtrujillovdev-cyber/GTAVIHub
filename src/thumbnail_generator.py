@@ -339,6 +339,81 @@ def _split_caspahz_two_lines(title_text: str, category_hint: str = "") -> tuple[
     return ("SECRETO", "GTA 6", (0, 229, 255))
 
 
+def _generate_caspahz_cover_via_gemini(
+    ref_frame_path: Path,
+    output_cover_path: Path,
+    line1: str,
+    line2: str,
+    accent_rgb: tuple[int, int, int],
+    title_text: str,
+    target_w: int,
+    target_h: int,
+) -> Optional[Path]:
+    """
+    Genera la portada cinematográfica 9:16 estilo Caspahz usando Gemini Image
+    tomando como referencia el frame de recompensa del clip (coche/arma/dinero).
+    """
+    if not os.getenv("GEMINI_API_KEY", "").strip() or not ref_frame_path.exists():
+        return None
+    try:
+        import io
+        from google.genai import types
+        from .translator import get_gemini_client
+
+        accent_desc = "vibrant fiery gold-to-orange gradient"
+        icon_desc = "flat bright gold car silhouette icon"
+        if accent_rgb == (184, 255, 60):
+            accent_desc = "vibrant neon lime-green gradient"
+            icon_desc = "flat bright neon lime-green dollar/money icon"
+        elif accent_rgb == (255, 122, 0):
+            accent_desc = "vibrant fiery orange-to-gold gradient"
+            icon_desc = "flat bright gold weapon/gun silhouette icon"
+        elif accent_rgb == (0, 229, 255):
+            accent_desc = "vibrant neon cyan gradient"
+            icon_desc = "flat bright neon cyan pin/target icon"
+
+        prompt = (
+            f"Create an ultra-spectacular, viral 9:16 vertical YouTube Shorts cover in the exact high-CTR style of top GTA 6 creator Caspahz, "
+            f"inspired by the vehicle/weapon/subject shown in this reference frame (for '{title_text}'): "
+            "1. HERO SUBJECT (lower 62% of frame): Dramatic low-angle 3/4 FRONT shot of the exact same car/weapon/reward from the reference frame "
+            "in a Vice City / Leonida setting at dramatic golden-hour / neon dusk, with glowing highlights, wet asphalt reflections, "
+            "subtle golden rim-light outline around the subject, and subtle floating embers/sparks. Photorealistic GTA 6 RAGE 9 graphics look. "
+            "2. TOP GRADIENT & ICON: Smooth dark cinematic gradient in the top 40%. At top center (y=6%), a clean " + icon_desc + ". "
+            "3. MASSIVE EDGE-TO-EDGE TYPOGRAPHY (y=12% to 35%, filling ~88% of frame width, tight line spacing, bold geometric Montserrat Black font, soft drop shadow, NO ugly black outline): "
+            f"Line 1 (pure bright white): {line1} | Line 2 ({accent_desc}): {line2}. "
+            "4. ZERO watermarks, ZERO subtitles, ZERO extra text."
+        )
+
+        client = get_gemini_client()
+        ref_part = types.Part.from_bytes(data=ref_frame_path.read_bytes(), mime_type="image/jpeg")
+        cfg = types.GenerateContentConfig(
+            response_modalities=["IMAGE"],
+            image_config=types.ImageConfig(aspect_ratio="9:16"),
+        )
+        for img_model in ("gemini-3.1-flash-image-preview", "gemini-2.5-flash-image"):
+            try:
+                resp = client.models.generate_content(
+                    model=img_model,
+                    contents=[ref_part, prompt],
+                    config=cfg,
+                )
+                for cand in (resp.candidates or []):
+                    for part in (cand.content.parts or []):
+                        inline = getattr(part, "inline_data", None)
+                        if inline and getattr(inline, "data", None):
+                            gen_img = Image.open(io.BytesIO(inline.data)).convert("RGB")
+                            if gen_img.size != (target_w, target_h):
+                                gen_img = gen_img.resize((target_w, target_h), Image.Resampling.LANCZOS)
+                            gen_img.save(output_cover_path, "JPEG", quality=95)
+                            print(f"[✓ Caspahz AI Cover] Portada generada con {img_model} ('{line1} / {line2}') -> {output_cover_path.name}")
+                            return output_cover_path
+            except Exception as me:
+                print(f"[Caspahz AI Cover] {img_model} no disponible: {me}")
+    except Exception as e:
+        print(f"[Caspahz AI Cover] Fallback a Pillow: {e}")
+    return None
+
+
 def render_caspahz_cover_image(
     video_path: Path,
     output_cover_path: Path,
@@ -417,6 +492,28 @@ def render_caspahz_cover_image(
             except Exception:
                 pass
 
+    line1, line2, accent_rgb = _split_caspahz_two_lines(title_text, category_hint)
+
+    # Intentar primero generación cinematográfica vía Gemini Image (estilo Caspahz real)
+    if best_frame and best_frame.exists():
+        ai_cover = _generate_caspahz_cover_via_gemini(
+            ref_frame_path=best_frame,
+            output_cover_path=output_cover_path,
+            line1=line1,
+            line2=line2,
+            accent_rgb=accent_rgb,
+            title_text=title_text,
+            target_w=target_w,
+            target_h=target_h,
+        )
+        if ai_cover and ai_cover.exists():
+            for cand in candidates:
+                try:
+                    cand.unlink(missing_ok=True)
+                except Exception:
+                    pass
+            return ai_cover
+
     if best_frame and best_frame.exists():
         img = Image.open(best_frame).convert("RGB")
     else:
@@ -465,7 +562,6 @@ def render_caspahz_cover_image(
 
     draw = ImageDraw.Draw(img)
     scale = target_w / 1080.0
-    line1, line2, accent_rgb = _split_caspahz_two_lines(title_text, category_hint)
 
     def _fit_font(text: str, base_px: int):
         size = int(base_px * scale)
