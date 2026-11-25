@@ -185,7 +185,7 @@ if __name__ == "__main__":
                 pass
         if run_x and X_PROFILE_DIR.exists():
             scan_x_timeline(max_candidates=12, max_scrolls=4, include_likes=True)
-            x_sync_stamp.write_text(datetime.now().isoformat(), encoding="utf-8")
+            x_sync_stamp.write_text(str(datetime.now().timestamp()), encoding="utf-8")
     except Exception as e:
         print(f"[X Scout] Error en ingesta automática de Likes: {e}")
 
