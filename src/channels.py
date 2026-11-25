@@ -426,10 +426,24 @@ def filter_repetitive_candidates(
 
     filtered = []
     seen_cluster_tokens = []
+    rejected_cache_file = DATA_DIR / "rejected_cache.json"
+    rejected_cache: Dict[str, float] = {}
+    now_ts = datetime.now().timestamp()
+    if rejected_cache_file.exists():
+        try:
+            raw_rc = json.loads(rejected_cache_file.read_text(encoding="utf-8"))
+            if isinstance(raw_rc, dict):
+                rejected_cache = {k: float(v) for k, v in raw_rc.items() if (now_ts - float(v)) < 36 * 3600}
+        except Exception:
+            rejected_cache = {}
+    rc_dirty = False
 
     for cand in candidates:
         cid = cand.get("id")
         if cid and cid in processed_ids:
+            continue
+        vid_key = str(cid or cand.get("video_id") or cand.get("url") or "").strip()
+        if vid_key and vid_key in rejected_cache:
             continue
 
         title = (cand.get("title") or "").strip()
@@ -455,6 +469,9 @@ def filter_repetitive_candidates(
 
         if is_duplicate_topic:
             print(f"[Anti-Repetición] Descartado por tema repetido/rechazado: '{title[:60]}'")
+            if vid_key:
+                rejected_cache[vid_key] = now_ts
+                rc_dirty = True
             continue
 
         # 2. Deduplicar candidatos entre sí dentro de la misma ronda (evita reuploads idénticos del mismo vídeo)
@@ -483,6 +500,12 @@ def filter_repetitive_candidates(
             cand_copy["cooldown_applied"] = True
 
         filtered.append(cand_copy)
+
+    if rc_dirty:
+        try:
+            rejected_cache_file.write_text(json.dumps(rejected_cache, indent=2), encoding="utf-8")
+        except Exception:
+            pass
 
     return filtered
 

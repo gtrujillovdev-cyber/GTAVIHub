@@ -160,6 +160,11 @@ if __name__ == "__main__":
     except Exception as e:
         print(f"[ChannelSentinel] Error actualizando checkpoints: {e}")
     try:
+        from src.performance_tracker import fetch_recent_metrics
+        fetch_recent_metrics(max_items=6)
+    except Exception as e:
+        print(f"[PerformanceTracker] Aviso actualizando métricas: {e}")
+    try:
         from src.community_manager import run_autonomous_community_cycle
         comm = run_autonomous_community_cycle(yt_max=6, ig_max=4)
         if comm.get("total_replied", 0) > 0:
@@ -169,8 +174,18 @@ if __name__ == "__main__":
 
     try:
         from src.x_scout import X_PROFILE_DIR, scan_x_timeline
-        if X_PROFILE_DIR.exists():
+        x_sync_stamp = BASE_DIR / "data" / ".x_scout_last_sync"
+        run_x = True
+        if x_sync_stamp.exists():
+            try:
+                age_sec = datetime.now().timestamp() - x_sync_stamp.stat().st_mtime
+                if age_sec < 4 * 3600:
+                    run_x = False
+            except Exception:
+                pass
+        if run_x and X_PROFILE_DIR.exists():
             scan_x_timeline(max_candidates=12, max_scrolls=4, include_likes=True)
+            x_sync_stamp.write_text(datetime.now().isoformat(), encoding="utf-8")
     except Exception as e:
         print(f"[X Scout] Error en ingesta automática de Likes: {e}")
 

@@ -1366,6 +1366,12 @@ def start_telegram_bot_daemon():
     print("[*] Ingesta bajo demanda & Co-Pilot: ACTIVOS")
     print("=" * 65 + "\n")
 
+    try:
+        from .copilot import recover_stale_pending_approvals
+        recover_stale_pending_approvals(max_age_minutes=30)
+    except Exception as rec_err:
+        print(f"[Co-Pilot] Aviso recuperando pendientes: {rec_err}")
+
     global ACTIVE_TASK
     last_update_id = 0
     url_updates = get_api_url("getUpdates")

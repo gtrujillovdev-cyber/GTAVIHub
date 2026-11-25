@@ -503,17 +503,29 @@ def sync_tiktok_insights_to_playbook(username: str = "gtavihubextra", force: boo
 
     total_v = int(ov.get("views") or 0)
     total_l = int(ov.get("likes") or 0)
+    tt_avg = round(total_v / max(len(videos), 1), 1)
     diag["tiktok_snapshot"] = {
         "username": username,
         "videos": len(videos),
         "total_views": total_v,
         "total_likes": total_l,
         "followers": int(ov.get("followers") or 0),
-        "avg_views": round(total_v / max(len(videos), 1), 1),
+        "avg_views": tt_avg,
         "top_winner": winners[0] if winners else None,
         "bottom_losers": [{"title": l["title"][:60], "views": l["views"]} for l in losers[:3]],
         "synced_at": datetime.now().isoformat(),
     }
+    # Calibrar average_views real desde performance_records (YouTube) + TikTok snapshot
+    try:
+        from .performance_tracker import _load_records
+        yt_vals = [int(r.get("views_live") or 0) for r in _load_records() if r.get("views_live") is not None]
+        if yt_vals:
+            diag["average_views"] = round(sum(yt_vals) / len(yt_vals), 1)
+        elif tt_avg > 0:
+            diag["average_views"] = tt_avg
+    except Exception:
+        if tt_avg > 0:
+            diag["average_views"] = tt_avg
     save_viral_playbook(pb)
 
     # Sincronizar vistas/likes reales de TikTok hacia performance_records.json

@@ -289,6 +289,9 @@ def approve_and_publish_video(video_id: str) -> Optional[Dict[str, Any]]:
         except Exception:
             pass
         return None
+    yt_id_clean = None
+    if yt_url and "youtu.be/" in yt_url:
+        yt_id_clean = yt_url.split("youtu.be/")[-1].split("?")[0]
     mark_video_processed({
         "id": video_id,
         "title": data.get("original_title"),
@@ -298,6 +301,7 @@ def approve_and_publish_video(video_id: str) -> Optional[Dict[str, Any]]:
         "thumbnail": str(thumb_path) if thumb_path else None,
         "youtube_title": metadata.get("title", ""),
         "youtube_uploaded_url": yt_url,
+        "uploaded_youtube_id": yt_id_clean,
         "multiplatform": multiplatform_results if publish_all else None,
         "approved_at": datetime.now().isoformat()
     })
@@ -464,3 +468,27 @@ def schedule_auto_approve_if_pending(
     timer.daemon = False
     timer.start()
     return timer
+
+
+def recover_stale_pending_approvals(max_age_minutes: int = 30) -> int:
+    """
+    Recupera archivos en `data/pending_approvals/*.json` que quedaron atascados en
+    estado 'publishing' tras un reinicio o fallo transitorio, devolviéndolos a 'staged_copilot'.
+    """
+    if not PENDING_DIR.exists():
+        return 0
+    recovered = 0
+    now_ts = time.time()
+    for p_file in PENDING_DIR.glob("*.json"):
+        try:
+            data = json.loads(p_file.read_text(encoding="utf-8"))
+            if data.get("status") == "publishing":
+                age_min = (now_ts - p_file.stat().st_mtime) / 60.0
+                if age_min >= max_age_minutes:
+                    data["status"] = "staged_copilot"
+                    p_file.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
+                    recovered += 1
+                    print(f"[Co-Pilot] ♻️ Recuperado '{p_file.stem}' de 'publishing' atascado -> 'staged_copilot'.")
+        except Exception:
+            pass
+    return recovered
