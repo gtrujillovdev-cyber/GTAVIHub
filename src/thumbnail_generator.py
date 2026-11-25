@@ -414,6 +414,35 @@ def _generate_caspahz_cover_via_gemini(
     return None
 
 
+def _generate_caspahz_bg_via_pollinations(
+    title_text: str,
+    line1: str,
+    line2: str,
+    target_w: int,
+    target_h: int,
+) -> Optional[Image.Image]:
+    """Fallback gratuito sin facturación: genera fondo limpio 9:16 vía Pollinations.ai (sin texto)."""
+    try:
+        import io
+        import urllib.parse
+        import requests
+        subject = "luxury red supercar parked in front of Miami palm mansion at neon dusk, wet asphalt reflections, golden rim light"
+        blob = f"{title_text} {line1} {line2}".lower()
+        if any(k in blob for k in ("arma", "cuchillo", "pistola", "lmg", "rifle", "gun", "weapon")):
+            subject = "golden tactical assault rifle and character holding legendary weapon in Vice City street at sunset, dramatic rim lighting"
+        elif any(k in blob for k in ("dinero", "$", "money", "método")):
+            subject = "luxury sports car and stacks of cash glowing green neon in Miami Vice City night street, wet asphalt reflections"
+        prompt = f"GTA 6 RAGE 9 photorealistic game screenshot, {subject}, clean image, no text, no watermark, no logos, vertical 9:16"
+        url = f"https://image.pollinations.ai/prompt/{urllib.parse.quote(prompt)}?width=720&height=1280&nologo=true&enhance=true"
+        r = requests.get(url, timeout=35)
+        if r.status_code == 200 and len(r.content) > 15000:
+            im = Image.open(io.BytesIO(r.content)).convert("RGB")
+            return im.resize((target_w, target_h), Image.Resampling.LANCZOS)
+    except Exception as e:
+        print(f"[Caspahz Cover] Pollinations fallback no disponible: {e}")
+    return None
+
+
 def render_caspahz_cover_image(
     video_path: Path,
     output_cover_path: Path,
@@ -517,7 +546,9 @@ def render_caspahz_cover_image(
     if best_frame and best_frame.exists():
         img = Image.open(best_frame).convert("RGB")
     else:
-        img = Image.new("RGB", (target_w, target_h), (20, 22, 30))
+        img = _generate_caspahz_bg_via_pollinations(title_text, line1, line2, target_w, target_h)
+        if img is None:
+            img = Image.new("RGB", (target_w, target_h), (20, 22, 30))
 
     for cand in candidates:
         try:
