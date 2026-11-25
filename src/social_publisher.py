@@ -406,6 +406,27 @@ class SocialPublisher:
             )
             init_json = init_resp.json()
             err = init_json.get("error", {})
+            if err.get("code") == "unaudited_client_can_only_post_to_private_accounts":
+                print("[TikTok API Oficial] App pendiente de auditoría en cuenta pública: usando Inbox Draft API (video.upload)...")
+                inbox_payload = {
+                    "source_info": {
+                        "source": "FILE_UPLOAD",
+                        "video_size": video_size,
+                        "chunk_size": video_size,
+                        "total_chunk_count": 1,
+                    }
+                }
+                init_resp = _req.post(
+                    "https://open.tiktokapis.com/v2/post/publish/inbox/video/init/",
+                    headers={
+                        "Authorization": f"Bearer {access_token}",
+                        "Content-Type": "application/json; charset=UTF-8",
+                    },
+                    json=inbox_payload,
+                    timeout=30,
+                )
+                init_json = init_resp.json()
+                err = init_json.get("error", {})
             if err.get("code") not in (None, "ok"):
                 print(f"[TikTok API Oficial] Error en init: {init_json}")
                 return None
@@ -433,7 +454,7 @@ class SocialPublisher:
                 print(f"[TikTok API Oficial] Error subiendo binario ({put_resp.status_code}): {put_resp.text[:200]}")
                 return None
 
-            _record_tiktok_upload()
+            _record_tiktok_upload(caption[:80])
             print(f"[✓ TikTok API Oficial] Subida completada (publish_id={publish_id}).")
             tt_handle = os.getenv("TIKTOK_USERNAME", "gtavihubextra").strip().lstrip("@")
             return f"https://www.tiktok.com/@{tt_handle}"
