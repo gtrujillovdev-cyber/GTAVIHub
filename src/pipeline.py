@@ -849,8 +849,9 @@ def process_single_video(
 
     # Selección de encuadre inteligente:
     # - SPLIT: comparativas lado-a-lado 50/50 apiladas verticalmente (93.8% pantalla)
-    # - D (83.3%): gameplay puro, físicas, acción, trailers/spots sin textos laterales
+    # - D (89.1%): gameplay puro, físicas, acción, trailers/spots sin textos laterales
     # - C (4:5 / 70.3%): análisis técnicos y comparativas full-frame (2.2x más área visual que FIT)
+    is_pure_gameplay = _is_pure_gameplay_action(original_title)
     is_comparison_or_breakdown = (
         not is_pure_gameplay
         and (
