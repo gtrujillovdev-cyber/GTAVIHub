@@ -265,3 +265,94 @@ def compile_multi_beat_video(
     srt_output_path.write_text("\n".join(srt_lines), encoding="utf-8")
     print(f"[✓ GuideCompiler] Compilado Multi-Beat ({n} actos, {cur_t:.1f}s) -> {compiled_video_path.name}")
     return True, srt_output_path
+
+
+def sync_beats_with_voiceover(
+    beats: List[Dict[str, Any]],
+    source_duration: float,
+    output_audio_path: Path,
+    work_dir: Path = TEMP_DIR,
+) -> Tuple[List[Dict[str, Any]], bool]:
+    """
+    Sintetiza la locución de cada acto por separado y ajusta la duración de cada corte
+    de vídeo para que coincida exactamente con su voz (cero huecos mudos al final o en medio).
+    """
+    import asyncio
+    from .dubber import DEFAULT_TTS_VOICE, VOICE_ENHANCER_CHAIN, _probe_audio_duration, _synthesize_async
+
+    if not beats:
+        return beats, False
+
+    tts_rate = os.getenv("TTS_RATE", "+14%")
+    tts_pitch = os.getenv("TTS_PITCH", "+2Hz")
+    enable_enhancer = os.getenv("ENABLE_VOICE_ENHANCER", "true").lower() in ("true", "1", "yes")
+    tmp_parts: List[Path] = []
+    synced_beats: List[Dict[str, Any]] = []
+
+    try:
+        for idx, b in enumerate(beats):
+            nar = str(b.get("narration_es") or "").strip()
+            if not nar:
+                continue
+            raw_mp3 = work_dir / f"_beat_tts_{idx}_{output_audio_path.stem}.mp3"
+            padded_mp3 = work_dir / f"_beat_pad_{idx}_{output_audio_path.stem}.mp3"
+            asyncio.run(_synthesize_async(nar, raw_mp3, DEFAULT_TTS_VOICE, rate=tts_rate, pitch=tts_pitch))
+            tts_dur = _probe_audio_duration(raw_mp3)
+            if tts_dur <= 0.5:
+                continue
+
+            pad_tail = 0.25 if idx == 0 else 0.30
+            target_dur = max(3.8, tts_dur + pad_tail)
+            s = float(b["start_sec"])
+            max_avail = max(4.0, float(source_duration or 600.0) - s - 0.2)
+            if target_dur > max_avail:
+                target_dur = max_avail
+
+            # Ajustar audio exacto a target_dur con silencio de cola si hace falta
+            af = f"apad=whole_dur={target_dur:.3f}"
+            if enable_enhancer:
+                af = f"{VOICE_ENHANCER_CHAIN},{af}"
+            cmd_p = [
+                "ffmpeg", "-y", "-i", str(raw_mp3),
+                "-af", af, "-t", f"{target_dur:.3f}",
+                "-c:a", "libmp3lame", "-b:a", "192k", str(padded_mp3),
+            ]
+            r = subprocess.run(cmd_p, capture_output=True, timeout=30)
+            if r.returncode != 0 or not padded_mp3.exists():
+                cmd_p2 = [
+                    "ffmpeg", "-y", "-i", str(raw_mp3),
+                    "-af", f"apad=whole_dur={target_dur:.3f}", "-t", f"{target_dur:.3f}",
+                    "-c:a", "libmp3lame", "-b:a", "192k", str(padded_mp3),
+                ]
+                subprocess.run(cmd_p2, capture_output=True, timeout=30)
+            raw_mp3.unlink(missing_ok=True)
+            if padded_mp3.exists():
+                tmp_parts.append(padded_mp3)
+                synced_beats.append({
+                    **b,
+                    "start_sec": round(s, 2),
+                    "end_sec": round(s + target_dur, 2),
+                })
+
+        if not tmp_parts:
+            return beats, False
+
+        concat_inputs = []
+        filter_parts = []
+        for i, p in enumerate(tmp_parts):
+            concat_inputs.extend(["-i", str(p)])
+            filter_parts.append(f"[{i}:a]")
+        fc = f"{''.join(filter_parts)}concat=n={len(tmp_parts)}:v=0:a=1[aout]"
+        cmd_cat = [
+            "ffmpeg", "-y", *concat_inputs, "-filter_complex", fc,
+            "-map", "[aout]", "-c:a", "libmp3lame", "-b:a", "192k", str(output_audio_path),
+        ]
+        res_cat = subprocess.run(cmd_cat, capture_output=True, timeout=45)
+        ok = res_cat.returncode == 0 and output_audio_path.exists()
+        if ok:
+            total_d = sum(float(x["end_sec"]) - float(x["start_sec"]) for x in synced_beats)
+            print(f"[✓ GuideCompiler] Voz sincronizada por acto ({len(synced_beats)} actos, {total_d:.1f}s continuos sin huecos mudos).")
+        return synced_beats, ok
+    finally:
+        for p in tmp_parts:
+            p.unlink(missing_ok=True)
