@@ -494,7 +494,7 @@ def render_caspahz_cover_image(
             parts.append(
                 f"Te paso {len(candidates)} fotogramas de un clip de GTA 6 sobre '{title_text}'. "
                 "Elige el índice (0 a N-1) que muestre MEJOR la recompensa principal (el coche, arma, dinero o personaje en gameplay) "
-                "y que NO sea un mapa, minimapa grande ni menú. "
+                "y que NO sea un mapa, minimapa grande, menú ni tenga subtítulos o diálogos de texto abajo. "
                 'Responde SOLO JSON: {"best_idx": 2}'
             )
             resp = generate_content_with_retry(client=get_gemini_client(), contents=parts)
@@ -523,8 +523,12 @@ def render_caspahz_cover_image(
 
     line1, line2, accent_rgb = _split_caspahz_two_lines(title_text, category_hint)
 
-    # Intentar primero generación cinematográfica vía Gemini Image (estilo Caspahz real)
-    if best_frame and best_frame.exists():
+    # Intentar primero generación cinematográfica vía Gemini Image solo si está habilitada (requiere facturación)
+    if (
+        os.getenv("ENABLE_GEMINI_IMAGE_COVER", "false").lower() in ("true", "1", "yes")
+        and best_frame
+        and best_frame.exists()
+    ):
         ai_cover = _generate_caspahz_cover_via_gemini(
             ref_frame_path=best_frame,
             output_cover_path=output_cover_path,

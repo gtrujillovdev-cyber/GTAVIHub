@@ -27,7 +27,11 @@ class TestLocationGuideModel(unittest.TestCase):
         self.assertTrue(is_location_reward_guide("GTA 6: Dónde encontrar el coche gratis en el mapa"))
         self.assertFalse(is_location_reward_guide("GTA 6 Worth It Review and Thoughts Podcast"))
 
-        guide_boost = _visual_appeal_adjustment({
+        long_guide_boost = _visual_appeal_adjustment({
+            "title": "GTA 6: FREE $24,000 Rolls Royce Location (Sell It for Cash!)",
+            "duration": 240,
+        })
+        short_copy_boost = _visual_appeal_adjustment({
             "title": "GTA 6: FREE $24,000 Rolls Royce Location (Sell It for Cash!)",
             "duration": 20,
         })
@@ -35,8 +39,9 @@ class TestLocationGuideModel(unittest.TestCase):
             "title": "GTA 6 Launch Thoughts Podcast",
             "duration": 180,
         })
-        self.assertGreater(guide_boost, generic_boost)
-        self.assertGreaterEqual(guide_boost, 50.0)
+        self.assertGreater(long_guide_boost, short_copy_boost)
+        self.assertGreater(long_guide_boost, generic_boost)
+        self.assertGreaterEqual(long_guide_boost, 50.0)
 
     def test_virality_score_and_hook_card(self):
         res = calculate_virality_score(

@@ -340,12 +340,30 @@ def process_single_video(
         except Exception as e:
             print(f"[Pipeline] Info Telegram Stage Alert: {e}")
 
-    # 1. Descarga limpia
+    # 1. Descarga limpia (con Compilador Multi-Beat automático para guías largas 16:9 >= 90s)
     res_label = "4K UHD" if ENABLE_4K_SHORTS else "1080p"
     report_stage(f"📥 [1/5] Descargando vídeo y pistas originales ({res_label})...")
-    video_path, srt_path, detected_lang = download_video_and_subtitles(
-        url, video_id, source_lang=source_lang, trim_official_bumpers=allow_official_commentary
-    )
+    multi_beat_active = False
+    mb_pkg = None
+    if os.getenv("GUIDE_MULTI_BEAT_ENABLED", "true").lower() in ("true", "1", "yes"):
+        try:
+            from .ai_selector import is_location_reward_guide
+            if is_location_reward_guide(original_title or "") or "/shorts/" not in (url or "").lower():
+                from .guide_story_compiler import build_multi_beat_guide_package_from_url
+                mb_pkg = build_multi_beat_guide_package_from_url(url, video_id, TEMP_DIR)
+        except Exception as mb_err:
+            print(f"[GuideCompiler] Aviso no bloqueante: {mb_err}")
+
+    if mb_pkg is not None:
+        video_path, srt_path, dub_audio_path, _mb_plan = mb_pkg
+        detected_lang = "es"
+        multi_beat_active = True
+        mode = "dub"
+        print("[✓ GuideCompiler] Guía Multi-Beat 16:9->9:16 lista con voz sincronizada acto a acto.")
+    else:
+        video_path, srt_path, detected_lang = download_video_and_subtitles(
+            url, video_id, source_lang=source_lang, trim_official_bumpers=allow_official_commentary
+        )
     if not video_path:
         print(f"[!] Falló la descarga del vídeo {video_id}. Abortando.")
         report_stage("⚠️ *Descarga omitida:* El vídeo no está disponible, tiene restricción de edad en YouTube o excedió el tiempo límite.")
@@ -429,256 +447,264 @@ def process_single_video(
     print(f"    Formato Final: {'Vertical 9:16 (Shorts/TikTok/Reels)' if is_short else 'Horizontal 16:9'}")
 
     # Guardián de Frame 0 (antes de doblar/transcribir para mantener sincronía exacta de audio/vídeo)
-    if is_short:
+    if is_short and not multi_beat_active:
         try:
             from .video_editor import ensure_non_map_first_frame
             video_path = ensure_non_map_first_frame(video_path, TEMP_DIR)
         except Exception:
             pass
 
-    # 2. Procesar/Traducir subtítulos si existen (o transcribir audio / comentario editorial con Gemini Flash)
-    report_stage("🤖 [2/5] Analizando pistas y generando subtítulos/metadatos...")
-    # Usar tanto source_lang como detected_lang e inferencia del título para jamás colar inglés sin doblar
-    _en_title_hint = bool(re.search(
-        r"\b(the|and|with|from|this|that|just|blew|mind|everyone|everyones|new|gameplay|graphics|comparison|breakdown|missed|things|secrets|details|trailer|now|pre-load|preload|physics|realistic|versus)\b",
-        (original_title or "").lower()
-    )) and not bool(re.search(
-        r"\b(el|la|los|las|del|como|para|por|con|sin|este|esta|estos|nuevo|nueva|nuevos|secretos|detalles|comparativa|graficos|gráficos|fisicas|físicas|lanzamiento|tráiler|filtracion|filtración)\b",
-        (original_title or "").lower()
-    ))
-    if _en_title_hint and lang_to_use == "es":
-        lang_to_use = "en"
-    audio_needs_dub = (source_lang != "es" or lang_to_use != "es" or _en_title_hint)
-    generated_editorial_script = False
-    confirmed_no_speech = False
-    es_srt_path = None
-    if allow_official_commentary and srt_path and srt_path.exists():
-        # Conservar pistas de subtítulos reales para traducir y dar contexto exacto a metadatos (sin doblar música de tráilers)
-        print("[*] Spot oficial con rótulos/subtítulos detectados: conservando audio original de Rockstar y subtítulos en español...")
+    if multi_beat_active:
+        es_srt_path = srt_path
+        audio_needs_dub = True
+        skip_tts_for_gameplay = False
+        generated_editorial_script = False
+        confirmed_no_speech = False
+    else:
+        # 2. Procesar/Traducir subtítulos si existen (o transcribir audio / comentario editorial con Gemini Flash)
+        report_stage("🤖 [2/5] Analizando pistas y generando subtítulos/metadatos...")
+        # Usar tanto source_lang como detected_lang e inferencia del título para jamás colar inglés sin doblar
+        _en_title_hint = bool(re.search(
+            r"\b(the|and|with|from|this|that|just|blew|mind|everyone|everyones|new|gameplay|graphics|comparison|breakdown|missed|things|secrets|details|trailer|now|pre-load|preload|physics|realistic|versus)\b",
+            (original_title or "").lower()
+        )) and not bool(re.search(
+            r"\b(el|la|los|las|del|como|para|por|con|sin|este|esta|estos|nuevo|nueva|nuevos|secretos|detalles|comparativa|graficos|gráficos|fisicas|físicas|lanzamiento|tráiler|filtracion|filtración)\b",
+            (original_title or "").lower()
+        ))
+        if _en_title_hint and lang_to_use == "es":
+            lang_to_use = "en"
+        audio_needs_dub = (source_lang != "es" or lang_to_use != "es" or _en_title_hint)
+        generated_editorial_script = False
+        confirmed_no_speech = False
+        es_srt_path = None
+        if allow_official_commentary and srt_path and srt_path.exists():
+            # Conservar pistas de subtítulos reales para traducir y dar contexto exacto a metadatos (sin doblar música de tráilers)
+            print("[*] Spot oficial con rótulos/subtítulos detectados: conservando audio original de Rockstar y subtítulos en español...")
 
-    is_pure_gameplay = _is_pure_gameplay_action(original_title)
-    skip_tts_for_gameplay = False
+        is_pure_gameplay = _is_pure_gameplay_action(original_title)
+        skip_tts_for_gameplay = False
 
-    srt_spoken_words = _count_spoken_words_in_srt(srt_path)
+        srt_spoken_words = _count_spoken_words_in_srt(srt_path)
 
-    # Streamers y clips en español con voz real: conservar audio original PERO activar subtítulos Karaoke dinámicos
-    if (
-        mode in ("gameplay", "clean")
-        and lang_to_use == "es"
-        and not is_split_comparison
-        and not allow_official_commentary
-        and srt_spoken_words >= 8
-    ):
-        print(
-            f"[*] [Streamer/Voz ES] Detectadas {srt_spoken_words} palabras en español: "
-            "activando subtítulos Karaoke dinámicos preservando audio original."
-        )
-        mode = "subs"
-        skip_tts_for_gameplay = True
-
-    # Guardia Anti-Inglés: si IA eligió 'gameplay'/'clean' en autónomo sobre vídeo en inglés con locución real,
-    # forzar traducción + autodoblaje — PERO si es gameplay real con diálogos in-game breves (<32 palabras),
-    # usar subtítulos en español conservando las voces y el sonido auténtico del juego (sin doblaje TTS encima).
-    allow_pure_gameplay = (
-        is_manual_ingest
-        or is_split_comparison
-        or allow_official_commentary
-        or lang_to_use == "es"
-    )
-    if mode in ("gameplay", "clean") and not allow_pure_gameplay:
-        if is_pure_gameplay and 8 <= srt_spoken_words < 32:
+        # Streamers y clips en español con voz real: conservar audio original PERO activar subtítulos Karaoke dinámicos
+        if (
+            mode in ("gameplay", "clean")
+            and lang_to_use == "es"
+            and not is_split_comparison
+            and not allow_official_commentary
+            and srt_spoken_words >= 8
+        ):
             print(
-                f"[*] [Gameplay Real + Diálogos] Detectadas {srt_spoken_words} palabras in-game: "
-                "activando subtítulos dinámicos ES preservando audio auténtico de GTA 6."
+                f"[*] [Streamer/Voz ES] Detectadas {srt_spoken_words} palabras en español: "
+                "activando subtítulos Karaoke dinámicos preservando audio original."
             )
             mode = "subs"
             skip_tts_for_gameplay = True
-        elif srt_spoken_words >= 12:
-            target_mode = "dub" if AUTO_DUB_ENGLISH else "subs"
-            print(
-                f"[!] [Guardia Anti-Inglés] Detectada locución ({srt_spoken_words} palabras en {lang_to_use.upper()}) "
-                f"pese a modo '{mode}'. Activando modo '{target_mode}'."
-            )
-            mode = target_mode
-        elif is_pure_gameplay:
-            print("[*] [Gameplay Puro] Conservando audio auténtico del juego sin TTS ni subtítulos inventados.")
-        elif not (srt_path and srt_path.exists()) and not _is_pure_visual_title(original_title):
-            print(
-                f"[*] [Guardia Anti-Inglés] Modo '{mode}' sin subtítulos ni título visual puro: "
-                "verificando voz en audio con Gemini antes de conservar audio original..."
-            )
-            mode = "dub" if AUTO_DUB_ENGLISH else "subs"
 
-    if mode in ("gameplay", "clean"):
-        print("[*] Modo Gameplay/Visual limpio: preservando audio del juego sin transcribir diálogos de fondo.")
-        es_srt_path = None
-    elif srt_path and srt_path.exists():
-        es_srt_path = TEMP_DIR / f"{video_id}_es.srt"
-        success_trans = translate_srt(
-            srt_path,
-            es_srt_path,
-            source_lang=lang_to_use
-        )
-        if not success_trans:
-            print("[Warning] No se pudieron traducir subtítulos al español.")
-            es_srt_path = None
-    else:
-        # En spots oficiales o gameplay puro NO transcribir letras musicales/diálogos de fondo
-        if not allow_official_commentary:
-            # Si no hay subtítulos nativos, intentar transcribir directamente el audio del clip con Gemini Flash
-            try:
-                from .translator import transcribe_and_translate_audio_gemini
-                from .dubber import parse_first_cue_start
-                temp_audio = TEMP_DIR / f"{video_id}_audio_speech.mp3"
-                cmd_extract_audio = [
-                    "ffmpeg", "-y",
-                    "-i", str(video_path),
-                    "-vn",
-                    "-acodec", "libmp3lame",
-                    "-ar", "16000",
-                    "-ac", "1",
-                    "-b:a", "64k",
-                    str(temp_audio)
-                ]
-                subprocess.run(cmd_extract_audio, capture_output=True, timeout=25)
-                if temp_audio.exists() and temp_audio.stat().st_size > 500:
-                    print("[*] Audio extraído. Consultando Gemini Flash para transcripción y traducción al español...")
-                    candidate_srt = TEMP_DIR / f"{video_id}_es.srt"
-                    success_ai, has_speech = transcribe_and_translate_audio_gemini(temp_audio, candidate_srt, target_lang="es")
-                    if success_ai and has_speech and candidate_srt.exists():
-                        first_t = parse_first_cue_start(candidate_srt)
-                        if first_t <= 12.0:
-                            es_srt_path = candidate_srt
-                            srt_path = candidate_srt
-                            lang_to_use = "es"
-                            print(f"[✓] Transcripción y traducción de audio completada con éxito.")
-                        else:
-                            print(f"[!] Transcripción con timestamp corrupto ({first_t:.1f}s > 12s). Descartando SRT para usar comentario editorial...")
-                            candidate_srt.unlink(missing_ok=True)
-                    elif success_ai and not has_speech:
-                        print("[*] Audio analizado: Clip sin narración (gameplay o efectos de sonido puros).")
-                        es_srt_path = None
-                        confirmed_no_speech = True
-                if temp_audio.exists():
-                    temp_audio.unlink(missing_ok=True)
-            except Exception as e:
-                print(f"[!] Info transcripción multimodal de audio: {e}")
-
-        # Si aún no hay subtítulos y no se detectó voz, intentar OCR como respaldo secundario
-        if not es_srt_path:
-            try:
-                from .ocr_extractor import extract_gameplay_text
-                gameplay_text = extract_gameplay_text(video_path, max_chars=120)
-                if gameplay_text:
-                    print(f"[OCR] Texto de gameplay extraído (<120 car): '{gameplay_text}'")
-                    ocr_srt = TEMP_DIR / f"{video_id}_ocr.srt"
-                    with open(ocr_srt, "w", encoding="utf-8") as f:
-                        f.write(f"1\n00:00:01,000 --> 00:00:06,500\n{gameplay_text}\n\n")
-                    if lang_to_use != "es":
-                        es_srt_path = TEMP_DIR / f"{video_id}_es.srt"
-                        if not translate_srt(ocr_srt, es_srt_path, source_lang=lang_to_use):
-                            es_srt_path = ocr_srt
-                    else:
-                        es_srt_path = ocr_srt
-                    srt_path = ocr_srt
-            except Exception as e:
-                print(f"[OCR] Info extracción de texto en pantalla: {e}")
-
-    # Si el clip no tiene narración hablada o falló la cuota de IA (Gemini 429), generar comentario editorial
-    # (multimodal o fallback mecánico 0-API) para aportar narrativa en español, Pop Karaoke y desbloquear IG Reels.
-    if (
-        (not es_srt_path)
-        and (
-            mode in ("dub", "subs")
-            or (confirmed_no_speech and os.getenv("AUTO_COMMENTARY_ON_SILENT_GAMEPLAY", "true").lower() in ("1", "true", "yes"))
-        )
-        and not allow_official_commentary
-        and not skip_tts_for_gameplay
-        and not is_split_comparison
-        and mode != "clean"
-        and video_path.exists()
-        and video_path.stat().st_size > 10000
-    ):
-        try:
-            from .translator import generate_editorial_commentary_srt
-            editorial_srt = TEMP_DIR / f"{video_id}_editorial_es.srt"
-            if generate_editorial_commentary_srt(
-                video_path=video_path,
-                original_title=original_title or video_id,
-                creator_name=creator_name or "Rockstar Games",
-                output_srt=editorial_srt,
-                duration_sec=clip_dur_sec or 25.0,
-            ) and editorial_srt.exists():
-                es_srt_path = editorial_srt
-                srt_path = editorial_srt
-                lang_to_use = "es"
-                audio_needs_dub = True
-                mode = "dub"
-                confirmed_no_speech = False
-                print("[✓] [Alpha Commentary] Guion editorial original en español generado -> activando voz neural y subtítulos.")
-        except Exception as e:
-            print(f"[!] Info comentario editorial automático: {e}")
-
-    # Si es clip oficial/visual con música/rótulos breves (<12 palabras) o sin locución, usar modo gameplay (conserva audio original sin abortar en Audio Shield)
-    _active_caption_words = _count_spoken_words_in_srt(es_srt_path or srt_path)
-
-    if (not es_srt_path and not (srt_path and srt_path.exists())) or (allow_official_commentary and _active_caption_words < 12):
-        tl_lower = (original_title or "").lower()
-        is_visual_showcase = (
-            mode in ("gameplay", "clean")
-            or confirmed_no_speech
+        # Guardia Anti-Inglés: si IA eligió 'gameplay'/'clean' en autónomo sobre vídeo en inglés con locución real,
+        # forzar traducción + autodoblaje — PERO si es gameplay real con diálogos in-game breves (<32 palabras),
+        # usar subtítulos en español conservando las voces y el sonido auténtico del juego (sin doblaje TTS encima).
+        allow_pure_gameplay = (
+            is_manual_ingest
+            or is_split_comparison
             or allow_official_commentary
-            or any(
-                kw in tl_lower
-                for kw in (
-                    "gameplay", "pre-load", "preload", "trailer", "teaser",
-                    "comparison", "comparativa", "physics", "físicas", "fisicas",
-                    "graphics", "gráficos", "graficos", "rage 9", "4k", "60fps",
-                    "detail", "detalle", "showcase", "captura"
+            or lang_to_use == "es"
+        )
+        if mode in ("gameplay", "clean") and not allow_pure_gameplay:
+            if is_pure_gameplay and 8 <= srt_spoken_words < 32:
+                print(
+                    f"[*] [Gameplay Real + Diálogos] Detectadas {srt_spoken_words} palabras in-game: "
+                    "activando subtítulos dinámicos ES preservando audio auténtico de GTA 6."
+                )
+                mode = "subs"
+                skip_tts_for_gameplay = True
+            elif srt_spoken_words >= 12:
+                target_mode = "dub" if AUTO_DUB_ENGLISH else "subs"
+                print(
+                    f"[!] [Guardia Anti-Inglés] Detectada locución ({srt_spoken_words} palabras en {lang_to_use.upper()}) "
+                    f"pese a modo '{mode}'. Activando modo '{target_mode}'."
+                )
+                mode = target_mode
+            elif is_pure_gameplay:
+                print("[*] [Gameplay Puro] Conservando audio auténtico del juego sin TTS ni subtítulos inventados.")
+            elif not (srt_path and srt_path.exists()) and not _is_pure_visual_title(original_title):
+                print(
+                    f"[*] [Guardia Anti-Inglés] Modo '{mode}' sin subtítulos ni título visual puro: "
+                    "verificando voz en audio con Gemini antes de conservar audio original..."
+                )
+                mode = "dub" if AUTO_DUB_ENGLISH else "subs"
+
+        if mode in ("gameplay", "clean"):
+            print("[*] Modo Gameplay/Visual limpio: preservando audio del juego sin transcribir diálogos de fondo.")
+            es_srt_path = None
+        elif srt_path and srt_path.exists():
+            es_srt_path = TEMP_DIR / f"{video_id}_es.srt"
+            success_trans = translate_srt(
+                srt_path,
+                es_srt_path,
+                source_lang=lang_to_use
+            )
+            if not success_trans:
+                print("[Warning] No se pudieron traducir subtítulos al español.")
+                es_srt_path = None
+        else:
+            # En spots oficiales o gameplay puro NO transcribir letras musicales/diálogos de fondo
+            if not allow_official_commentary:
+                # Si no hay subtítulos nativos, intentar transcribir directamente el audio del clip con Gemini Flash
+                try:
+                    from .translator import transcribe_and_translate_audio_gemini
+                    from .dubber import parse_first_cue_start
+                    temp_audio = TEMP_DIR / f"{video_id}_audio_speech.mp3"
+                    cmd_extract_audio = [
+                        "ffmpeg", "-y",
+                        "-i", str(video_path),
+                        "-vn",
+                        "-acodec", "libmp3lame",
+                        "-ar", "16000",
+                        "-ac", "1",
+                        "-b:a", "64k",
+                        str(temp_audio)
+                    ]
+                    subprocess.run(cmd_extract_audio, capture_output=True, timeout=25)
+                    if temp_audio.exists() and temp_audio.stat().st_size > 500:
+                        print("[*] Audio extraído. Consultando Gemini Flash para transcripción y traducción al español...")
+                        candidate_srt = TEMP_DIR / f"{video_id}_es.srt"
+                        success_ai, has_speech = transcribe_and_translate_audio_gemini(temp_audio, candidate_srt, target_lang="es")
+                        if success_ai and has_speech and candidate_srt.exists():
+                            first_t = parse_first_cue_start(candidate_srt)
+                            if first_t <= 12.0:
+                                es_srt_path = candidate_srt
+                                srt_path = candidate_srt
+                                lang_to_use = "es"
+                                print(f"[✓] Transcripción y traducción de audio completada con éxito.")
+                            else:
+                                print(f"[!] Transcripción con timestamp corrupto ({first_t:.1f}s > 12s). Descartando SRT para usar comentario editorial...")
+                                candidate_srt.unlink(missing_ok=True)
+                        elif success_ai and not has_speech:
+                            print("[*] Audio analizado: Clip sin narración (gameplay o efectos de sonido puros).")
+                            es_srt_path = None
+                            confirmed_no_speech = True
+                    if temp_audio.exists():
+                        temp_audio.unlink(missing_ok=True)
+                except Exception as e:
+                    print(f"[!] Info transcripción multimodal de audio: {e}")
+
+            # Si aún no hay subtítulos y no se detectó voz, intentar OCR como respaldo secundario
+            if not es_srt_path:
+                try:
+                    from .ocr_extractor import extract_gameplay_text
+                    gameplay_text = extract_gameplay_text(video_path, max_chars=120)
+                    if gameplay_text:
+                        print(f"[OCR] Texto de gameplay extraído (<120 car): '{gameplay_text}'")
+                        ocr_srt = TEMP_DIR / f"{video_id}_ocr.srt"
+                        with open(ocr_srt, "w", encoding="utf-8") as f:
+                            f.write(f"1\n00:00:01,000 --> 00:00:06,500\n{gameplay_text}\n\n")
+                        if lang_to_use != "es":
+                            es_srt_path = TEMP_DIR / f"{video_id}_es.srt"
+                            if not translate_srt(ocr_srt, es_srt_path, source_lang=lang_to_use):
+                                es_srt_path = ocr_srt
+                        else:
+                            es_srt_path = ocr_srt
+                        srt_path = ocr_srt
+                except Exception as e:
+                    print(f"[OCR] Info extracción de texto en pantalla: {e}")
+
+        # Si el clip no tiene narración hablada o falló la cuota de IA (Gemini 429), generar comentario editorial
+        # (multimodal o fallback mecánico 0-API) para aportar narrativa en español, Pop Karaoke y desbloquear IG Reels.
+        if (
+            (not es_srt_path)
+            and (
+                mode in ("dub", "subs")
+                or (confirmed_no_speech and os.getenv("AUTO_COMMENTARY_ON_SILENT_GAMEPLAY", "true").lower() in ("1", "true", "yes"))
+            )
+            and not allow_official_commentary
+            and not skip_tts_for_gameplay
+            and not is_split_comparison
+            and mode != "clean"
+            and video_path.exists()
+            and video_path.stat().st_size > 10000
+        ):
+            try:
+                from .translator import generate_editorial_commentary_srt
+                editorial_srt = TEMP_DIR / f"{video_id}_editorial_es.srt"
+                if generate_editorial_commentary_srt(
+                    video_path=video_path,
+                    original_title=original_title or video_id,
+                    creator_name=creator_name or "Rockstar Games",
+                    output_srt=editorial_srt,
+                    duration_sec=clip_dur_sec or 25.0,
+                ) and editorial_srt.exists():
+                    es_srt_path = editorial_srt
+                    srt_path = editorial_srt
+                    lang_to_use = "es"
+                    audio_needs_dub = True
+                    mode = "dub"
+                    confirmed_no_speech = False
+                    print("[✓] [Alpha Commentary] Guion editorial original en español generado -> activando voz neural y subtítulos.")
+            except Exception as e:
+                print(f"[!] Info comentario editorial automático: {e}")
+
+        # Si es clip oficial/visual con música/rótulos breves (<12 palabras) o sin locución, usar modo gameplay (conserva audio original sin abortar en Audio Shield)
+        _active_caption_words = _count_spoken_words_in_srt(es_srt_path or srt_path)
+
+        if (not es_srt_path and not (srt_path and srt_path.exists())) or (allow_official_commentary and _active_caption_words < 12):
+            tl_lower = (original_title or "").lower()
+            is_visual_showcase = (
+                mode in ("gameplay", "clean")
+                or confirmed_no_speech
+                or allow_official_commentary
+                or any(
+                    kw in tl_lower
+                    for kw in (
+                        "gameplay", "pre-load", "preload", "trailer", "teaser",
+                        "comparison", "comparativa", "physics", "físicas", "fisicas",
+                        "graphics", "gráficos", "graficos", "rage 9", "4k", "60fps",
+                        "detail", "detalle", "showcase", "captura"
+                    )
                 )
             )
-        )
-        if is_visual_showcase:
-            print("[*] Clip visual/gameplay/oficial sin narración extensa: conservando sonido auténtico en modo gameplay.")
-            mode = "gameplay"
+            if is_visual_showcase:
+                print("[*] Clip visual/gameplay/oficial sin narración extensa: conservando sonido auténtico en modo gameplay.")
+                mode = "gameplay"
 
-    # Blindaje Editorial: Si el contenido tiene voz original en otro idioma y no se pudo traducir, abortar para no publicar sin subtítulos en español.
-    # Si es ingesta manual o gameplay/visual sin locución, se permite procesar.
-    if lang_to_use != "es" and not es_srt_path and not is_manual_ingest and mode not in ("gameplay", "clean"):
-        print(f"[!] [Blindaje Editorial] El vídeo original está en {lang_to_use.upper()} pero no se pudo traducir al español.")
-        print("[!] Abortando procesamiento para proteger el canal de vídeos sin traducir.")
-        try:
-            from .telegram_bot import send_telegram_alert
-            send_telegram_alert(
-                f"🛡️ *[Blindaje Editorial]* Vídeo '{original_title[:45]}...' omitido:\n"
-                f"Está en {lang_to_use.upper()} y la traducción al español no estuvo disponible. Se protege el canal contra contenido en inglés."
-            )
-        except Exception:
-            pass
-        clean_temp_directory(video_id)
-        return None
+        # Blindaje Editorial: Si el contenido tiene voz original en otro idioma y no se pudo traducir, abortar para no publicar sin subtítulos en español.
+        # Si es ingesta manual o gameplay/visual sin locución, se permite procesar.
+        if lang_to_use != "es" and not es_srt_path and not is_manual_ingest and mode not in ("gameplay", "clean"):
+            print(f"[!] [Blindaje Editorial] El vídeo original está en {lang_to_use.upper()} pero no se pudo traducir al español.")
+            print("[!] Abortando procesamiento para proteger el canal de vídeos sin traducir.")
+            try:
+                from .telegram_bot import send_telegram_alert
+                send_telegram_alert(
+                    f"🛡️ *[Blindaje Editorial]* Vídeo '{original_title[:45]}...' omitido:\n"
+                    f"Está en {lang_to_use.upper()} y la traducción al español no estuvo disponible. Se protege el canal contra contenido en inglés."
+                )
+            except Exception:
+                pass
+            clean_temp_directory(video_id)
+            return None
 
     # 4. Doblaje de voz neural en español (obligatorio en autónomo para voz en inglés si AUTO_DUB_ENGLISH=true, o bajo demanda en modo dub)
     # En anuncios oficiales de Rockstar (allow_official_commentary=True), JAMÁS doblar los subtítulos automáticos de música/canciones;
     # preservar el audio original de Rockstar con subtítulos en español.
-    dub_audio_path = None
-    if allow_official_commentary and not is_manual_ingest:
-        print("[*] Anuncio oficial de Rockstar: preservando banda sonora/audio original sin doblar canciones con TTS.")
-        should_dub = False
-    elif skip_tts_for_gameplay:
-        print("[*] Gameplay con audio auténtico preservado: usando subtítulos en español sin doblaje TTS encima.")
-        should_dub = False
-    else:
-        should_dub = (mode in ["dub", "voice"]) or (
-            AUTO_DUB_ENGLISH and audio_needs_dub and not is_manual_ingest and mode not in ["gameplay", "clean"]
-        )
-    if should_dub and es_srt_path and audio_needs_dub:
-        dub_audio_path = TEMP_DIR / f"{video_id}_es_voice.mp3"
-        print(f"[*] Modo voz activa (ES Neural). Generando locución en español...")
-        if generate_voiceover(es_srt_path, dub_audio_path, max_duration=clip_dur_sec or None):
-            mode = "dub"
+    if not multi_beat_active:
+        dub_audio_path = None
+        if allow_official_commentary and not is_manual_ingest:
+            print("[*] Anuncio oficial de Rockstar: preservando banda sonora/audio original sin doblar canciones con TTS.")
+            should_dub = False
+        elif skip_tts_for_gameplay:
+            print("[*] Gameplay con audio auténtico preservado: usando subtítulos en español sin doblaje TTS encima.")
+            should_dub = False
         else:
-            dub_audio_path = None
+            should_dub = (mode in ["dub", "voice"]) or (
+                AUTO_DUB_ENGLISH and audio_needs_dub and not is_manual_ingest and mode not in ["gameplay", "clean"]
+            )
+        if should_dub and es_srt_path and audio_needs_dub:
+            dub_audio_path = TEMP_DIR / f"{video_id}_es_voice.mp3"
+            print(f"[*] Modo voz activa (ES Neural). Generando locución en español...")
+            if generate_voiceover(es_srt_path, dub_audio_path, max_duration=clip_dur_sec or None):
+                mode = "dub"
+            else:
+                dub_audio_path = None
 
     # 4b. Protocolo Innegociable de Vitalidad Acústica y Narrativa (Anti-Silencio / Anti-Mute)
     from .audio_shield import validate_audio_and_speech_vitality
@@ -838,7 +864,7 @@ def process_single_video(
 
     from .ai_selector import is_location_reward_guide
     _tl_orig = (original_title or "").lower()
-    is_caspahz_guide = is_location_reward_guide(original_title) or any(
+    is_caspahz_guide = multi_beat_active or is_location_reward_guide(original_title) or any(
         k in _tl_orig for k in (
             "location", "walkthrough", "guide", "secret", "ubicacion", "ubicación",
             "secreto", "guia", "guía", "truco", "oculto", "oculta", "easter egg"

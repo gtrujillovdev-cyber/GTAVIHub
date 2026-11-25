@@ -96,11 +96,17 @@ def _visual_appeal_adjustment(item: Dict[str, Any]) -> float:
     elif is_pure_physics and not is_location_guide:
         delta -= 25.0
 
-    # 2. DURACIÓN (Shorts nativos de guías 12-65s tienen máxima prioridad: ya traen la explicación completa)
-    if 12 <= dur <= 65:
-        delta += 25.0 if is_location_guide else 12.0
-    elif dur > 360 and not item.get("allow_long_clipping"):
-        delta -= 15.0
+    # 2. DURACIÓN: con Multi-Beat activo, priorizar guías largas 16:9 (>=90s) sobre Shorts ya editados de terceros
+    if os.getenv("GUIDE_MULTI_BEAT_ENABLED", "true").lower() in ("true", "1", "yes"):
+        if 90 <= dur <= 900 and is_location_guide:
+            delta += 30.0
+        elif 12 <= dur <= 65:
+            delta -= 20.0
+    else:
+        if 12 <= dur <= 65:
+            delta += 25.0 if is_location_guide else 12.0
+        elif dur > 360 and not item.get("allow_long_clipping"):
+            delta -= 15.0
 
     return delta
 
@@ -240,14 +246,23 @@ def select_best_candidate_ai(
         return s
 
     base_pool = sorted(base_pool, key=_pre_rank, reverse=True)
-    # Prioridad absoluta a Shorts nativos de guías/localizaciones (12-65s) sobre vídeos largos 16:9
-    native_guide_shorts = [
-        c for c in base_pool
-        if 12 <= float(c.get("duration") or 0) <= 65
-        and _visual_appeal_adjustment(c) >= 35.0
-    ]
-    if native_guide_shorts:
-        base_pool = native_guide_shorts
+    if os.getenv("GUIDE_MULTI_BEAT_ENABLED", "true").lower() in ("true", "1", "yes"):
+        # Prioridad a guías largas 16:9 limpias (>= 90s) para compilar Shorts Multi-Beat 100% originales
+        long_guide_pool = [
+            c for c in base_pool
+            if float(c.get("duration") or 0) >= 90
+            and _visual_appeal_adjustment(c) >= 35.0
+        ]
+        if long_guide_pool:
+            base_pool = long_guide_pool
+    else:
+        native_guide_shorts = [
+            c for c in base_pool
+            if 12 <= float(c.get("duration") or 0) <= 65
+            and _visual_appeal_adjustment(c) >= 35.0
+        ]
+        if native_guide_shorts:
+            base_pool = native_guide_shorts
     # Limitar a los 15 mejores según ranking dinámico para la IA
     pool = base_pool[:15]
 

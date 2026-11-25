@@ -145,11 +145,11 @@ TRANSCRIPCIÓN CON TIMESTAMPS:
 {transcript_txt or "(Sin transcripción; reparte los 4 actos coherentemente dentro de la duración)"}
 
 TAREA:
-Construye una MINI-GUÍA COMPLETA de 4 actos (4 cortes de distintos momentos del vídeo largo) que sumen entre 32 y 42 segundos totales:
-1. Acto 1 "reward_hook" (4-6s): El momento donde ya se ve la RECOMPENSA final (el coche, arma o dinero). La narración anuncia DIRECTAMENTE qué consigues (PROHIBIDO hacer preguntas).
-2. Acto 2 "map_location" (6-9s): El momento donde se muestra el MAPA o ubicación exacta en Leonida/Vice City.
-3. Acto 3 "action_steps" (10-15s): El paso clave (entrada, guardia, truco, ubicación dentro de la zona).
-4. Acto 4 "claim_payoff" (8-12s): Recogida de la recompensa o conducción final.
+Construye una MINI-GUÍA COMPLETA de 4 actos (4 cortes de distintos momentos del vídeo largo) que sumen entre 22 y 34 segundos totales:
+1. Acto 1 "reward_hook" (3.5-4.5s): El momento donde ya se ve la RECOMPENSA final (el coche, arma o dinero). La narración anuncia DIRECTAMENTE qué consigues en 1 frase corta (10-14 palabras, PROHIBIDO hacer preguntas).
+2. Acto 2 "map_location" (5-8s): El momento donde se muestra el MAPA o ubicación exacta en Leonida/Vice City.
+3. Acto 3 "action_steps" (7-12s): El paso clave (entrada, guardia, truco, ubicación dentro de la zona).
+4. Acto 4 "claim_payoff" (6-9s): Recogida de la recompensa o conducción final.
 
 REGLAS ESTRICTAS:
 - Cada beat debe tener 0 <= start_sec < end_sec <= {max(10.0, duration - 1.0):.1f}, con duración entre 4.0s y 15.0s.
@@ -356,3 +356,90 @@ def sync_beats_with_voiceover(
     finally:
         for p in tmp_parts:
             p.unlink(missing_ok=True)
+
+
+def build_multi_beat_guide_package(
+    url: str,
+    video_id: str,
+    source_video: Path,
+    work_dir: Path = TEMP_DIR,
+) -> Optional[Tuple[Path, Path, Path, Dict[str, Any]]]:
+    """
+    Pipeline completo de compilación Multi-Beat 16:9 -> 9:16:
+    1. Lee transcripción + capítulos del vídeo largo.
+    2. Planifica 4 actos con Gemini (Recompensa -> Mapa -> Pasos -> Cobro).
+    3. Sintetiza voz por acto y ajusta cada corte a la duración exacta de su voz (0 huecos mudos).
+    4. Compila el vídeo maestro y devuelve (comp_mp4, srt_path, dub_mp3, plan).
+    """
+    try:
+        ctx = fetch_long_guide_context(url, video_id, work_dir)
+        dur = float(ctx.get("duration") or 0)
+        if dur < 60.0:
+            return None
+        plan = plan_multi_beat_guide(ctx.get("title", ""), dur, ctx.get("chapters") or [], ctx.get("segments") or [])
+        if not plan or not plan.get("beats"):
+            return None
+
+        dub_mp3 = work_dir / f"{video_id}_mb_dub.mp3"
+        synced_beats, ok_tts = sync_beats_with_voiceover(plan["beats"], dur, dub_mp3, work_dir)
+        if not ok_tts or not synced_beats:
+            return None
+
+        comp_mp4 = work_dir / f"{video_id}_mb_compiled.mp4"
+        srt_path = work_dir / f"{video_id}_mb_es.srt"
+        ok_vid, _ = compile_multi_beat_video(source_video, synced_beats, comp_mp4, srt_path)
+        if not ok_vid or not comp_mp4.exists():
+            return None
+
+        return comp_mp4, srt_path, dub_mp3, plan
+    except Exception as e:
+        print(f"[GuideCompiler] Aviso fallback a flujo estándar: {e}")
+        return None
+
+
+def build_multi_beat_guide_package_from_url(
+    url: str,
+    video_id: str,
+    work_dir: Path = TEMP_DIR,
+) -> Optional[Tuple[Path, Path, Path, Dict[str, Any]]]:
+    """
+    Descarga y compila un Short Multi-Beat directamente desde una URL de guía larga 16:9 (>= 90s).
+    Si el vídeo es corto (< 90s) o no es guía multi-acto, devuelve None para usar el flujo estándar.
+    """
+    if "/shorts/" in (url or "").lower():
+        return None
+    src_mp4 = work_dir / f"{video_id}_mb_src.mp4"
+    try:
+        ctx = fetch_long_guide_context(url, video_id, work_dir)
+        dur = float(ctx.get("duration") or 0)
+        if dur < 90.0:
+            return None
+        plan = plan_multi_beat_guide(ctx.get("title", ""), dur, ctx.get("chapters") or [], ctx.get("segments") or [])
+        if not plan or not plan.get("beats"):
+            return None
+
+        dub_mp3 = work_dir / f"{video_id}_mb_dub.mp3"
+        synced_beats, ok_tts = sync_beats_with_voiceover(plan["beats"], dur, dub_mp3, work_dir)
+        if not ok_tts or not synced_beats:
+            return None
+
+        dl_res = subprocess.run([
+            sys.executable, "-m", "yt_dlp", "--impersonate", "chrome", "--no-check-certificates",
+            "-f", "bestvideo[height<=1080][ext=mp4]+bestaudio[ext=m4a]/best[height<=1080][ext=mp4]/best",
+            "--merge-output-format", "mp4", "-o", str(src_mp4), url
+        ], capture_output=True, text=True, timeout=180)
+        if dl_res.returncode != 0 or not src_mp4.exists():
+            return None
+
+        comp_mp4 = work_dir / f"{video_id}_mb_compiled.mp4"
+        srt_path = work_dir / f"{video_id}_mb_es.srt"
+        ok_vid, _ = compile_multi_beat_video(src_mp4, synced_beats, comp_mp4, srt_path)
+        if not ok_vid or not comp_mp4.exists():
+            return None
+
+        return comp_mp4, srt_path, dub_mp3, plan
+    except Exception as e:
+        print(f"[GuideCompiler] Aviso fallback desde URL: {e}")
+        return None
+    finally:
+        src_mp4.unlink(missing_ok=True)
