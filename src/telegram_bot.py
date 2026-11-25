@@ -192,6 +192,20 @@ def answer_callback_query(
     except Exception:
         return False
 
+def _track_sent_media(resp: requests.Response, chat_id: Any, kind: str, label: str = "") -> None:
+    """Registra el message_id de fotos/vídeos enviados para limpieza automática en Telegram."""
+    try:
+        if resp.status_code != 200:
+            return
+        msg_id = resp.json().get("result", {}).get("message_id")
+        if not msg_id:
+            return
+        from scripts.clean_telegram_media import log_telegram_media_message
+        log_telegram_media_message(chat_id, msg_id, kind=kind, label=label)
+    except Exception:
+        pass
+
+
 def send_telegram_photo(
     photo_path: Path,
     caption: str,
@@ -217,6 +231,7 @@ def send_telegram_photo(
                     data["reply_markup"] = json.dumps(reply_markup)
                 res = requests.post(url, data=data, files=files, timeout=20)
                 if res.status_code == 200:
+                    _track_sent_media(res, chat_id, "photo", photo_path.name)
                     return True
                 # Si falló por formato Markdown, reintentar de inmediato sin parse_mode
                 if res.status_code != 200 and "parse_mode" in data:
@@ -224,6 +239,7 @@ def send_telegram_photo(
                     photo.seek(0)
                     res2 = requests.post(url, data=data, files={"photo": photo}, timeout=20)
                     if res2.status_code == 200:
+                        _track_sent_media(res2, chat_id, "photo", photo_path.name)
                         return True
                 print(f"[Telegram] Error {res.status_code} enviando foto: {res.text}")
         except Exception as e:
@@ -318,7 +334,9 @@ def send_telegram_video(
                     if thumb_file:
                         thumb_file.seek(0)
                     res = requests.post(url, data=data, files=files, timeout=120)
-                if res.status_code != 200:
+                if res.status_code == 200:
+                    _track_sent_media(res, chat_id, "video", video_path.name)
+                else:
                     print(f"[Telegram] Error {res.status_code} enviando vídeo: {res.text}")
                 return res.status_code == 200
             finally:
