@@ -1,4 +1,5 @@
 import os
+import json
 import textwrap
 import subprocess
 from pathlib import Path
@@ -343,33 +344,67 @@ def render_caspahz_cover_image(
     output_cover_path: Path,
     title_text: str,
     category_hint: str = "",
+    clean_source_video: Optional[Path] = None,
 ) -> Optional[Path]:
     """
     Genera una portada vertical 9:16 full-bleed estilo Caspahz para inyectar en Frame 0 (0.12s):
-    - Recorta/escala la zona central de gameplay a 100% pantalla 9:16 (sin barras negras/blur).
-    - Degradado superior oscuro (42% altura) + 2 líneas GIGANTES sin caja ni píldora:
-      Línea 1 en blanco puro + Línea 2 en color neón temático con sombra paralela suave.
+    - Muestrea `clean_source_video` (sin subtítulos quemados) a lo largo de todo el clip (15%-90%)
+      y usa Gemini Vision para elegir el mejor frame de la RECOMPENSA (coche, arma, personaje) sin mapa.
+    - Recorta/escala la zona central a 100% pantalla 9:16 (sin barras negras/blur).
+    - Degradado superior oscuro (42% altura) + 2 líneas GIGANTES estilo Caspahz.
     """
     target_w, target_h = CANVAS_WIDTH, CANVAS_HEIGHT
+    total_dur = 25.0
     try:
         probe = subprocess.run(
             ["ffprobe", "-v", "quiet", "-select_streams", "v:0",
-             "-show_entries", "stream=width,height", "-of", "csv=s=x:p=0", str(video_path)],
+             "-show_entries", "stream=width,height", "-show_entries", "format=duration",
+             "-of", "json", str(video_path)],
             capture_output=True, text=True, timeout=8
         )
-        if probe.returncode == 0 and "x" in probe.stdout:
-            pw, ph = probe.stdout.strip().splitlines()[0].split("x")
-            if int(pw) > 0 and int(ph) > 0:
-                target_w, target_h = int(pw), int(ph)
+        if probe.returncode == 0 and probe.stdout:
+            pdata = json.loads(probe.stdout)
+            v_st = (pdata.get("streams") or [{}])[0]
+            if int(v_st.get("width", 0)) > 0 and int(v_st.get("height", 0)) > 0:
+                target_w, target_h = int(v_st["width"]), int(v_st["height"])
+            dur_v = float((pdata.get("format") or {}).get("duration") or 0)
+            if dur_v > 4.0:
+                total_dur = dur_v
     except Exception:
         pass
 
-    from PIL import ImageStat
-    best_frame = None
-    best_energy = -1.0
-    for ts in (1.5, 4.0, 7.5, 11.0):
-        cand = output_cover_path.with_suffix(f".caspahz_{ts:.1f}.jpg")
-        if extract_keyframe(video_path, cand, timestamp_sec=ts) and cand.exists():
+    sample_video = clean_source_video if (clean_source_video and Path(clean_source_video).exists()) else video_path
+    sample_times = [round(total_dur * r, 1) for r in (0.15, 0.35, 0.55, 0.75, 0.90)]
+    candidates: list[Path] = []
+    for idx, ts in enumerate(sample_times):
+        cand = output_cover_path.with_suffix(f".caspahz_{idx}.jpg")
+        if extract_keyframe(sample_video, cand, timestamp_sec=ts) and cand.exists():
+            candidates.append(cand)
+
+    best_frame: Optional[Path] = None
+    if candidates and os.getenv("GEMINI_API_KEY", "").strip():
+        try:
+            from google.genai import types
+            from .translator import get_gemini_client, generate_content_with_retry, clean_srt_response
+            parts = [types.Part.from_bytes(data=c.read_bytes(), mime_type="image/jpeg") for c in candidates]
+            parts.append(
+                f"Te paso {len(candidates)} fotogramas de un clip de GTA 6 sobre '{title_text}'. "
+                "Elige el índice (0 a N-1) que muestre MEJOR la recompensa principal (el coche, arma, dinero o personaje en gameplay) "
+                "y que NO sea un mapa, minimapa grande ni menú. "
+                'Responde SOLO JSON: {"best_idx": 2}'
+            )
+            resp = generate_content_with_retry(client=get_gemini_client(), contents=parts)
+            data = json.loads(clean_srt_response(resp.text or "{}"))
+            b_idx = int(data.get("best_idx", 0))
+            if 0 <= b_idx < len(candidates):
+                best_frame = candidates[b_idx]
+        except Exception as e:
+            print(f"[Caspahz Cover] Fallback selector visual: {e}")
+
+    if best_frame is None and candidates:
+        from PIL import ImageStat
+        best_energy = -1.0
+        for cand in candidates:
             try:
                 c_img = Image.open(cand).convert("RGB").resize((270, 480), Image.Resampling.LANCZOS)
                 stat = ImageStat.Stat(c_img)
@@ -378,26 +413,33 @@ def render_caspahz_cover_image(
                 energy = sum(stat.stddev) * 1.8 + luma * 0.9 + dark_pen
                 if energy > best_energy:
                     best_energy = energy
-                    if best_frame and best_frame.exists():
-                        best_frame.unlink(missing_ok=True)
                     best_frame = cand
-                else:
-                    cand.unlink(missing_ok=True)
             except Exception:
-                cand.unlink(missing_ok=True)
+                pass
 
     if best_frame and best_frame.exists():
         img = Image.open(best_frame).convert("RGB")
-        best_frame.unlink(missing_ok=True)
     else:
         img = Image.new("RGB", (target_w, target_h), (20, 22, 30))
 
-    # Full-bleed center crop: si el vídeo viene con bandas 4:5 arriba/abajo, recortar el área central
+    for cand in candidates:
+        try:
+            cand.unlink(missing_ok=True)
+        except Exception:
+            pass
+
+    # Full-bleed center crop: asegurar relleno 9:16 limpio sin bandas laterales ni negras
     iw, ih = img.size
-    if ih > iw:
-        # Tomar el 62% central vertical y escalar a 9:16 fill (zoom limpio centrado en el coche/arma)
-        crop_h = int(ih * 0.62)
-        crop_w = int(crop_h * (target_w / target_h))
+    target_ratio = target_w / target_h
+    if iw > ih:
+        # Fuente horizontal 16:9 -> recorte vertical 9:16 centrado en la acción
+        crop_w = int(ih * target_ratio)
+        left = max(0, (iw - crop_w) // 2)
+        img = img.crop((left, 0, left + crop_w, ih))
+    elif ih > iw:
+        # Fuente vertical ya renderizada -> recortar 65% central para quitar bandas/subtítulos
+        crop_h = int(ih * 0.65)
+        crop_w = int(crop_h * target_ratio)
         if crop_w <= iw and crop_w > 100:
             left = (iw - crop_w) // 2
             top = (ih - crop_h) // 2
