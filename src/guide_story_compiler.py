@@ -11,6 +11,7 @@ Transforma guías largas horizontales (2–15 min) en Shorts estilo Caspahz de 4
 import json
 import os
 import re
+import sys
 import subprocess
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
@@ -73,7 +74,9 @@ def fetch_long_guide_context(url: str, video_id: str, work_dir: Path = TEMP_DIR)
     work_dir.mkdir(parents=True, exist_ok=True)
     sub_prefix = work_dir / f"guide_ctx_{video_id}"
     cmd = [
-        "python3", "-m", "yt_dlp",
+        sys.executable, "-m", "yt_dlp",
+        "--impersonate", "chrome",
+        "--no-check-certificates",
         "--skip-download",
         "--write-auto-sub", "--write-sub",
         "--sub-lang", "en,es",
