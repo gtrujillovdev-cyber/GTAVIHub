@@ -5,6 +5,7 @@ from unittest.mock import patch
 from src.thumbnail_generator import (
     _classify_caspahz_cover_badge,
     _condense_caspahz_cover_title,
+    _split_caspahz_two_lines,
 )
 from src.social_publisher import AntiBanValidator
 
@@ -32,6 +33,12 @@ class TestCaspahzCoverAndReliability(unittest.TestCase):
     def test_zero_daily_limit_returns_false_silently(self):
         with patch.dict("os.environ", {"MAX_DAILY_UPLOADS_INSTAGRAM": "0"}):
             self.assertFalse(AntiBanValidator.check_daily_limit("instagram"))
+
+    def test_split_caspahz_two_lines(self):
+        l1, l2, col = _split_caspahz_two_lines("CÓMO ROBAR COCHES Y GANAR $500K EN GTA 6")
+        self.assertEqual(l1, "DINERO")
+        self.assertEqual(l2, "$500K")
+        self.assertEqual(col, (184, 255, 60))
 
 
 if __name__ == "__main__":

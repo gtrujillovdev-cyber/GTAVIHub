@@ -594,7 +594,15 @@ class SocialPublisher:
                                 file_input = f_in
                                 break
                     if file_input.count() == 0:
-                        print("[!] Selector de subida no encontrado en TikTok.")
+                        # Fallback a ruta alternativa de TikTok Studio si el DOM inicial no cargó el input
+                        try:
+                            page.goto("https://www.tiktok.com/tiktokstudio/upload?lang=en", wait_until="domcontentloaded", timeout=35000)
+                            page.wait_for_selector("input[type='file']", state="attached", timeout=20000)
+                            file_input = page.locator("input[type='file']").first
+                        except Exception:
+                            pass
+                    if file_input.count() == 0:
+                        print(f"[!] Selector de subida no encontrado en TikTok (url={page.url}).")
                         return None
 
                     file_input.set_input_files(str(compat_path))

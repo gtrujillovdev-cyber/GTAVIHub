@@ -313,6 +313,31 @@ def _condense_caspahz_cover_title(title_text: str, max_chars: int = 26) -> str:
     return " ".join(out) if out else clean[:max_chars].strip()
 
 
+def _split_caspahz_two_lines(title_text: str, category_hint: str = "") -> tuple[str, str, tuple[int, int, int]]:
+    """
+    Genera exactamente 2 líneas cortas estilo Caspahz (Línea 1 blanca + Línea 2 color vibrante):
+    Ej: ('COCHE', 'GRATIS', (255, 184, 0)), ('DINERO', '+$500K', (184, 255, 60)), ('ARMA', 'OCULTA', (255, 122, 0)).
+    """
+    import re
+    blob = f"{title_text} {category_hint}".lower()
+    # Extraer cantidad de dinero si existe ($500K, $40,000, etc.)
+    money_m = re.search(r"\$\s*[\d,\.]+[kKmM]?", title_text or "")
+
+    if any(k in blob for k in ("dinero", "hora", "método", "metodo", "$", "millon", "money", "duplicar")):
+        line2 = money_m.group(0).replace(" ", "").upper() if money_m else "RÁPIDO"
+        return ("DINERO", line2, (184, 255, 60))
+    if any(k in blob for k in ("arma", "cuchillo", "pistola", "rifle", "gun", "weapon", "knife", "oro", "gold")):
+        line2 = "DE ORO" if ("oro" in blob or "gold" in blob) else "OCULTA"
+        return ("ARMA", line2, (255, 122, 0))
+    if any(k in blob for k in ("coche", "auto", "bugatti", "ferrari", "supercar", "vehic", "moto", "car")):
+        # Intentar extraer marca/modelo o usar GRATIS
+        for model in ("BUGATTI", "FERRARI", "LAMBO", "CHEETAH", "PORSCHE", "GTR"):
+            if model.lower() in blob:
+                return (model, "GRATIS", (255, 184, 0))
+        return ("COCHE", "GRATIS", (255, 184, 0))
+    return ("SECRETO", "GTA 6", (0, 229, 255))
+
+
 def render_caspahz_cover_image(
     video_path: Path,
     output_cover_path: Path,
@@ -320,10 +345,10 @@ def render_caspahz_cover_image(
     category_hint: str = "",
 ) -> Optional[Path]:
     """
-    Genera una portada vertical 9:16 estilo Caspahz para inyectar en Frame 0 (0.12s):
-    - Selecciona el fotograma de gameplay más luminoso y nítido (t >= 1.5s, evitando mapas/oscuridad).
-    - Respeta Safe Zones de YouTube Shorts / TikTok (píldora y titular en tercio superior y=16%-30%).
-    - Mantiene el tercio central 100% limpio para mostrar la recompensa/coche/arma en el feed.
+    Genera una portada vertical 9:16 full-bleed estilo Caspahz para inyectar en Frame 0 (0.12s):
+    - Recorta/escala la zona central de gameplay a 100% pantalla 9:16 (sin barras negras/blur).
+    - Degradado superior oscuro (42% altura) + 2 líneas GIGANTES sin caja ni píldora:
+      Línea 1 en blanco puro + Línea 2 en color neón temático con sombra paralela suave.
     """
     target_w, target_h = CANVAS_WIDTH, CANVAS_HEIGHT
     try:
@@ -367,68 +392,68 @@ def render_caspahz_cover_image(
     else:
         img = Image.new("RGB", (target_w, target_h), (20, 22, 30))
 
+    # Full-bleed center crop: si el vídeo viene con bandas 4:5 arriba/abajo, recortar el área central
+    iw, ih = img.size
+    if ih > iw:
+        # Tomar el 62% central vertical y escalar a 9:16 fill (zoom limpio centrado en el coche/arma)
+        crop_h = int(ih * 0.62)
+        crop_w = int(crop_h * (target_w / target_h))
+        if crop_w <= iw and crop_w > 100:
+            left = (iw - crop_w) // 2
+            top = (ih - crop_h) // 2
+            img = img.crop((left, top, left + crop_w, top + crop_h))
+
     if img.size != (target_w, target_h):
         img = img.resize((target_w, target_h), Image.Resampling.LANCZOS)
 
-    # Realce limpio de color/contraste para que destaque en el grid del feed
-    img = ImageEnhance.Color(img).enhance(1.14)
-    img = ImageEnhance.Contrast(img).enhance(1.12)
-    img = ImageEnhance.Brightness(img).enhance(1.04)
+    # Realce limpio estilo Caspahz (colores vivos + contraste nítido)
+    img = ImageEnhance.Color(img).enhance(1.18)
+    img = ImageEnhance.Contrast(img).enhance(1.14)
+    img = ImageEnhance.Brightness(img).enhance(1.05)
     img = img.convert("RGBA")
 
-    # Viñeta sutil superior para legibilidad de la portada sin oscurecer el gameplay central
+    # Degradado oscuro superior (42% altura) para que las 2 líneas gigantes floten con máximo contraste
     overlay = Image.new("RGBA", (target_w, target_h), (0, 0, 0, 0))
     draw_ov = ImageDraw.Draw(overlay)
-    top_grad_h = int(target_h * 0.36)
+    top_grad_h = int(target_h * 0.42)
     for y in range(top_grad_h):
-        alpha = int(155 * (1.0 - (y / top_grad_h)))
-        draw_ov.line([(0, y), (target_w, y)], fill=(8, 10, 16, alpha))
+        alpha = int(205 * ((1.0 - (y / top_grad_h)) ** 1.35))
+        draw_ov.line([(0, y), (target_w, y)], fill=(6, 8, 12, alpha))
     img = Image.alpha_composite(img, overlay)
 
     draw = ImageDraw.Draw(img)
     scale = target_w / 1080.0
+    line1, line2, accent_rgb = _split_caspahz_two_lines(title_text, category_hint)
 
-    # 1. Píldora de categoría en Safe Zone superior (y = 15.5% de altura)
-    badge_text, badge_bg, badge_fg = _classify_caspahz_cover_badge(title_text, category_hint)
-    badge_font = get_best_font(max(28, int(40 * scale)))
-    bb = draw.textbbox((0, 0), badge_text, font=badge_font)
-    bw, bh = bb[2] - bb[0], bb[3] - bb[1]
-    pad_x, pad_y = int(28 * scale), int(14 * scale)
-    pill_w, pill_h = bw + pad_x * 2, bh + pad_y * 2
-    pill_x = (target_w - pill_w) // 2
-    pill_y = int(target_h * 0.155)
-    draw.rounded_rectangle(
-        [pill_x, pill_y, pill_x + pill_w, pill_y + pill_h],
-        radius=int(18 * scale),
-        fill=badge_bg + (245,),
-    )
-    draw.text(
-        (pill_x + pad_x - bb[0], pill_y + pad_y - bb[1]),
-        badge_text,
-        font=badge_font,
-        fill=badge_fg + (255,),
-    )
+    def _fit_font(text: str, base_px: int):
+        size = int(base_px * scale)
+        max_text_w = int(target_w * 0.86)
+        while size > int(68 * scale):
+            f = get_best_font(size)
+            bb = draw.textbbox((0, 0), text, font=f)
+            if (bb[2] - bb[0]) <= max_text_w:
+                return f
+            size -= int(8 * scale)
+        return get_best_font(max(48, size))
 
-    # 2. Titular corto bold (1-2 líneas) justo debajo de la píldora
-    headline = _condense_caspahz_cover_title(title_text, max_chars=26)
-    head_font = get_best_font(max(44, int(74 * scale)))
-    wrapped = textwrap.wrap(headline, width=14)[:2]
-    stroke_w = max(4, int(8 * scale))
-    cur_y = pill_y + pill_h + int(22 * scale)
-    for line in wrapped:
-        lbb = draw.textbbox((0, 0), line, font=head_font)
-        lw, lh = lbb[2] - lbb[0], lbb[3] - lbb[1]
-        lx = (target_w - lw) // 2 - lbb[0]
-        draw.text(
-            (lx, cur_y - lbb[1]),
-            line,
-            font=head_font,
-            fill=(255, 255, 255, 255),
-            stroke_width=stroke_w,
-            stroke_fill=(0, 0, 0, 255),
-        )
-        cur_y += lh + int(16 * scale)
+    font1 = _fit_font(line1, 155)
+    font2 = _fit_font(line2, 165)
+
+    y_cur = int(target_h * 0.085)
+    shadow_off = max(4, int(8 * scale))
+    for txt, fnt, col in (
+        (line1, font1, (255, 255, 255, 255)),
+        (line2, font2, accent_rgb + (255,)),
+    ):
+        bb = draw.textbbox((0, 0), txt, font=fnt)
+        tw, th = bb[2] - bb[0], bb[3] - bb[1]
+        tx = (target_w - tw) // 2 - bb[0]
+        ty = y_cur - bb[1]
+        # Sombra suave paralela (sin contorno grueso)
+        draw.text((tx + shadow_off, ty + shadow_off), txt, font=fnt, fill=(0, 0, 0, 185))
+        draw.text((tx, ty), txt, font=fnt, fill=col)
+        y_cur += th + int(22 * scale)
 
     img.convert("RGB").save(output_cover_path, "JPEG", quality=95)
-    print(f"[✓ Caspahz Cover] Portada Frame 0 generada ({badge_text}: '{headline}') -> {output_cover_path.name}")
+    print(f"[✓ Caspahz Cover] Portada 9:16 generada ('{line1} / {line2}') -> {output_cover_path.name}")
     return output_cover_path
