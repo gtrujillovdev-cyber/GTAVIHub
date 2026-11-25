@@ -149,7 +149,7 @@ Construye una MINI-GUÍA COMPLETA de 4 actos (4 cortes de distintos momentos del
 1. Acto 1 "reward_hook" (3.5-4.5s): El momento donde ya se ve la RECOMPENSA final (el coche, arma o dinero). La narración anuncia DIRECTAMENTE qué consigues en 1 frase corta (10-14 palabras, PROHIBIDO hacer preguntas).
 2. Acto 2 "map_location" (5-8s): El momento donde se muestra el MAPA o ubicación exacta en Leonida/Vice City.
 3. Acto 3 "action_steps" (7-12s): El paso clave (entrada, guardia, truco, ubicación dentro de la zona).
-4. Acto 4 "claim_payoff" (6-9s): Recogida de la recompensa o conducción final.
+4. Acto 4 "claim_payoff" (6-9s): Recogida de la recompensa o conducción final, cerrando SIEMPRE con un disparador natural de guardado de 3-4 palabras (ej: "Guárdalo para cuando juegues.").
 
 REGLAS ESTRICTAS:
 - Cada beat debe tener 0 <= start_sec < end_sec <= {max(10.0, duration - 1.0):.1f}, con duración entre 4.0s y 15.0s.
@@ -301,7 +301,10 @@ def sync_beats_with_voiceover(
             if tts_dur <= 0.5:
                 continue
 
-            pad_tail = 0.25 if idx == 0 else 0.30
+            if idx == len(beats) - 1:
+                pad_tail = 0.08  # Corte en seco final para bucle instantáneo (>100% completion rate)
+            else:
+                pad_tail = 0.22 if idx == 0 else 0.26
             target_dur = max(3.8, tts_dur + pad_tail)
             s = float(b["start_sec"])
             max_avail = max(4.0, float(source_duration or 600.0) - s - 0.2)

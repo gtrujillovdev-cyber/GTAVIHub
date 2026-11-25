@@ -1623,26 +1623,26 @@ def render_final_video(
                 f"[v_split_top][vbot]overlay=0:{y2}[v_framed]"
             )
         elif effective_preset == "FIT":
-            # Formato FIT: 16:9 completo sin recorte lateral sobre Velvet Blur reactivo
+            # Formato FIT: 16:9 completo sin recorte lateral sobre Velvet Blur reactivo luminoso
             v_base = (
                 "[0:v]split[v1][v2];"
-                f"[v1]scale={bg_scale_w}:{bg_scale_h},boxblur=10:2,scale={canvas_w}:{canvas_h}:flags=bilinear,setsar=1,eq=brightness=-0.14:contrast=1.06:saturation=1.18[bg];"
-                f"[v2]scale={fg_w}:{fg_h}:force_original_aspect_ratio=decrease,pad={fg_w}:{fg_h}:(ow-iw)/2:(oh-ih)/2:color=black,unsharp=3:3:0.6:3:3:0.0,eq=contrast=1.06:saturation=1.12[fg];"
+                f"[v1]scale={bg_scale_w}:{bg_scale_h},boxblur=10:2,scale={canvas_w}:{canvas_h}:flags=bilinear,setsar=1,eq=brightness=-0.05:contrast=1.04:saturation=1.16[bg];"
+                f"[v2]scale={fg_w}:{fg_h}:force_original_aspect_ratio=decrease,pad={fg_w}:{fg_h}:(ow-iw)/2:(oh-ih)/2:color=black,unsharp=3:3:0.6:3:3:0.0,eq=brightness=0.06:contrast=1.04:saturation=1.15:gamma=1.14[fg];"
                 f"[bg][fg]overlay=0:{fg_y}[v_framed]"
             )
         else:
-            # Formato D / C: Plano recortado inmersivo sobre fondo Velvet Blur + acabado Vice City HDR
+            # Formato D / C: Plano recortado inmersivo sobre fondo Velvet Blur luminoso + realce de sombras
             v_base = (
                 "[0:v]split[v1][v2];"
-                f"[v1]scale={bg_scale_w}:{bg_scale_h},boxblur=10:2,scale={canvas_w}:{canvas_h}:flags=bilinear,setsar=1,eq=brightness=-0.14:contrast=1.06:saturation=1.18[bg];"
-                f"[v2]scale={fg_w}:{fg_h}:force_original_aspect_ratio=increase,crop={fg_w}:{fg_h},unsharp=3:3:0.75:3:3:0.0,eq=contrast=1.09:saturation=1.18[fg];"
+                f"[v1]scale={bg_scale_w}:{bg_scale_h},boxblur=10:2,scale={canvas_w}:{canvas_h}:flags=bilinear,setsar=1,eq=brightness=-0.05:contrast=1.04:saturation=1.16[bg];"
+                f"[v2]scale={fg_w}:{fg_h}:force_original_aspect_ratio=increase,crop={fg_w}:{fg_h},unsharp=3:3:0.75:3:3:0.0,eq=brightness=0.05:contrast=1.04:saturation=1.15:gamma=1.12[fg];"
                 f"[bg][fg]overlay=0:{fg_y}[v_framed]"
             )
     elif is_vertical:
-        # Formato C (Nativo Vertical 9:16): Pantalla completa sin bandas + acabado Vice City HDR
-        v_base = f"[0:v]scale={canvas_w}:{canvas_h}:force_original_aspect_ratio=increase,crop={canvas_w}:{canvas_h},unsharp=3:3:0.75:3:3:0.0,eq=contrast=1.09:saturation=1.18[v_framed]"
+        # Formato C (Nativo Vertical 9:16): Pantalla completa sin bandas + realce luminoso
+        v_base = f"[0:v]scale={canvas_w}:{canvas_h}:force_original_aspect_ratio=increase,crop={canvas_w}:{canvas_h},unsharp=3:3:0.75:3:3:0.0,eq=brightness=0.05:contrast=1.04:saturation=1.15:gamma=1.12[v_framed]"
     else:
-        v_base = "[0:v]unsharp=3:3:0.75:3:3:0.0,eq=contrast=1.09:saturation=1.18[v_framed]"
+        v_base = "[0:v]unsharp=3:3:0.75:3:3:0.0,eq=brightness=0.05:contrast=1.04:saturation=1.15:gamma=1.12[v_framed]"
     
     filter_chains.append(v_base)
     filter_chains.append("[v_framed]setsar=1[v_sar]")

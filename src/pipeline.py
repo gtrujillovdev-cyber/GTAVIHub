@@ -873,9 +873,10 @@ def process_single_video(
 
     if is_split_comparison:
         target_preset = "SPLIT"
-    elif is_caspahz_guide or is_comparison_or_breakdown:
-        # Formato C (4:5 / 1080x1350 @ y=285 con Ambient Blur Canvas):
-        # Réplica exacta del encuadre de Caspahz que mantiene el minimapa/HUD visible.
+    elif is_caspahz_guide:
+        # Formato D Luminoso (89.1% Edge-to-Bottom): máxima retención 0-3s en TikTok FYP y YouTube Shorts
+        target_preset = "D"
+    elif is_comparison_or_breakdown:
         target_preset = "C"
     else:
         # Formato D (1080x1600 / 83.3% de pantalla): reencuadre vertical inmersivo obligatorio según Regla 5.1 de GEMINI.md
