@@ -291,12 +291,22 @@ def compile_multi_beat_video(
     threads = "1" if is_quant_busy() else "2"
     vcodec = "h264_videotoolbox" if os.uname().sysname == "Darwin" else "libx264"
 
-    # Detectar si tiene audio
+    # Detectar dimensiones exactas y si tiene audio
     probe = subprocess.run(
         ["ffprobe", "-v", "quiet", "-select_streams", "a", "-show_entries", "stream=index", "-of", "csv=p=0", str(source_video)],
         capture_output=True, text=True, timeout=8,
     )
     has_audio = bool(probe.stdout.strip())
+    v_probe = subprocess.run(
+        ["ffprobe", "-v", "quiet", "-select_streams", "v:0", "-show_entries", "stream=width,height", "-of", "csv=p=0:s=x", str(source_video)],
+        capture_output=True, text=True, timeout=8,
+    )
+    src_w, src_h = 0, 0
+    if "x" in (v_probe.stdout or ""):
+        try:
+            src_w, src_h = [int(x) for x in v_probe.stdout.strip().splitlines()[0].split("x")[:2]]
+        except Exception:
+            src_w, src_h = 0, 0
 
     inputs: List[str] = []
     v_filters: List[str] = []
@@ -315,12 +325,16 @@ def compile_multi_beat_video(
         dur = e - s
         act_name = str(b.get("act") or "").lower()
         inputs.extend(["-ss", f"{s:.2f}", "-t", f"{dur:.2f}", "-i", str(source_video)])
-        if "map" in act_name:
-            # Zoom suave 1.00 -> 1.08 para que el mapa sea dinámico (nunca imagen congelada)
+        if "map" in act_name and src_w > 0 and src_h > 0:
+            zw = int(round(src_w * 1.08))
+            zh = int(round(src_h * 1.08))
+            zw += zw % 2
+            zh += zh % 2
+            # Paneo/zoom suave con dimensiones finales EXACTAS (src_w x src_h) para concat sin error
             v_filters.append(
                 f"[{idx}:v]setpts=PTS-STARTPTS,"
-                f"scale=iw*1.08:ih*1.08,"
-                f"crop=iw/1.08:ih/1.08:(iw-ow)/2*(1-min(1\\,t/{max(dur, 1.0):.2f})):(ih-oh)/2,"
+                f"scale={zw}:{zh},"
+                f"crop={src_w}:{src_h}:({zw}-{src_w})/2*(1-min(1\\,t/{max(dur, 1.0):.2f})):({zh}-{src_h})/2,"
                 f"setsar=1[v{idx}]"
             )
         else:
