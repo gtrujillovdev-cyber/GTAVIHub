@@ -1268,10 +1268,16 @@ class SocialPublisher:
                             pass
                     if tweet_box is None:
                         raise RuntimeError("No se encontró un cuadro de texto en X (tweetTextarea_0).")
-                    tweet_box.scroll_into_view_if_needed()
-                    tweet_box.click(force=True)
+                    try:
+                        tweet_box.scroll_into_view_if_needed(timeout=4000)
+                        tweet_box.click(force=True, timeout=4000)
+                    except Exception:
+                        tweet_box.evaluate("el => { el.scrollIntoView({block: 'center'}); el.focus(); el.click(); }")
                     time.sleep(0.5)
-                    tweet_box.fill(caption)
+                    try:
+                        tweet_box.fill(caption, timeout=5000)
+                    except Exception:
+                        page.keyboard.insert_text(caption)
                     time.sleep(random.uniform(1.0, 2.0))
 
                     # Adjuntar video
