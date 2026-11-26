@@ -88,11 +88,32 @@ def main() -> int:
     print(f"[✓ X Long Guide] Listo -> {out_mp4.name} ({size_mb:.1f} MB)")
 
     if args.send_telegram:
+        import os
+        import requests
         from src.telegram_bot import send_telegram_video
+        from src.translator import sanitize_banned_words
+
+        clean_title = sanitize_banned_words(title_es).strip()
+        credit = f"Via {creator}" if creator and creator.lower() not in ("rockstar games", "?") else ""
+        tags_line = "#GTA6 #GTAVI #GTAVISpain #GTA6Guias"
+        parts = [clean_title]
+        if credit:
+            parts.append(credit)
+        parts.append(tags_line)
+        x_post_copy = "\n\n".join(parts)[:280]
+
         send_telegram_video(
             out_mp4,
-            f"🐦 *X Long Guide (45-70s · 16:9 nativo)*\n📹 `{out_mp4.name}`\n📦 `{size_mb:.1f} MB`",
+            f"🐦 *X Long Guide listo para subir manual (16:9)*\n📹 `{out_mp4.name}`\n📦 `{size_mb:.1f} MB`\n\n👇 En el siguiente mensaje tienes el texto listo para copiar y pegar en X.",
         )
+        token = os.getenv("TELEGRAM_BOT_TOKEN", "").strip()
+        chat_id = os.getenv("TELEGRAM_CHAT_ID", "").strip()
+        if token and chat_id:
+            requests.post(
+                f"https://api.telegram.org/bot{token}/sendMessage",
+                json={"chat_id": chat_id, "text": x_post_copy},
+                timeout=15,
+            )
 
     if args.publish or args.dry_run:
         from src.social_publisher import SocialPublisher
