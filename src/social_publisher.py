@@ -209,8 +209,12 @@ class AntiBanValidator:
                     if plat_url and str(plat_url).startswith("http"):
                         today_uploads.append(r)
                     continue
-                # 3. Clave genérica para registros legacy (sin 'multiplatform')
-                if platform == "youtube" and r.get("status") in ("completed", "published_via_copilot") and r.get("youtube_title"):
+                # 3. Clave genérica para registros legacy (solo si realmente hubo subida a YouTube, nunca pre-renders locales)
+                if (
+                    platform == "youtube"
+                    and r.get("status") in ("completed", "published_via_copilot")
+                    and (r.get("uploaded_youtube_id") or r.get("youtube_url"))
+                ):
                     today_uploads.append(r)
             if len(today_uploads) >= limit:
                 if not quiet:
