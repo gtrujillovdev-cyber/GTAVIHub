@@ -752,9 +752,13 @@ def render_brand_watermark_pill(
     if custom_asset.exists():
         try:
             wm_img = Image.open(custom_asset).convert("RGBA")
-            target_w = max(180, int(230 * scale_factor))
+            # Más discreta (~155px @ 1080w) y traslúcida (68%) para no distraer ni recortarse en el feed 3:4
+            target_w = max(120, int(155 * scale_factor))
             target_h = int(target_w * (wm_img.height / max(1, wm_img.width)))
             resized = wm_img.resize((target_w, target_h), Image.Resampling.LANCZOS)
+            r_ch, g_ch, b_ch, a_ch = resized.split()
+            a_ch = a_ch.point(lambda a: int(a * 0.68))
+            resized = Image.merge("RGBA", (r_ch, g_ch, b_ch, a_ch))
             resized.save(output_path, "PNG")
             return True
         except Exception as e:
@@ -1687,10 +1691,10 @@ def render_final_video(
         filter_chains.append(f"[{current_v}][{cta_idx}:v]overlay=(W-w)/2:{cta_y}:enable='gte(t,{cta_start:.2f})'[v_cta]")
         current_v = "v_cta"
 
-    # C4) Marca de agua de canal persistente y discreta (esquina superior derecha debajo de cabecera UI iOS/YT)
+    # C4) Marca de agua de canal persistente, discreta y dentro del crop 3:4 del feed (y>=262px @ 1920h)
     if watermark_idx is not None:
-        wm_x = f"W-w-{int(34 * scale_factor)}"
-        wm_y = int(178 * scale_factor)
+        wm_x = f"W-w-{int(38 * scale_factor)}"
+        wm_y = int(262 * scale_factor)
         filter_chains.append(f"[{current_v}][{watermark_idx}:v]overlay={wm_x}:{wm_y}[v_branded]")
         current_v = "v_branded"
 
