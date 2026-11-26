@@ -586,12 +586,12 @@ def render_caspahz_cover_image(
     img = ImageEnhance.Brightness(img).enhance(1.05)
     img = img.convert("RGBA")
 
-    # Degradado oscuro superior (42% altura) para que las 2 líneas gigantes floten con máximo contraste
+    # Degradado oscuro superior (48% altura) para que las 2 líneas gigantes floten dentro del recorte 3:4
     overlay = Image.new("RGBA", (target_w, target_h), (0, 0, 0, 0))
     draw_ov = ImageDraw.Draw(overlay)
-    top_grad_h = int(target_h * 0.42)
+    top_grad_h = int(target_h * 0.48)
     for y in range(top_grad_h):
-        alpha = int(205 * ((1.0 - (y / top_grad_h)) ** 1.35))
+        alpha = int(205 * ((1.0 - (y / top_grad_h)) ** 1.25))
         draw_ov.line([(0, y), (target_w, y)], fill=(6, 8, 12, alpha))
     img = Image.alpha_composite(img, overlay)
 
@@ -600,7 +600,7 @@ def render_caspahz_cover_image(
 
     def _fit_font(text: str, base_px: int):
         size = int(base_px * scale)
-        max_text_w = int(target_w * 0.86)
+        max_text_w = int(target_w * 0.84)
         while size > int(68 * scale):
             f = get_best_font(size)
             bb = draw.textbbox((0, 0), text, font=f)
@@ -609,10 +609,11 @@ def render_caspahz_cover_image(
             size -= int(8 * scale)
         return get_best_font(max(48, size))
 
-    font1 = _fit_font(line1, 155)
-    font2 = _fit_font(line2, 165)
+    font1 = _fit_font(line1, 145)
+    font2 = _fit_font(line2, 155)
 
-    y_cur = int(target_h * 0.085)
+    # y=16.5% (317px @ 1920h) para quedar 100% visible por debajo del recorte 3:4 del feed de TikTok (240px)
+    y_cur = int(target_h * 0.165)
     shadow_off = max(4, int(8 * scale))
     for txt, fnt, col in (
         (line1, font1, (255, 255, 255, 255)),
