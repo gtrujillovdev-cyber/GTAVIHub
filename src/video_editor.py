@@ -1652,7 +1652,8 @@ def render_final_video(
         # Formato C (Nativo Vertical 9:16): Pantalla completa sin bandas + realce luminoso
         v_base = f"[0:v]scale={canvas_w}:{canvas_h}:force_original_aspect_ratio=increase,crop={canvas_w}:{canvas_h},unsharp=3:3:0.75:3:3:0.0,eq=brightness=0.05:contrast=1.04:saturation=1.15:gamma=1.12[v_framed]"
     else:
-        v_base = "[0:v]unsharp=3:3:0.75:3:3:0.0,eq=brightness=0.05:contrast=1.04:saturation=1.15:gamma=1.12[v_framed]"
+        # Formato horizontal 16:9 (X Long Guide): realce extra de sombras y luminosidad para pantallas iPhone
+        v_base = "[0:v]unsharp=3:3:0.75:3:3:0.0,eq=brightness=0.09:contrast=1.05:saturation=1.14:gamma=1.22[v_framed]"
     
     filter_chains.append(v_base)
     filter_chains.append("[v_framed]setsar=1[v_sar]")

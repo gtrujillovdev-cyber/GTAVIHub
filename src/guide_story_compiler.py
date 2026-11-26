@@ -208,6 +208,7 @@ CADA ACTO DEBE COINCIDIR 100% VISUALMENTE CON LOS FOTOGRAMAS REALES ADJUNTOS:
 
 REGLAS ESTRICTAS:
 - Cada beat debe tener 0 <= start_sec < end_sec <= {max(10.0, duration - 0.5):.1f}.
+- Prioriza siempre tramos con acción dinámica (disparos, persecuciones, conducción rápida o interacción directa) siempre que coincidan con la guía real y lo que se narra.
 - PROHIBIDO elegir menús de pausa o tablas de estadísticas en los actos de gameplay (actos 1, 3, 4, 5, 6).
 - Español natural de España, directo, fiel a lo que sale en pantalla, sin palabras prohibidas (usa "recompensa" o "mercancía" en vez de drogas/cocaína).
 
@@ -247,6 +248,7 @@ CADA ACTO DEBE COINCIDIR 100% VISUALMENTE CON LOS FOTOGRAMAS REALES ADJUNTOS (el
 REGLAS ESTRICTAS:
 - Cada beat debe tener 0 <= start_sec < end_sec <= {max(8.0, duration - 0.5):.1f}.
 - Acto 2 ("map_location") DEBE durar entre 2.0s y 3.0s (NUNCA más de 3.2s).
+- Prioriza siempre tramos con acción dinámica (disparos, persecuciones, conducción rápida o interacción directa) siempre que coincidan con la guía real y lo que se narra.
 - PROHIBIDO elegir tramos con menús de pausa, pantallas de estadísticas/tablas de vehículos, sliders horizontales o pantallas de carga en los actos 1, 3 y 4; esos 3 actos deben ser SIEMPRE gameplay 3D en movimiento.
 - El texto `narration_es` debe ser español natural de España, fiel a lo que sale en pantalla, y sin palabras prohibidas (usa "recompensa" o "mercancía" en vez de drogas/cocaína).
 
