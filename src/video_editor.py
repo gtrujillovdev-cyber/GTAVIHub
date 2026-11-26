@@ -1188,9 +1188,11 @@ def inject_first_frame_cover(video_path: Path, cover_image_path: Path, duration_
         if has_audio:
             filter_complex = (
                 f"[0:v]scale={width}:{height}:force_original_aspect_ratio=decrease,"
-                f"pad={width}:{height}:(ow-iw)/2:(oh-ih)/2,setsar=1,fps={fps_val:.3f},format=yuv420p[vc];"
-                f"[1:v]setsar=1,fps={fps_val:.3f},format=yuv420p[vm];"
-                f"[vc][2:a][vm][1:a]concat=n=2:v=1:a=1[vout][aout]"
+                f"pad={width}:{height}:(ow-iw)/2:(oh-ih)/2,setsar=1,fps={fps_val:.3f},format=yuv420p,setpts=PTS-STARTPTS[vc];"
+                f"[1:v]setsar=1,fps={fps_val:.3f},format=yuv420p,setpts=PTS-STARTPTS[vm];"
+                f"[2:a]atrim=duration={duration_sec:.3f},asetpts=PTS-STARTPTS,aresample=48000[ac];"
+                f"[1:a]asetpts=PTS-STARTPTS,aresample=48000[am];"
+                f"[vc][ac][vm][am]concat=n=2:v=1:a=1[vout][aout]"
             )
             cmd = [
                 "ffmpeg", "-y", "-threads", threads,

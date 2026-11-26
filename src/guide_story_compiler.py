@@ -408,23 +408,27 @@ def compile_multi_beat_video(
         e = float(b["end_sec"])
         dur = e - s
         act_name = str(b.get("act") or "").lower()
-        inputs.extend(["-ss", f"{s:.2f}", "-t", f"{dur:.2f}", "-i", str(source_video)])
+        inputs.extend(["-ss", f"{s:.2f}", "-t", f"{dur + 0.25:.2f}", "-i", str(source_video)])
         if "map" in act_name and src_w > 0 and src_h > 0:
             zw = int(round(src_w * 1.08))
             zh = int(round(src_h * 1.08))
             zw += zw % 2
             zh += zh % 2
-            # Paneo/zoom suave con dimensiones finales EXACTAS (src_w x src_h) para concat sin error
+            # Paneo/zoom suave + CFR 30fps + trim exacto para cero saltos/frames congelados entre cortes
             v_filters.append(
-                f"[{idx}:v]setpts=PTS-STARTPTS,"
+                f"[{idx}:v]fps=30,trim=duration={dur:.3f},setpts=PTS-STARTPTS,"
                 f"scale={zw}:{zh},"
                 f"crop={src_w}:{src_h}:({zw}-{src_w})/2*(1-min(1\\,t/{max(dur, 1.0):.2f})):({zh}-{src_h})/2,"
-                f"setsar=1[v{idx}]"
+                f"format=yuv420p,setsar=1[v{idx}]"
             )
         else:
-            v_filters.append(f"[{idx}:v]setpts=PTS-STARTPTS,setsar=1[v{idx}]")
+            v_filters.append(
+                f"[{idx}:v]fps=30,trim=duration={dur:.3f},setpts=PTS-STARTPTS,format=yuv420p,setsar=1[v{idx}]"
+            )
         if has_audio:
-            v_filters.append(f"[{idx}:a]asetpts=PTS-STARTPTS[a{idx}]")
+            v_filters.append(
+                f"[{idx}:a]atrim=duration={dur:.3f},asetpts=PTS-STARTPTS,aresample=48000[a{idx}]"
+            )
             concat_inputs.append(f"[v{idx}][a{idx}]")
         else:
             concat_inputs.append(f"[v{idx}]")
