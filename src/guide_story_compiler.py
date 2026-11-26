@@ -337,10 +337,10 @@ def compile_multi_beat_video(
     n = len(beats)
     if has_audio:
         fc = ";".join(v_filters) + f";{''.join(concat_inputs)}concat=n={n}:v=1:a=1[vout][aout]"
-        maps = ["-map", "[vout]", "-map", "[aout]", "-c:v", vcodec, "-b:v", "10M", "-c:a", "aac", "-b:a", "192k"]
+        maps = ["-map", "[vout]", "-map", "[aout]", "-c:v", vcodec, "-b:v", "22M", "-c:a", "aac", "-b:a", "192k"]
     else:
         fc = ";".join(v_filters) + f";{''.join(concat_inputs)}concat=n={n}:v=1:a=0[vout]"
-        maps = ["-map", "[vout]", "-c:v", vcodec, "-b:v", "10M"]
+        maps = ["-map", "[vout]", "-c:v", vcodec, "-b:v", "22M"]
 
     cmd = ["ffmpeg", "-y", "-threads", threads, *inputs, "-filter_complex", fc, *maps, "-movflags", "+faststart", str(compiled_video_path)]
     res = subprocess.run(cmd, capture_output=True, text=True, timeout=180)
@@ -640,7 +640,7 @@ def build_multi_beat_guide_package_from_url(
 
         dl_res = subprocess.run([
             sys.executable, "-m", "yt_dlp", "--impersonate", "chrome", "--no-check-certificates",
-            "-f", "bestvideo[height<=1080][ext=mp4]+bestaudio[ext=m4a]/best[height<=1080][ext=mp4]/best",
+            "-f", "bestvideo[height<=3840][ext=mp4]+bestaudio[ext=m4a]/bestvideo[height<=3840]+bestaudio/best[height<=3840][ext=mp4]/best",
             "--merge-output-format", "mp4", "-o", str(src_mp4), url
         ], capture_output=True, text=True, timeout=180)
         if dl_res.returncode != 0 or not src_mp4.exists():
