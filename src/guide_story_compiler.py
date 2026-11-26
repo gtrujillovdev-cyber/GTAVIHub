@@ -26,6 +26,11 @@ from .translator import (
 from .video_editor import is_quant_busy
 
 
+class VisualComplianceRejectedError(RuntimeError):
+    """Error bloqueante lanzado cuando el Escudo Visual detecta facecam, textos EN quemados o contenido no-GTA6."""
+    pass
+
+
 def _parse_vtt_to_segments(vtt_path: Path) -> List[Dict[str, Any]]:
     """Convierte un archivo .vtt de yt-dlp en segmentos [{start, end, text}]."""
     if not vtt_path.exists():
@@ -216,6 +221,7 @@ Responde SOLO JSON válido:
 {{
   "has_facecam": false,
   "has_burned_english_subs": false,
+  "is_gta6_gameplay": true,
   "short_title_es": "TÍTULO DIRECTO PARA X SIN HASHTAGS",
   "cover_line1": "1 PALABRA BLANCA",
   "cover_line2": "1-2 PALABRAS ACENTO",
@@ -254,12 +260,13 @@ REGLAS ESTRICTAS:
 - PROHIBIDO elegir tramos con menús de pausa, pantallas de estadísticas/tablas de vehículos, sliders horizontales o pantallas de carga en los actos 1, 3 y 4; esos 3 actos deben ser SIEMPRE gameplay 3D en movimiento.
 - El texto `narration_es` debe ser español natural de España, fiel a lo que sale en pantalla, y sin palabras prohibidas (usa "recompensa" o "mercancía" en vez de drogas/cocaína).
 
-- AUDITORÍA VISUAL OBLIGATORIA (sé estricto): marca `"has_facecam": true` si aparece CUALQUIER cámara/cara de un streamer o persona real superpuesta al gameplay (NO personajes 3D de GTA 6). Marca `"has_burned_english_subs": true` si el vídeo original ya trae textos/subtítulos grandes en inglés quemados encima del gameplay (NO el HUD normal del juego).
+- AUDITORÍA VISUAL OBLIGATORIA (sé estricto): marca `"has_facecam": true` si aparece CUALQUIER cámara/cara de un streamer o persona real superpuesta al gameplay (NO personajes 3D de GTA 6). Marca `"has_burned_english_subs": true` si el vídeo original ya trae textos/subtítulos grandes en inglés quemados encima del gameplay (NO el HUD normal del juego). Marca `"is_gta6_gameplay": false` si el vídeo muestra anuncios/sponsors de software (ej. editores, VPNs), pantallas de escritorio o contenido que NO sea gameplay real de GTA 6.
 
 Responde SOLO JSON válido:
 {{
   "has_facecam": false,
   "has_burned_english_subs": false,
+  "is_gta6_gameplay": true,
   "short_title_es": "TÍTULO VIRAL EN MAYÚSCULAS SIN HASHTAGS",
   "cover_line1": "1 PALABRA BLANCA (ej: EMERUS, ARMA, DINERO)",
   "cover_line2": "1-2 PALABRAS ACENTO (ej: GRATIS, OCULTA, +$17K)",
@@ -293,12 +300,18 @@ Responde SOLO JSON válido:
             jpg_path.unlink(missing_ok=True)
 
     data = json.loads(clean_srt_response(resp.text or "{}"))
-    if data.get("has_facecam") is True or data.get("has_burned_english_subs") is True:
-        print(
-            f"[✗ Visual Compliance Shield] Vídeo rechazado en origen: "
-            f"has_facecam={data.get('has_facecam')} | has_burned_english_subs={data.get('has_burned_english_subs')}"
+    if (
+        data.get("has_facecam") is True
+        or data.get("has_burned_english_subs") is True
+        or data.get("is_gta6_gameplay") is False
+    ):
+        reason = (
+            f"has_facecam={data.get('has_facecam')} | "
+            f"has_burned_english_subs={data.get('has_burned_english_subs')} | "
+            f"is_gta6_gameplay={data.get('is_gta6_gameplay', True)}"
         )
-        return None
+        print(f"[✗ Visual Compliance Shield] Vídeo rechazado en origen (ABORT): {reason}")
+        raise VisualComplianceRejectedError(reason)
     beats = data.get("beats") or []
     valid_beats: List[Dict[str, Any]] = []
     for b in beats:
@@ -811,6 +824,8 @@ def build_multi_beat_guide_package(
             return None
 
         return comp_mp4, srt_path, dub_mp3, plan
+    except VisualComplianceRejectedError:
+        raise
     except Exception as e:
         print(f"[GuideCompiler] Aviso fallback a flujo estándar: {e}")
         return None
@@ -877,6 +892,8 @@ def build_multi_beat_guide_package_from_url(
             return None
 
         return comp_mp4, srt_path, dub_mp3, plan
+    except VisualComplianceRejectedError:
+        raise
     except Exception as e:
         print(f"[GuideCompiler] Aviso fallback desde URL: {e}")
         return None

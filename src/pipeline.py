@@ -349,8 +349,16 @@ def process_single_video(
         try:
             from .ai_selector import is_location_reward_guide
             if is_location_reward_guide(original_title or "") or "/shorts/" not in (url or "").lower():
-                from .guide_story_compiler import build_multi_beat_guide_package_from_url
+                from .guide_story_compiler import build_multi_beat_guide_package_from_url, VisualComplianceRejectedError
                 mb_pkg = build_multi_beat_guide_package_from_url(url, video_id, TEMP_DIR)
+        except VisualComplianceRejectedError as vis_err:
+            print(f"[✗ Pipeline ABORT] Rechazado en origen por Escudo Visual ({video_id}): {vis_err}")
+            try:
+                from .channels import record_rejected_video
+                record_rejected_video(video_id, reason=f"visual_compliance: {vis_err}")
+            except Exception:
+                pass
+            return None
         except Exception as mb_err:
             print(f"[GuideCompiler] Aviso no bloqueante: {mb_err}")
 

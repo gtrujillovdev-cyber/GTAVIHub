@@ -125,10 +125,11 @@ def _check_visual_compliance(video_path: Path, duration: float) -> Tuple[bool, s
 
         parts = [
             "Audita estos 3 fotogramas de un clip de GTA 6 doblado al español.\n"
-            "Responde SOLO JSON estricto con 2 booleanos:\n"
+            "Responde SOLO JSON estricto con 3 booleanos:\n"
             "1) `has_facecam`: true SI Y SOLO SI aparece una cámara/webcam o cara de una persona real (streamer/youtuber) superpuesta sobre el juego. NO marques true por personajes 3D del propio GTA 6.\n"
             "2) `has_burned_english_subs`: true SI aparecen textos grandes o subtítulos quemados EN INGLÉS del vídeo original encima del gameplay (por ejemplo frases editadas en inglés en el centro/arriba/abajo). NO marques true por nuestros subtítulos en español ni por el HUD/minimapa normal de GTA 6.\n"
-            'JSON: {"has_facecam": false, "has_burned_english_subs": false, "detail": ""}'
+            "3) `is_gta6_gameplay`: false SI CUALQUIERA de los fotogramas muestra anuncios/sponsors de software (ej. HitPaw, VPNs, editores), pantallas de escritorio, páginas web o contenido que NO sea gameplay/mapa real de GTA 6.\n"
+            'JSON: {"has_facecam": false, "has_burned_english_subs": false, "is_gta6_gameplay": true, "detail": ""}'
         ]
         for f in frames:
             parts.append(types.Part.from_bytes(data=f.read_bytes(), mime_type="image/jpeg"))
@@ -141,15 +142,18 @@ def _check_visual_compliance(video_path: Path, duration: float) -> Tuple[bool, s
         data = json.loads(clean_srt_response(resp.text or "{}"))
         has_fc = data.get("has_facecam") is True
         has_en = data.get("has_burned_english_subs") is True
+        is_gta = data.get("is_gta6_gameplay") is not False
         detail = str(data.get("detail") or "").strip()
-        if has_fc or has_en:
+        if has_fc or has_en or not is_gta:
             reasons = []
             if has_fc:
                 reasons.append("facecam/cara de streamer detectada")
             if has_en:
                 reasons.append("subtítulos/textos en inglés quemados detectados")
+            if not is_gta:
+                reasons.append("contenido NO-GTA6 / anuncio o sponsor detectado")
             return False, f"Rechazo visual: {', '.join(reasons)}" + (f" ({detail})" if detail else "")
-        return True, "Visual limpio (sin facecam ni textos en inglés quemados)"
+        return True, "Visual limpio (gameplay GTA 6 real, sin facecam ni textos en inglés quemados)"
     except Exception as e:
         return True, f"Visual compliance no bloqueante: {e}"
     finally:

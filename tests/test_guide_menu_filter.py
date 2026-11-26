@@ -40,17 +40,19 @@ class TestGuideMenuFilter(unittest.TestCase):
     def test_rejects_facecam_or_burned_english_subs_in_plan(self):
         import json, os
         from unittest.mock import MagicMock
-        from src.guide_story_compiler import plan_multi_beat_guide
+        from src.guide_story_compiler import plan_multi_beat_guide, VisualComplianceRejectedError
 
         for bad_payload in (
-            {"has_facecam": True, "has_burned_english_subs": False, "beats": []},
-            {"has_facecam": False, "has_burned_english_subs": True, "beats": []},
+            {"has_facecam": True, "has_burned_english_subs": False, "is_gta6_gameplay": True, "beats": []},
+            {"has_facecam": False, "has_burned_english_subs": True, "is_gta6_gameplay": True, "beats": []},
+            {"has_facecam": False, "has_burned_english_subs": False, "is_gta6_gameplay": False, "beats": []},
         ):
             mock_resp = MagicMock(text=json.dumps(bad_payload))
             with patch.dict(os.environ, {"GEMINI_API_KEY": "fake"}), \
                  patch("src.guide_story_compiler.get_gemini_client", return_value=MagicMock()), \
                  patch("src.guide_story_compiler.generate_content_with_retry", return_value=mock_resp):
-                self.assertIsNone(plan_multi_beat_guide("Zemie GTA 6", 120.0, [], []))
+                with self.assertRaises(VisualComplianceRejectedError):
+                    plan_multi_beat_guide("Zemie GTA 6", 120.0, [], [])
 
 
 if __name__ == "__main__":
