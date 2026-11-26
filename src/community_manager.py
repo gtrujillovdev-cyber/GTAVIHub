@@ -931,20 +931,37 @@ def run_autonomous_community_cycle(
     tk_max: int = 3, ig_followback_max: int = 3,
     x_likes_max: int = 10, x_follows_max: int = 5,
 ) -> Dict[str, Any]:
-    """Ejecuta un ciclo completo de interacción autónoma con seguidores."""
+    """
+    Ejecuta el ciclo de comunidad respetando compliance estricto:
+    - YouTube (API oficial v3): activo por defecto.
+    - Instagram, TikTok Playwright auto-reply y X auto-likes/follows:
+      DESACTIVADOS salvo opt-in explícito por env var para evitar shadowbans.
+    """
     yt_res = reply_youtube_comments(max_replies=yt_max)
-    ig_res = reply_instagram_comments(max_replies=ig_max)
-    tk_res = reply_tiktok_comments(max_replies=tk_max)
-    fb_res = followback_instagram_commenters(max_follows=ig_followback_max)
 
-    # Engagement en X/Twitter (likes, follows, followbacks)
-    x_res: Dict[str, Any] = {"total_x_likes": 0, "total_x_follows": 0}
-    try:
-        x_res = run_x_engagement_cycle(
-            max_likes=x_likes_max, max_follows=x_follows_max, max_followbacks=3,
-        )
-    except Exception as e:
-        print(f"[X Engagement] Info: {e}")
+    enable_ig = os.getenv("ENABLE_INSTAGRAM", "false").lower() in ("true", "1", "yes")
+    if enable_ig:
+        ig_res = reply_instagram_comments(max_replies=ig_max)
+        fb_res = followback_instagram_commenters(max_follows=ig_followback_max)
+    else:
+        ig_res = {"replied": 0, "skipped": 0, "errors": [], "disabled": True}
+        fb_res = {"followed": 0, "skipped": 0, "errors": [], "disabled": True}
+
+    enable_tk_reply = os.getenv("ENABLE_TIKTOK_AUTO_REPLY", "false").lower() in ("true", "1", "yes")
+    if enable_tk_reply:
+        tk_res = reply_tiktok_comments(max_replies=tk_max)
+    else:
+        tk_res = {"replied": 0, "skipped": 0, "errors": [], "disabled": True}
+
+    # Engagement automático en X (likes/follows): desactivado por defecto para 0 riesgo de shadowban
+    x_res: Dict[str, Any] = {"total_x_likes": 0, "total_x_follows": 0, "disabled": True}
+    if os.getenv("ENABLE_X_AUTO_ENGAGEMENT", "false").lower() in ("true", "1", "yes"):
+        try:
+            x_res = run_x_engagement_cycle(
+                max_likes=x_likes_max, max_follows=x_follows_max, max_followbacks=3,
+            )
+        except Exception as e:
+            print(f"[X Engagement] Info: {e}")
 
     # Extraer insights de comentarios tras responder (aprovecha la API ya autenticada)
     insights = {}
