@@ -31,6 +31,20 @@ def _save_records(records: List[Dict[str, Any]]) -> None:
     except Exception as e:
         print(f"[PerformanceTracker] Error guardando registros: {e}")
 
+def _extract_youtube_id(url: str) -> str:
+    """Extrae el video ID de YouTube desde URLs youtu.be, watch?v= o /shorts/."""
+    if not url or not isinstance(url, str):
+        return ""
+    u = url.strip()
+    if "youtu.be/" in u:
+        return u.split("youtu.be/", 1)[1].split("?", 1)[0].split("&", 1)[0].strip("/")
+    if "/shorts/" in u:
+        return u.split("/shorts/", 1)[1].split("?", 1)[0].split("&", 1)[0].strip("/")
+    if "v=" in u:
+        return u.split("v=", 1)[1].split("&", 1)[0].strip("/")
+    return ""
+
+
 def record_published_video(
     video_id: str,
     title: str,
@@ -43,27 +57,51 @@ def record_published_video(
     **kwargs
 ) -> None:
     """
-    Registra un vídeo recién publicado en performance_records.json.
-    Se llamará desde pipeline.py o copilot.py tras mark_video_processed.
+    Registra un vídeo recién publicado en performance_records.json
+    con etiquetas A/B de experimento y estructura de snapshots 6h/24h/48h.
     """
     records = _load_records()
-    # Evitar duplicados por video_id
-    if any(r.get("video_id") == video_id for r in records):
-        return
+    yt_vid = _extract_youtube_id(youtube_url)
+    # Evitar duplicados por video_id o youtube_video_id
+    for existing in records:
+        if existing.get("video_id") == video_id or (yt_vid and existing.get("youtube_video_id") == yt_vid):
+            # Enriquecer si faltaba youtube_url o experiment
+            if youtube_url and not existing.get("youtube_url"):
+                existing["youtube_url"] = youtube_url
+            if yt_vid and not existing.get("youtube_video_id"):
+                existing["youtube_video_id"] = yt_vid
+            if kwargs.get("tiktok_url") and not existing.get("tiktok_url"):
+                existing["tiktok_url"] = kwargs["tiktok_url"]
+            _save_records(records)
+            return
+
+    now_dt = datetime.now()
+    experiment = {
+        "source_type": kwargs.get("source_type") or ("native_short" if is_short else "16:9_multibeat"),
+        "preset": kwargs.get("preset") or "D_89%",
+        "has_frame0_cover": bool(kwargs.get("has_frame0_cover", True)),
+        "duration_sec": kwargs.get("duration_sec"),
+        "topic": kwargs.get("topic") or classify_clip_angle(title),
+        "publish_slot": kwargs.get("publish_slot") or now_dt.strftime("%H:%M"),
+    }
     records.append({
         "video_id": video_id,
+        "youtube_video_id": yt_vid or None,
         "title": title,
         "youtube_url": youtube_url,
+        "tiktok_url": kwargs.get("tiktok_url"),
         "base_score": base_score,
         "velocity_vpd": velocity_vpd,
         "days_old": days_old,
         "is_short": is_short,
         "target_channel": target_channel,
-        "published_at": datetime.now().isoformat(),
+        "published_at": now_dt.isoformat(),
         "metrics_fetched_at": None,
         "views_24h": None,
         "likes_24h": None,
         "comments_24h": None,
+        "experiment": experiment,
+        "snapshots": {"6h": None, "24h": None, "48h": None},
     })
     _save_records(records)
 
@@ -265,6 +303,12 @@ def sync_live_channel_metrics(limit: int = 12) -> List[Dict[str, Any]]:
 
     records = _load_records()
     by_id = {r.get("video_id"): r for r in records if r.get("video_id")}
+    by_yt_id = {}
+    for r in records:
+        yt_id = r.get("youtube_video_id") or _extract_youtube_id(r.get("youtube_url", ""))
+        if yt_id:
+            r["youtube_video_id"] = yt_id
+            by_yt_id[yt_id] = r
     now_utc = datetime.now(timezone.utc)
     now_local = datetime.now()
     live_items: List[Dict[str, Any]] = []
@@ -289,12 +333,14 @@ def sync_live_channel_metrics(limit: int = 12) -> List[Dict[str, Any]]:
 
         vph = round(views / max(age_hours, 0.5), 1)
         eng_score = likes + (comments * 3)
+        eng_rate = round(eng_score / max(views, 1), 4) if views > 0 else 0.0
         angle = classify_clip_angle(v.get("title", ""))
 
-        entry = by_id.get(vid)
+        entry = by_id.get(vid) or by_yt_id.get(vid)
         if entry is None:
             entry = {
                 "video_id": vid,
+                "youtube_video_id": vid,
                 "title": v.get("title", ""),
                 "youtube_url": v.get("url", f"https://youtu.be/{vid}"),
                 "base_score": 0,
@@ -307,21 +353,51 @@ def sync_live_channel_metrics(limit: int = 12) -> List[Dict[str, Any]]:
                 "views_24h": None,
                 "likes_24h": None,
                 "comments_24h": None,
+                "experiment": {
+                    "source_type": "unknown",
+                    "preset": "D_89%",
+                    "has_frame0_cover": True,
+                    "duration_sec": None,
+                    "topic": angle,
+                    "publish_slot": (pub_raw[11:16] if len(pub_raw) >= 16 else now_local.strftime("%H:%M")),
+                },
+                "snapshots": {"6h": None, "24h": None, "48h": None},
             }
             records.append(entry)
             by_id[vid] = entry
+            by_yt_id[vid] = entry
 
+        entry["youtube_video_id"] = vid
         entry["views_live"] = views
         entry["likes_live"] = likes
         entry["comments_live"] = comments
+        entry["engagement_rate_live"] = eng_rate
         entry["views_per_hour"] = vph
         entry["age_hours"] = round(age_hours, 2)
         entry["angle"] = angle
         entry["last_live_sync_at"] = now_local.isoformat()
+
+        snaps = entry.setdefault("snapshots", {"6h": None, "24h": None, "48h": None})
+        snap_payload = {
+            "views": views,
+            "likes": likes,
+            "comments": comments,
+            "vph": vph,
+            "engagement_rate": eng_rate,
+            "captured_at": now_local.isoformat(),
+        }
+        if age_hours >= 5.5 and snaps.get("6h") is None:
+            snaps["6h"] = snap_payload
+        if age_hours >= 23.0 and snaps.get("24h") is None:
+            snaps["24h"] = snap_payload
+        if age_hours >= 47.0 and snaps.get("48h") is None:
+            snaps["48h"] = snap_payload
+
         if age_hours >= 23.0 and entry.get("views_24h") is None:
             entry["views_24h"] = views
             entry["likes_24h"] = likes
             entry["comments_24h"] = comments
+            entry["engagement_rate_24h"] = eng_rate
             entry["metrics_fetched_at"] = now_local.isoformat()
 
         live_items.append({
@@ -762,3 +838,146 @@ def diagnose_underperformers(views_threshold: int = 500, max_diagnose: int = 4) 
         "threshold": effective_threshold,
         "corrections": applied,
     }
+
+
+def _effective_views(rec: Dict[str, Any]) -> int:
+    yt_v = rec.get("views_live") if rec.get("views_live") is not None else (rec.get("views_24h") or 0)
+    tt_v = rec.get("tiktok_views") or 0
+    return int(yt_v or 0) + int(tt_v or 0)
+
+
+def generate_weekly_scorecard(days: int = 7, update_playbook: bool = True) -> Dict[str, Any]:
+    """
+    Genera un scorecard A/B de los últimos `days` días con Top 3, Bottom 3,
+    rendimiento por formato (`source_type`), por tema (`topic`/`angle`) y por franja horaria.
+    Opcionalmente actualiza `data/viral_playbook.json`.
+    """
+    records = _load_records()
+    cutoff = datetime.now(timezone.utc) - timedelta(days=max(1, int(days)))
+    recent: List[Dict[str, Any]] = []
+
+    for r in records:
+        pub = r.get("published_at") or ""
+        in_window = True
+        if pub:
+            try:
+                dt = datetime.fromisoformat(pub.replace("Z", "+00:00"))
+                if dt.tzinfo is None:
+                    dt = dt.astimezone()
+                if dt.astimezone(timezone.utc) < cutoff:
+                    in_window = False
+            except Exception:
+                in_window = True
+        if in_window and (
+            r.get("views_live") is not None
+            or r.get("views_24h") is not None
+            or r.get("tiktok_views") is not None
+        ):
+            recent.append(r)
+
+    if not recent:
+        return {"ok": False, "days": days, "total_clips": 0, "top": [], "bottom": [], "by_topic": {}, "by_source": {}, "by_slot": {}}
+
+    ranked = sorted(recent, key=_effective_views, reverse=True)
+    top3 = [
+        {
+            "title": (r.get("title") or r.get("video_id") or "?")[:55],
+            "yt_views": int(r.get("views_live") if r.get("views_live") is not None else (r.get("views_24h") or 0)),
+            "tt_views": int(r.get("tiktok_views") or 0),
+            "total_views": _effective_views(r),
+            "topic": (r.get("experiment") or {}).get("topic") or r.get("angle") or classify_clip_angle(r.get("title", "")),
+            "source_type": (r.get("experiment") or {}).get("source_type") or ("native_short" if r.get("is_short") else "16:9_multibeat"),
+        }
+        for r in ranked[:3]
+    ]
+    bottom3 = [
+        {
+            "title": (r.get("title") or r.get("video_id") or "?")[:55],
+            "yt_views": int(r.get("views_live") if r.get("views_live") is not None else (r.get("views_24h") or 0)),
+            "tt_views": int(r.get("tiktok_views") or 0),
+            "total_views": _effective_views(r),
+            "topic": (r.get("experiment") or {}).get("topic") or r.get("angle") or classify_clip_angle(r.get("title", "")),
+        }
+        for r in (ranked[-3:] if len(ranked) > 3 else [])
+    ]
+
+    def _agg_bucket(key_fn) -> Dict[str, Dict[str, Any]]:
+        buckets: Dict[str, List[int]] = {}
+        for r in recent:
+            k = key_fn(r)
+            buckets.setdefault(k, []).append(_effective_views(r))
+        return {
+            k: {"clips": len(vals), "avg_views": round(sum(vals) / len(vals), 1), "total_views": sum(vals)}
+            for k, vals in sorted(buckets.items(), key=lambda kv: sum(kv[1]) / len(kv[1]), reverse=True)
+        }
+
+    by_topic = _agg_bucket(lambda r: (r.get("experiment") or {}).get("topic") or r.get("angle") or classify_clip_angle(r.get("title", "")))
+    by_source = _agg_bucket(lambda r: (r.get("experiment") or {}).get("source_type") or ("native_short" if r.get("is_short") else "16:9_multibeat"))
+    by_slot = _agg_bucket(lambda r: ((r.get("experiment") or {}).get("publish_slot") or (r.get("published_at") or "")[11:13] or "??")[:2] + ":00")
+
+    scorecard = {
+        "ok": True,
+        "days": days,
+        "generated_at": datetime.now().isoformat(),
+        "total_clips": len(recent),
+        "total_views": sum(_effective_views(r) for r in recent),
+        "top": top3,
+        "bottom": bottom3,
+        "by_topic": by_topic,
+        "by_source": by_source,
+        "by_slot": by_slot,
+    }
+
+    if update_playbook:
+        try:
+            from .learning_engine import load_viral_playbook, save_viral_playbook
+            pb = load_viral_playbook()
+            heur = pb.setdefault("active_heuristics", {})
+            heur["ab_tracking_summary"] = {
+                "updated_at": scorecard["generated_at"],
+                "days": days,
+                "total_clips": scorecard["total_clips"],
+                "best_topic": next(iter(by_topic.keys()), None),
+                "best_source_type": next(iter(by_source.keys()), None),
+                "best_hour_slot": next(iter(by_slot.keys()), None),
+            }
+            save_viral_playbook(pb)
+        except Exception as e:
+            print(f"[PerformanceTracker] Aviso actualizando ab_tracking_summary en playbook: {e}")
+
+    return scorecard
+
+
+def format_weekly_scorecard_telegram(scorecard: Dict[str, Any]) -> str:
+    """Formatea el scorecard semanal en texto compacto (sin multimedia) para Telegram."""
+    if not scorecard.get("ok"):
+        return f"📊 *Scorecard Tracking ({scorecard.get('days', 7)}d)*\nSin clips con métricas registradas todavía."
+
+    lines = [
+        f"📊 *Scorecard Tracking ({scorecard['days']} días)*",
+        f"🎬 Clips medidos: *{scorecard['total_clips']}* | 👁️ Vistas totales (YT+TT): *{scorecard['total_views']}*",
+        "",
+        "🏆 *TOP 3:*",
+    ]
+    for i, c in enumerate(scorecard.get("top", []), 1):
+        lines.append(f"{i}. {c['title']} — *{c['total_views']}* (YT:{c['yt_views']} / TT:{c['tt_views']}) `[{c['source_type']}]`")
+
+    if scorecard.get("bottom"):
+        lines.append("")
+        lines.append("📉 *BOTTOM 3:*")
+        for c in scorecard["bottom"]:
+            lines.append(f"• {c['title']} — {c['total_views']} (YT:{c['yt_views']} / TT:{c['tt_views']})")
+
+    if scorecard.get("by_topic"):
+        best_t, st = next(iter(scorecard["by_topic"].items()))
+        lines.append("")
+        lines.append(f"🎯 *Mejor tema:* `{best_t}` (media {st['avg_views']} vistas en {st['clips']} clips)")
+    if scorecard.get("by_source"):
+        best_s, ss = next(iter(scorecard["by_source"].items()))
+        lines.append(f"🎞️ *Mejor formato:* `{best_s}` (media {ss['avg_views']} vistas)")
+    if scorecard.get("by_slot"):
+        best_h, sh = next(iter(scorecard["by_slot"].items()))
+        lines.append(f"⏰ *Mejor franja:* `{best_h}` (media {sh['avg_views']} vistas)")
+
+    return "\n".join(lines)
+

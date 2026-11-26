@@ -1221,10 +1221,15 @@ def process_single_video(
                 video_id=video_id,
                 title=original_title,
                 youtube_url=full_info.get("uploaded_youtube_url", ""),
+                tiktok_url=(multiplatform_results or {}).get("tiktok") if isinstance(multiplatform_results, dict) else None,
                 base_score=0,
                 velocity_vpd=0.0,
                 days_old=0,
-                is_short=is_short
+                is_short=is_short,
+                source_type="16:9_multibeat" if multi_beat_active else "native_short",
+                preset=target_preset,
+                has_frame0_cover=bool(is_caspahz_guide),
+                topic=metadata.get("archetype") or None,
             )
             record_video_for_sentinel(
                 video_id=video_id,

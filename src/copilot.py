@@ -312,12 +312,19 @@ def approve_and_publish_video(video_id: str) -> Optional[Dict[str, Any]]:
         try:
             from .performance_tracker import record_published_video
             from .channel_sentinel import record_video_for_sentinel
+            tt_url = (multiplatform_results or {}).get("tiktok") if isinstance(multiplatform_results, dict) else None
             record_published_video(
                 video_id=video_id,
                 title=data.get("original_title", "GTA 6 Video"),
                 youtube_url=yt_url,
+                tiktok_url=tt_url if (tt_url and str(tt_url).startswith("http")) else None,
                 base_score=0,
-                target_channel="extra"
+                target_channel="extra",
+                is_short=bool(data.get("is_short", True)),
+                source_type=data.get("source_type") or ("native_short" if data.get("is_short") else "16:9_multibeat"),
+                preset=data.get("preset") or "D_89%",
+                has_frame0_cover=bool(data.get("has_frame0_cover", True)),
+                topic=(metadata or {}).get("archetype") or None,
             )
             plat_urls = {"youtube": yt_url}
             if multiplatform_results:

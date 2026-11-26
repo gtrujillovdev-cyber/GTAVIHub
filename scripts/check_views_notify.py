@@ -160,8 +160,10 @@ if __name__ == "__main__":
     except Exception as e:
         print(f"[ChannelSentinel] Error actualizando checkpoints: {e}")
     try:
-        from src.performance_tracker import fetch_recent_metrics
-        fetch_recent_metrics(max_items=6)
+        from src.performance_tracker import fetch_pending_metrics, sync_live_channel_metrics
+        synced = sync_live_channel_metrics(limit=25)
+        updated_24h = fetch_pending_metrics(max_fetch=8)
+        print(f"[PerformanceTracker] Sync live={len(synced)} | métricas 24h actualizadas={updated_24h}")
     except Exception as e:
         print(f"[PerformanceTracker] Aviso actualizando métricas: {e}")
     try:
