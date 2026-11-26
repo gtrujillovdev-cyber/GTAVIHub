@@ -27,7 +27,7 @@ load_dotenv(BASE_DIR / ".env")
 
 from src.config import OUTPUT_DIR, TEMP_DIR
 from src.guide_story_compiler import build_multi_beat_guide_package_from_url
-from src.video_editor import render_video_with_subs
+from src.video_editor import render_final_video
 
 
 def _extract_id(url: str) -> tuple[str, str]:
@@ -64,12 +64,12 @@ def main() -> int:
     slug = re.sub(r"[\s_]+", "_", slug)[:48].strip("_") or vid
     out_mp4 = OUTPUT_DIR / f"X_LONG_{slug}_{vid}.mp4"
 
-    ok = render_video_with_subs(
-        video_path=comp_mp4,
-        srt_path=srt_path,
-        output_path=out_mp4,
+    ok = render_final_video(
+        input_video=comp_mp4,
+        output_video=out_mp4,
+        srt_subtitles=srt_path,
         dub_audio=dub_mp3,
-        is_vertical=False,  # 16:9 nativo para X (sin recortes laterales)
+        force_short_format=False,  # 16:9 nativo para X (sin recortes laterales)
         hook_text="",
         caspahz_style=True,
     )
