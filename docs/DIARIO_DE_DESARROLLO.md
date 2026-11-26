@@ -4,6 +4,21 @@ Este documento recoge de forma cronológica los hitos de ingeniería, arquitectu
 
 ---
 
+## [2026-11-26] — Blindaje Final Alfa v2: Vision 14-Frame Grounding, 4K UHD Vertical/Horizontal, Marca de Agua 3:4 y Tracking A/B
+
+- **TikTok App Review (`GTAVIExtra` · `7711344507748419605`)**: Enviada a revisión de Producción (`In review`) con `Login Kit` (`user.info.basic`) + `Content Posting API` (`video.upload` Inbox Draft), URLs legales verificadas (`HTTP 200` en GitHub Pages) y demo limpia en Sandbox. Mientras se aprueba, `100.108.212.124` sigue operando con Playwright sin `tiktok_token.json`.
+- **Compilador Multi-Beat con Gemini Vision real (`src/guide_story_compiler.py`)**:
+  - Descarga primero el vídeo fuente en **4K UHD real** (`height<=3840` para soportar tanto `3840x2160` horizontal como `2160x3840` vertical, y bitrate intermedio `22M`).
+  - Extrae `14` fotogramas reales con timestamp y los pasa a **Gemini Vision** para que el guion en español describa literalmente lo que ocurre en cada corte.
+  - **Mapa dinámico estilo Caspahz**: Acto 2 (`map_location`) capado estrictamente a **`2.0–3.2s`** con paneo/zoom suave (`1.08x`, dimensiones exactas `src_w x src_h` para `concat`) — jamás congelado `6–8s`.
+  - **Filtro anti-menús/tablas**: `sanitize_gameplay_beats_against_menus()` evita pantallas de estadísticas o menús estáticos en actos 1, 3 y 4 preservando intacto el mapa del Acto 2.
+  - Soporte nativo desde **`45s`** para guías enfocadas de 1–3 min (incluidos Likes de X).
+- **Marca de agua `VI EXTRA` optimizada para cuadrícula 3:4 (`src/video_editor.py`)**: Reducida a `155px` (`~33%` más discreta), opacidad traslúcida al `68%` y bajada a `y=262px` (`22px` por debajo del corte superior del feed `3:4` de TikTok/Reels).
+- **Tracking A/B 6h/24h/48h y Scorecard Semanal (`src/performance_tracker.py`, `scripts/check_views_notify.py`, `scripts/weekly_tracking_scorecard.py`)**: Corregido `fetch_recent_metrics` inexistente en cron de 30m, emparejamiento por `youtube_video_id` para eliminar `None`s, etiquetas A/B (`source_type`, `preset`, `has_frame0_cover`, `duration_sec`, `topic`, `publish_slot`) y scorecard semanal automático en Telegram (domingos `20:00 CET`).
+- **Auto-limpieza de multimedia en Telegram (`scripts/clean_telegram_media.py`, `src/telegram_bot.py`)**: Registro automático de cada vídeo/foto enviado (`data/telegram_media_log.json`) y purga diaria programada en cron (`03:30 CET`, `--hours 12` dentro de la ventana de 48h de Bot API).
+
+---
+
 ## [2026-11-24] — Blindaje del Estándar Alfa: Guías/Secretos, Frame 0 Gameplay y Safe Zones Móviles
 
 - **Filtro exclusivo de Guías/Localizaciones/Secretos (`config/channels.json`, `src/traffic_sentinel.py`, `src/ai_selector.py`)**: Desactivadas fuentes y queries de físicas/comparativas/noticias; prioridad absoluta a **Shorts nativos (`12–65s`)** de guías y penalización a comparativas/físicas puras.
