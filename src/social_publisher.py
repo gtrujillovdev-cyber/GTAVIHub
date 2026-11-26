@@ -1299,7 +1299,10 @@ class SocialPublisher:
                     # Publicar tweet
                     post_btn = page.locator('[data-testid="tweetButton"], [data-testid="tweetButtonInline"]').first
                     if post_btn.count() > 0 and post_btn.is_enabled():
-                        post_btn.click()
+                        try:
+                            post_btn.click(timeout=5000)
+                        except Exception:
+                            post_btn.evaluate("el => { el.scrollIntoView({block: 'center'}); el.click(); }")
                         time.sleep(random.uniform(4.0, 7.0))
 
                         # Verificar publicacion exitosa
