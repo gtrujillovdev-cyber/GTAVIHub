@@ -646,6 +646,106 @@ def sanitize_gameplay_beats_against_menus(
     return cleaned
 
 
+def narrate_compiled_beats_from_video(
+    source_video: Path,
+    beats: List[Dict[str, Any]],
+    title: str,
+    profile: str = "short",
+    work_dir: Path = TEMP_DIR,
+) -> List[Dict[str, Any]]:
+    """
+    Fase 2 (Alineación Visual 100%):
+    1. Compila un proxy ligero (480p, 8fps, sin audio, ~1-2 MB) con los cortes YA definitivos
+       (después del filtro anti-menús).
+    2. Envía ese vídeo real a Gemini Vision (inline video/mp4) con los rangos exactos de cada acto.
+    3. Reescribe `narration_es` de cada acto describiendo EXCLUSIVAMENTE lo que se ve en pantalla
+       en esos segundos exactos (cero desincronización guion <-> imagen).
+    """
+    if not beats or not source_video or not Path(source_video).exists() or not os.getenv("GEMINI_API_KEY", "").strip():
+        return beats
+
+    proxy_mp4 = work_dir / f"_vision_proxy_{os.getpid()}.mp4"
+    try:
+        inputs: List[str] = []
+        v_filters: List[str] = []
+        concat_v: List[str] = []
+        act_ranges: List[str] = []
+        cur_t = 0.0
+        for idx, b in enumerate(beats):
+            s = float(b["start_sec"])
+            e = float(b["end_sec"])
+            d = max(1.8, e - s)
+            inputs.extend(["-ss", f"{s:.2f}", "-t", f"{d:.2f}", "-i", str(source_video)])
+            v_filters.append(
+                f"[{idx}:v]fps=8,scale=480:270:force_original_aspect_ratio=decrease,"
+                f"pad=480:270:(ow-iw)/2:(oh-ih)/2,setpts=PTS-STARTPTS,setsar=1[v{idx}]"
+            )
+            concat_v.append(f"[v{idx}]")
+            act_ranges.append(
+                f"- Acto {idx + 1} (`{b.get('act', 'step')}`): {cur_t:.1f}s a {cur_t + d:.1f}s "
+                f"(duración {d:.1f}s, ~{max(6, int(d * 2.4))} palabras máx)"
+            )
+            cur_t += d
+
+        fc = ";".join(v_filters) + f";{''.join(concat_v)}concat=n={len(beats)}:v=1:a=0[vout]"
+        vcodec = "h264_videotoolbox" if os.uname().sysname == "Darwin" else "libx264"
+        cmd = [
+            "ffmpeg", "-y", "-loglevel", "error", "-threads", "2",
+            *inputs, "-filter_complex", fc,
+            "-map", "[vout]", "-c:v", vcodec, "-b:v", "450k", "-an",
+            "-movflags", "+faststart", str(proxy_mp4),
+        ]
+        res = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
+        if res.returncode != 0 or not proxy_mp4.exists() or proxy_mp4.stat().st_size > 18 * 1024 * 1024:
+            return beats
+
+        from google.genai import types
+        is_x_long = (profile or "short").lower() == "x_long"
+        cta_rule = (
+            'El último acto debe cerrar con "Guarda este post en marcadores para cuando juegues."'
+            if is_x_long
+            else 'El último acto debe cerrar con "Guárdalo para cuando juegues."'
+        )
+        prompt = (
+            f'Eres el narrador oficial de GTA 6 para una guía titulada "{title}".\n'
+            "Te adjunto el VÍDEO YA MONTADO Y RECORTADO. Estos son los cortes exactos que vas a ver:\n"
+            + "\n".join(act_ranges) + "\n\n"
+            "REGLA DE ORO (OBLIGATORIA):\n"
+            "- Mira cada segundo del vídeo adjunto y escribe `narration_es` para cada acto describiendo "
+            "ÚNICA Y EXCLUSIVAMENTE lo que REALMENTE aparece en pantalla en ese rango de segundos.\n"
+            "- Si en un acto el personaje conduce un coche, di qué hace con ese coche; si sale el mapa, señala la ubicación en el mapa; "
+            "si entra a pie a una casa/zona o recoge algo, describe EXACTAMENTE esa acción visible.\n"
+            "- PROHIBIDO mencionar objetos, vehículos, lugares o pasos que NO aparezcan en el vídeo de ese acto.\n"
+            "- Español natural de España, tono directo sin preguntas retóricas y sin palabras prohibidas (usa 'recompensa' o 'mercancía').\n"
+            f"- Respeta estrictamente el límite aproximado de palabras de cada acto para que la voz encaje al segundo. {cta_rule}\n\n"
+            f'Responde SOLO JSON válido con exactamente {len(beats)} elementos en orden:\n'
+            '{"narrations": ["texto acto 1", "texto acto 2", ...]}'
+        )
+        client = get_gemini_client()
+        resp = generate_content_with_retry(
+            client=client,
+            contents=[
+                types.Part.from_bytes(data=proxy_mp4.read_bytes(), mime_type="video/mp4"),
+                prompt,
+            ],
+            config={"response_mime_type": "application/json"},
+        )
+        data = json.loads(clean_srt_response(resp.text or "{}"))
+        narrs = data.get("narrations") or []
+        if len(narrs) == len(beats):
+            updated = []
+            for b, new_n in zip(beats, narrs):
+                clean_n = sanitize_banned_words(str(new_n or "").strip())
+                updated.append({**b, "narration_es": clean_n or b.get("narration_es", "")})
+            print(f"[✓ GuideCompiler] Guion re-narrado viendo el vídeo montado ({len(updated)} actos 100% alineados).")
+            return updated
+    except Exception as exc:
+        print(f"[GuideCompiler] Aviso en re-narración sobre vídeo montado: {exc}")
+    finally:
+        proxy_mp4.unlink(missing_ok=True)
+    return beats
+
+
 def build_multi_beat_guide_package(
     url: str,
     video_id: str,
@@ -654,7 +754,7 @@ def build_multi_beat_guide_package(
     profile: str = "short",
 ) -> Optional[Tuple[Path, Path, Path, Dict[str, Any]]]:
     """
-    Pipeline completo de compilación Multi-Beat:
+    Pipeline completo de compilación Multi-Beat (2 fases visualmente alineadas):
     - profile="short": 17-23s para YouTube Shorts y TikTok (9:16).
     - profile="x_long": 45-70s para X (Twitter) en 16:9 nativo.
     """
@@ -676,13 +776,18 @@ def build_multi_beat_guide_package(
         if not plan or not plan.get("beats"):
             return None
 
+        # Fase 1b: filtrar menús/tablas ANTES de narrar
+        clean_beats = sanitize_gameplay_beats_against_menus(source_video, plan["beats"], dur, work_dir)
+        # Fase 2: Gemini VE el vídeo ya cortado y redacta el guion exacto de lo que sale en pantalla
+        grounded_beats = narrate_compiled_beats_from_video(
+            source_video, clean_beats, ctx.get("title", ""), profile=profile, work_dir=work_dir
+        )
+
         tag = "xlong" if profile == "x_long" else "mb"
         dub_mp3 = work_dir / f"{video_id}_{tag}_dub.mp3"
-        synced_beats, ok_tts = sync_beats_with_voiceover(plan["beats"], dur, dub_mp3, work_dir, profile=profile)
+        synced_beats, ok_tts = sync_beats_with_voiceover(grounded_beats, dur, dub_mp3, work_dir, profile=profile)
         if not ok_tts or not synced_beats:
             return None
-
-        synced_beats = sanitize_gameplay_beats_against_menus(source_video, synced_beats, dur, work_dir)
 
         comp_mp4 = work_dir / f"{video_id}_{tag}_compiled.mp4"
         srt_path = work_dir / f"{video_id}_{tag}_es.srt"
@@ -704,7 +809,8 @@ def build_multi_beat_guide_package_from_url(
 ) -> Optional[Tuple[Path, Path, Path, Dict[str, Any]]]:
     """
     Descarga y compila una guía Multi-Beat directamente desde URL (YouTube o X).
-    Descarga primero el vídeo en 4K UHD para que Gemini Vision VEA fotogramas reales antes de planificar.
+    Descarga primero el vídeo en 4K UHD, filtra menús y hace que Gemini VEA el vídeo
+    ya montado antes de escribir la narración definitiva.
     """
     if "/shorts/" in (url or "").lower():
         return None
@@ -737,12 +843,17 @@ def build_multi_beat_guide_package_from_url(
         if not plan or not plan.get("beats"):
             return None
 
+        # Fase 1b: filtrar menús/tablas ANTES de narrar
+        clean_beats = sanitize_gameplay_beats_against_menus(src_mp4, plan["beats"], dur, work_dir)
+        # Fase 2: Gemini VE el vídeo ya cortado y redacta el guion exacto de lo que sale en pantalla
+        grounded_beats = narrate_compiled_beats_from_video(
+            src_mp4, clean_beats, ctx.get("title", ""), profile=profile, work_dir=work_dir
+        )
+
         dub_mp3 = work_dir / f"{video_id}_{tag}_dub.mp3"
-        synced_beats, ok_tts = sync_beats_with_voiceover(plan["beats"], dur, dub_mp3, work_dir, profile=profile)
+        synced_beats, ok_tts = sync_beats_with_voiceover(grounded_beats, dur, dub_mp3, work_dir, profile=profile)
         if not ok_tts or not synced_beats:
             return None
-
-        synced_beats = sanitize_gameplay_beats_against_menus(src_mp4, synced_beats, dur, work_dir)
 
         comp_mp4 = work_dir / f"{video_id}_{tag}_compiled.mp4"
         srt_path = work_dir / f"{video_id}_{tag}_es.srt"
