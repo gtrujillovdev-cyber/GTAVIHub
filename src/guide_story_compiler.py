@@ -153,6 +153,7 @@ Construye una MINI-GUÍA COMPLETA de 4 actos (4 cortes de distintos momentos del
 
 REGLAS ESTRICTAS:
 - Cada beat debe tener 0 <= start_sec < end_sec <= {max(10.0, duration - 1.0):.1f}, con duración entre 4.0s y 15.0s.
+- PROHIBIDO elegir tramos con menús de pausa, pantallas de estadísticas/tablas de vehículos, sliders horizontales, tiendas o pantallas de carga en los actos 1, 3 y 4; esos 3 actos deben ser SIEMPRE gameplay 3D en movimiento.
 - El texto `narration_es` de cada acto debe ser español natural de España, conciso (12-26 palabras por acto, ~2.6 palabras/seg), directo y sin palabras prohibidas (usa "recompensa" o "mercancía" en vez de drogas/cocaína).
 
 Responde SOLO JSON válido:
@@ -361,6 +362,115 @@ def sync_beats_with_voiceover(
             p.unlink(missing_ok=True)
 
 
+def _measure_segment_motion_and_ui(
+    source_video: Path,
+    start_sec: float,
+    dur_sec: float,
+    work_dir: Path = TEMP_DIR,
+) -> Tuple[float, float]:
+    """
+    Mide rápidamente (en ~40ms) el movimiento medio entre dos fotogramas del tramo
+    y la proporción de píxeles planos/muy claros típicos de tablas o menús estáticos 16:9.
+    Devuelve (motion_score 0..255, flat_ui_ratio 0..1).
+    """
+    from PIL import Image, ImageChops, ImageStat
+
+    t1 = max(0.0, start_sec + min(0.5, dur_sec * 0.2))
+    t2 = max(t1 + 0.4, start_sec + min(2.2, dur_sec * 0.65))
+    f1 = work_dir / f"_ui_chk_{os.getpid()}_1.jpg"
+    f2 = work_dir / f"_ui_chk_{os.getpid()}_2.jpg"
+    try:
+        for ts, out_p in ((t1, f1), (t2, f2)):
+            subprocess.run(
+                [
+                    "ffmpeg", "-y", "-loglevel", "error",
+                    "-ss", f"{ts:.2f}", "-i", str(source_video),
+                    "-frames:v", "1", "-vf", "scale=160:90", str(out_p),
+                ],
+                capture_output=True,
+                timeout=8,
+            )
+        if not (f1.exists() and f2.exists()):
+            return 20.0, 0.0
+        im1 = Image.open(f1).convert("L")
+        im2 = Image.open(f2).convert("L")
+        diff = ImageChops.difference(im1, im2)
+        motion = float(ImageStat.Stat(diff).mean[0])
+
+        # Detectar menús/tablas con barras horizontales muy claras o fondos planos uniformes
+        hist = im1.histogram()
+        total_px = max(1, sum(hist))
+        bright_flat = sum(hist[210:]) / total_px
+        return round(motion, 2), round(bright_flat, 3)
+    except Exception:
+        return 20.0, 0.0
+    finally:
+        f1.unlink(missing_ok=True)
+        f2.unlink(missing_ok=True)
+
+
+def sanitize_gameplay_beats_against_menus(
+    source_video: Path,
+    beats: List[Dict[str, Any]],
+    source_duration: float,
+    work_dir: Path = TEMP_DIR,
+    min_motion: float = 6.5,
+    max_bright_ui_ratio: float = 0.42,
+) -> List[Dict[str, Any]]:
+    """
+    Verifica visualmente cada acto de gameplay (no 'map_location') para evitar que
+    entren menús de pausa o tablas de estadísticas recortadas lateralmente.
+    Si detecta un tramo estático/tabla, desplaza el inicio al offset cercano con gameplay en movimiento.
+    """
+    if not beats or not source_video or not Path(source_video).exists():
+        return beats
+
+    cleaned: List[Dict[str, Any]] = []
+    max_dur = float(source_duration or 0.0)
+
+    for b in beats:
+        act = str(b.get("act") or "").lower()
+        s = float(b.get("start_sec", 0.0))
+        e = float(b.get("end_sec", s + 4.0))
+        beat_dur = max(3.5, e - s)
+
+        if "map" in act:
+            cleaned.append(b)
+            continue
+
+        motion, bright_ui = _measure_segment_motion_and_ui(source_video, s, beat_dur, work_dir)
+        is_menu_or_table = (motion < min_motion) or (bright_ui >= max_bright_ui_ratio and motion < 14.0)
+        if not is_menu_or_table:
+            cleaned.append(b)
+            continue
+
+        best_s = s
+        best_motion = motion
+        for delta in (5.0, 10.0, -5.0, 16.0, -10.0, 24.0):
+            cand_s = s + delta
+            if cand_s < 0.0 or (max_dur > 0 and cand_s + beat_dur > max_dur - 0.5):
+                continue
+            c_mot, c_ui = _measure_segment_motion_and_ui(source_video, cand_s, beat_dur, work_dir)
+            if c_mot >= min_motion and not (c_ui >= max_bright_ui_ratio and c_mot < 14.0):
+                best_s = cand_s
+                best_motion = c_mot
+                break
+            if c_mot > best_motion:
+                best_s = cand_s
+                best_motion = c_mot
+
+        if abs(best_s - s) >= 0.5:
+            print(
+                f"[✓ GuideCompiler] Acto '{act or 'gameplay'}' desplazado {s:.1f}s -> {best_s:.1f}s "
+                f"(menú/tabla estática evitada: motion {motion:.1f} -> {best_motion:.1f})"
+            )
+            cleaned.append({**b, "start_sec": round(best_s, 2), "end_sec": round(best_s + beat_dur, 2)})
+        else:
+            cleaned.append(b)
+
+    return cleaned
+
+
 def build_multi_beat_guide_package(
     url: str,
     video_id: str,
@@ -372,7 +482,8 @@ def build_multi_beat_guide_package(
     1. Lee transcripción + capítulos del vídeo largo.
     2. Planifica 4 actos con Gemini (Recompensa -> Mapa -> Pasos -> Cobro).
     3. Sintetiza voz por acto y ajusta cada corte a la duración exacta de su voz (0 huecos mudos).
-    4. Compila el vídeo maestro y devuelve (comp_mp4, srt_path, dub_mp3, plan).
+    4. Filtra visualmente menús/tablas estáticas en los actos de gameplay.
+    5. Compila el vídeo maestro y devuelve (comp_mp4, srt_path, dub_mp3, plan).
     """
     try:
         ctx = fetch_long_guide_context(url, video_id, work_dir)
@@ -387,6 +498,8 @@ def build_multi_beat_guide_package(
         synced_beats, ok_tts = sync_beats_with_voiceover(plan["beats"], dur, dub_mp3, work_dir)
         if not ok_tts or not synced_beats:
             return None
+
+        synced_beats = sanitize_gameplay_beats_against_menus(source_video, synced_beats, dur, work_dir)
 
         comp_mp4 = work_dir / f"{video_id}_mb_compiled.mp4"
         srt_path = work_dir / f"{video_id}_mb_es.srt"

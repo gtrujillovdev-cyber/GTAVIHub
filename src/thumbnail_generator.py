@@ -493,8 +493,8 @@ def render_caspahz_cover_image(
             parts = [types.Part.from_bytes(data=c.read_bytes(), mime_type="image/jpeg") for c in candidates]
             parts.append(
                 f"Te paso {len(candidates)} fotogramas de un clip de GTA 6 sobre '{title_text}'. "
-                "Elige el índice (0 a N-1) que muestre MEJOR la recompensa principal (el coche, arma, dinero o personaje en gameplay) "
-                "y que NO sea un mapa, minimapa grande, menú ni tenga subtítulos o diálogos de texto abajo. "
+                "Elige el índice (0 a N-1) que muestre MEJOR la recompensa principal (el coche, arma, dinero o personaje en gameplay 3D) "
+                "y que NO sea un mapa, minimapa grande, menú, pantalla de estadísticas/tablas de barras, ni tenga subtítulos o diálogos de texto abajo. "
                 'Responde SOLO JSON: {"best_idx": 2}'
             )
             resp = generate_content_with_retry(client=get_gemini_client(), contents=parts)
