@@ -872,15 +872,15 @@ def render_karaoke_subtitle_state(words: List[str], active_idx: int, is_vertical
     if not display_words:
         return False
 
-    max_w = int((740 if is_vertical else 1040) * scale_factor)
-    font_size = int((70 if is_vertical else 50) * scale_factor)
+    max_w = int((740 if is_vertical else 1280) * scale_factor)
+    font_size = int((70 if is_vertical else 42) * scale_factor)
     font = get_best_font(size=font_size)
 
     temp_img = Image.new("RGBA", (1, 1))
     d_temp = ImageDraw.Draw(temp_img)
 
-    space_w = int(24 * scale_factor)
-    min_font = int(40 * scale_factor)
+    space_w = int((24 if is_vertical else 16) * scale_factor)
+    min_font = int((40 if is_vertical else 28) * scale_factor)
     font_step = max(2, int(4 * scale_factor))
 
     # Ajustar tamaño de fuente dinámicamente si supera el ancho máximo seguro
@@ -1266,9 +1266,15 @@ def render_final_video(
     is_already_vertical = (height > width)
     is_vertical = force_short_format or is_already_vertical
 
-    canvas_w = CANVAS_WIDTH
-    canvas_h = CANVAS_HEIGHT
-    scale_factor = canvas_w / 1080.0
+    if is_vertical:
+        canvas_w = CANVAS_WIDTH
+        canvas_h = CANVAS_HEIGHT
+        scale_factor = canvas_w / 1080.0
+    else:
+        # En horizontal 16:9 (p.ej. X Long Guide), escalar proporcionalmente a la altura real del vídeo
+        canvas_w = width if width > 0 else 1920
+        canvas_h = height if height > 0 else 1080
+        scale_factor = max(0.75, canvas_h / 1080.0)
 
     # Determinar preset: SPLIT (comparativa 50/50 apilada), D (Pro-Cinema 83.3%), C (4:5 70.3%) o FIT
     effective_preset = (format_preset or "").upper()
