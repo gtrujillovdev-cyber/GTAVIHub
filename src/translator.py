@@ -297,6 +297,7 @@ def transcribe_and_translate_audio_gemini(
             "   - Genera un archivo con formato estándar SubRip (.srt) con numeración secuencial (1, 2, 3...) y marcas de tiempo exactas (00:00:01,200 --> 00:00:03,800).\n"
             "   - Mantén cada bloque de subtítulo muy conciso: entre 2 y 5 palabras por bloque para un ritmo dinámico de lectura.\n"
             "   - Elimina cualquier muletilla, tartamudeo o etiqueta de sonido como [música], [risas], etc.\n"
+            "   - PROHIBIDO traducir de forma literal/robótica o repetir el mismo sustantivo (ej. 'furgoneta', 'coche', 'dinero') más de 2 veces en todo el clip: reescribe con sinónimos, pronombres y ritmo enérgico de creador gaming español real.\n"
             "   - Respeta nombres canónicos de GTA 6 (Lucia, Jason, Vice City, Leonida, Rockstar Games).\n"
             "   - Devuelve ÚNICAMENTE el texto SRT puro, sin explicaciones ni bloques de código markdown extra (sin ```srt)."
         )

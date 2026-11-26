@@ -730,7 +730,8 @@ def narrate_compiled_beats_from_video(
             "- Si en un acto el personaje conduce un coche, di qué hace con ese coche; si sale el mapa, señala la ubicación en el mapa; "
             "si entra a pie a una casa/zona o recoge algo, describe EXACTAMENTE esa acción visible.\n"
             "- PROHIBIDO mencionar objetos, vehículos, lugares o pasos que NO aparezcan en el vídeo de ese acto.\n"
-            "- Español natural de España, tono directo sin preguntas retóricas y sin palabras prohibidas (usa 'recompensa' o 'mercancía').\n"
+            "- Español natural de España, tono enérgico y cercano de creador gaming real (sin preguntas retóricas y sin palabras prohibidas; usa 'recompensa' o 'mercancía').\n"
+            "- PROHIBIDO repetir el mismo sustantivo (ej. 'furgoneta', 'coche', 'dinero') más de 2 veces en todo el guion: varía vocabulario y usa pronombres naturales.\n"
             f"- Respeta estrictamente el límite aproximado de palabras de cada acto para que la voz encaje al segundo. {cta_rule}\n\n"
             f'Responde SOLO JSON válido con exactamente {len(beats)} elementos en orden:\n'
             '{"narrations": ["texto acto 1", "texto acto 2", ...]}'
