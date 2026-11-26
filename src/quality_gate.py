@@ -91,6 +91,75 @@ def _check_black_frames(video_path: Path, duration: float) -> Tuple[bool, str]:
         return True, ""  # En caso de error, no bloquear
 
 
+def _check_visual_compliance(video_path: Path, duration: float) -> Tuple[bool, str]:
+    """
+    Escudo Visual Anti-Facecam y Anti-Subtítulos en Inglés Quemados:
+    Muestrea 3 fotogramas (20%, 50%, 80%) y usa Gemini Vision para rechazar cualquier clip
+    que contenga webcam/cara de streamer real o textos grandes en inglés quemados del origen.
+    """
+    if not GEMINI_API_KEY or duration < 3.0:
+        return True, "Visual compliance omitido (sin API key o clip muy corto)"
+
+    frames: list[Path] = []
+    try:
+        from google.genai import types
+        from .translator import get_gemini_client, generate_content_with_retry, clean_srt_response
+
+        for idx, ratio in enumerate((0.20, 0.50, 0.80)):
+            ts = round(max(0.5, duration * ratio), 2)
+            out_jpg = video_path.parent / f".qg_vis_{video_path.stem[:16]}_{idx}.jpg"
+            subprocess.run(
+                [
+                    "ffmpeg", "-y", "-loglevel", "error",
+                    "-ss", f"{ts:.2f}", "-i", str(video_path),
+                    "-frames:v", "1", "-vf", "scale=480:-2", "-q:v", "5", str(out_jpg),
+                ],
+                capture_output=True,
+                timeout=8,
+            )
+            if out_jpg.exists() and out_jpg.stat().st_size > 1000:
+                frames.append(out_jpg)
+
+        if not frames:
+            return True, "Sin fotogramas para auditoría visual"
+
+        parts = [
+            "Audita estos 3 fotogramas de un clip de GTA 6 doblado al español.\n"
+            "Responde SOLO JSON estricto con 2 booleanos:\n"
+            "1) `has_facecam`: true SI Y SOLO SI aparece una cámara/webcam o cara de una persona real (streamer/youtuber) superpuesta sobre el juego. NO marques true por personajes 3D del propio GTA 6.\n"
+            "2) `has_burned_english_subs`: true SI aparecen textos grandes o subtítulos quemados EN INGLÉS del vídeo original encima del gameplay (por ejemplo frases editadas en inglés en el centro/arriba/abajo). NO marques true por nuestros subtítulos en español ni por el HUD/minimapa normal de GTA 6.\n"
+            'JSON: {"has_facecam": false, "has_burned_english_subs": false, "detail": ""}'
+        ]
+        for f in frames:
+            parts.append(types.Part.from_bytes(data=f.read_bytes(), mime_type="image/jpeg"))
+
+        resp = generate_content_with_retry(
+            client=get_gemini_client(),
+            contents=parts,
+            config={"response_mime_type": "application/json"},
+        )
+        data = json.loads(clean_srt_response(resp.text or "{}"))
+        has_fc = data.get("has_facecam") is True
+        has_en = data.get("has_burned_english_subs") is True
+        detail = str(data.get("detail") or "").strip()
+        if has_fc or has_en:
+            reasons = []
+            if has_fc:
+                reasons.append("facecam/cara de streamer detectada")
+            if has_en:
+                reasons.append("subtítulos/textos en inglés quemados detectados")
+            return False, f"Rechazo visual: {', '.join(reasons)}" + (f" ({detail})" if detail else "")
+        return True, "Visual limpio (sin facecam ni textos en inglés quemados)"
+    except Exception as e:
+        return True, f"Visual compliance no bloqueante: {e}"
+    finally:
+        for f in frames:
+            try:
+                f.unlink(missing_ok=True)
+            except Exception:
+                pass
+
+
 def _score_viral_potential_heuristic(
     metadata: Dict[str, Any],
     candidate_score: int,
@@ -308,6 +377,16 @@ def run_quality_gate(
         if not dry_run:
             _quarantine_video(video_path, reason, diagnostics)
         return False, reason, diagnostics
+
+    # Escudo Visual Anti-Facecam y Anti-Subtítulos en Inglés Quemados (solo en ejecuciones reales)
+    if not dry_run:
+        vis_ok, vis_reason = _check_visual_compliance(video_path, dur)
+        diagnostics["technical"]["visual_compliance"] = {"ok": vis_ok, "reason": vis_reason}
+        if not vis_ok:
+            reason = f"Quality Gate visual: {vis_reason}"
+            diagnostics["decision"] = "REJECTED_VISUAL_COMPLIANCE"
+            _quarantine_video(video_path, reason, diagnostics)
+            return False, reason, diagnostics
 
     # === 2. VALIDACION DE POTENCIAL VIRAL ===
     viral_score, viral_reason = _score_viral_potential_llm(
