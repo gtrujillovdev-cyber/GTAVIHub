@@ -4,18 +4,31 @@ Este documento recoge de forma cronológica los hitos de ingeniería, arquitectu
 
 ---
 
-## [2026-11-26] — Blindaje Final Alfa v2: Vision 14-Frame Grounding, 4K UHD Vertical/Horizontal, Marca de Agua 3:4 y Tracking A/B
+## [2026-11-26] — Ingeniería de Producción Alfa v2: Pipeline Multimodal 2-Fases, 4K UHD Real, X Long Guide 16:9 y Tracking A/B
 
-- **TikTok App Review (`GTAVIExtra` · `7711344507748419605`)**: Enviada a revisión de Producción (`In review`) con `Login Kit` (`user.info.basic`) + `Content Posting API` (`video.upload` Inbox Draft), URLs legales verificadas (`HTTP 200` en GitHub Pages) y demo limpia en Sandbox. Mientras se aprueba, `100.108.212.124` sigue operando con Playwright sin `tiktok_token.json`.
-- **Compilador Multi-Beat con Gemini Vision real (`src/guide_story_compiler.py`)**:
-  - Descarga primero el vídeo fuente en **4K UHD real** (`height<=3840` para soportar tanto `3840x2160` horizontal como `2160x3840` vertical, y bitrate intermedio `22M`).
-  - Extrae `14` fotogramas reales con timestamp y los pasa a **Gemini Vision** para que el guion en español describa literalmente lo que ocurre en cada corte.
-  - **Mapa dinámico estilo Caspahz**: Acto 2 (`map_location`) capado estrictamente a **`2.0–3.2s`** con paneo/zoom suave (`1.08x`, dimensiones exactas `src_w x src_h` para `concat`) — jamás congelado `6–8s`.
-  - **Filtro anti-menús/tablas**: `sanitize_gameplay_beats_against_menus()` evita pantallas de estadísticas o menús estáticos en actos 1, 3 y 4 preservando intacto el mapa del Acto 2.
-  - Soporte nativo desde **`45s`** para guías enfocadas de 1–3 min (incluidos Likes de X).
-- **Marca de agua `VI EXTRA` optimizada para cuadrícula 3:4 (`src/video_editor.py`)**: Reducida a `155px` (`~33%` más discreta), opacidad traslúcida al `68%` y bajada a `y=262px` (`22px` por debajo del corte superior del feed `3:4` de TikTok/Reels).
-- **Tracking A/B 6h/24h/48h y Scorecard Semanal (`src/performance_tracker.py`, `scripts/check_views_notify.py`, `scripts/weekly_tracking_scorecard.py`)**: Corregido `fetch_recent_metrics` inexistente en cron de 30m, emparejamiento por `youtube_video_id` para eliminar `None`s, etiquetas A/B (`source_type`, `preset`, `has_frame0_cover`, `duration_sec`, `topic`, `publish_slot`) y scorecard semanal automático en Telegram (domingos `20:00 CET`).
-- **Auto-limpieza de multimedia en Telegram (`scripts/clean_telegram_media.py`, `src/telegram_bot.py`)**: Registro automático de cada vídeo/foto enviado (`data/telegram_media_log.json`) y purga diaria programada en cron (`03:30 CET`, `--hours 12` dentro de la ventana de 48h de Bot API).
+Hito de ingeniería enfocado en llevar el pipeline de edición automatizada a nivel de producción real, resolviendo bugs sutiles de FFmpeg, visión por computador, escalado adaptativo y cumplimiento anti-bot en redes sociales:
+
+- **Arquitectura de Narración Visual en 2 Fases (`src/guide_story_compiler.py`):**
+  - *Problema resuelto:* planificar cortes y guion simultáneamente solo desde transcripción VTT o fotogramas espaciados provocaba desincronización guion↔imagen (especialmente cuando el filtro anti-menús desplazaba un corte `+5s`).
+  - *Solución en código:* refactorizado `build_multi_beat_guide_package()` y `build_multi_beat_guide_package_from_url()` en dos etapas estrictas: (1) descarga previa + `plan_multi_beat_guide()` con **Gemini Vision (`14–18` fotogramas reales con timestamp)** y prioridad a tramos con acción dinámica (disparos, persecuciones, conducción); (2) `sanitize_gameplay_beats_against_menus()` (detección rápida `160x90` con `PIL.ImageChops.difference` + histograma de UI plana) filtra menús/tablas de estadísticas en actos de gameplay preservando intacto el Acto 2 (`map_location`); (3) **`narrate_compiled_beats_from_video()`** genera un proxy ligero (`480p`, `8fps`, `<2 MB`) de los cortes YA definitivos y lo envía inline (`video/mp4`) a Gemini Vision para redactar el guion describiendo exclusivamente lo que aparece en pantalla segundo a segundo.
+- **Debugging FFmpeg & 4K UHD Real (`src/guide_story_compiler.py`, `src/pipeline.py`):**
+  - **Fix `height<=1080` en vertical 4K:** detectado vía `yt-dlp -F` que el filtro `height<=1080` descartaba fuentes verticales `2160x3840` (`25 Mbps`), `1080x1920` y `720x1280`, forzando descargas en `480x852` (`950 kbps`). Actualizado a `height<=3840` + bitrate intermedio `22M`.
+  - **Fix `FFmpeg concat -22 (EINVAL)`:** al aplicar paneo/zoom suave (`1.08x`) en el Acto 2 (`map_location`, capado a `2.0–3.2s` en Shorts), `iw*1.08` producía desajustes de 1px entre streams. Corregido sondeando `src_w x src_h` exactos con `ffprobe` y recortando con enteros pares.
+  - **Fix `UnboundLocalError` en `src/pipeline.py`:** inicializado `is_pure_gameplay` antes del check de framing en la rama Multi-Beat.
+- **Geometría exacta para cuadrícula `3:4` de TikTok/Reels (`src/video_editor.py`, `src/thumbnail_generator.py`, `src/pipeline.py`):**
+  - Calculado el recorte real de `1080x1920` → `3:4` (`240px` superiores fuera de plano): bajada la marca de agua `VI EXTRA` a **`y=262px`**, reducida a **`155px`** (`~33%` más discreta) con canal alfa al **`68%`** (`render_brand_watermark_pill()`).
+  - Bajado el título de portada `Caspahz` a **`y=16.5%` (`317px`)** y ampliada `inject_first_frame_cover()` de `0.12s` a **`0.35s`** para que el selector automático de miniatura de TikTok capture siempre la portada completa.
+- **Nuevo Formato Dedicado `X Long Guide` (`45–70s`, `16:9` nativo) (`scripts/build_x_long_guide.py`, `src/guide_story_compiler.py`, `src/video_editor.py`, `src/social_publisher.py`):**
+  - Perfil `profile="x_long"` de 6 actos en `16:9` nativo sin recorte lateral, manteniendo YouTube Shorts y TikTok en `15–24s` `9:16`.
+  - Corregido el escalado de subtítulos horizontales en `render_final_video()`: antes heredaba `scale_factor=2.0` del lienzo 4K vertical (`2160/1080`); ahora calcula `scale_factor = height / 1080` con fuente base `42px` y realce de sombras para iPhone (`eq=brightness=0.09:contrast=1.05:saturation=1.14:gamma=1.22`).
+  - Actualizado `prepare_social_compatible_video()` para respetar orientación horizontal (`1920x1080`) y comprimir automáticamente másters `>44 MB` evitando errores `HTTP 413` en Telegram.
+- **Decisión de Arquitectura Compliance-First (APIs Oficiales vs. Playwright):**
+  - **TikTok API (`GTAVIExtra` · `7711344507748419605`):** enviada a **App Review (`Production · In review`)** con `Login Kit` (`user.info.basic`) + `Content Posting API` (`video.upload`), URLs legales `HTTP 200` en GitHub Pages y demo limpia grabada en Sandbox.
+  - **X / Twitter:** desactivado Playwright (`MAX_DAILY_UPLOADS_X=0`) para eliminar el riesgo de shadowban por huella headless; `build_x_long_guide.py --send-telegram` envía el vídeo `16:9` listo + un segundo mensaje separado con el copy exacto (`<=280` caracteres) para publicación manual en 15s desde iOS.
+- **Tracking A/B (`6h/24h/48h`), Scorecard Semanal y Auto-Limpieza de Telegram (`src/performance_tracker.py`, `scripts/check_views_notify.py`, `scripts/weekly_tracking_scorecard.py`, `scripts/clean_telegram_media.py`):**
+  - Corregido `ImportError` silencioso en `check_views_notify.py` (`fetch_recent_metrics` inexistente → `sync_live_channel_metrics` + `fetch_pending_metrics`) y cruce por `youtube_video_id` para eliminar registros en `None` (`24` vídeos sincronizados en el primer backfill).
+  - Añadidas etiquetas de experimento A/B (`source_type`, `preset`, `has_frame0_cover`, `duration_sec`, `topic`, `publish_slot`), cron semanal de scorecard los domingos `20:00 CET` y cron diario (`03:30 CET`) de purga de multimedia en Telegram dentro de la ventana de 48h de la Bot API.
+  - Cobertura de pruebas ampliada con suites unitarias: `tests/test_tracking_scorecard.py`, `tests/test_clean_telegram_media.py`, `tests/test_guide_menu_filter.py` y `tests/test_x_long_guide.py`.
 
 ---
 

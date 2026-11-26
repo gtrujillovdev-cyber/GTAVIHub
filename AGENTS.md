@@ -146,3 +146,20 @@ Este formato queda **blindado como directriz obligatoria** para toda la red (`Yo
    - **Sanitización anti-shadowban (`sanitize_banned_words` en `src/translator.py`):** Sustitución automática de términos sensibles (`cocaína`, `drogas`, `marihuana`, etc.) por `recompensa` / `mercancía` en títulos, descripciones, voz y subtítulos.
 5. **Protección Anti-Ban de Cuentas (Máximo 2/día en Co-Pilot):**
    - `LAUNCH_AUTOPILOT=false`, tope de `2/día` en YouTube y TikTok, `TIKTOK_COOLDOWN_MINUTES=240`, `ENABLE_INSTAGRAM=false` y prohibido privatizar vídeos en ráfaga durante los primeros 14 días.
+
+---
+
+## 10. 🚀 Estándar Alfa v2 Blindado: Vision 2-Fases, 4K UHD, Feed 3:4 y Estrategia Multiplataforma (2026-11-26)
+
+1. **Alineación Visual en 2 Fases (`src/guide_story_compiler.py`):**
+   - Toda guía Multi-Beat descarga primero el origen en **4K UHD (`height<=3840`)**, filtra menús/tablas estáticas (`sanitize_gameplay_beats_against_menus()`, preservando siempre `map_location`) y re-narra viendo el proxy montado (`narrate_compiled_beats_from_video()`).
+   - Acto 2 (`map_location`) capado a **`2.0–3.2s`** con paneo/zoom suave (`1.08x`) en Shorts; prioridad a tramos con acción dinámica (disparos, persecuciones, conducción).
+2. **Safe Zone Cuadrícula `3:4` (`src/video_editor.py`, `src/thumbnail_generator.py`, `src/pipeline.py`):**
+   - Marca de agua `VI EXTRA` en **`155px`**, opacidad **`68%`**, posición **`y=262px`**.
+   - Portada Frame 0 (`Caspahz Cover`) de **`0.35s`** con título bajado a **`y=16.5%` (`317px`)**.
+3. **Estrategia Segura por Plataforma (`MAX_DAILY_UPLOADS_*`):**
+   - **YouTube Shorts (`2/día`):** API oficial v3 (`15–24s` vertical `9:16`).
+   - **TikTok (`2/día`, cooldown `240`m):** Playwright temporal hasta aprobación de `GTAVIExtra` (`7711344507748419605`, `In review`) para API oficial v2.
+   - **X / Twitter (`MAX_DAILY_UPLOADS_X=0` en Playwright):** generación dedicada `X Long Guide` (`45–70s`, `16:9` nativo luminoso con subs `42px`) vía `scripts/build_x_long_guide.py --send-telegram`, entregando vídeo + copy limpio en Telegram para publicación manual sin riesgo de shadowban.
+4. **Tracking A/B y Limpieza Automática:**
+   - Snapshots `6h/24h/48h` + etiquetas A/B en `data/performance_records.json`, scorecard semanal los domingos `20:00 CET` (`scripts/weekly_tracking_scorecard.py`) y purga diaria de multimedia en Telegram a las `03:30 CET` (`scripts/clean_telegram_media.py`).
