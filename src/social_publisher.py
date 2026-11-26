@@ -45,10 +45,12 @@ def prepare_social_compatible_video(video_path: Path) -> tuple[Path, bool]:
             return video_path, False
         w, h = int(parts[0]), int(parts[1])
         is_landscape = w > h
-        if is_landscape and w <= 1920 and h <= 1080:
-            return video_path, False
-        if (not is_landscape) and w <= 1080 and h <= 1920:
-            return video_path, False
+        size_mb = video_path.stat().st_size / (1024 * 1024)
+        if size_mb <= 44.0:
+            if is_landscape and w <= 1920 and h <= 1080:
+                return video_path, False
+            if (not is_landscape) and w <= 1080 and h <= 1920:
+                return video_path, False
     except Exception:
         return video_path, False
 
@@ -56,10 +58,10 @@ def prepare_social_compatible_video(video_path: Path) -> tuple[Path, bool]:
     threads = 1 if is_quant_busy() else FFMPEG_THREADS
     if is_landscape:
         vf_expr = "scale=1920:1080:force_original_aspect_ratio=decrease,pad=1920:1080:(ow-iw)/2:(oh-ih)/2"
-        target_br = "6500k"
+        target_br = "4000k"
     else:
         vf_expr = "scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2"
-        target_br = "4500k"
+        target_br = "4000k"
     cmd = [
         "ffmpeg", "-y",
         "-threads", str(threads),
