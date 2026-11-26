@@ -44,22 +44,31 @@ def prepare_social_compatible_video(video_path: Path) -> tuple[Path, bool]:
         if len(parts) < 2 or not parts[0].isdigit() or not parts[1].isdigit():
             return video_path, False
         w, h = int(parts[0]), int(parts[1])
-        if w <= 1080 and h <= 1920:
+        is_landscape = w > h
+        if is_landscape and w <= 1920 and h <= 1080:
+            return video_path, False
+        if (not is_landscape) and w <= 1080 and h <= 1920:
             return video_path, False
     except Exception:
         return video_path, False
 
     temp_1080 = TEMP_DIR / f"{video_path.stem}_1080p.mp4"
     threads = 1 if is_quant_busy() else FFMPEG_THREADS
+    if is_landscape:
+        vf_expr = "scale=1920:1080:force_original_aspect_ratio=decrease,pad=1920:1080:(ow-iw)/2:(oh-ih)/2"
+        target_br = "6500k"
+    else:
+        vf_expr = "scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2"
+        target_br = "4500k"
     cmd = [
         "ffmpeg", "-y",
         "-threads", str(threads),
         "-i", str(video_path),
-        "-vf", "scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2",
+        "-vf", vf_expr,
         "-map", "0:v:0",
         "-map", "0:a?",
         "-c:v", FFMPEG_VIDEO_CODEC,
-        "-b:v", "4500k",
+        "-b:v", target_br,
         "-maxrate", "6500k",
         "-bufsize", "9000k",
         "-pix_fmt", "yuv420p",

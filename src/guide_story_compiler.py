@@ -158,21 +158,22 @@ def plan_multi_beat_guide(
     segments: List[Dict[str, Any]],
     source_video: Optional[Path] = None,
     work_dir: Path = TEMP_DIR,
+    profile: str = "short",
 ) -> Optional[Dict[str, Any]]:
     """
     Usa Gemini Vision (cuando `source_video` está disponible) para diseñar un storyboard
-    de 4 actos estilo Caspahz 100% alineado visualmente (guion describe lo que REALMENTE sale en pantalla):
-      1. reward_hook (2.8-4.0s): Recompensa visible en gameplay 3D.
-      2. map_location (2.0-3.0s MÁX): Flash rápido y dinámico del mapa/ubicación (nunca estático 6-8s).
-      3. action_steps (4.5-6.5s): Paso exacto en gameplay 3D.
-      4. claim_payoff (4.5-6.5s): Recogida/uso final + CTA corto de guardado.
+    100% alineado visualmente:
+    - `profile="short"` (YouTube Shorts / TikTok): 4 actos, 17-23s totales, mapa máx 2.0-3.0s.
+    - `profile="x_long"` (X / Twitter): 5-6 actos completos, 45-70s totales en 16:9 nativo.
     """
     if not os.getenv("GEMINI_API_KEY", "").strip():
         return None
 
-    # Compactar transcripción para el prompt (máx ~120 líneas)
-    step = max(1, len(segments) // 120) if segments else 1
-    sampled = segments[::step][:120]
+    is_x_long = (profile or "short").lower() == "x_long"
+    # Compactar transcripción para el prompt (máx ~140 líneas)
+    max_lines = 140 if is_x_long else 120
+    step = max(1, len(segments) // max_lines) if segments else 1
+    sampled = segments[::step][:max_lines]
     transcript_txt = "\n".join(f"[{s['start']:.1f}s-{s['end']:.1f}s] {s['text']}" for s in sampled)
     chapters_txt = "\n".join(
         f"[{c.get('start_time', 0):.1f}s-{c.get('end_time', 0):.1f}s] {c.get('title', '')}"
@@ -181,9 +182,51 @@ def plan_multi_beat_guide(
 
     storyboard_frames: List[Tuple[float, Path]] = []
     if source_video and Path(source_video).exists():
-        storyboard_frames = extract_visual_storyboard_frames(source_video, duration, num_frames=14, work_dir=work_dir)
+        n_frames = 18 if is_x_long else 14
+        storyboard_frames = extract_visual_storyboard_frames(source_video, duration, num_frames=n_frames, work_dir=work_dir)
 
-    prompt = f"""Eres editor jefe de Shorts virales de GTA 6 estilo Caspahz (ingeniería inversa exacta de edición).
+    if is_x_long:
+        prompt = f"""Eres editor jefe de mini-guías virales para X (Twitter) de GTA 6.
+Tienes un vídeo de guía titulado: "{title}" (duración total: {duration:.0f}s).
+
+CAPÍTULOS:
+{chapters_txt or "(Sin capítulos)"}
+
+TRANSCRIPCIÓN CON TIMESTAMPS:
+{transcript_txt or "(Sin transcripción; guíate directamente por los fotogramas reales adjuntos)"}
+
+TAREA (FORMATO X LONG GUIDE — 45 a 68 segundos totales):
+Construye una GUÍA COMPLETA Y DETALLADA de 6 actos (6 cortes reales del vídeo) que sumen entre 48 y 66 segundos totales (NUNCA menos de 45s ni más de 70s).
+CADA ACTO DEBE COINCIDIR 100% VISUALMENTE CON LOS FOTOGRAMAS REALES ADJUNTOS:
+
+1. Acto 1 "reward_hook" (5.0-7.0s): Muestra la recompensa principal en acción (coche/arma/dinero) en gameplay 3D. Anuncia directamente qué consigues y por qué merece la pena (14-20 palabras, sin preguntas).
+2. Acto 2 "map_location" (3.5-5.0s): Muestra el MAPA con la ubicación exacta y una referencia de la zona (10-14 palabras).
+3. Acto 3 "approach_route" (8.0-12.0s): Llegada exacta a la calle, edificio o entrada de la zona (22-30 palabras).
+4. Acto 4 "action_steps" (11.0-15.0s): Ejecución paso a paso de lo que ocurre en pantalla (guardias, acceso, truco, interacción) (28-38 palabras).
+5. Acto 5 "claim_payoff" (10.0-14.0s): Recogida o conducción de la recompensa + cómo guardarla, registrarla o sacarle el máximo provecho (25-35 palabras).
+6. Acto 6 "bonus_cta" (6.0-9.0s): Consejo práctico extra o aviso importante + CTA natural para guardar el post en marcadores ("Guarda este post en marcadores para cuando juegues.").
+
+REGLAS ESTRICTAS:
+- Cada beat debe tener 0 <= start_sec < end_sec <= {max(10.0, duration - 0.5):.1f}.
+- PROHIBIDO elegir menús de pausa o tablas de estadísticas en los actos de gameplay (actos 1, 3, 4, 5, 6).
+- Español natural de España, directo, fiel a lo que sale en pantalla, sin palabras prohibidas (usa "recompensa" o "mercancía" en vez de drogas/cocaína).
+
+Responde SOLO JSON válido:
+{{
+  "short_title_es": "TÍTULO DIRECTO PARA X SIN HASHTAGS",
+  "cover_line1": "1 PALABRA BLANCA",
+  "cover_line2": "1-2 PALABRAS ACENTO",
+  "beats": [
+    {{"act": "reward_hook", "start_sec": 0.0, "end_sec": 6.0, "narration_es": "..."}},
+    {{"act": "map_location", "start_sec": 0.0, "end_sec": 4.2, "narration_es": "..."}},
+    {{"act": "approach_route", "start_sec": 0.0, "end_sec": 10.0, "narration_es": "..."}},
+    {{"act": "action_steps", "start_sec": 0.0, "end_sec": 13.0, "narration_es": "..."}},
+    {{"act": "claim_payoff", "start_sec": 0.0, "end_sec": 12.0, "narration_es": "..."}},
+    {{"act": "bonus_cta", "start_sec": 0.0, "end_sec": 7.5, "narration_es": "..."}}
+  ]
+}}"""
+    else:
+        prompt = f"""Eres editor jefe de Shorts virales de GTA 6 estilo Caspahz (ingeniería inversa exacta de edición).
 Tienes un vídeo de guía titulado: "{title}" (duración total: {duration:.0f}s).
 
 CAPÍTULOS:
@@ -248,18 +291,32 @@ Responde SOLO JSON válido:
         act_name = str(b.get("act", "step")).lower()
         is_map = "map" in act_name
         s = max(0.0, float(b.get("start_sec", 0)))
-        default_len = 2.6 if is_map else 5.0
-        e = min(max(duration - 0.3, s + default_len), float(b.get("end_sec", s + default_len)))
-        if is_map:
-            if e - s < 2.0:
-                e = min(duration, s + 2.5)
-            if e - s > 3.2:
-                e = s + 3.0
+        if is_x_long:
+            default_len = 4.2 if is_map else 10.0
+            e = min(max(duration - 0.3, s + default_len), float(b.get("end_sec", s + default_len)))
+            if is_map:
+                if e - s < 3.0:
+                    e = min(duration, s + 3.8)
+                if e - s > 5.5:
+                    e = s + 5.0
+            else:
+                if e - s < 4.5:
+                    e = min(duration, s + 6.0)
+                if e - s > 18.0:
+                    e = s + 16.0
         else:
-            if e - s < 3.0:
-                e = min(duration, s + 4.0)
-            if e - s > 10.0:
-                e = s + 8.0
+            default_len = 2.6 if is_map else 5.0
+            e = min(max(duration - 0.3, s + default_len), float(b.get("end_sec", s + default_len)))
+            if is_map:
+                if e - s < 2.0:
+                    e = min(duration, s + 2.5)
+                if e - s > 3.2:
+                    e = s + 3.0
+            else:
+                if e - s < 3.0:
+                    e = min(duration, s + 4.0)
+                if e - s > 10.0:
+                    e = s + 8.0
         nar = sanitize_banned_words(str(b.get("narration_es", "")).strip())
         if nar and e > s + 1.8:
             valid_beats.append({
@@ -372,6 +429,7 @@ def sync_beats_with_voiceover(
     source_duration: float,
     output_audio_path: Path,
     work_dir: Path = TEMP_DIR,
+    profile: str = "short",
 ) -> Tuple[List[Dict[str, Any]], bool]:
     """
     Sintetiza la locución de cada acto por separado y ajusta la duración de cada corte
@@ -401,25 +459,29 @@ def sync_beats_with_voiceover(
             if tts_dur <= 0.5:
                 continue
 
+            is_x_long = (profile or "short").lower() == "x_long"
             act_name = str(b.get("act") or "").lower()
             is_map_act = "map" in act_name
             if idx == len(beats) - 1:
-                pad_tail = 0.08  # Corte en seco final para bucle instantáneo (>100% completion rate)
+                pad_tail = 0.25 if is_x_long else 0.08
             elif is_map_act:
-                pad_tail = 0.14
+                pad_tail = 0.22 if is_x_long else 0.14
             else:
-                pad_tail = 0.20 if idx == 0 else 0.24
+                pad_tail = 0.28 if is_x_long else (0.20 if idx == 0 else 0.24)
 
-            # Tope estricto para mapa: 2.0s - 3.2s (flash rápido estilo Caspahz, jamás 6-8s congelados)
+            # Tope para mapa: 2.0-3.2s en Short, 3.0-5.2s en X Long Guide
             atempo_prefix = ""
             if is_map_act:
-                if tts_dur > 3.05:
-                    spd = min(1.35, round((tts_dur + 0.12) / 3.10, 2))
+                map_cap = 5.2 if is_x_long else 3.2
+                map_min = 3.0 if is_x_long else 2.0
+                if tts_dur > (map_cap - 0.15):
+                    spd = min(1.35, round((tts_dur + 0.12) / (map_cap - 0.10), 2))
                     atempo_prefix = f"atempo={spd},"
                     tts_dur = tts_dur / spd
-                target_dur = max(2.0, min(3.2, tts_dur + pad_tail))
+                target_dur = max(map_min, min(map_cap, tts_dur + pad_tail))
             else:
-                target_dur = max(3.2, tts_dur + pad_tail)
+                min_act = 4.5 if is_x_long else 3.2
+                target_dur = max(min_act, tts_dur + pad_tail)
             s = float(b["start_sec"])
             max_avail = max(2.5, float(source_duration or 600.0) - s - 0.2)
             if target_dur > max_avail:
@@ -589,19 +651,18 @@ def build_multi_beat_guide_package(
     video_id: str,
     source_video: Path,
     work_dir: Path = TEMP_DIR,
+    profile: str = "short",
 ) -> Optional[Tuple[Path, Path, Path, Dict[str, Any]]]:
     """
-    Pipeline completo de compilación Multi-Beat 16:9 -> 9:16:
-    1. Lee transcripción + capítulos del vídeo largo.
-    2. Planifica 4 actos con Gemini (Recompensa -> Mapa -> Pasos -> Cobro).
-    3. Sintetiza voz por acto y ajusta cada corte a la duración exacta de su voz (0 huecos mudos).
-    4. Filtra visualmente menús/tablas estáticas en los actos de gameplay.
-    5. Compila el vídeo maestro y devuelve (comp_mp4, srt_path, dub_mp3, plan).
+    Pipeline completo de compilación Multi-Beat:
+    - profile="short": 17-23s para YouTube Shorts y TikTok (9:16).
+    - profile="x_long": 45-70s para X (Twitter) en 16:9 nativo.
     """
     try:
         ctx = fetch_long_guide_context(url, video_id, work_dir)
         dur = float(ctx.get("duration") or 0)
-        if dur < 45.0:
+        min_src = 65.0 if profile == "x_long" else 45.0
+        if dur < min_src:
             return None
         plan = plan_multi_beat_guide(
             ctx.get("title", ""),
@@ -610,19 +671,21 @@ def build_multi_beat_guide_package(
             ctx.get("segments") or [],
             source_video=source_video,
             work_dir=work_dir,
+            profile=profile,
         )
         if not plan or not plan.get("beats"):
             return None
 
-        dub_mp3 = work_dir / f"{video_id}_mb_dub.mp3"
-        synced_beats, ok_tts = sync_beats_with_voiceover(plan["beats"], dur, dub_mp3, work_dir)
+        tag = "xlong" if profile == "x_long" else "mb"
+        dub_mp3 = work_dir / f"{video_id}_{tag}_dub.mp3"
+        synced_beats, ok_tts = sync_beats_with_voiceover(plan["beats"], dur, dub_mp3, work_dir, profile=profile)
         if not ok_tts or not synced_beats:
             return None
 
         synced_beats = sanitize_gameplay_beats_against_menus(source_video, synced_beats, dur, work_dir)
 
-        comp_mp4 = work_dir / f"{video_id}_mb_compiled.mp4"
-        srt_path = work_dir / f"{video_id}_mb_es.srt"
+        comp_mp4 = work_dir / f"{video_id}_{tag}_compiled.mp4"
+        srt_path = work_dir / f"{video_id}_{tag}_es.srt"
         ok_vid, _ = compile_multi_beat_video(source_video, synced_beats, comp_mp4, srt_path)
         if not ok_vid or not comp_mp4.exists():
             return None
@@ -637,19 +700,21 @@ def build_multi_beat_guide_package_from_url(
     url: str,
     video_id: str,
     work_dir: Path = TEMP_DIR,
+    profile: str = "short",
 ) -> Optional[Tuple[Path, Path, Path, Dict[str, Any]]]:
     """
-    Descarga y compila un Short Multi-Beat directamente desde una URL de guía (>= 45s,
-    ideal para guías enfocadas de 1-3 min en YouTube o X/Twitter).
-    Descarga primero el vídeo para que Gemini Vision VEA fotogramas reales antes de planificar.
+    Descarga y compila una guía Multi-Beat directamente desde URL (YouTube o X).
+    Descarga primero el vídeo en 4K UHD para que Gemini Vision VEA fotogramas reales antes de planificar.
     """
     if "/shorts/" in (url or "").lower():
         return None
-    src_mp4 = work_dir / f"{video_id}_mb_src.mp4"
+    tag = "xlong" if profile == "x_long" else "mb"
+    src_mp4 = work_dir / f"{video_id}_{tag}_src.mp4"
     try:
         ctx = fetch_long_guide_context(url, video_id, work_dir)
         dur = float(ctx.get("duration") or 0)
-        if dur < 45.0:
+        min_src = 65.0 if profile == "x_long" else 45.0
+        if dur < min_src:
             return None
 
         dl_res = subprocess.run([
@@ -667,19 +732,20 @@ def build_multi_beat_guide_package_from_url(
             ctx.get("segments") or [],
             source_video=src_mp4,
             work_dir=work_dir,
+            profile=profile,
         )
         if not plan or not plan.get("beats"):
             return None
 
-        dub_mp3 = work_dir / f"{video_id}_mb_dub.mp3"
-        synced_beats, ok_tts = sync_beats_with_voiceover(plan["beats"], dur, dub_mp3, work_dir)
+        dub_mp3 = work_dir / f"{video_id}_{tag}_dub.mp3"
+        synced_beats, ok_tts = sync_beats_with_voiceover(plan["beats"], dur, dub_mp3, work_dir, profile=profile)
         if not ok_tts or not synced_beats:
             return None
 
         synced_beats = sanitize_gameplay_beats_against_menus(src_mp4, synced_beats, dur, work_dir)
 
-        comp_mp4 = work_dir / f"{video_id}_mb_compiled.mp4"
-        srt_path = work_dir / f"{video_id}_mb_es.srt"
+        comp_mp4 = work_dir / f"{video_id}_{tag}_compiled.mp4"
+        srt_path = work_dir / f"{video_id}_{tag}_es.srt"
         ok_vid, _ = compile_multi_beat_video(src_mp4, synced_beats, comp_mp4, srt_path)
         if not ok_vid or not comp_mp4.exists():
             return None
