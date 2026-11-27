@@ -478,37 +478,59 @@ def render_caspahz_cover_image(
         pass
 
     sample_video = clean_source_video if (clean_source_video and Path(clean_source_video).exists()) else video_path
-    sample_times = [round(total_dur * r, 1) for r in (0.15, 0.35, 0.55, 0.75, 0.90)]
+    sample_times = [round(total_dur * r, 1) for r in (0.06, 0.18, 0.34, 0.50, 0.66, 0.80, 0.92)]
     candidates: list[Path] = []
     for idx, ts in enumerate(sample_times):
         cand = output_cover_path.with_suffix(f".caspahz_{idx}.jpg")
         if extract_keyframe(sample_video, cand, timestamp_sec=ts) and cand.exists():
             candidates.append(cand)
 
+    def _is_map_or_menu_frame(img_path: Path) -> bool:
+        try:
+            im = Image.open(img_path).convert("RGB").resize((160, 90), Image.Resampling.BILINEAR)
+            px = list(im.getdata())
+            n_px = max(1, len(px))
+            # Mapa de Leonida/GTA: gran proporción de agua cian/turquesa o verde plano (B>115, G>120, R<95)
+            cyan_green = sum(1 for r, g, b in px if (b > 115 and g > 120 and r < 95) or (g > 150 and r < 140 and b < 140))
+            if cyan_green / n_px >= 0.28:
+                return True
+            # Barra superior oscura de menú de pausa (MAP / BRIEF / PROGRESS)
+            top_strip = px[:160 * 10]
+            top_luma = sum((r + g + b) / 3.0 for r, g, b in top_strip) / max(1, len(top_strip))
+            if top_luma < 28.0 and (cyan_green / n_px) >= 0.12:
+                return True
+        except Exception:
+            pass
+        return False
+
+    non_map_candidates = [c for c in candidates if not _is_map_or_menu_frame(c)]
+    pool_for_selection = non_map_candidates if non_map_candidates else candidates
+
     best_frame: Optional[Path] = None
-    if candidates and os.getenv("GEMINI_API_KEY", "").strip():
+    if pool_for_selection and os.getenv("GEMINI_API_KEY", "").strip():
         try:
             from google.genai import types
             from .translator import get_gemini_client, generate_content_with_retry, clean_srt_response
-            parts = [types.Part.from_bytes(data=c.read_bytes(), mime_type="image/jpeg") for c in candidates]
+            parts = [types.Part.from_bytes(data=c.read_bytes(), mime_type="image/jpeg") for c in pool_for_selection]
             parts.append(
-                f"Te paso {len(candidates)} fotogramas de un clip de GTA 6 sobre '{title_text}'. "
-                "Elige el índice (0 a N-1) que muestre MEJOR la recompensa principal (el coche, arma, dinero o personaje en gameplay 3D) "
-                "y que NO sea un mapa, minimapa grande, menú, pantalla de estadísticas/tablas de barras, ni tenga subtítulos o diálogos de texto abajo. "
-                'Responde SOLO JSON: {"best_idx": 2}'
+                f"Te paso {len(pool_for_selection)} fotogramas de un clip de GTA 6 sobre '{title_text}'. "
+                "Elige el índice (0 a N-1) que muestre MEJOR la recompensa principal (el COCHE, arma, dinero o personaje en gameplay 3D en primer plano). "
+                "RECHAZA OBLIGATORIAMENTE cualquier fotograma que sea un MAPA 2D/3D (agua azul/turquesa, calles en vista aérea, barra 'MAP / BRIEF / PROGRESS / JASON & LUCIA'), "
+                "menú de pausa, pantalla de estadísticas/tablas o subtítulos grandes. "
+                'Responde SOLO JSON: {"best_idx": 0}'
             )
             resp = generate_content_with_retry(client=get_gemini_client(), contents=parts)
             data = json.loads(clean_srt_response(resp.text or "{}"))
             b_idx = int(data.get("best_idx", 0))
-            if 0 <= b_idx < len(candidates):
-                best_frame = candidates[b_idx]
+            if 0 <= b_idx < len(pool_for_selection):
+                best_frame = pool_for_selection[b_idx]
         except Exception as e:
             print(f"[Caspahz Cover] Fallback selector visual: {e}")
 
-    if best_frame is None and candidates:
+    if best_frame is None and pool_for_selection:
         from PIL import ImageStat
         best_energy = -1.0
-        for cand in candidates:
+        for cand in pool_for_selection:
             try:
                 c_img = Image.open(cand).convert("RGB").resize((270, 480), Image.Resampling.LANCZOS)
                 stat = ImageStat.Stat(c_img)

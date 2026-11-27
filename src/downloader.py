@@ -1266,31 +1266,39 @@ def download_video_and_subtitles(
                 break
 
         if concat_ok and len(seg_files) == len(multi_segments):
-            concat_list = TEMP_DIR / f"{video_id}_concat.txt"
-            concat_list.write_text("\n".join(f"file '{sf.resolve()}'" for sf in seg_files), encoding="utf-8")
             assembled_mp4 = TEMP_DIR / f"{video_id}.mp4"
             v_enc = ["-c:v", FFMPEG_VIDEO_CODEC, "-b:v", "12M"] if "videotoolbox" in FFMPEG_VIDEO_CODEC else ["-c:v", "libx264", "-preset", "veryfast", "-crf", "20"]
             try:
+                ff_inputs: List[str] = []
+                fc_parts: List[str] = []
+                concat_refs: List[str] = []
+                for idx_s, sf in enumerate(seg_files):
+                    ff_inputs.extend(["-i", str(sf)])
+                    fc_parts.append(f"[{idx_s}:v]fps=30,setpts=PTS-STARTPTS,format=yuv420p,setsar=1[v{idx_s}]")
+                    fc_parts.append(f"[{idx_s}:a]asetpts=PTS-STARTPTS,aresample=48000[a{idx_s}]")
+                    concat_refs.append(f"[v{idx_s}][a{idx_s}]")
+                fc_str = ";".join(fc_parts) + f";{''.join(concat_refs)}concat=n={len(seg_files)}:v=1:a=1[vout][aout]"
                 subprocess.run([
-                    "ffmpeg", "-y", "-f", "concat", "-safe", "0", "-i", str(concat_list),
+                    "ffmpeg", "-y", *ff_inputs,
+                    "-filter_complex", fc_str,
+                    "-map", "[vout]", "-map", "[aout]",
                     "-threads", str(get_ffmpeg_threads()),
-                    *v_enc, "-c:a", "aac", "-b:a", "192k",
+                    *v_enc, "-r", "30", "-pix_fmt", "yuv420p",
+                    "-c:a", "aac", "-b:a", "192k", "-ar", "48000",
                     "-movflags", "+faststart", str(assembled_mp4)
                 ], check=True, capture_output=True, text=True, timeout=120)
                 if assembled_mp4.exists() and assembled_mp4.stat().st_size > 20_000:
                     for sf in seg_files:
                         sf.unlink(missing_ok=True)
-                    concat_list.unlink(missing_ok=True)
                     if srt_path and srt_path.exists():
                         multi_srt = TEMP_DIR / f"{video_id}_multi.srt"
                         if remap_srt_for_multi_segments(srt_path, multi_segments, multi_srt):
                             srt_path.unlink(missing_ok=True)
                             srt_path = multi_srt
-                    print(f"[✓ Multi-Clip Guide] Short ensamblado con {len(seg_files)} cortes -> {assembled_mp4.name}")
+                    print(f"[✓ Multi-Clip Guide] Short ensamblado CFR 30fps con {len(seg_files)} cortes -> {assembled_mp4.name}")
                     return assembled_mp4, srt_path, detected_lang
             except Exception as e:
                 print(f"[!] Error concatenando multi-clip guide: {e}")
-            concat_list.unlink(missing_ok=True)
 
         for sf in seg_files:
             sf.unlink(missing_ok=True)

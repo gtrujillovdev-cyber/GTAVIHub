@@ -855,14 +855,24 @@ def build_multi_beat_guide_package_from_url(
         dur = float(ctx.get("duration") or 0)
         min_src = 65.0 if profile == "x_long" else 45.0
         if dur < min_src:
+            print(f"[GuideCompiler] Omitido ({video_id}): duración {dur:.1f}s < mínimo {min_src:.0f}s.")
             return None
 
+        fmt_sel = "bestvideo[height<=3840][ext=mp4]+bestaudio[ext=m4a]/bestvideo[height<=3840]+bestaudio/best[height<=3840][ext=mp4]/best"
         dl_res = subprocess.run([
             sys.executable, "-m", "yt_dlp", "--impersonate", "chrome", "--no-check-certificates",
-            "-f", "bestvideo[height<=3840][ext=mp4]+bestaudio[ext=m4a]/bestvideo[height<=3840]+bestaudio/best[height<=3840][ext=mp4]/best",
-            "--merge-output-format", "mp4", "-o", str(src_mp4), url
+            "-f", fmt_sel, "--merge-output-format", "mp4", "-o", str(src_mp4), url
         ], capture_output=True, text=True, timeout=180)
         if dl_res.returncode != 0 or not src_mp4.exists():
+            print(f"[GuideCompiler] Reintentando descarga 4K sin --impersonate ({video_id}, rc={dl_res.returncode})...")
+            src_mp4.unlink(missing_ok=True)
+            dl_res = subprocess.run([
+                sys.executable, "-m", "yt_dlp", "--force-ipv4", "--no-check-certificates",
+                "-f", fmt_sel, "--merge-output-format", "mp4", "-o", str(src_mp4), url
+            ], capture_output=True, text=True, timeout=180)
+        if dl_res.returncode != 0 or not src_mp4.exists():
+            err_tail = (dl_res.stderr or "").strip().splitlines()[-1:] or ["unknown"]
+            print(f"[GuideCompiler] Falló descarga origen ({video_id}, rc={dl_res.returncode}): {err_tail[0]}")
             return None
 
         plan = plan_multi_beat_guide(
