@@ -1132,7 +1132,8 @@ def ensure_non_map_first_frame(video_path: Path, temp_dir: Path) -> Path:
             "[0:v]setpts=PTS-STARTPTS[vh];[1:v]setpts=PTS-STARTPTS[vm];[vh][vm]concat=n=2:v=1:a=0[vout]",
             "-map", "[vout]", "-map", "1:a?",
             "-c:v", "h264_videotoolbox" if os.uname().sysname == "Darwin" else "libx264",
-            "-b:v", "8M", "-c:a", "copy", "-shortest", str(out_path)
+            "-b:v", FFMPEG_BITRATE, "-maxrate", FFMPEG_MAXRATE, "-bufsize", FFMPEG_BUFSIZE,
+            "-pix_fmt", "yuv420p", "-c:a", "copy", "-shortest", str(out_path)
         ]
         res_h = subprocess.run(cmd_hook, capture_output=True, timeout=45)
         if res_h.returncode == 0 and out_path.exists() and out_path.stat().st_size > 10000:
@@ -1201,7 +1202,8 @@ def inject_first_frame_cover(video_path: Path, cover_image_path: Path, duration_
                 "-f", "lavfi", "-t", f"{duration_sec:.2f}", "-i", "anullsrc=channel_layout=stereo:sample_rate=44100",
                 "-filter_complex", filter_complex,
                 "-map", "[vout]", "-map", "[aout]",
-                "-c:v", vcodec, "-b:v", "8M", "-c:a", "aac", "-b:a", "192k",
+                "-c:v", vcodec, "-b:v", FFMPEG_BITRATE, "-maxrate", FFMPEG_MAXRATE, "-bufsize", FFMPEG_BUFSIZE,
+                "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "192k",
                 "-movflags", "+faststart", str(tmp_out)
             ]
         else:
@@ -1217,7 +1219,8 @@ def inject_first_frame_cover(video_path: Path, cover_image_path: Path, duration_
                 "-i", str(video_path),
                 "-filter_complex", filter_complex,
                 "-map", "[vout]",
-                "-c:v", vcodec, "-b:v", "8M",
+                "-c:v", vcodec, "-b:v", FFMPEG_BITRATE, "-maxrate", FFMPEG_MAXRATE, "-bufsize", FFMPEG_BUFSIZE,
+                "-pix_fmt", "yuv420p",
                 "-movflags", "+faststart", str(tmp_out)
             ]
 

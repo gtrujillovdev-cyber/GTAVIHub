@@ -58,10 +58,12 @@ def prepare_social_compatible_video(video_path: Path) -> tuple[Path, bool]:
     threads = 1 if is_quant_busy() else FFMPEG_THREADS
     if is_landscape:
         vf_expr = "scale=1920:1080:force_original_aspect_ratio=decrease,pad=1920:1080:(ow-iw)/2:(oh-ih)/2"
-        target_br = "4000k"
+        target_br = "5500k"
+        max_br, buf_br = "8000k", "12000k"
     else:
         vf_expr = "scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2"
-        target_br = "4000k"
+        target_br = "10000k"
+        max_br, buf_br = "14000k", "20000k"
     cmd = [
         "ffmpeg", "-y",
         "-threads", str(threads),
@@ -71,8 +73,8 @@ def prepare_social_compatible_video(video_path: Path) -> tuple[Path, bool]:
         "-map", "0:a?",
         "-c:v", FFMPEG_VIDEO_CODEC,
         "-b:v", target_br,
-        "-maxrate", "6500k",
-        "-bufsize", "9000k",
+        "-maxrate", max_br,
+        "-bufsize", buf_br,
         "-pix_fmt", "yuv420p",
         "-c:a", "copy",
         str(temp_1080)
