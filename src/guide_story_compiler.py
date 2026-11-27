@@ -706,10 +706,10 @@ def narrate_compiled_beats_from_video(
             s = float(b["start_sec"])
             e = float(b["end_sec"])
             d = max(1.8, e - s)
-            inputs.extend(["-ss", f"{s:.2f}", "-t", f"{d:.2f}", "-i", str(source_video)])
+            inputs.extend(["-ss", f"{s:.2f}", "-t", f"{d + 0.2:.2f}", "-i", str(source_video)])
             v_filters.append(
-                f"[{idx}:v]fps=8,scale=480:270:force_original_aspect_ratio=decrease,"
-                f"pad=480:270:(ow-iw)/2:(oh-ih)/2,setpts=PTS-STARTPTS,setsar=1[v{idx}]"
+                f"[{idx}:v]fps=10,trim=duration={d:.3f},scale=480:272:force_original_aspect_ratio=decrease,"
+                f"pad=480:272:(ow-iw)/2:(oh-ih)/2,setpts=PTS-STARTPTS,format=yuv420p,setsar=1[v{idx}]"
             )
             concat_v.append(f"[v{idx}]")
             act_ranges.append(
@@ -721,13 +721,23 @@ def narrate_compiled_beats_from_video(
         fc = ";".join(v_filters) + f";{''.join(concat_v)}concat=n={len(beats)}:v=1:a=0[vout]"
         vcodec = "h264_videotoolbox" if os.uname().sysname == "Darwin" else "libx264"
         cmd = [
-            "ffmpeg", "-y", "-loglevel", "error", "-threads", "2",
+            "ffmpeg", "-y", "-loglevel", "error", "-threads", "1",
             *inputs, "-filter_complex", fc,
-            "-map", "[vout]", "-c:v", vcodec, "-b:v", "450k", "-an",
+            "-map", "[vout]", "-c:v", vcodec, "-b:v", "450k", "-pix_fmt", "yuv420p", "-an",
             "-movflags", "+faststart", str(proxy_mp4),
         ]
         res = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
+        if (res.returncode != 0 or not proxy_mp4.exists()) and vcodec == "h264_videotoolbox":
+            proxy_mp4.unlink(missing_ok=True)
+            cmd_sw = [
+                "ffmpeg", "-y", "-loglevel", "error", "-threads", "1",
+                *inputs, "-filter_complex", fc,
+                "-map", "[vout]", "-c:v", "libx264", "-preset", "ultrafast", "-crf", "30",
+                "-pix_fmt", "yuv420p", "-an", "-movflags", "+faststart", str(proxy_mp4),
+            ]
+            res = subprocess.run(cmd_sw, capture_output=True, text=True, timeout=60)
         if res.returncode != 0 or not proxy_mp4.exists() or proxy_mp4.stat().st_size > 18 * 1024 * 1024:
+            print(f"[GuideCompiler] Aviso proxy re-narración omitido (rc={res.returncode}): {(res.stderr or '')[:140]}")
             return beats
 
         from google.genai import types

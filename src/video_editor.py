@@ -1620,6 +1620,36 @@ def render_final_video(
 
     filter_chains = []
 
+    # Detección rápida de luminosidad media del clip para levantar escenas oscuras/nocturnas en móviles
+    mean_luma = 100.0
+    try:
+        from PIL import ImageStat
+        luma_vals = []
+        for ratio in (0.20, 0.50, 0.80):
+            ts_l = max(0.2, duration * ratio)
+            tmp_l = TEMP_DIR / f"_luma_{os.getpid()}_{int(ratio * 100)}.jpg"
+            r_l = subprocess.run(
+                ["ffmpeg", "-y", "-loglevel", "error", "-ss", f"{ts_l:.2f}", "-i", str(video_path),
+                 "-frames:v", "1", "-vf", "scale=120:-2", str(tmp_l)],
+                capture_output=True, timeout=6
+            )
+            if r_l.returncode == 0 and tmp_l.exists():
+                im_l = Image.open(tmp_l).convert("L")
+                luma_vals.append(float(ImageStat.Stat(im_l).mean[0]))
+            tmp_l.unlink(missing_ok=True)
+        if luma_vals:
+            mean_luma = sum(luma_vals) / len(luma_vals)
+    except Exception:
+        pass
+
+    if mean_luma < 85.0:
+        fg_eq = "eq=brightness=0.12:contrast=1.06:saturation=1.18:gamma=1.32"
+        bg_eq = "eq=brightness=0.02:contrast=1.05:saturation=1.18:gamma=1.18"
+        print(f"[*] [Auto-Exposure] Escena oscura detectada (luma={mean_luma:.0f}/255): aplicando realce HDR móvil (+gamma 1.32).")
+    else:
+        fg_eq = "eq=brightness=0.08:contrast=1.05:saturation=1.16:gamma=1.20"
+        bg_eq = "eq=brightness=-0.03:contrast=1.04:saturation=1.16"
+
     # A) Base de vídeo:
     if is_vertical and not is_already_vertical:
         bg_scale_w = 270
@@ -1629,8 +1659,8 @@ def render_final_video(
             v_base = (
                 "[0:v]split=3[v1][vl_in][vr_in];"
                 f"[v1]scale={bg_scale_w}:{bg_scale_h},boxblur=10:2,scale={canvas_w}:{canvas_h}:flags=bilinear,eq=brightness=-0.28:contrast=1.06:saturation=1.12[bg];"
-                f"[vl_in]crop=iw/2:ih:0:0,scale={canvas_w}:{panel_h}:force_original_aspect_ratio=increase,crop={canvas_w}:{panel_h}:(iw-{canvas_w})/2:0,unsharp=3:3:0.6:3:3:0.0,eq=contrast=1.06:saturation=1.10[vtop];"
-                f"[vr_in]crop=iw/2:ih:iw/2:0,scale={canvas_w}:{panel_h}:force_original_aspect_ratio=increase,crop={canvas_w}:{panel_h}:(iw-{canvas_w})/2:0,unsharp=3:3:0.6:3:3:0.0,eq=contrast=1.06:saturation=1.10[vbot];"
+                f"[vl_in]crop=iw/2:ih:0:0,scale={canvas_w}:{panel_h}:force_original_aspect_ratio=increase,crop={canvas_w}:{panel_h}:(iw-{canvas_w})/2:0,unsharp=3:3:0.6:3:3:0.0,{fg_eq}[vtop];"
+                f"[vr_in]crop=iw/2:ih:iw/2:0,scale={canvas_w}:{panel_h}:force_original_aspect_ratio=increase,crop={canvas_w}:{panel_h}:(iw-{canvas_w})/2:0,unsharp=3:3:0.6:3:3:0.0,{fg_eq}[vbot];"
                 f"[bg][vtop]overlay=0:{y1}[v_split_top];"
                 f"[v_split_top][vbot]overlay=0:{y2}[v_framed]"
             )
@@ -1638,24 +1668,24 @@ def render_final_video(
             # Formato FIT: 16:9 completo sin recorte lateral sobre Velvet Blur reactivo luminoso
             v_base = (
                 "[0:v]split[v1][v2];"
-                f"[v1]scale={bg_scale_w}:{bg_scale_h},boxblur=10:2,scale={canvas_w}:{canvas_h}:flags=bilinear,setsar=1,eq=brightness=-0.05:contrast=1.04:saturation=1.16[bg];"
-                f"[v2]scale={fg_w}:{fg_h}:force_original_aspect_ratio=decrease,pad={fg_w}:{fg_h}:(ow-iw)/2:(oh-ih)/2:color=black,unsharp=3:3:0.6:3:3:0.0,eq=brightness=0.06:contrast=1.04:saturation=1.15:gamma=1.14[fg];"
+                f"[v1]scale={bg_scale_w}:{bg_scale_h},boxblur=10:2,scale={canvas_w}:{canvas_h}:flags=bilinear,setsar=1,{bg_eq}[bg];"
+                f"[v2]scale={fg_w}:{fg_h}:force_original_aspect_ratio=decrease,pad={fg_w}:{fg_h}:(ow-iw)/2:(oh-ih)/2:color=black,unsharp=3:3:0.6:3:3:0.0,{fg_eq}[fg];"
                 f"[bg][fg]overlay=0:{fg_y}[v_framed]"
             )
         else:
             # Formato D / C: Plano recortado inmersivo sobre fondo Velvet Blur luminoso + realce de sombras
             v_base = (
                 "[0:v]split[v1][v2];"
-                f"[v1]scale={bg_scale_w}:{bg_scale_h},boxblur=10:2,scale={canvas_w}:{canvas_h}:flags=bilinear,setsar=1,eq=brightness=-0.05:contrast=1.04:saturation=1.16[bg];"
-                f"[v2]scale={fg_w}:{fg_h}:force_original_aspect_ratio=increase,crop={fg_w}:{fg_h},unsharp=3:3:0.75:3:3:0.0,eq=brightness=0.05:contrast=1.04:saturation=1.15:gamma=1.12[fg];"
+                f"[v1]scale={bg_scale_w}:{bg_scale_h},boxblur=10:2,scale={canvas_w}:{canvas_h}:flags=bilinear,setsar=1,{bg_eq}[bg];"
+                f"[v2]scale={fg_w}:{fg_h}:force_original_aspect_ratio=increase,crop={fg_w}:{fg_h},unsharp=3:3:0.75:3:3:0.0,{fg_eq}[fg];"
                 f"[bg][fg]overlay=0:{fg_y}[v_framed]"
             )
     elif is_vertical:
         # Formato C (Nativo Vertical 9:16): Pantalla completa sin bandas + realce luminoso
-        v_base = f"[0:v]scale={canvas_w}:{canvas_h}:force_original_aspect_ratio=increase,crop={canvas_w}:{canvas_h},unsharp=3:3:0.75:3:3:0.0,eq=brightness=0.05:contrast=1.04:saturation=1.15:gamma=1.12[v_framed]"
+        v_base = f"[0:v]scale={canvas_w}:{canvas_h}:force_original_aspect_ratio=increase,crop={canvas_w}:{canvas_h},unsharp=3:3:0.75:3:3:0.0,{fg_eq}[v_framed]"
     else:
         # Formato horizontal 16:9 (X Long Guide): realce extra de sombras y luminosidad para pantallas iPhone
-        v_base = "[0:v]unsharp=3:3:0.75:3:3:0.0,eq=brightness=0.09:contrast=1.05:saturation=1.14:gamma=1.22[v_framed]"
+        v_base = f"[0:v]unsharp=3:3:0.75:3:3:0.0,{fg_eq}[v_framed]"
     
     filter_chains.append(v_base)
     filter_chains.append("[v_framed]setsar=1[v_sar]")

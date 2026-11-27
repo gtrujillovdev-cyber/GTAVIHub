@@ -602,23 +602,46 @@ def render_caspahz_cover_image(
     if img.size != (target_w, target_h):
         img = img.resize((target_w, target_h), Image.Resampling.LANCZOS)
 
-    # Realce limpio estilo Caspahz (colores vivos + contraste nítido)
-    img = ImageEnhance.Color(img).enhance(1.18)
-    img = ImageEnhance.Contrast(img).enhance(1.14)
-    img = ImageEnhance.Brightness(img).enhance(1.05)
+    # Auto-exposición + acabado cinematográfico pro (levanta escenas oscuras para que la portada brille en el feed)
+    from PIL import ImageStat, ImageFilter
+    cover_luma = float(ImageStat.Stat(img.convert("L")).mean[0])
+    if cover_luma < 90.0:
+        img = ImageEnhance.Brightness(img).enhance(1.34)
+        img = ImageEnhance.Contrast(img).enhance(1.20)
+        img = ImageEnhance.Color(img).enhance(1.28)
+        img = ImageEnhance.Sharpness(img).enhance(1.30)
+    else:
+        img = ImageEnhance.Color(img).enhance(1.24)
+        img = ImageEnhance.Contrast(img).enhance(1.18)
+        img = ImageEnhance.Brightness(img).enhance(1.08)
+        img = ImageEnhance.Sharpness(img).enhance(1.25)
     img = img.convert("RGBA")
 
-    # Degradado oscuro superior (48% altura) para que las 2 líneas gigantes floten dentro del recorte 3:4
+    # Degradado cinematográfico superior + viñeta inferior sutil para dar profundidad de póster
     overlay = Image.new("RGBA", (target_w, target_h), (0, 0, 0, 0))
     draw_ov = ImageDraw.Draw(overlay)
-    top_grad_h = int(target_h * 0.48)
+    top_grad_h = int(target_h * 0.44)
     for y in range(top_grad_h):
-        alpha = int(205 * ((1.0 - (y / top_grad_h)) ** 1.25))
-        draw_ov.line([(0, y), (target_w, y)], fill=(6, 8, 12, alpha))
+        alpha = int(215 * ((1.0 - (y / top_grad_h)) ** 1.35))
+        draw_ov.line([(0, y), (target_w, y)], fill=(6, 8, 14, alpha))
+    bot_grad_h = int(target_h * 0.22)
+    for i in range(bot_grad_h):
+        y = target_h - 1 - i
+        alpha = int(150 * ((1.0 - (i / bot_grad_h)) ** 1.5))
+        draw_ov.line([(0, y), (target_w, y)], fill=(6, 8, 14, alpha))
     img = Image.alpha_composite(img, overlay)
 
-    draw = ImageDraw.Draw(img)
     scale = target_w / 1080.0
+    # Halo ambiental suave detrás del titular con el color de acento
+    glow_layer = Image.new("RGBA", (target_w, target_h), (0, 0, 0, 0))
+    draw_glow = ImageDraw.Draw(glow_layer)
+    gx0, gy0 = int(target_w * 0.10), int(target_h * 0.14)
+    gx1, gy1 = int(target_w * 0.90), int(target_h * 0.34)
+    draw_glow.ellipse([gx0, gy0, gx1, gy1], fill=accent_rgb + (72,))
+    glow_layer = glow_layer.filter(ImageFilter.GaussianBlur(radius=int(95 * scale)))
+    img = Image.alpha_composite(img, glow_layer)
+
+    draw = ImageDraw.Draw(img)
 
     def _fit_font(text: str, base_px: int):
         size = int(base_px * scale)
@@ -631,25 +654,65 @@ def render_caspahz_cover_image(
             size -= int(8 * scale)
         return get_best_font(max(48, size))
 
-    font1 = _fit_font(line1, 145)
-    font2 = _fit_font(line2, 155)
+    # Micro-badge superior estilo guía pro dentro de la Safe Zone 3:4 (y=13.5% @ 1920h = 259px)
+    badge_txt = "GUÍA GTA 6"
+    badge_font = get_best_font(max(24, int(36 * scale)))
+    b_bb = draw.textbbox((0, 0), badge_txt, font=badge_font)
+    bw, bh = b_bb[2] - b_bb[0], b_bb[3] - b_bb[1]
+    pad_x, pad_y = int(28 * scale), int(12 * scale)
+    bx0 = (target_w - (bw + pad_x * 2)) // 2
+    by0 = int(target_h * 0.138)
+    bx1 = bx0 + bw + pad_x * 2
+    by1 = by0 + bh + pad_y * 2
+    draw.rounded_rectangle(
+        [bx0, by0, bx1, by1],
+        radius=int(24 * scale),
+        fill=(12, 14, 22, 215),
+        outline=accent_rgb + (235,),
+        width=max(2, int(4 * scale)),
+    )
+    draw.text((bx0 + pad_x - b_bb[0], by0 + pad_y - b_bb[1]), badge_txt, font=badge_font, fill=accent_rgb + (255,))
 
-    # y=16.5% (317px @ 1920h) para quedar 100% visible por debajo del recorte 3:4 del feed de TikTok (240px)
-    y_cur = int(target_h * 0.165)
-    shadow_off = max(4, int(8 * scale))
-    for txt, fnt, col in (
+    font1 = _fit_font(line1, 145)
+    font2 = _fit_font(line2, 158)
+
+    # y=18.2% (349px @ 1920h) debajo del micro-badge y 100% dentro del recorte 3:4 de TikTok
+    y_cur = by1 + int(22 * scale)
+    shadow_off = max(5, int(10 * scale))
+    stroke_w = max(3, int(6 * scale))
+
+    # Glow neón sutil en la línea 2 (color acento)
+    txt_glow = Image.new("RGBA", (target_w, target_h), (0, 0, 0, 0))
+    draw_tg = ImageDraw.Draw(txt_glow)
+    positions = []
+    for idx_l, (txt, fnt, col) in enumerate((
         (line1, font1, (255, 255, 255, 255)),
         (line2, font2, accent_rgb + (255,)),
-    ):
+    )):
         bb = draw.textbbox((0, 0), txt, font=fnt)
         tw, th = bb[2] - bb[0], bb[3] - bb[1]
         tx = (target_w - tw) // 2 - bb[0]
         ty = y_cur - bb[1]
-        # Sombra suave paralela (sin contorno grueso)
-        draw.text((tx + shadow_off, ty + shadow_off), txt, font=fnt, fill=(0, 0, 0, 185))
-        draw.text((tx, ty), txt, font=fnt, fill=col)
+        positions.append((idx_l, txt, fnt, col, tx, ty))
+        if idx_l == 1:
+            draw_tg.text((tx, ty), txt, font=fnt, fill=accent_rgb + (155,))
         y_cur += th + int(22 * scale)
 
+    txt_glow = txt_glow.filter(ImageFilter.GaussianBlur(radius=int(22 * scale)))
+    img = Image.alpha_composite(img, txt_glow)
+    draw = ImageDraw.Draw(img)
+
+    for idx_l, txt, fnt, col, tx, ty in positions:
+        draw.text((tx + shadow_off, ty + shadow_off), txt, font=fnt, fill=(0, 0, 0, 220))
+        draw.text(
+            (tx, ty),
+            txt,
+            font=fnt,
+            fill=col,
+            stroke_width=stroke_w,
+            stroke_fill=(8, 10, 16, 245),
+        )
+
     img.convert("RGB").save(output_cover_path, "JPEG", quality=95)
-    print(f"[✓ Caspahz Cover] Portada 9:16 generada ('{line1} / {line2}') -> {output_cover_path.name}")
+    print(f"[✓ Caspahz Cover] Portada 9:16 Pro generada ('{line1} / {line2}', luma={cover_luma:.0f}) -> {output_cover_path.name}")
     return output_cover_path
