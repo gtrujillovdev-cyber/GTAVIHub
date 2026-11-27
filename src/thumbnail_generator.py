@@ -713,6 +713,23 @@ def render_caspahz_cover_image(
             stroke_fill=(8, 10, 16, 245),
         )
 
+    # Marca de agua oficial del canal (VI EXTRA) vía render_brand_watermark_pill() en esquina inferior derecha dentro del crop 3:4
+    if os.getenv("ENABLE_BRAND_WATERMARK", "true").lower() in ("true", "1", "yes"):
+        wm_tmp = output_cover_path.with_suffix(".wm_cover.png")
+        try:
+            from .video_editor import render_brand_watermark_pill
+            brand_handle = os.getenv("BRAND_WATERMARK_TEXT", "@GTAVIHubExtra")
+            if render_brand_watermark_pill(wm_tmp, brand_text=brand_handle, scale_factor=scale) and wm_tmp.exists():
+                wm_img = Image.open(wm_tmp).convert("RGBA")
+                wx = max(0, target_w - wm_img.width - int(36 * scale))
+                # y=85.5% - h queda justo encima del borde inferior del recorte 3:4 (y=1680 @ 1920h) y libre del contador ▷ a la izquierda
+                wy = max(0, int(target_h * 0.855) - wm_img.height)
+                img.alpha_composite(wm_img, dest=(wx, wy))
+        except Exception as wm_err:
+            print(f"[Caspahz Cover] Aviso marca de agua en portada: {wm_err}")
+        finally:
+            wm_tmp.unlink(missing_ok=True)
+
     img.convert("RGB").save(output_cover_path, "JPEG", quality=95)
     print(f"[✓ Caspahz Cover] Portada 9:16 Pro generada ('{line1} / {line2}', luma={cover_luma:.0f}) -> {output_cover_path.name}")
     return output_cover_path
