@@ -69,10 +69,10 @@ def _pick_auto_x_long_candidates(max_candidates: int = 6) -> list[tuple[str, str
     de guías 16:9 (>=65s) de GTA 6 aún no enviadas como X Long Guide.
     """
     from src.ai_selector import is_location_reward_guide
-    from src.channels import fetch_all_channels, filter_repetitive_candidates
+    from src.channels import fetch_channel_candidates, filter_repetitive_candidates
 
     sent_ids = _load_x_long_sent()
-    raw = fetch_all_channels() or []
+    raw = fetch_channel_candidates(max_per_channel=2) or []
     filtered = filter_repetitive_candidates(raw, processed_entries=[])
 
     ranked = []
