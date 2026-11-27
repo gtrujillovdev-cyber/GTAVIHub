@@ -995,6 +995,15 @@ def process_single_video(
             if not qg_approved:
                 print(f"[Quality Gate] RECHAZADO: {qg_reason}")
                 try:
+                    from .channels import record_rejected_video
+                    record_rejected_video(video_id, reason=f"quality_gate: {qg_reason[:120]}")
+                except Exception:
+                    pass
+                try:
+                    output_path.unlink(missing_ok=True)
+                except Exception:
+                    pass
+                try:
                     from .telegram_bot import send_telegram_alert
                     send_telegram_alert(
                         f"🚫 *[Quality Gate]*\n"

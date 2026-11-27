@@ -330,7 +330,7 @@ def _split_caspahz_two_lines(title_text: str, category_hint: str = "") -> tuple[
     if any(k in blob for k in ("arma", "cuchillo", "pistola", "rifle", "gun", "weapon", "knife", "oro", "gold")):
         line2 = "DE ORO" if ("oro" in blob or "gold" in blob) else "OCULTA"
         return ("ARMA", line2, (255, 122, 0))
-    if any(k in blob for k in ("coche", "auto", "bugatti", "ferrari", "supercar", "vehic", "moto", "car")):
+    if re.search(r"\b(coche|coches|auto|autos|bugatti|ferrari|lambo|supercar|veh[ií]culo|veh[ií]culos|moto|motos|car|cars)\b", blob):
         # Intentar extraer marca/modelo o usar GRATIS
         for model in ("BUGATTI", "FERRARI", "LAMBO", "CHEETAH", "PORSCHE", "GTR"):
             if model.lower() in blob:

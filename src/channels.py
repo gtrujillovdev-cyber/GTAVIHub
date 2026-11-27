@@ -376,6 +376,33 @@ def _strip_franchise_tokens_for_dedup(text: str) -> str:
     cleaned = re.sub(r"[^\wáéíóúñü]+", " ", cleaned)
     return " ".join(cleaned.split()).strip()
 
+def record_rejected_video(video_id: str, reason: str = "") -> None:
+    """
+    Registra un video_id rechazado en data/rejected_cache.json (TTL 36h)
+    para evitar que el pipeline lo vuelva a descargar y rechazar en bucle.
+    """
+    vid_key = str(video_id or "").strip()
+    if not vid_key:
+        return
+    rejected_cache_file = DATA_DIR / "rejected_cache.json"
+    now_ts = datetime.now().timestamp()
+    rejected_cache: Dict[str, float] = {}
+    if rejected_cache_file.exists():
+        try:
+            raw_rc = json.loads(rejected_cache_file.read_text(encoding="utf-8"))
+            if isinstance(raw_rc, dict):
+                rejected_cache = {k: float(v) for k, v in raw_rc.items() if (now_ts - float(v)) < 36 * 3600}
+        except Exception:
+            rejected_cache = {}
+    rejected_cache[vid_key] = now_ts
+    try:
+        rejected_cache_file.parent.mkdir(parents=True, exist_ok=True)
+        rejected_cache_file.write_text(json.dumps(rejected_cache, indent=2), encoding="utf-8")
+        print(f"[Rejected Cache] Vídeo {vid_key} bloqueado 36h ({reason[:80] if reason else 'rechazado'}).")
+    except Exception:
+        pass
+
+
 def filter_repetitive_candidates(
     candidates: List[Dict[str, Any]],
     processed_entries: Optional[List[Dict[str, Any]]] = None

@@ -260,7 +260,7 @@ REGLAS ESTRICTAS:
 - PROHIBIDO elegir tramos con menús de pausa, pantallas de estadísticas/tablas de vehículos, sliders horizontales o pantallas de carga en los actos 1, 3 y 4; esos 3 actos deben ser SIEMPRE gameplay 3D en movimiento.
 - El texto `narration_es` debe ser español natural de España, fiel a lo que sale en pantalla, y sin palabras prohibidas (usa "recompensa" o "mercancía" en vez de drogas/cocaína).
 
-- AUDITORÍA VISUAL OBLIGATORIA (sé estricto): marca `"has_facecam": true` si aparece CUALQUIER cámara/cara de un streamer o persona real superpuesta al gameplay (NO personajes 3D de GTA 6). Marca `"has_burned_english_subs": true` si el vídeo original ya trae textos/subtítulos grandes en inglés quemados encima del gameplay (NO el HUD normal del juego). Marca `"is_gta6_gameplay": false` si el vídeo muestra anuncios/sponsors de software (ej. editores, VPNs), pantallas de escritorio o contenido que NO sea gameplay real de GTA 6.
+- AUDITORÍA VISUAL OBLIGATORIA: marca `"has_facecam": true` SI aparece una webcam/cara de una persona real (streamer/youtuber) superpuesta al gameplay (NO personajes 3D de GTA 6). Marca `"has_burned_english_subs": true` ÚNICAMENTE si el creador editó subtítulos GRANDES en inglés estilo TikTok/Hormozi tapando el centro o parte superior del gameplay (NUNCA por subtítulos pequeños nativos del propio juego GTA 6 en la parte inferior, HUD, mapa o prompts de botones). Marca `"is_gta6_gameplay": false` ÚNICAMENTE si muestra anuncios/sponsors de software (HitPaw, VPNs, apps), pantallas de escritorio o personas en vida real fuera del juego (NUNCA marques false por parecerse a GTA V/Online, ya que GTA 6 comparte estética y HUD similar).
 
 Responde SOLO JSON válido:
 {{

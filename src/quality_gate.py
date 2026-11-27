@@ -127,8 +127,8 @@ def _check_visual_compliance(video_path: Path, duration: float) -> Tuple[bool, s
             "Audita estos 3 fotogramas de un clip de GTA 6 doblado al español.\n"
             "Responde SOLO JSON estricto con 3 booleanos:\n"
             "1) `has_facecam`: true SI Y SOLO SI aparece una cámara/webcam o cara de una persona real (streamer/youtuber) superpuesta sobre el juego. NO marques true por personajes 3D del propio GTA 6.\n"
-            "2) `has_burned_english_subs`: true SI aparecen textos grandes o subtítulos quemados EN INGLÉS del vídeo original encima del gameplay (por ejemplo frases editadas en inglés en el centro/arriba/abajo). NO marques true por nuestros subtítulos en español ni por el HUD/minimapa normal de GTA 6.\n"
-            "3) `is_gta6_gameplay`: false SI CUALQUIERA de los fotogramas muestra anuncios/sponsors de software (ej. HitPaw, VPNs, editores), pantallas de escritorio, páginas web o contenido que NO sea gameplay/mapa real de GTA 6.\n"
+            "2) `has_burned_english_subs`: true ÚNICAMENTE si el vídeo original tiene rótulos/subtítulos GRANDES editados en inglés (estilo TikTok/Hormozi) tapando el centro o parte superior del gameplay. NUNCA marques true por nuestros subtítulos en español, ni por los subtítulos pequeños nativos del propio juego GTA 6 en la parte inferior, ni por el HUD/minimapa/prompts de botones/menús del juego.\n"
+            "3) `is_gta6_gameplay`: IMPORTANTE — GTA 6 comparte estética y HUD similar a GTA V/Online (minimapa, marcadores de distancia en pies/metros, menús de venta). NUNCA marques false por parecerse a GTA V/Online. Marca false ÚNICAMENTE si muestra anuncios/sponsors de software (HitPaw, VPNs, apps), pantallas de escritorio/navegador o personas en vida real fuera del videojuego.\n"
             'JSON: {"has_facecam": false, "has_burned_english_subs": false, "is_gta6_gameplay": true, "detail": ""}'
         ]
         for f in frames:
