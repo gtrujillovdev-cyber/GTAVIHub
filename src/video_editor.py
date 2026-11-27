@@ -1391,13 +1391,14 @@ def render_final_video(
         if not render_follow_cta_pill(cta_png, text=cta_text, scale_factor=scale_factor):
             cta_png = None
 
-    # 2d. Marca de agua de canal semi-transparente (visibilidad e insistencia de marca permanente)
+    # 2d. Marca de agua de canal semi-transparente (visibilidad e insistencia de marca permanente en 9:16 y 16:9)
     watermark_png = None
     enable_watermark = os.getenv("ENABLE_BRAND_WATERMARK", "true").lower() in ("true", "1", "yes")
-    if enable_watermark and is_vertical:
+    if enable_watermark:
         brand_handle = os.getenv("BRAND_WATERMARK_TEXT", "@GTAVIHubExtra")
         watermark_png = temp_dir / f"{base_name}_brand_wm.png"
-        if not render_brand_watermark_pill(watermark_png, brand_text=brand_handle, scale_factor=scale_factor):
+        wm_scale = scale_factor if is_vertical else max(1.0, canvas_h / 1080.0)
+        if not render_brand_watermark_pill(watermark_png, brand_text=brand_handle, scale_factor=wm_scale):
             watermark_png = None
 
     # 3. Generación de estados de Karaoke palabra por palabra
@@ -1733,10 +1734,15 @@ def render_final_video(
         filter_chains.append(f"[{current_v}][{cta_idx}:v]overlay=(W-w)/2:{cta_y}:enable='gte(t,{cta_start:.2f})'[v_cta]")
         current_v = "v_cta"
 
-    # C4) Marca de agua de canal persistente, discreta y dentro del crop 3:4 del feed (y>=262px @ 1920h)
+    # C4) Marca de agua de canal persistente, discreta y dentro del crop 3:4 del feed (9:16) o esquina sup. derecha (16:9)
     if watermark_idx is not None:
-        wm_x = f"W-w-{int(38 * scale_factor)}"
-        wm_y = int(262 * scale_factor)
+        if is_vertical:
+            wm_x = f"W-w-{int(38 * scale_factor)}"
+            wm_y = int(262 * scale_factor)
+        else:
+            h_scale = max(1.0, canvas_h / 1080.0)
+            wm_x = f"W-w-{int(44 * h_scale)}"
+            wm_y = int(38 * h_scale)
         filter_chains.append(f"[{current_v}][{watermark_idx}:v]overlay={wm_x}:{wm_y}[v_branded]")
         current_v = "v_branded"
 

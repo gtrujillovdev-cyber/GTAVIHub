@@ -922,4 +922,8 @@ def build_multi_beat_guide_package_from_url(
         print(f"[GuideCompiler] Aviso fallback desde URL: {e}")
         return None
     finally:
-        src_mp4.unlink(missing_ok=True)
+        for leftover in work_dir.glob(f"{video_id}_{tag}_src*"):
+            try:
+                leftover.unlink(missing_ok=True)
+            except Exception:
+                pass
