@@ -31,15 +31,6 @@ SCHEDULE_FILE = DATA_DIR / "adaptive_schedule.json"
 # Cada día el scheduler elige un punto aleatorio dentro de cada ventana.
 TARGET_WINDOWS = [
     {
-        "id": "morning",
-        "name": "🌅 Mañana (Pico España)",
-        "start_hour": 9,
-        "start_minute": 30,
-        "end_hour": 11,
-        "end_minute": 0,
-        "target_label": "09:30 - 11:00 CET"
-    },
-    {
         "id": "lunch_latam",
         "name": "🍲 Almuerzo ES / Amanecer LatAm",
         "start_hour": 13,
@@ -261,6 +252,9 @@ def can_opportunistic_publish(now_dt: Optional[datetime] = None) -> bool:
     """
     if now_dt is None:
         now_dt = datetime.now()
+    # Bloquear disparos oportunistas de madrugada o mañana floja (00:00-12:59 y >=22:00 CET)
+    if now_dt.hour < 13 or now_dt.hour >= 22:
+        return False
     today_sched = get_daily_schedule(now_dt.date())
     windows = today_sched.get("windows", [])
     completed = [w for w in windows if w.get("completed")]

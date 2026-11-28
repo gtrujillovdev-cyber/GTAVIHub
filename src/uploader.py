@@ -323,7 +323,7 @@ def upload_to_youtube(
         print(f"    ID: {video_id}")
         print(f"    Enlace: {yt_url}")
 
-        if not is_short and thumbnail_path and thumbnail_path.exists():
+        if thumbnail_path and thumbnail_path.exists():
             try:
                 print(f"[*] Subiendo miniatura personalizada para {video_id}...")
                 youtube.thumbnails().set(
@@ -332,7 +332,7 @@ def upload_to_youtube(
                 ).execute()
                 print(f"[✓] Miniatura asignada con éxito.")
             except Exception as e:
-                print(f"[Info] Miniatura personalizada no asignada (requiere verificación telefónica del canal): {e}")
+                print(f"[Info] Miniatura personalizada no asignada (límite API Shorts o verificación telefónica): {e}")
 
         # Boost algorítmico (solo si ENABLE_AUTO_PINNED_COMMENT=true; desactivado en canales nuevos anti-spam)
         auto_engage_enabled = os.getenv("ENABLE_AUTO_PINNED_COMMENT", "false").strip().lower() in ("1", "true", "yes")

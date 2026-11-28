@@ -650,13 +650,12 @@ def send_copilot_approval_request(
     )
     keyboard = get_copilot_approval_keyboard(video_id, original_url=original_url)
 
-    # 1. Intentar enviar el archivo de vídeo renderizado para reproducirlo directamente en Telegram (<48MB)
+    # 1. Enviar siempre el archivo de vídeo (send_telegram_video adapta automáticamente >44MB a 1080p)
     if video_path and video_path.exists():
         try:
-            if video_path.stat().st_size < 48 * 1024 * 1024:
-                print(f"[Telegram] Enviando archivo de vídeo renderizado a Telegram ({video_path.stat().st_size / (1024*1024):.1f} MB)...")
-                if send_telegram_video(video_path, caption, reply_markup=keyboard):
-                    return True
+            print(f"[Telegram] Enviando archivo de vídeo renderizado a Telegram ({video_path.stat().st_size / (1024*1024):.1f} MB)...")
+            if send_telegram_video(video_path, caption, reply_markup=keyboard):
+                return True
         except Exception as e:
             print(f"[Telegram] Error enviando vídeo de previsualización: {e}")
 
