@@ -977,7 +977,7 @@ def process_single_video(
                 clean_source_video=video_path,
             )
             if cover_res and cover_res.exists():
-                caspahz_cover_ready = inject_first_frame_cover(output_path, cover_res, duration_sec=0.35)
+                caspahz_cover_ready = inject_first_frame_cover(output_path, cover_res, duration_sec=0.04)
         except Exception as e:
             print(f"[Caspahz Cover] Aviso no bloqueante: {e}")
 

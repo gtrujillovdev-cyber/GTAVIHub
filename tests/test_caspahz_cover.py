@@ -40,6 +40,27 @@ class TestCaspahzCoverAndReliability(unittest.TestCase):
         self.assertEqual(l2, "$500K")
         self.assertEqual(col, (184, 255, 60))
 
+    def test_tiktok_caption_has_no_youtube_boilerplate_or_mentions(self):
+        from src.social_publisher import SocialPublisher
+        cap = SocialPublisher._build_tiktok_caption(
+            title="Cómo desbloquear el búnker militar en GTA 6",
+            tags=["GTA6", "GTAVI", "GTA6Guias", "SecretosGTA6"],
+            debate_question="¿Vas a ir a por el tanque?",
+            description="📍 GUÍA & LOCALIZACIÓN EXACTA [GTA 6]:\nDescubre la ubicación exacta...",
+            creator_name="SubscribeForTacos",
+        )
+        self.assertNotIn("📍 GUÍA", cap)
+        self.assertNotIn("📌 Crédito", cap)
+        self.assertNotIn("@", cap)
+        self.assertIn("#GTA6", cap)
+        self.assertLessEqual(cap.count("#"), 3)
+
+    def test_frame0_cover_duration_is_single_frame(self):
+        import inspect
+        from src.video_editor import inject_first_frame_cover
+        sig = inspect.signature(inject_first_frame_cover)
+        self.assertLessEqual(sig.parameters["duration_sec"].default, 0.05)
+
 
 if __name__ == "__main__":
     unittest.main()

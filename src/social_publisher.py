@@ -327,42 +327,22 @@ class SocialPublisher:
             else:
                 debate_line = "💬 ¿Del 1 al 10 qué nota le pones a esto? Te leo 👇"
 
-        # Extraer contexto editorial limpio sin URLs ni boilerplate legal de YouTube
-        editorial_lines = []
-        if description:
-            for raw_line in description.splitlines():
-                line = raw_line.strip()
-                if not line:
-                    continue
-                low = line.lower()
-                if any(skip in low for skip in ("http://", "https://", "fair use", "art. 107", "copyright", "por: @", "créditos", "suscríbete")):
-                    continue
-                if line.startswith("#"):
-                    continue
-                editorial_lines.append(line)
-                if len(" ".join(editorial_lines)) >= 120:
-                    break
-        editorial_snippet = truncate_on_word_boundary(" ".join(editorial_lines), 140) if editorial_lines else ""
-
-        # Hashtags curados (máximo 4 limpios de alto alcance en TikTok)
-        base_tags = ["GTA6", "GTAVI", "Leonida", "ViceCity"]
+        # Hashtags curados (3-4 limpios de nicho GTA 6, mismo formato del ganador 1.9K)
+        base_tags = ["GTA6", "GTAVI", "GrandTheftAutoVI"]
         merged_tags = []
         seen_low = set()
-        for t in list(tags or []) + base_tags:
+        for t in base_tags + list(tags or []):
             clean_t = re.sub(r'[^A-Za-z0-9ÁÉÍÓÚÜÑáéíóúüñ]', '', str(t))
             if clean_t and clean_t.lower() not in seen_low:
                 seen_low.add(clean_t.lower())
                 merged_tags.append(f"#{clean_t}")
-            if len(merged_tags) >= 4:
+            if len(merged_tags) >= 3:
                 break
         tags_str = " ".join(merged_tags)
 
+        # Blindaje TikTok anti-spam: NUNCA pegar descripción larga de YouTube ('📍 GUÍA...')
+        # ni menciones '@Creador' (correlacionadas con caída a 21-47 vistas en TikTok Studio).
         parts = [short_title, debate_line]
-        if editorial_snippet:
-            parts.append(editorial_snippet)
-        if creator_name and creator_name.strip():
-            clean_creator = creator_name.strip().lstrip("@")
-            parts.append(f"📌 Crédito: @{clean_creator}")
         if tags_str:
             parts.append(tags_str)
         return "\n\n".join(parts)
@@ -505,7 +485,9 @@ class SocialPublisher:
                 return None
 
         if native_caption_override and native_caption_override.strip():
-            caption = native_caption_override.strip()
+            caption = re.sub(r"@\w+", "", native_caption_override.strip()).strip()
+            if "#" not in caption:
+                caption = f"{caption}\n\n#GTA6 #GTAVI #GrandTheftAutoVI"
         else:
             caption = self._build_tiktok_caption(
                 title=title,

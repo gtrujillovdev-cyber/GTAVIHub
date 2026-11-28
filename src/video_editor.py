@@ -1150,10 +1150,10 @@ def ensure_non_map_first_frame(video_path: Path, temp_dir: Path) -> Path:
     return video_path
 
 
-def inject_first_frame_cover(video_path: Path, cover_image_path: Path, duration_sec: float = 0.12) -> bool:
+def inject_first_frame_cover(video_path: Path, cover_image_path: Path, duration_sec: float = 0.04) -> bool:
     """
-    Inyecta una portada estática de `duration_sec` (0.12s = ~4 frames) al inicio exacto (Frame 0)
-    del vídeo renderizado para que el feed de YouTube Shorts / TikTok muestre una portada limpia estilo Caspahz.
+    Inyecta una portada estática de `duration_sec` (0.04s = 1 frame @ 30fps) al inicio exacto (Frame 0)
+    para que el grid de TikTok muestre la portada Pro sin provocar congelación muda ni swipes en Para ti.
     """
     if not video_path.exists() or not cover_image_path.exists():
         return False
