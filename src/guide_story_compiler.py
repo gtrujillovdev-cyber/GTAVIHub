@@ -245,17 +245,17 @@ TRANSCRIPCIÓN CON TIMESTAMPS:
 {transcript_txt or "(Sin transcripción; guíate directamente por los fotogramas reales adjuntos)"}
 
 TAREA:
-Construye una MINI-GUÍA COMPLETA de 4 actos (4 cortes reales del vídeo) que sumen entre 17 y 23 segundos totales.
+Construye una MINI-GUÍA ULTRA-RÁPIDA de 4 actos (4 cortes reales del vídeo) que sumen entre 14 y 18 segundos totales (máxima tasa de completado y retención en TikTok y Shorts).
 CADA ACTO DEBE COINCIDIR 100% VISUALMENTE CON LOS FOTOGRAMAS REALES ADJUNTOS (el guion SOLO puede describir lo que realmente ocurre en ese timestamp):
 
-1. Acto 1 "reward_hook" (3.0-4.0s): Elige el timestamp donde se ve CLARAMENTE la recompensa principal (el coche, arma o dinero) en gameplay 3D. Guion: 1 frase directa (8-12 palabras, PROHIBIDO hacer preguntas) describiendo esa recompensa visible.
-2. Acto 2 "map_location" (2.0-3.0s MÁXIMO ESTRICTO): Elige el timestamp exacto donde aparece el MAPA con la ubicación. Si no hay mapa en ningún fotograma, usa la llegada a la zona. Guion ultra-corto (6-9 palabras máximo, ej: "Ve a este punto exacto del mapa.") para que el mapa NUNCA se quede estático más de 3 segundos.
-3. Acto 3 "action_steps" (4.5-6.5s): Elige el timestamp donde el jugador entra o ejecuta la acción clave en gameplay 3D. Narra exactamente lo que se ve hacer al jugador (11-16 palabras).
-4. Acto 4 "claim_payoff" (4.5-6.5s): Elige el timestamp donde recoge/sube/conduce la recompensa, cerrando con CTA corto de guardado (ej: "Guárdalo para cuando juegues.").
+1. Acto 1 "reward_hook" (2.5-3.2s): Elige el timestamp donde se ve CLARAMENTE la recompensa principal (el coche, tanque, arma o dinero) en primer plano 3D. Guion: 1 frase fulminante (7-10 palabras, PROHIBIDO preguntas y PROHIBIDO frases genéricas como "Cómo conseguir este coche"): nombra el MODELO/OBJETO/CIFRA EXACTA desde la primera palabra (ej: "Consigue este tanque gratis en el búnker militar.", "Bugatti Divo gratis sin pagar un dólar.").
+2. Acto 2 "map_location" (2.0-2.6s MÁXIMO ESTRICTO): Elige el timestamp exacto donde aparece el MAPA con la ubicación. Si no hay mapa en ningún fotograma, usa la llegada a la zona. Guion ultra-corto (5-8 palabras máximo, ej: "Ve a este punto exacto del mapa.") para que el mapa NUNCA frene el ritmo.
+3. Acto 3 "action_steps" (4.0-5.2s): Elige el timestamp donde el jugador entra o ejecuta la acción clave en gameplay 3D. Narra exactamente lo que se ve hacer al jugador (9-13 palabras).
+4. Acto 4 "claim_payoff" (4.0-5.2s): Elige el timestamp donde recoge/sube/conduce la recompensa, cerrando con CTA corto orientado a GUARDADOS (ej: "Guárdalo antes de que lo parcheen." o "Guárdalo para tu partida.").
 
 REGLAS ESTRICTAS:
 - Cada beat debe tener 0 <= start_sec < end_sec <= {max(8.0, duration - 0.5):.1f}.
-- Acto 2 ("map_location") DEBE durar entre 2.0s y 3.0s (NUNCA más de 3.2s).
+- Acto 2 ("map_location") DEBE durar entre 2.0s y 2.6s (NUNCA más de 3.0s).
 - Prioriza siempre tramos con acción dinámica (disparos, persecuciones, conducción rápida o interacción directa) siempre que coincidan con la guía real y lo que se narra.
 - PROHIBIDO elegir tramos con menús de pausa, pantallas de estadísticas/tablas de vehículos, sliders horizontales o pantallas de carga en los actos 1, 3 y 4; esos 3 actos deben ser SIEMPRE gameplay 3D en movimiento.
 - El texto `narration_es` debe ser español natural de España, fiel a lo que sale en pantalla, y sin palabras prohibidas (usa "recompensa" o "mercancía" en vez de drogas/cocaína).
@@ -745,7 +745,7 @@ def narrate_compiled_beats_from_video(
         cta_rule = (
             'El último acto debe cerrar con "Guarda este post en marcadores para cuando juegues."'
             if is_x_long
-            else 'El último acto debe cerrar con "Guárdalo para cuando juegues."'
+            else 'El primer acto debe nombrar el objeto/coche/arma/cifra EXACTA en la primera frase (cero intros genéricas) y el último acto debe cerrar con "Guárdalo para tu partida." o "Guárdalo antes de que lo parcheen."'
         )
         prompt = (
             f'Eres el narrador oficial de GTA 6 para una guía titulada "{title}".\n'

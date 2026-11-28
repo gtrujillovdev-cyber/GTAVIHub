@@ -327,12 +327,18 @@ def _split_caspahz_two_lines(title_text: str, category_hint: str = "") -> tuple[
     if any(k in blob for k in ("dinero", "hora", "método", "metodo", "$", "millon", "money", "duplicar")):
         line2 = money_m.group(0).replace(" ", "").upper() if money_m else "RÁPIDO"
         return ("DINERO", line2, (184, 255, 60))
-    if any(k in blob for k in ("arma", "cuchillo", "pistola", "rifle", "gun", "weapon", "knife", "oro", "gold")):
+    if re.search(r"\b(tanque|tank)\b", blob):
+        return ("TANQUE", "GRATIS", (255, 184, 0))
+    if re.search(r"\b(b[uú]nker|bunker)\b", blob):
+        return ("BÚNKER", "OCULTO", (0, 229, 255))
+    if re.search(r"\b(jet|caza|avi[oó]n|helic[oó]ptero|chopper)\b", blob):
+        return ("JET", "GRATIS", (255, 184, 0))
+    if any(k in blob for k in ("arma", "cuchillo", "pistola", "rifle", "gun", "weapon", "knife", "oro", "gold", "katana", "sniper")):
         line2 = "DE ORO" if ("oro" in blob or "gold" in blob) else "OCULTA"
         return ("ARMA", line2, (255, 122, 0))
-    if re.search(r"\b(coche|coches|auto|autos|bugatti|ferrari|lambo|supercar|veh[ií]culo|veh[ií]culos|moto|motos|car|cars)\b", blob):
-        # Intentar extraer marca/modelo o usar GRATIS
-        for model in ("BUGATTI", "FERRARI", "LAMBO", "CHEETAH", "PORSCHE", "GTR"):
+    if re.search(r"\b(coche|coches|auto|autos|bugatti|divo|chiron|ferrari|lambo|emerus|hellfire|cheetah|porsche|gtr|supercar|veh[ií]culo|veh[ií]culos|moto|motos|car|cars)\b", blob):
+        # Intentar extraer marca/modelo concreto para máximo CTR
+        for model in ("BUGATTI", "DIVO", "HELLFIRE", "EMERUS", "CHEETAH", "FERRARI", "LAMBO", "PORSCHE", "GTR"):
             if model.lower() in blob:
                 return (model, "GRATIS", (255, 184, 0))
         return ("COCHE", "GRATIS", (255, 184, 0))
