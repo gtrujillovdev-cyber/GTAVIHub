@@ -868,7 +868,15 @@ def build_multi_beat_guide_package_from_url(
             print(f"[GuideCompiler] Omitido ({video_id}): duración {dur:.1f}s < mínimo {min_src:.0f}s.")
             return None
 
-        fmt_sel = "bestvideo[height<=3840][ext=mp4]+bestaudio[ext=m4a]/bestvideo[height<=3840]+bestaudio/best[height<=3840][ext=mp4]/best"
+        # Vídeos largos (>5 min) en 4K pesan 2-4 GB y superan el timeout de 180s -> bajar en 1080p para que
+        # GuideCompiler (14-18s + Fase 2 Vision) NUNCA falle por timeout ni caiga al ensamblador antiguo de 26s.
+        max_h = 1080 if dur > 300.0 else 3840
+        fmt_sel = (
+            f"bestvideo[height<={max_h}][ext=mp4]+bestaudio[ext=m4a]/"
+            f"bestvideo[height<={max_h}]+bestaudio/best[height<={max_h}][ext=mp4]/best"
+        )
+        if max_h < 3840:
+            print(f"[GuideCompiler] Vídeo largo ({dur:.0f}s > 300s): descargando en 1080p para evitar timeout 4K.")
         dl_res = subprocess.run([
             sys.executable, "-m", "yt_dlp", "--impersonate", "chrome", "--no-check-certificates",
             "-f", fmt_sel, "--merge-output-format", "mp4", "-o", str(src_mp4), url
